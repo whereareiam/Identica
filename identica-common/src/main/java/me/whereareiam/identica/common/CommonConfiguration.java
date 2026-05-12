@@ -115,19 +115,12 @@ public class CommonConfiguration extends AbstractModule {
 				.asEagerSingleton();
 
 		// Configuration providers
-		bind(SettingsProvider.class).asEagerSingleton();
 		bind(Settings.class).toProvider(SettingsProvider.class);
-		bind(MessagesProvider.class).asEagerSingleton();
 		bind(Messages.class).toProvider(MessagesProvider.class);
-		bind(CommandsProvider.class).asEagerSingleton();
 		bind(Commands.class).toProvider(CommandsProvider.class);
-		bind(ProvidersProvider.class).asEagerSingleton();
 		bind(Providers.class).toProvider(ProvidersProvider.class);
-		bind(VerificationProvider.class).asEagerSingleton();
 		bind(Verification.class).toProvider(VerificationProvider.class);
-		bind(PersistenceProvider.class).asEagerSingleton();
 		bind(Persistence.class).toProvider(PersistenceProvider.class);
-		bind(ReplicationProvider.class).asEagerSingleton();
 		bind(Replication.class).toProvider(ReplicationProvider.class);
 
 		// Registries & reloadables

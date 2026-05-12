@@ -4,6 +4,7 @@ import com.google.inject.Inject;
 import com.google.inject.Injector;
 import me.whereareiam.identica.IdenticaAPI;
 import me.whereareiam.identica.command.CommandService;
+import me.whereareiam.identica.common.config.ConfigInitializer;
 import me.whereareiam.identica.common.logging.WelcomeBannerPrinter;
 import me.whereareiam.identica.database.DatabaseService;
 import me.whereareiam.identica.event.EventListener;
@@ -15,7 +16,6 @@ import me.whereareiam.identica.event.lifecycle.IdenticaShutdownEvent;
 import me.whereareiam.identica.listener.ListenerRegistrar;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.logging.LoggingHelper;
-import me.whereareiam.identica.model.config.*;
 import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.sentinel.SentinelDefinition;
 import me.whereareiam.identica.Registry;
@@ -50,12 +50,7 @@ public class Identica implements EventListener {
 
 		sentinelRegistry.register(resumeSpamSentinelDefinition);
 
-		injector.getInstance(Settings.class);
-		injector.getInstance(Messages.class);
-		injector.getInstance(Commands.class);
-		injector.getInstance(Providers.class);
-		injector.getInstance(Replication.class);
-
+		ConfigInitializer.initialize(injector);
 		injector.getInstance(DatabaseService.class);
 
 		IdenticaAPI.initialize(injector);

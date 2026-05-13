@@ -1,0 +1,4 @@
+name: Identica
+main: me.whereareiam.identica.platform.bungeecord.BungeeCordIdentica
+version: ${version}
+author: whereareiam

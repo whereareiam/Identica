@@ -4,7 +4,7 @@
   "version": "dev",
   "main": "me.whereareiam.identica.provider.premium.PremiumProvider",
   "authors": ["whereareiam"],
-  "supportedPlatforms": ["VELOCITY"],
+  "supportedPlatforms": ["VELOCITY", "BUNGEECORD"],
   "priority": 100,
   "capabilities": [
     "online",

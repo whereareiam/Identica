@@ -83,7 +83,7 @@ class PremiumHandshakePolicyTest {
 				.thenReturn(Optional.of(link(uniqueId, "premium", false)));
 		when(providerLinkPersistenceService.findByUniqueId(uniqueId)).thenReturn(List.of(
 				link(uniqueId, "premium", false),
-				link(uniqueId, "cracked", true)
+				link(uniqueId, "password", true)
 		));
 
 		HandshakeDecision decision = policy.evaluate(request(username)).toCompletableFuture().join();
@@ -102,14 +102,14 @@ class PremiumHandshakePolicyTest {
 		when(attemptStore.hasAttempt("premium", "verify", username, "127.0.0.1")).thenReturn(false);
 		when(providerManager.getProviders()).thenReturn(List.of(
 				provider("premium", 100),
-				provider("cracked", 50)
+				provider("password", 50)
 		));
 		when(profileStore.find(username)).thenReturn(new PremiumProfileSnapshot("premium-subject", System.currentTimeMillis()));
 		when(providerLinkPersistenceService.findBySubject("premium", "premium-subject"))
 				.thenReturn(Optional.of(link(uniqueId, "premium", false)));
 		when(providerLinkPersistenceService.findByUniqueId(uniqueId)).thenReturn(List.of(
 				link(uniqueId, "premium", false),
-				link(uniqueId, "cracked", false)
+				link(uniqueId, "password", false)
 		));
 
 		HandshakeDecision decision = policy.evaluate(request(username)).toCompletableFuture().join();

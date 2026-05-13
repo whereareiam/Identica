@@ -5,8 +5,10 @@ import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.provider.IdenticaProvider;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
+import me.whereareiam.identica.provider.IdenticaProvider;
+import me.whereareiam.identica.provider.ProviderPlatformExtension;
+import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -17,13 +19,21 @@ import java.util.List;
 public class ProviderInjectorFactory {
 	private final Injector injector;
 
-	public Injector create(Path workingPath, ProviderDescriptor descriptor, IdenticaProvider probeProvider) {
+	public Injector create(
+			Path workingPath,
+			ProviderDescriptor descriptor,
+			IdenticaProvider probeProvider,
+			@Nullable ProviderPlatformExtension probePlatformExtension
+	) {
 		List<Module> modules = new ArrayList<>();
 		modules.add(new ProviderInjectorConfiguration(workingPath, descriptor));
 
 		List<Module> providerModules = probeProvider != null ? probeProvider.modules() : List.of();
 		if (!providerModules.isEmpty())
 			modules.addAll(providerModules);
+
+		List<Module> platformModules = probePlatformExtension != null ? probePlatformExtension.modules() : List.of();
+		if (!platformModules.isEmpty()) modules.addAll(platformModules);
 
 		return injector.createChildInjector(modules);
 	}

@@ -108,8 +108,8 @@ artifacts:
         game_versions: *supported_game_versions
         platform_versions: *supported_velocity_versions
 
-  cracked-provider:
-    file: Identica-Cracked-{version}.jar
+  password-provider:
+    file: Identica-Password-{version}.jar
     platforms:
       velocity:
         loaders:
@@ -139,7 +139,7 @@ publications:
     platforms:
       - velocity
 
-  cracked-provider-modrinth:
+  password-provider-modrinth:
     provider:
       id: modrinth
       project_id: cFnEyCND
@@ -155,7 +155,7 @@ publications:
       dependencies:
         - project_id: D26hHMI2
           dependency_type: required
-    artifact: cracked-provider
+    artifact: password-provider
     platforms:
       - velocity
 
@@ -191,7 +191,7 @@ publications:
     platforms:
       - velocity
 
-  cracked-provider-hangar:
+  password-provider-hangar:
     provider:
       id: hangar
       project_slug: "whereareiam/Identica-Offline-Provider"
@@ -203,7 +203,7 @@ publications:
         - kind: hangar
           name: Identica
           required: true
-    artifact: cracked-provider
+    artifact: password-provider
     platforms:
       - velocity
 

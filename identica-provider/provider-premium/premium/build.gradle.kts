@@ -6,8 +6,10 @@ plugins {
 
 dependencies {
     implementation(projects.providerPremiumApi)
+    implementation(projects.providerPremiumPlatformBungeecord)
     implementation(projects.providerPremiumPlatformVelocity)
     testImplementation(projects.providerPremiumApi)
+    testImplementation(projects.providerPremiumPlatformBungeecord)
     testImplementation(projects.providerPremiumPlatformVelocity)
 }
 

@@ -35,7 +35,7 @@ public class Session {
 	private @NotNull UUID uniqueId;
 
 	/**
-	 * Provider ID that issued the session (e.g., Premium/Cracked).
+	 * Provider ID that issued the session (e.g., Premium/Password).
 	 */
 	private @Nullable String providerId;
 	/**

@@ -11,7 +11,7 @@ Global session defaults stay in `settings.yml`; provider-specific session overri
 - Takes: a list of provider entries
 - Affects: provider enablement, ordering, entrypoint routing, verification policy, and provider-specific session TTLs
 
-Provider ids should match installed provider descriptors, such as `premium` or `cracked`.
+Provider ids should match installed provider descriptors, such as `premium` or `password`.
 
 <Tabs items={["YAML", "JSON"]}>
   <Tab value="YAML">
@@ -58,7 +58,7 @@ Configura keeps the object structure without filling every possible child field.
 <Badge type="warning">Advanced</Badge>
 
 - Takes: a positive duration
-- Current default: `"12h"` for `premium`; absent for `cracked`
+- Current default: `"12h"` for `premium`; absent for `password`
 - Affects: how long sessions opened by this provider live
 
 If `sessionTtl` is absent, Identica uses `settings.connection.sessions.defaultTtl`.

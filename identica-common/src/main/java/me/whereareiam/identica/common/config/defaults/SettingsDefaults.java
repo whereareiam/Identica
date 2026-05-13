@@ -6,6 +6,7 @@ import me.whereareiam.identica.model.Event;
 import me.whereareiam.identica.model.config.Settings;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptPolicy;
 import me.whereareiam.identica.model.sentinel.SentinelPolicy;
+import me.whereareiam.identica.type.PlatformType;
 import me.whereareiam.identica.type.event.EventPriority;
 import me.whereareiam.identica.type.identity.UniqueIdMode;
 import me.whereareiam.identica.type.pipeline.PipelineConcurrencyPolicy;
@@ -15,6 +16,7 @@ import me.whereareiam.identica.type.session.SessionConcurrencyPolicy;
 
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Singleton
@@ -125,13 +127,37 @@ public class SettingsDefaults implements MergeDefaultsProvider<Settings> {
 	}
 
 	private Map<String, Event> defaultListenerEvents() {
-		Map<String, Event> events = new HashMap<>();
+		return defaultListenerEvents(PlatformType.getType());
+	}
+
+	Map<String, Event> defaultListenerEvents(PlatformType platformType) {
+		return switch (platformType) {
+			case BUNGEECORD -> defaultBungeeCordListenerEvents();
+			case VELOCITY, UNKNOWN -> defaultVelocityListenerEvents();
+		};
+	}
+
+	private Map<String, Event> defaultVelocityListenerEvents() {
+		Map<String, Event> events = new LinkedHashMap<>();
 		events.put("com.velocitypowered.api.event.connection.PreLoginEvent", defaultEvent());
-		events.put("com.velocitypowered.api.event.connection.LoginEvent", defaultEvent());
 		events.put("com.velocitypowered.api.event.player.GameProfileRequestEvent", defaultEvent());
+		events.put("com.velocitypowered.api.event.connection.LoginEvent", defaultEvent());
 		events.put("com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent", defaultEvent(EventPriority.HIGH));
 		events.put("com.velocitypowered.api.event.player.ServerPreConnectEvent", defaultEvent(EventPriority.HIGH));
+		events.put("com.velocitypowered.api.event.player.ServerPostConnectEvent", defaultEvent());
 		events.put("com.velocitypowered.api.event.connection.DisconnectEvent", defaultEvent());
+		return events;
+	}
+
+	private Map<String, Event> defaultBungeeCordListenerEvents() {
+		Map<String, Event> events = new LinkedHashMap<>();
+		events.put("net.md_5.bungee.api.event.PlayerHandshakeEvent", defaultEvent());
+		events.put("net.md_5.bungee.api.event.LoginEvent", defaultEvent());
+		events.put("net.md_5.bungee.api.event.PostLoginEvent", defaultEvent());
+		events.put("net.md_5.bungee.api.event.ServerConnectEvent", defaultEvent(EventPriority.HIGH));
+		events.put("net.md_5.bungee.api.event.ServerConnectedEvent", defaultEvent(EventPriority.HIGH));
+		events.put("net.md_5.bungee.api.event.ServerSwitchEvent", defaultEvent());
+		events.put("net.md_5.bungee.api.event.PlayerDisconnectEvent", defaultEvent());
 
 		return events;
 	}

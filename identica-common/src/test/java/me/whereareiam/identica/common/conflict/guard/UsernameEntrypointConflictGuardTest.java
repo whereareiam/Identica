@@ -48,7 +48,7 @@ class UsernameEntrypointConflictGuardTest {
 		Providers providers = new Providers();
 		providers.setProviders(List.of(
 				entry("premium", "Premium Network", 100, List.of("premium.example.com")),
-				entry("cracked", "Offline Network", 50, List.of("cracked.example.com"))
+				entry("password", "Offline Network", 50, List.of("password.example.com"))
 		));
 		Messages messages = new MessagesDefaults().supply(new Messages());
 
@@ -62,7 +62,7 @@ class UsernameEntrypointConflictGuardTest {
 				.key("username")
 				.candidate("Player")
 				.incomingLink(link("premium"))
-				.existingLink(link("cracked"))
+				.existingLink(link("password"))
 				.build();
 		context.putExtra("entrypointSource", ProviderOrigin.AUTO);
 
@@ -73,7 +73,7 @@ class UsernameEntrypointConflictGuardTest {
 		assertTrue(resolution.getMessage().contains("Premium Network"));
 		assertTrue(resolution.getMessage().contains("Offline Network"));
 		assertTrue(resolution.getMessage().contains("premium.example.com"));
-		assertTrue(resolution.getMessage().contains("cracked.example.com"));
+		assertTrue(resolution.getMessage().contains("password.example.com"));
 	}
 
 	@DisplayName("Allows the conflict when the user has already selected an entrypoint")
@@ -82,7 +82,7 @@ class UsernameEntrypointConflictGuardTest {
 		Providers providers = new Providers();
 		providers.setProviders(List.of(
 				entry("premium", "Premium Network", 100, List.of("premium.example.com")),
-				entry("cracked", "Offline Network", 50, List.of("cracked.example.com"))
+				entry("password", "Offline Network", 50, List.of("password.example.com"))
 		));
 
 		ProviderOperations providerOperations = providerOperations(providers);
@@ -95,7 +95,7 @@ class UsernameEntrypointConflictGuardTest {
 				.key("username")
 				.candidate("Player")
 				.incomingLink(link("premium"))
-				.existingLink(link("cracked"))
+				.existingLink(link("password"))
 				.build();
 		context.putExtra("entrypointSource", ProviderOrigin.ENTRYPOINT);
 

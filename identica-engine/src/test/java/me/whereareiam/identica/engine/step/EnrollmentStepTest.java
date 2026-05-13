@@ -136,7 +136,7 @@ class EnrollmentStepTest {
 		when(providerOperations.eligibleProviders(any(), eq(PipelineType.REGISTRATION), eq(JourneyMode.INTERACTIVE)))
 				.thenReturn(List.of(
 						provider("premium", "Premium"),
-						provider("cracked", "Cracked")
+						provider("password", "Password")
 				));
 
 		StepResult result = step.execute(context).join();

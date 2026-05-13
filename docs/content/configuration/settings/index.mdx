@@ -979,7 +979,7 @@ Platform-specific listener classes and registration details depend on the platfo
 - Takes: a map keyed by fully qualified event class name
 - Affects: registration and priority for matching listeners
 
-<ContentTabs items={["Velocity"]}>
+<ContentTabs items={["Velocity", "BungeeCord"]}>
   <ContentTab value="Velocity">
 <Tabs items={["YAML", "JSON"]}>
   <Tab value="YAML">
@@ -1006,9 +1006,33 @@ listeners:
 ```
   </Tab>
 </Tabs>
-
-Use the exact Velocity event class name as the key.
-Missing entries are still registered with the built-in defaults, so this map is mainly for overrides and explicit opt-outs.
+  </ContentTab>
+  <ContentTab value="BungeeCord">
+<Tabs items={["YAML", "JSON"]}>
+  <Tab value="YAML">
+```yaml
+listeners:
+  events:
+    net.md_5.bungee.api.event.PlayerHandshakeEvent:
+      register: true
+      priority: "NORMAL"
+```
+  </Tab>
+  <Tab value="JSON">
+```json
+{
+  "listeners": {
+    "events": {
+      "net.md_5.bungee.api.event.PlayerHandshakeEvent": {
+        "register": true,
+        "priority": "NORMAL"
+      }
+    }
+  }
+}
+```
+  </Tab>
+</Tabs>
   </ContentTab>
 </ContentTabs>
 

@@ -66,13 +66,13 @@ class CompletionPipelineTest {
 				.build();
 		Session session = Session.builder()
 				.uniqueId(identicaUniqueId)
-				.providerId("cracked")
+				.providerId("password")
 				.providerSubject("player-one")
 				.originalUsername("PlayerOne")
 				.effectiveUsername("PlayerOne")
 				.build();
 		ProviderDescriptor descriptor = new ProviderDescriptor();
-		descriptor.setId("cracked");
+		descriptor.setId("password");
 		InternalProvider provider = InternalProvider.builder()
 				.descriptor(descriptor)
 				.state(ProviderState.ENABLED)
@@ -82,7 +82,7 @@ class CompletionPipelineTest {
 		when(pendingStore.consume(connectionUniqueId)).thenReturn(Optional.of(pendingState));
 		when(sessionService.findByUniqueId(identicaUniqueId)).thenReturn(CompletableFuture.completedFuture(Optional.of(session)));
 		when(providerManager.getProviders()).thenReturn(List.of(provider));
-		when(extensionRegistry.resolve("cracked", PipelineType.MIGRATION)).thenReturn(List.of(step));
+		when(extensionRegistry.resolve("password", PipelineType.MIGRATION)).thenReturn(List.of(step));
 		when(step.shouldExecute(org.mockito.ArgumentMatchers.any())).thenReturn(true);
 		when(step.getName()).thenReturn("test-step");
 
@@ -91,7 +91,7 @@ class CompletionPipelineTest {
 		verify(step).execute(argThat((CompletionContext context) ->
 				context.getIdentity() == identity
 						&& context.getPipelineType() == PipelineType.MIGRATION
-						&& context.getSession().getProviderId().equals("cracked")
+						&& context.getSession().getProviderId().equals("password")
 						&& context.getProvider() == provider
 						&& context.isSessionReused()
 		));

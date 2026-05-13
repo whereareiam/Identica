@@ -70,7 +70,7 @@ class DefaultConflictServiceTest {
 		rules.setDefaultRule(defaultRule(entry("allow")));
 
 		Providers.ConflictRule pairRule = new Providers.ConflictRule();
-		pairRule.setProviders(List.of("premium", "cracked"));
+		pairRule.setProviders(List.of("premium", "password"));
 		pairRule.setResolvers(List.of(entry("pass")));
 		rules.setPairs(List.of(pairRule));
 
@@ -116,7 +116,7 @@ class DefaultConflictServiceTest {
 		ConflictContext context = context("username")
 				.toBuilder()
 				.incomingLink(link("premium"))
-				.existingLink(link("cracked"))
+				.existingLink(link("password"))
 				.build();
 
 		ConflictResolution resolution = service.resolve(context);

@@ -3,13 +3,13 @@
 # plugins
 shadow = "9.3.0"
 buildconfig = "6.0.7"
-spawner = "dev-471767e"
+spawner = "dev-8ca485d"
 
 # compile time processing
 lombok = "1.18.42"
 
 # general
-attache = "dev-46ff633"
+attache = "dev-317b98f"
 configura = "dev-ce3c918"
 commandant = "dev-d6ae730"
 keystone = "dev-90d39d2"
@@ -22,14 +22,17 @@ bStats = "3.2.1"
 
 # adventure
 adventure = "4.25.0"
+adventure-platform = "4.3.4"
 
 # cloud
 cloud-core = "2.0.0"
 cloud-cooldown = "1.0.0-rc.1"
+cloud-bungee = "dev-2ac9f72"
 cloud-velocity = "dev-2ac9f72"
 cloud-minecraft-extras = "dev-2ac9f72"
 
 # platform api
+bungeecord = "26.1-R0.1-SNAPSHOT"
 velocity = "3.5.0-SNAPSHOT"
 
 # database
@@ -47,7 +50,7 @@ testcontainers = "2.0.2"
 testcontainers-redis = "2.2.4"
 
 # providers
-# cracked provider
+# password provider
 argon2 = "2.12"
 bcrypt = "0.10.2"
 
@@ -59,6 +62,7 @@ shadow-gradle-plugin = { group = "com.gradleup.shadow", name = "shadow-gradle-pl
 
 # general
 attache-common = { group = "me.whereareiam", name = "attache-common", version.ref = "attache" }
+attache-bungeecord = { group = "me.whereareiam", name = "attache-bungeecord", version.ref = "attache" }
 attache-velocity = { group = "me.whereareiam", name = "attache-velocity", version.ref = "attache" }
 attache-standalone = { group = "me.whereareiam", name = "attache-standalone", version.ref = "attache" }
 configura = { group = "me.whereareiam", name = "configura", version.ref = "configura" }
@@ -67,6 +71,7 @@ keystone = { group = "me.whereareiam", name = "keystone", version.ref = "keyston
 dialectica = { group = "me.whereareiam", name = "dialectica", version.ref = "dialectica" }
 jedis = { group = "redis.clients", name = "jedis", version.ref = "jedis" }
 bStats = { group = "org.bstats", name = "bstats-base", version.ref = "bStats" }
+bStats-bungeecord = { group = "org.bstats", name = "bstats-bungeecord", version.ref = "bStats" }
 bStats-velocity = { group = "org.bstats", name = "bstats-velocity", version.ref = "bStats" }
 
 guice = { group = "com.google.inject", name = "guice", version.ref = "guice" }
@@ -74,6 +79,7 @@ annotations = { group = "org.jetbrains", name = "annotations", version.ref = "an
 
 # adventure
 adventure = { group = "net.kyori", name = "adventure-api", version.ref = "adventure" }
+adventure-platform-bungeecord = { group = "net.kyori", name = "adventure-platform-bungeecord", version.ref = "adventure-platform" }
 adventure-minimessage = { group = "net.kyori", name = "adventure-text-minimessage", version.ref = "adventure" }
 adventure-plain = { group = "net.kyori", name = "adventure-text-serializer-plain", version.ref = "adventure" }
 
@@ -81,10 +87,12 @@ adventure-plain = { group = "net.kyori", name = "adventure-text-serializer-plain
 cloud-core = { group = "org.incendo", name = "cloud-core", version.ref = "cloud-core" }
 cloud-annotations = { group = "org.incendo", name = "cloud-annotations", version.ref = "cloud-core" }
 cloud-cooldowns = { group = "org.incendo", name = "cloud-processors-cooldown", version.ref = "cloud-cooldown" }
+cloud-bungee = { group = "me.whereareiam", name = "cloud-bungee", version.ref = "cloud-bungee" }
 cloud-velocity = { group = "me.whereareiam", name = "cloud-velocity", version.ref = "cloud-velocity" }
 cloud-minecraft-extras = { group = "me.whereareiam", name = "cloud-minecraft-extras", version.ref = "cloud-minecraft-extras" }
 
 # platform api
+bungeecord = { group = "net.md-5", name = "bungeecord-api", version.ref = "bungeecord" }
 velocity = { group = "com.velocitypowered", name = "velocity-api", version.ref = "velocity" }
 
 # database
@@ -107,7 +115,7 @@ testcontainers-postgresql = { group = "org.testcontainers", name = "testcontaine
 testcontainers-redis = { group = "com.redis", name = "testcontainers-redis", version.ref = "testcontainers-redis" }
 
 # providers
-# cracked provider
+# password provider
 argon2 = { group = "de.mkammerer", name = "argon2-jvm", version.ref = "argon2" }
 bcrypt = { group = "at.favre.lib", name = "bcrypt", version.ref = "bcrypt" }
 
@@ -117,6 +125,7 @@ adventure = ["adventure", "adventure-minimessage", "adventure-plain"]
 cloud = ["cloud-core", "cloud-annotations", "cloud-cooldowns", "cloud-minecraft-extras"]
 database = ["jdbi-core", "jdbi-sqlobject", "hikaricp", "postgresql", "mariadb", "sqlite", "h2"]
 bStats-velocity = ["bStats", "bStats-velocity"]
+bStats-bungeecord = ["bStats", "bStats-bungeecord"]
 
 [plugins]
 

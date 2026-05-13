@@ -11,6 +11,7 @@ public final class Constants {
 	 * bStats identifiers used by platform integrations.
 	 */
 	public static final class BStats {
+		public static final int BUNGEECORD_ID = 31292;
 		public static final int VELOCITY_ID = 30854;
 	}
 
@@ -27,6 +28,7 @@ public final class Constants {
 		public static final String CLOUD_CORE = BuildConfig.CLOUD_CORE;
 		public static final String CLOUD_ANNOTATIONS = BuildConfig.CLOUD_CORE;
 		public static final String CLOUD_COOLDOWN = BuildConfig.CLOUD_COOLDOWN;
+		public static final String CLOUD_BUNGEE = BuildConfig.CLOUD_BUNGEE;
 		public static final String CLOUD_VELOCITY = BuildConfig.CLOUD_VELOCITY;
 		public static final String CLOUD_MINECRAFT_EXTRAS = BuildConfig.CLOUD_MINECRAFT_EXTRAS;
 

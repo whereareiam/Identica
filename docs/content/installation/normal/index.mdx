@@ -36,7 +36,7 @@ That requires replication to be enabled.
     4. Download these three jars from the asset list:
 
     - `Identica-VELOCITY-<version>.jar`
-    - `Identica-Cracked-<version>.jar`
+    - `Identica-Password-<version>.jar`
     - `Identica-Premium-<version>.jar`
 
     You do not need the API jar for a normal server installation.
@@ -54,7 +54,7 @@ That requires replication to be enabled.
     6. Use these jars from the extracted files:
 
     - `Identica-VELOCITY-dev-<commit>.jar`
-    - `Identica-Cracked-dev-<commit>.jar`
+    - `Identica-Password-dev-<commit>.jar`
     - `Identica-Premium-dev-<commit>.jar`
 
     You do not need the API jar for a normal server installation.
@@ -64,7 +64,7 @@ That requires replication to be enabled.
 
     - [Identica](https://modrinth.com/plugin/identica)
     - [Identica Premium Provider](https://modrinth.com/plugin/identica-premium-provider)
-    - [Identica Cracked Provider](https://modrinth.com/plugin/identica-cracked-provider)
+    - [Identica Password Provider](https://modrinth.com/plugin/identica-password-provider)
 
     Download flow:
 
@@ -94,7 +94,7 @@ That requires replication to be enabled.
     1. Copy `Identica-VELOCITY-<version>.jar` into `plugins/`.
     2. Create `plugins/identica/` if it does not exist yet.
     3. Create `plugins/identica/providers/` if it does not exist yet.
-    4. Copy `Identica-Cracked-<version>.jar` into `plugins/identica/providers/`.
+    4. Copy `Identica-Password-<version>.jar` into `plugins/identica/providers/`.
     5. Copy `Identica-Premium-<version>.jar` into `plugins/identica/providers/`.
 
     Before starting the server, double-check these placement rules:
@@ -110,7 +110,7 @@ That requires replication to be enabled.
     ├── Identica-VELOCITY-<version>.jar
     └── identica/
         └── providers/
-            ├── Identica-Cracked-<version>.jar
+            ├── Identica-Password-<version>.jar
             └── Identica-Premium-<version>.jar
     ```
   </ContentTab>
@@ -160,8 +160,8 @@ The detailed meaning of each config area belongs in [Configuration](../../config
 Open the generated `providers` config and keep the generated structure as your base.
 In most cases, the defaults are already close to what you want.
 
-For typical mixed setups, it makes sense for `premium` to have a higher priority than `cracked`.
-In practice, that means if Identica has to choose between those providers for the same player or entrypoint situation, `premium` wins before `cracked`.
+For typical mixed setups, it makes sense for `premium` to have a higher priority than `password`.
+In practice, that means if Identica has to choose between those providers for the same player or entrypoint situation, `premium` wins before `password`.
 That is the behavior most users expect.
 
 For the first pass, the important decisions are:
@@ -183,13 +183,13 @@ providers:
     entrypoints:
       - premium.example.com
 
-  - id: cracked
+  - id: password
     displayName: "CR"
     enabled: true
     priority: 100
     overrides: {}
     entrypoints:
-      - cracked.example.com
+      - password.example.com
 ```
 
 If you are not using hostname-based routing yet, leave `entrypoints` empty or replace the default values later when you know the real hostnames.

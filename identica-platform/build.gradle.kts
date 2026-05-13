@@ -6,5 +6,8 @@ tasks.register("platformModules") {
     group = "build"
     description = "Builds all Identica platform modules."
 
-    dependsOn(":platform-velocity:build")
+    dependsOn(
+        ":platform-bungeecord:build",
+        ":platform-velocity:build"
+    )
 }

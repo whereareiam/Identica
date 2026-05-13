@@ -71,7 +71,7 @@ jobs:
       - name: Move runtime jars
         run: |
           mv build/libs/${{ needs.prepare.outputs.name }}-${{ needs.prepare.outputs.version }}-VELOCITY.jar output/${{ needs.prepare.outputs.name }}-VELOCITY-${{ needs.prepare.outputs.version }}.jar
-          mv build/libs/Cracked-${{ needs.prepare.outputs.version }}.jar output/${{ needs.prepare.outputs.name }}-Cracked-${{ needs.prepare.outputs.version }}.jar
+          mv build/libs/Password-${{ needs.prepare.outputs.version }}.jar output/${{ needs.prepare.outputs.name }}-Password-${{ needs.prepare.outputs.version }}.jar
           mv build/libs/Premium-${{ needs.prepare.outputs.version }}.jar output/${{ needs.prepare.outputs.name }}-Premium-${{ needs.prepare.outputs.version }}.jar
 
       - name: Archive artifacts

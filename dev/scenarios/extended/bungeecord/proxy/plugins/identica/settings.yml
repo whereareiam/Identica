@@ -1,0 +1,93 @@
+level: 3
+connection:
+  handshakeInstructionTtl: "10m"
+  attemptTtl: "10m"
+  reservationTtl: "15m"
+  prepareStateTtl: "10m"
+  uniqueIdMode: "RANDOM"
+  routing:
+    defaults:
+      step:
+        target: "auth"
+        attempts:
+          mode: "RETRY_ONCE"
+          maxAttempts: 1
+          retryDelay: "0s"
+          consumeOnReached: false
+          consumeOnExhausted: true
+      complete:
+        target: "lobby"
+        attempts:
+          mode: "UNTIL_REACHED"
+          maxAttempts: 1
+          retryDelay: "1s"
+          consumeOnReached: true
+          consumeOnExhausted: true
+    scenarios:
+      registration:
+        step:
+          target: "registration"
+      migration:
+        step:
+          target: "migration"
+  sessions:
+    defaultTtl: "2h"
+    refreshTtl: "10m"
+    concurrencyPolicy: "REPLACE_EXISTING"
+    concurrencyOverrides: {}
+  authentication:
+    pipelineTtl: "5m"
+    advanceLockTtl: "5s"
+    allowResume: true
+    journeyMode: "INTERACTIVE"
+    journeyPolicy: "PREFER"
+    sessionConcurrencyPolicy: "REPLACE_EXISTING"
+    pipelineConcurrencyPolicy: "DENY_NEW"
+  registration:
+    pipelineTtl: "5m"
+    advanceLockTtl: "5s"
+    allowResume: true
+    journeyMode: "INTERACTIVE"
+    journeyPolicy: "PREFER"
+    pipelineConcurrencyPolicy: "DENY_NEW"
+    autoSelectSingleProvider: false
+  migration:
+    pipelineTtl: "5m"
+    advanceLockTtl: "5s"
+    allowResume: true
+    journeyMode: "INTERACTIVE"
+    journeyPolicy: "PREFER"
+  sentinels:
+    resumeSpam:
+      enabled: false
+      maxAttempts: 10
+      lockout:
+        enabled: true
+        duration: "30s"
+      warning:
+        enabled: false
+        thresholdPercentage: 0
+      active: false
+listeners:
+  events:
+    net.md_5.bungee.api.event.PlayerDisconnectEvent:
+      register: true
+      priority: "NORMAL"
+    net.md_5.bungee.api.event.ServerConnectEvent:
+      register: true
+      priority: "HIGH"
+    net.md_5.bungee.api.event.PlayerHandshakeEvent:
+      register: true
+      priority: "NORMAL"
+    net.md_5.bungee.api.event.LoginEvent:
+      register: true
+      priority: "NORMAL"
+    net.md_5.bungee.api.event.PostLoginEvent:
+      register: true
+      priority: "NORMAL"
+    net.md_5.bungee.api.event.ServerConnectedEvent:
+      register: true
+      priority: "HIGH"
+    net.md_5.bungee.api.event.ServerSwitchEvent:
+      register: true
+      priority: "NORMAL"

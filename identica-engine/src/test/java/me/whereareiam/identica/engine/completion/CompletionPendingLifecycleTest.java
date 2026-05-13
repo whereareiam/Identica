@@ -54,7 +54,7 @@ class CompletionPendingLifecycleTest {
 		UUID connectionUniqueId = UUID.randomUUID();
 		Session session = Session.builder()
 				.uniqueId(UUID.randomUUID())
-				.providerId("cracked")
+				.providerId("password")
 				.providerSubject("player-one")
 				.build();
 
@@ -150,7 +150,7 @@ class CompletionPendingLifecycleTest {
 				new RoutingAttemptState(),
 				PipelineType.AUTHENTICATION,
 				null,
-				"cracked",
+				"password",
 				null,
 				System.currentTimeMillis()
 		);

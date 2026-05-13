@@ -10,6 +10,8 @@ import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import jakarta.inject.Inject;
+import me.whereareiam.attache.platform.velocity.VelocityLibraryManager;
+import me.whereareiam.attache.type.VerbosityMode;
 import me.whereareiam.identica.Constants;
 import me.whereareiam.identica.adapter.command.CommandConfiguration;
 import me.whereareiam.identica.adapter.database.DatabaseConfiguration;
@@ -22,8 +24,7 @@ import me.whereareiam.identica.event.lifecycle.IdenticaReadyEvent;
 import me.whereareiam.identica.event.lifecycle.IdenticaShutdownEvent;
 import me.whereareiam.identica.platform.velocity.logging.VelocityLoggingHelper;
 import me.whereareiam.identica.type.PluginType;
-import me.whereareiam.attache.platform.velocity.VelocityLibraryManager;
-import me.whereareiam.attache.type.VerbosityMode;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.nio.file.Path;
@@ -39,7 +40,7 @@ public class VelocityIdentica {
 	private final PluginContainer pluginContainer;
 	private final Path dataPath;
 	private final Logger logger;
-	private Injector injector;
+	private @Nullable EventManager eventManager;
 
 	@Inject
 	public VelocityIdentica(
@@ -71,16 +72,15 @@ public class VelocityIdentica {
 				new DatabaseConfiguration(),
 				new ReplicationConfiguration()
 		);
-		this.injector = injector;
-
 		EventManager eventManager = injector.getInstance(EventManager.class);
+		this.eventManager = eventManager;
 		eventManager.call(new IdenticaBootstrappedEvent());
 		eventManager.call(new IdenticaReadyEvent());
 	}
 
 	@Subscribe
 	public void onProxyShutdown(ProxyShutdownEvent event) {
-		if (injector == null) return;
-		injector.getInstance(EventManager.class).call(new IdenticaShutdownEvent());
+		if (eventManager == null) return;
+		eventManager.call(new IdenticaShutdownEvent());
 	}
 }

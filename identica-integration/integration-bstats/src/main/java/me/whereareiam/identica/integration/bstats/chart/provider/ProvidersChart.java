@@ -15,7 +15,7 @@ import java.util.Set;
 
 @Singleton
 public final class ProvidersChart extends NamedDrilldownPieChart {
-	private static final Set<String> OFFICIAL_PROVIDER_IDS = Set.of("cracked", "premium");
+	private static final Set<String> OFFICIAL_PROVIDER_IDS = Set.of("password", "premium");
 
 	private final ProviderManager providerManager;
 

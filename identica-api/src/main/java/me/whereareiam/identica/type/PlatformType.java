@@ -3,10 +3,14 @@ package me.whereareiam.identica.type;
 /**
  * Enumeration representing different Minecraft server platform types.
  * This enum provides methods to detect and compare various server implementations
- * such as Bukkit, Spigot, Paper, Folia, and Velocity.
+ * such as BungeeCord and Velocity.
  */
 @SuppressWarnings("unused")
 public enum PlatformType {
+	/**
+	 * Represents the BungeeCord proxy server platform
+	 */
+	BUNGEECORD,
 	/**
 	 * Represents the Velocity proxy server platform
 	 */
@@ -22,8 +26,8 @@ public enum PlatformType {
 	 * @return The detected {@link PlatformType} based on the current environment
 	 */
 	public static PlatformType getType() {
-		if (isVelocity())
-			return VELOCITY;
+		if (isBungeeCord()) return BUNGEECORD;
+		if (isVelocity()) return VELOCITY;
 
 		return UNKNOWN;
 	}
@@ -34,7 +38,16 @@ public enum PlatformType {
 	 * @return true if the platform is Velocity, false otherwise
 	 */
 	public static boolean isProxy() {
-		return isVelocity();
+		return isBungeeCord() || isVelocity();
+	}
+
+	/**
+	 * Checks if the platform is running BungeeCord.
+	 *
+	 * @return true if BungeeCord is detected, false otherwise
+	 */
+	private static boolean isBungeeCord() {
+		return isClassPresent("net.md_5.bungee.api.plugin.Plugin");
 	}
 
 	/**
@@ -56,10 +69,8 @@ public enum PlatformType {
 		try {
 			Class.forName(className);
 			return true;
-		} catch (ClassNotFoundException e) {
+		} catch (ClassNotFoundException | LinkageError e) {
 			return false;
-		} catch (NoClassDefFoundError e) {
-			return className.equals("org.bukkit.plugin.java.JavaPlugin");
 		}
-	}
+    }
 }

@@ -6,8 +6,8 @@ import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.Constants;
 import me.whereareiam.identica.integration.bstats.TelemetryRegistrar;
 import me.whereareiam.identica.integration.bstats.chart.type.Chart;
+import me.whereareiam.identica.logging.Logger;
 import org.bstats.velocity.Metrics;
-import org.slf4j.Logger;
 
 import java.util.Set;
 
@@ -17,14 +17,13 @@ public final class VelocityMetrics implements TelemetryRegistrar {
 	private final Metrics.Factory factory;
 	private final VelocityIdentica plugin;
 	private final Set<Chart> charts;
-	private final Logger logger;
 	private boolean registered;
 
 	@Override
 	public synchronized void register() {
 		if (registered) return;
 		if (Constants.BStats.VELOCITY_ID <= 0) {
-			logger.info("Skipping bStats registration because Constants.BStats.VELOCITY_ID is not configured yet.");
+			Logger.info("Skipping bStats registration because Constants.BStats.VELOCITY_ID is not configured yet.");
 			return;
 		}
 

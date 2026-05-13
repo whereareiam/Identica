@@ -210,7 +210,7 @@ class DefaultMigrationServiceTest {
 		when(providerLinkPersistenceService.findByUniqueIdAndProviderId(any(UUID.class), any(String.class)))
 				.thenReturn(Optional.of(AccountProviderLink.builder()
 						.uniqueId(UUID.randomUUID())
-						.providerId("cracked")
+						.providerId("password")
 						.providerSubject("existing-subject")
 						.primaryLink(false)
 						.build()));
@@ -236,7 +236,7 @@ class DefaultMigrationServiceTest {
 		MigrationResult requested = service.request(MigrationRequest.builder()
 				.connectionUniqueId(connectionUniqueId)
 				.identicaUniqueId(identicaUniqueId)
-				.targetProviderId("cracked")
+				.targetProviderId("password")
 				.username("PlayerOne")
 				.ip("127.0.0.1")
 				.build());

@@ -18,6 +18,10 @@ public enum PluginType {
 	 */
 	UNKNOWN,
 	/**
+	 * Represents a BungeeCord proxy plugin implementation
+	 */
+	BUNGEECORD,
+	/**
 	 * Represents a Velocity proxy plugin implementation
 	 */
 	VELOCITY;

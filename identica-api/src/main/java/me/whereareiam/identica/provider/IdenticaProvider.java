@@ -1,16 +1,16 @@
 package me.whereareiam.identica.provider;
 
+import com.google.inject.Module;
 import lombok.Setter;
+import me.whereareiam.identica.conflict.ConflictType;
+import me.whereareiam.identica.conflict.resolver.ConflictResolver;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
 import me.whereareiam.identica.model.provider.dependency.ProviderLibraries;
-import me.whereareiam.identica.conflict.resolver.ConflictResolver;
-import me.whereareiam.identica.conflict.ConflictType;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;
 import java.util.List;
-
-import com.google.inject.Module;
 
 /**
  * Base class for Identica providers loaded at runtime.
@@ -20,6 +20,7 @@ import com.google.inject.Module;
 public abstract class IdenticaProvider {
 	protected @NotNull ProviderDescriptor descriptor;
 	protected @NotNull Path workingPath;
+	protected @Nullable ProviderPlatformExtension platformExtension;
 
 	/**
 	 * Provides dependency metadata for this eligibility.
@@ -36,6 +37,16 @@ public abstract class IdenticaProvider {
 	 * @return list of modules to install
 	 */
 	public @NotNull List<Module> modules() {
+		return List.of();
+	}
+
+	/**
+	 * Provides platform-specific extensions that can be selected by the runtime
+	 * loader for the active platform.
+	 *
+	 * @return list of available platform extension classes
+	 */
+	public @NotNull List<Class<? extends ProviderPlatformExtension>> platformExtensions() {
 		return List.of();
 	}
 

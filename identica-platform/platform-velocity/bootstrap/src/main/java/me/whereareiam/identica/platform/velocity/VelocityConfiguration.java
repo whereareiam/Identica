@@ -1,18 +1,18 @@
 package me.whereareiam.identica.platform.velocity;
 
 import com.google.inject.AbstractModule;
+import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.OptionalBinder;
-import com.google.inject.TypeLiteral;
 import com.velocitypowered.api.event.EventManager;
 import com.velocitypowered.api.plugin.PluginContainer;
-import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.identica.handshake.HandshakeApplierRegistry;
 import me.whereareiam.identica.integration.bstats.BStatsBootstrap;
 import me.whereareiam.identica.integration.bstats.TelemetryRegistrar;
-import me.whereareiam.identica.integration.bstats.chart.provider.ProvidersChart;
 import me.whereareiam.identica.integration.bstats.chart.provider.ProviderUsageChart;
+import me.whereareiam.identica.integration.bstats.chart.provider.ProvidersChart;
 import me.whereareiam.identica.integration.bstats.chart.system.AccountCountChart;
 import me.whereareiam.identica.integration.bstats.chart.system.PersistenceTypeChart;
 import me.whereareiam.identica.integration.bstats.chart.system.ReplicationTypeChart;
@@ -21,13 +21,12 @@ import me.whereareiam.identica.integration.bstats.chart.type.Chart;
 import me.whereareiam.identica.integration.bstats.chart.verification.VerificationMethodsChart;
 import me.whereareiam.identica.listener.ListenerRegistrar;
 import me.whereareiam.identica.logging.LoggingHelper;
+import me.whereareiam.identica.platform.velocity.adapter.VelocityHandshakeApplierRegistry;
+import me.whereareiam.identica.platform.velocity.api.handshake.VelocityHandshakeContext;
 import me.whereareiam.identica.platform.velocity.listener.VelocityListenerRegistrar;
 import me.whereareiam.identica.platform.velocity.listener.routing.VelocityRoutingIntentListener;
 import me.whereareiam.identica.platform.velocity.logging.VelocityLoggingHelper;
 import me.whereareiam.identica.platform.velocity.mapper.CommandSourceMapper;
-import me.whereareiam.identica.handshake.HandshakeApplierRegistry;
-import me.whereareiam.identica.platform.velocity.api.handshake.VelocityHandshakeContext;
-import me.whereareiam.identica.platform.velocity.adapter.VelocityHandshakeApplierRegistry;
 import me.whereareiam.identica.service.Scheduler;
 import me.whereareiam.keystone.Actor;
 import org.incendo.cloud.CommandManager;
@@ -45,7 +44,7 @@ public class VelocityConfiguration extends AbstractModule {
 
 	@Override
 	protected void configure() {
-		bind(Path.class).annotatedWith(DataDirectory.class).toInstance(dataPath);
+		bind(Path.class).toInstance(dataPath);
 		bind(ProxyServer.class).toInstance(proxyServer);
 		bind(EventManager.class).toInstance(proxyServer.getEventManager());
 		bind(VelocityIdentica.class).toInstance(plugin);

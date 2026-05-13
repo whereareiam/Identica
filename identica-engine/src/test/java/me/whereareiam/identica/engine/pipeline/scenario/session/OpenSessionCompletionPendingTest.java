@@ -48,7 +48,7 @@ class OpenSessionCompletionPendingTest {
 				.build();
 		Session session = Session.builder()
 				.uniqueId(identicaUniqueId)
-				.providerId("cracked")
+				.providerId("password")
 				.providerSubject("player-one")
 				.originalUsername("PlayerOne")
 				.effectiveUsername("PlayerOne")
@@ -72,7 +72,7 @@ class OpenSessionCompletionPendingTest {
 				&& requested.getConnectionUniqueId().equals(connectionUniqueId)
 				&& requested.getPipelineType() == PipelineType.AUTHENTICATION
 				&& identicaUniqueId.equals(requested.getSession().getUniqueId())
-				&& "cracked".equals(requested.getSession().getProviderId())
+				&& "password".equals(requested.getSession().getProviderId())
 				&& !requested.isSessionReused()
 		));
 	}

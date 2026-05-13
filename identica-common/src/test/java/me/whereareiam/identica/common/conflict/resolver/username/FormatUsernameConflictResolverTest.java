@@ -25,7 +25,7 @@ class FormatUsernameConflictResolverTest {
 				.key("username")
 				.candidate("Player")
 				.incomingLink(link("premium"))
-				.existingLink(link("cracked"))
+				.existingLink(link("password"))
 				.build();
 
 		FormatUsernameConflictResolver.Config config = new FormatUsernameConflictResolver.Config();
@@ -41,7 +41,7 @@ class FormatUsernameConflictResolverTest {
 	void formatsDisplayNamesAndProviderIdsWhenAvailable() {
 		ProviderOperations providerOperations = mock(ProviderOperations.class);
 		when(providerOperations.displayProviderName("premium")).thenReturn("Premium");
-		when(providerOperations.displayProviderName("cracked")).thenReturn("Offline");
+		when(providerOperations.displayProviderName("password")).thenReturn("Offline");
 
 		FormatUsernameConflictResolver resolver = new FormatUsernameConflictResolver(providerOperations);
 
@@ -49,14 +49,14 @@ class FormatUsernameConflictResolverTest {
 				.key("username")
 				.candidate("Player")
 				.incomingLink(link("premium"))
-				.existingLink(link("cracked"))
+				.existingLink(link("password"))
 				.build();
 
 		FormatUsernameConflictResolver.Config config = new FormatUsernameConflictResolver.Config();
 		config.getFormat().setPattern("{username} [{incomingProvider}] ({incomingProviderId}->{existingProviderId})");
 
 		ConflictResolution resolution = resolver.resolve(context, config);
-		assertEquals("Player [Premium] (premium->cracked)", resolution.getOverrideValue());
+		assertEquals("Player [Premium] (premium->password)", resolution.getOverrideValue());
 	}
 
 	private AccountProviderLink link(String providerId) {

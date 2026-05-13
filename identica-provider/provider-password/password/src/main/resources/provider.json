@@ -1,0 +1,14 @@
+{
+  "id": "password",
+  "name": "Password",
+  "version": "dev",
+  "main": "me.whereareiam.identica.provider.password.PasswordProvider",
+  "authors": ["whereareiam"],
+  "supportedPlatforms": ["VELOCITY", "BUNGEECORD"],
+  "priority": 50,
+  "capabilities": [
+    "offline",
+    "migration",
+    "verification"
+  ]
+}

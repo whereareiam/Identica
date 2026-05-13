@@ -3,17 +3,19 @@ package me.whereareiam.identica.common.config.defaults;
 import me.whereareiam.configura.Config;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.identica.common.config.IdenticaModule;
+import me.whereareiam.identica.model.Event;
 import me.whereareiam.identica.model.config.Settings;
+import me.whereareiam.identica.type.PlatformType;
+import me.whereareiam.identica.type.event.EventPriority;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("Settings Defaults")
 class SettingsDefaultsTest {
@@ -26,6 +28,24 @@ class SettingsDefaultsTest {
 		assertNotNull(settings.getConnection().getRouting());
 		assertNotNull(settings.getConnection().getRouting().getScenarios());
 		assertTrue(settings.getConnection().getRouting().getScenarios().isEmpty());
+	}
+
+	@DisplayName("Listener defaults match the active platform listener set")
+	@Test
+	void listenerDefaultsMatchPlatformListenerSet() {
+		SettingsDefaults defaults = new SettingsDefaults();
+
+		Map<String, Event> velocityEvents = defaults.defaultListenerEvents(PlatformType.VELOCITY);
+		assertEquals(7, velocityEvents.size());
+		assertEquals(EventPriority.NORMAL, velocityEvents.get("com.velocitypowered.api.event.connection.PreLoginEvent").getPriority());
+		assertEquals(EventPriority.NORMAL, velocityEvents.get("com.velocitypowered.api.event.player.ServerPostConnectEvent").getPriority());
+		assertEquals(EventPriority.HIGH, velocityEvents.get("com.velocitypowered.api.event.player.ServerPreConnectEvent").getPriority());
+
+		Map<String, Event> bungeeCordEvents = defaults.defaultListenerEvents(PlatformType.BUNGEECORD);
+		assertEquals(7, bungeeCordEvents.size());
+		assertEquals(EventPriority.NORMAL, bungeeCordEvents.get("net.md_5.bungee.api.event.LoginEvent").getPriority());
+		assertEquals(EventPriority.HIGH, bungeeCordEvents.get("net.md_5.bungee.api.event.ServerConnectEvent").getPriority());
+		assertEquals(EventPriority.HIGH, bungeeCordEvents.get("net.md_5.bungee.api.event.ServerConnectedEvent").getPriority());
 	}
 
 	@DisplayName("Generated settings file writes an empty scenarios map")

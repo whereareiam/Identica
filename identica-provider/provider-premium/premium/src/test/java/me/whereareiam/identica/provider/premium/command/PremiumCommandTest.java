@@ -117,7 +117,7 @@ class PremiumCommandTest {
 		when(verificationService.findEnrollments(identity.getUniqueId())).thenReturn(List.of(mockEnrollment()));
 		when(verificationService.resolveVerification(any()))
 				.thenReturn(VerificationResolutionResult.of(VerificationResolutionStatus.WAITING, "challenge", "totp", true, false));
-		when(verificationService.submitChallenge(eq(identity.getUniqueId()), eq("cracked"), eq("migration-confirm"), any()))
+		when(verificationService.submitChallenge(eq(identity.getUniqueId()), eq("password"), eq("migration-confirm"), any()))
 				.thenReturn(me.whereareiam.identica.model.verification.challenge.VerificationChallengeResult.verified(null));
 		when(migrationService.confirm(any(MigrationConfirm.class)))
 				.thenReturn(MigrationResult.builder().status(MigrationResultStatus.STARTED).build());
@@ -139,8 +139,8 @@ class PremiumCommandTest {
 	private Session session(TestIdentity identity) {
 		return Session.builder()
 				.uniqueId(identity.getUniqueId())
-				.providerId("cracked")
-				.providerSubject("cracked-subject")
+				.providerId("password")
+				.providerSubject("password-subject")
 				.originalUsername(identity.getUsername())
 				.effectiveUsername(identity.getUsername())
 				.build();

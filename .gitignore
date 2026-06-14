@@ -7,16 +7,7 @@
 build/
 bin/
 
-# node/docusaurus
-node_modules/
-.docusaurus/
-docs/build/
-docs/node_modules/
-docs/.docusaurus/
-docs/versioned_docs/
-docs/versioned_sidebars/
-docs/versions.json
-.scriptorium/
-
 # temp
 /dev/server/
+.kotlin
+.scriptorium

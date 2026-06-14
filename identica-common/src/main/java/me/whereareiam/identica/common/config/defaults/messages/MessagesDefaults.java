@@ -86,11 +86,22 @@ public class MessagesDefaults implements DefaultsProvider<Messages> {
 		routing.setMissingServer(List.of(
 				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
 				"",
-				"<white>No target server available for routing</white>",
+				"<white>Target server <gold>{server}</gold> is not configured.</white>",
 				"<white>Please contact a server administrator.</white>",
 				"",
 				"<dark_gray>discord.arcadeya.com"
 		));
+		Messages.Routing.UnavailableServer unavailableServer = new Messages.Routing.UnavailableServer();
+		unavailableServer.setMessage(List.of(
+				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
+				"",
+				"<white>Target server <gold>{server}</gold> is currently unavailable.</white>",
+				"<white>{serverReason}</white>",
+				"",
+				"<dark_gray>discord.arcadeya.com"
+		));
+		unavailableServer.setFallbackReason(List.of("No details provided."));
+		routing.setUnavailableServer(unavailableServer);
 		messages.setRouting(routing);
 	}
 
@@ -244,11 +255,23 @@ public class MessagesDefaults implements DefaultsProvider<Messages> {
 		routingMessages.setMissingServer(List.of(
 				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
 				"",
-				"<white>No target server available for routing</white>",
+				"<white>Target server <gold>{server}</gold> is not configured.</white>",
 				"<white>Please contact a server administrator.</white>",
 				"",
 				"<dark_gray>discord.arcadeya.com"
 		));
+		Messages.Scenarios.Scenario.ScenarioRouting.UnavailableServer unavailableServer =
+				new Messages.Scenarios.Scenario.ScenarioRouting.UnavailableServer();
+		unavailableServer.setMessage(List.of(
+				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
+				"",
+				"<white>Target server <gold>{server}</gold> is currently unavailable.</white>",
+				"<white>{serverReason}</white>",
+				"",
+				"<dark_gray>discord.arcadeya.com"
+		));
+		unavailableServer.setFallbackReason(List.of("No details provided."));
+		routingMessages.setUnavailableServer(unavailableServer);
 		scenario.setRouting(routingMessages);
 		scenario.setErrors(buildScenarioErrors(label));
 	}

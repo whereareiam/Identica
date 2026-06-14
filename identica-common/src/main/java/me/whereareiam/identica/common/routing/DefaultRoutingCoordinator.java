@@ -138,7 +138,7 @@ public class DefaultRoutingCoordinator implements RoutingCoordinator, RoutingAtt
 				report.isAccepted(),
 				report.getServer(),
 				intent.getAttemptState().getAttempts(),
-				report.getFailureReason());
+				report.getFailure() != null ? report.getFailure().getReason() : null);
 		eventManager.call(new RoutingAttemptFinishedEvent(intent, report));
 	}
 

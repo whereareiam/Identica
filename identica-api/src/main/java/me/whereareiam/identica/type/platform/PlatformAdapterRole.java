@@ -27,5 +27,9 @@ public enum PlatformAdapterRole {
 	/**
 	 * Coordinates platform delivery readiness.
 	 */
-	DELIVERY
+	DELIVERY,
+	/**
+	 * Executes routing intents against the live proxy platform.
+	 */
+	ROUTING
 }

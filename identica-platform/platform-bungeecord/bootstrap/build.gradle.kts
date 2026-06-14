@@ -10,6 +10,7 @@ platform {
 
 dependencies {
     testImplementation(libs.bungeecord)
+    testImplementation(libs.adventure.platform.bungeecord)
     testImplementation(libs.cloud.bungee)
 
     implementation(projects.platformBungeecordApi)

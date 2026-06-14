@@ -20,26 +20,21 @@ import me.whereareiam.identica.integration.bstats.chart.type.Chart;
 import me.whereareiam.identica.integration.bstats.chart.verification.VerificationMethodsChart;
 import me.whereareiam.identica.listener.ListenerRegistrar;
 import me.whereareiam.identica.logging.LoggingHelper;
-import me.whereareiam.identica.type.platform.PlatformAdapterRole;
-import me.whereareiam.identica.platform.adapter.PlatformHandshakeApplierContributor;
-import me.whereareiam.identica.platform.adapter.PlatformHandshakeApplierRegistry;
-import me.whereareiam.identica.platform.adapter.PlatformHandshakeDecisionAdapter;
-import me.whereareiam.identica.platform.adapter.PlatformLoginDecisionAdapter;
-import me.whereareiam.identica.platform.adapter.PlatformProfileAdapter;
-import me.whereareiam.identica.platform.adapter.PlatformResumeDecisionAdapter;
+import me.whereareiam.identica.platform.adapter.*;
 import me.whereareiam.identica.platform.bungeecord.adapter.BungeeCordPlatformHandshakeApplierRegistry;
+import me.whereareiam.identica.platform.bungeecord.adapter.BungeeCordRoutingAdapter;
 import me.whereareiam.identica.platform.bungeecord.adapter.auth.BungeeCordHandshakeDecisionAdapter;
 import me.whereareiam.identica.platform.bungeecord.adapter.auth.BungeeCordLoginDecisionAdapter;
 import me.whereareiam.identica.platform.bungeecord.adapter.auth.BungeeCordResumeDecisionAdapter;
-import me.whereareiam.identica.platform.bungeecord.api.handshake.BungeeCordHandshakeContext;
 import me.whereareiam.identica.platform.bungeecord.adapter.profile.BungeeCordProfilePrepareAdapter;
+import me.whereareiam.identica.platform.bungeecord.api.handshake.BungeeCordHandshakeContext;
 import me.whereareiam.identica.platform.bungeecord.delivery.BungeeCordDeliveryCoordinator;
 import me.whereareiam.identica.platform.bungeecord.listener.BungeeCordListenerRegistrar;
-import me.whereareiam.identica.platform.bungeecord.listener.routing.BungeeCordRoutingIntentListener;
 import me.whereareiam.identica.platform.bungeecord.logging.BungeeCordLoggingHelper;
 import me.whereareiam.identica.platform.bungeecord.mapper.CommandSourceMapper;
 import me.whereareiam.identica.service.PlatformDeliveryAdapter;
 import me.whereareiam.identica.service.Scheduler;
+import me.whereareiam.identica.type.platform.PlatformAdapterRole;
 import me.whereareiam.keystone.Actor;
 import net.kyori.adventure.platform.bungeecord.BungeeAudiences;
 import net.md_5.bungee.api.ProxyServer;
@@ -70,7 +65,6 @@ public class BungeeCordConfiguration extends AbstractModule {
 		bind(ListenerRegistrar.class).to(BungeeCordListenerRegistrar.class);
 		configurePlatformAdapters();
 
-		bind(BungeeCordRoutingIntentListener.class).asEagerSingleton();
 		bind(CommandSourceMapper.class).asEagerSingleton();
 		OptionalBinder.newOptionalBinder(binder(), Scheduler.class)
 				.setBinding()
@@ -92,6 +86,7 @@ public class BungeeCordConfiguration extends AbstractModule {
 		bind(new TypeLiteral<PlatformProfileAdapter<LoginEvent>>() {})
 				.to(BungeeCordProfilePrepareAdapter.class);
 		bind(PlatformDeliveryAdapter.class).to(BungeeCordDeliveryCoordinator.class);
+		bind(PlatformRoutingAdapter.class).to(BungeeCordRoutingAdapter.class);
 		bind(new TypeLiteral<PlatformHandshakeApplierRegistry<BungeeCordHandshakeContext>>() {})
 				.to(BungeeCordPlatformHandshakeApplierRegistry.class)
 				.in(Singleton.class);
@@ -110,6 +105,7 @@ public class BungeeCordConfiguration extends AbstractModule {
 		adapters.addBinding(PlatformAdapterRole.RESUME_DECISION).to(BungeeCordResumeDecisionAdapter.class);
 		adapters.addBinding(PlatformAdapterRole.PROFILE).to(BungeeCordProfilePrepareAdapter.class);
 		adapters.addBinding(PlatformAdapterRole.DELIVERY).to(BungeeCordDeliveryCoordinator.class);
+		adapters.addBinding(PlatformAdapterRole.ROUTING).to(BungeeCordRoutingAdapter.class);
 	}
 
 	private void configureBStats() {

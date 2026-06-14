@@ -1,4 +1,4 @@
-package me.whereareiam.identica.common.routing;
+package me.whereareiam.identica.common.routing.resolution;
 
 import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.base.IdenticEvent;
@@ -7,21 +7,13 @@ import me.whereareiam.identica.event.routing.intent.RoutingIntentReachedEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentRetryEvent;
 import me.whereareiam.identica.model.routing.RoutingEndpoint;
 import me.whereareiam.identica.model.routing.RoutingIntent;
-import me.whereareiam.identica.model.routing.attempt.RoutingAttemptDecision;
-import me.whereareiam.identica.model.routing.attempt.RoutingAttemptPolicy;
-import me.whereareiam.identica.model.routing.attempt.RoutingAttemptReport;
-import me.whereareiam.identica.model.routing.attempt.RoutingAttemptRequest;
-import me.whereareiam.identica.model.routing.attempt.RoutingAttemptState;
-import me.whereareiam.identica.model.scheduler.DelayedRunnableTask;
-import me.whereareiam.identica.model.scheduler.JobKey;
-import me.whereareiam.identica.model.scheduler.Origin;
-import me.whereareiam.identica.model.scheduler.PeriodicalRunnableTask;
-import me.whereareiam.identica.model.scheduler.RunnableTask;
+import me.whereareiam.identica.model.routing.attempt.*;
+import me.whereareiam.identica.model.scheduler.*;
 import me.whereareiam.identica.routing.RoutingAttemptService;
 import me.whereareiam.identica.service.Scheduler;
-import me.whereareiam.identica.type.routing.reason.RoutingAttemptFailureReason;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.routing.RoutingAttemptTrigger;
+import me.whereareiam.identica.type.routing.reason.RoutingAttemptFailureReason;
 import me.whereareiam.identica.type.routing.reason.RoutingReason;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.DisplayName;
@@ -34,10 +26,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("Routing Retry Coordinator")
 class RoutingRetryCoordinatorTest {

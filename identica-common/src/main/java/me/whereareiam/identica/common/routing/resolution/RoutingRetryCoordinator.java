@@ -1,4 +1,4 @@
-package me.whereareiam.identica.common.routing;
+package me.whereareiam.identica.common.routing.resolution;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -7,23 +7,19 @@ import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.event.lifecycle.IdenticaShutdownEvent;
 import me.whereareiam.identica.event.routing.attempt.RoutingAttemptFinishedEvent;
-import me.whereareiam.identica.event.routing.intent.RoutingIntentClearedEvent;
-import me.whereareiam.identica.event.routing.intent.RoutingIntentExhaustedEvent;
-import me.whereareiam.identica.event.routing.intent.RoutingIntentReachedEvent;
-import me.whereareiam.identica.event.routing.intent.RoutingIntentRetryEvent;
-import me.whereareiam.identica.event.routing.intent.RoutingIntentStartedEvent;
-import me.whereareiam.identica.event.routing.intent.RoutingIntentUpdatedEvent;
+import me.whereareiam.identica.event.routing.intent.*;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.routing.RoutingIntent;
+import me.whereareiam.identica.model.routing.attempt.RoutingAttemptFailure;
 import me.whereareiam.identica.model.scheduler.DelayedRunnableTask;
 import me.whereareiam.identica.model.scheduler.JobKey;
 import me.whereareiam.identica.model.scheduler.Origin;
 import me.whereareiam.identica.model.scheduler.Purpose;
 import me.whereareiam.identica.routing.RoutingAttemptService;
 import me.whereareiam.identica.service.Scheduler;
-import me.whereareiam.identica.type.routing.reason.RoutingAttemptFailureReason;
 import me.whereareiam.identica.type.routing.RoutingAttemptTrigger;
 import me.whereareiam.identica.type.routing.RoutingIntentStatus;
+import me.whereareiam.identica.type.routing.reason.RoutingAttemptFailureReason;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
@@ -125,7 +121,8 @@ public class RoutingRetryCoordinator implements EventListener {
 	}
 
 	private boolean isRetryable(@NotNull RoutingAttemptFinishedEvent event) {
-		RoutingAttemptFailureReason failureReason = event.getReport().getFailureReason();
+		RoutingAttemptFailure failure = event.getReport().getFailure();
+		RoutingAttemptFailureReason failureReason = failure != null ? failure.getReason() : null;
 		if (failureReason == null) return true;
 		return failureReason.isRetryable();
 	}

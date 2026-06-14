@@ -6,17 +6,15 @@ import com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.event.EventManager;
-import me.whereareiam.identica.event.routing.RoutingTargetMissingEvent;
 import me.whereareiam.identica.listener.DynamicListener;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.model.routing.RoutingIntent;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptDecision;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptReport;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptRequest;
-import me.whereareiam.identica.model.routing.RoutingIntent;
-import me.whereareiam.identica.type.routing.reason.RoutingAttemptFailureReason;
 import me.whereareiam.identica.routing.RoutingAttemptService;
 import me.whereareiam.identica.type.routing.RoutingAttemptTrigger;
+import me.whereareiam.identica.type.routing.reason.RoutingAttemptFailureReason;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -26,7 +24,6 @@ import java.util.UUID;
 public class PlayerChooseInitialServerListener implements DynamicListener<PlayerChooseInitialServerEvent> {
 	private final ProxyServer proxyServer;
 	private final RoutingAttemptService routingAttemptService;
-	private final EventManager eventManager;
 
 	@Override
 	public void onEvent(PlayerChooseInitialServerEvent event) {
@@ -55,15 +52,6 @@ public class PlayerChooseInitialServerListener implements DynamicListener<Player
 		if (server.isEmpty()) {
 			Logger.debug("Velocity initial server routing target missing player=%s target=%s",
 					connectionId, targetServer);
-			RoutingTargetMissingEvent missingEvent = new RoutingTargetMissingEvent(
-					connectionId,
-					event.getPlayer().getUsername(),
-					intent
-			);
-			eventManager.call(missingEvent);
-			if (missingEvent.isDisconnect() && missingEvent.getMessage() != null) {
-				event.getPlayer().disconnect(missingEvent.getMessage());
-			}
 			routingAttemptService.record(RoutingAttemptReport.failed(
 					connectionId,
 					RoutingAttemptTrigger.INITIAL_SERVER,

@@ -3,15 +3,12 @@ package me.whereareiam.identica.platform.bungeecord.listener.connection.server;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.event.EventManager;
-import me.whereareiam.identica.event.routing.RoutingTargetMissingEvent;
 import me.whereareiam.identica.listener.DynamicListener;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.routing.RoutingIntent;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptDecision;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptReport;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptRequest;
-import me.whereareiam.identica.platform.bungeecord.util.BaseComponentMapper;
 import me.whereareiam.identica.routing.RoutingAttemptService;
 import me.whereareiam.identica.type.routing.RoutingAttemptTrigger;
 import me.whereareiam.identica.type.routing.reason.RoutingAttemptFailureReason;
@@ -26,7 +23,6 @@ import java.util.UUID;
 public class ServerConnectListener implements DynamicListener<ServerConnectEvent> {
 	private final ProxyServer proxyServer;
 	private final RoutingAttemptService routingAttemptService;
-	private final EventManager eventManager;
 
 	@Override
 	public void onEvent(ServerConnectEvent event) {
@@ -43,7 +39,9 @@ public class ServerConnectListener implements DynamicListener<ServerConnectEvent
 				: null;
 		RoutingAttemptDecision decision = routingAttemptService.decide(new RoutingAttemptRequest(
 				connectionId,
-				currentServer == null ? RoutingAttemptTrigger.INITIAL_SERVER : RoutingAttemptTrigger.PRE_CONNECT,
+				currentServer == null
+						? RoutingAttemptTrigger.INITIAL_SERVER
+						: RoutingAttemptTrigger.PRE_CONNECT,
 				currentServer
 		));
 		if (!decision.isAllowed() || decision.getIntent() == null) return;
@@ -54,18 +52,11 @@ public class ServerConnectListener implements DynamicListener<ServerConnectEvent
 
 		ServerInfo server = proxyServer.getServerInfo(targetServer);
 		if (server == null) {
-			RoutingTargetMissingEvent missingEvent = new RoutingTargetMissingEvent(
-					connectionId,
-					event.getPlayer().getName(),
-					intent
-			);
-			eventManager.call(missingEvent);
-			if (missingEvent.isDisconnect() && missingEvent.getMessage() != null)
-				event.getPlayer().disconnect(BaseComponentMapper.map(missingEvent.getMessage()));
-
 			routingAttemptService.record(RoutingAttemptReport.failed(
 					connectionId,
-					currentServer == null ? RoutingAttemptTrigger.INITIAL_SERVER : RoutingAttemptTrigger.PRE_CONNECT,
+					currentServer == null
+							? RoutingAttemptTrigger.INITIAL_SERVER
+							: RoutingAttemptTrigger.PRE_CONNECT,
 					targetServer,
 					RoutingAttemptFailureReason.MISSING_SERVER
 			));
@@ -75,7 +66,9 @@ public class ServerConnectListener implements DynamicListener<ServerConnectEvent
 		event.setTarget(server);
 		routingAttemptService.record(RoutingAttemptReport.succeeded(
 				connectionId,
-				currentServer == null ? RoutingAttemptTrigger.INITIAL_SERVER : RoutingAttemptTrigger.PRE_CONNECT,
+				currentServer == null
+						? RoutingAttemptTrigger.INITIAL_SERVER
+						: RoutingAttemptTrigger.PRE_CONNECT,
 				targetServer
 		));
 		Logger.debug("Bungee server-connect routing applied player=%s target=%s", connectionId, targetServer);

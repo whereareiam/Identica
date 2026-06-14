@@ -617,7 +617,45 @@ public class Messages extends ConfigDocument {
 	@Setter
 	@ToString
 	public static class Routing {
+		/**
+		 * Message shown when the configured routing target does not exist.
+		 *
+		 * <p>Placeholders:</p>
+		 * <ul>
+		 *     <li>{@code {server}}</li>
+		 * </ul>
+		 */
 		private @NotNull List<String> missingServer;
+		/**
+		 * Message shown when the routing target exists but cannot accept the player.
+		 *
+		 * <p>{@code message} placeholders:</p>
+		 * <ul>
+		 *     <li>{@code {server}}</li>
+		 *     <li>{@code {serverReason}}</li>
+		 * </ul>
+		 */
+		private @NotNull UnavailableServer unavailableServer;
+
+		@Getter
+		@Setter
+		@ToString
+		public static class UnavailableServer {
+			/**
+			 * Message shown when the routing target exists but cannot accept the player.
+			 *
+			 * <p>Placeholders:</p>
+			 * <ul>
+			 *     <li>{@code {server}}</li>
+			 *     <li>{@code {serverReason}}</li>
+			 * </ul>
+			 */
+			private @NotNull List<String> message;
+			/**
+			 * Fallback text used when the platform does not provide a target failure reason.
+			 */
+			private @NotNull List<String> fallbackReason;
+		}
 	}
 
 	@Getter
@@ -762,7 +800,45 @@ public class Messages extends ConfigDocument {
 			@Setter
 			@ToString
 			public static class ScenarioRouting {
+				/**
+				 * Scenario-specific message shown when the configured routing target does not exist.
+				 *
+				 * <p>Placeholders:</p>
+				 * <ul>
+				 *     <li>{@code {server}}</li>
+				 * </ul>
+				 */
 				private @NotNull List<String> missingServer;
+				/**
+				 * Scenario-specific message shown when the routing target exists but cannot accept the player.
+				 *
+				 * <p>{@code message} placeholders:</p>
+				 * <ul>
+				 *     <li>{@code {server}}</li>
+				 *     <li>{@code {serverReason}}</li>
+				 * </ul>
+				 */
+				private @NotNull UnavailableServer unavailableServer;
+
+				@Getter
+				@Setter
+				@ToString
+				public static class UnavailableServer {
+					/**
+					 * Scenario-specific message shown when the routing target exists but cannot accept the player.
+					 *
+					 * <p>Placeholders:</p>
+					 * <ul>
+					 *     <li>{@code {server}}</li>
+					 *     <li>{@code {serverReason}}</li>
+					 * </ul>
+					 */
+					private @NotNull List<String> message;
+					/**
+					 * Scenario-specific fallback text used when the platform does not provide a target failure reason.
+					 */
+					private @NotNull List<String> fallbackReason;
+				}
 			}
 		}
 	}

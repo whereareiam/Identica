@@ -8,15 +8,14 @@ import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.config.Routing;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
-import me.whereareiam.identica.model.routing.attempt.RoutingAttemptPolicy;
-import me.whereareiam.identica.model.routing.attempt.RoutingAttemptState;
 import me.whereareiam.identica.model.routing.RoutingEndpoint;
 import me.whereareiam.identica.model.routing.RoutingIntent;
 import me.whereareiam.identica.model.routing.RoutingPlan;
 import me.whereareiam.identica.model.routing.RoutingSignal;
+import me.whereareiam.identica.model.routing.attempt.RoutingAttemptPolicy;
+import me.whereareiam.identica.model.routing.attempt.RoutingAttemptState;
 import me.whereareiam.identica.type.pipeline.PipelineStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.routing.reason.RoutingClearReason;
 import me.whereareiam.identica.type.routing.reason.RoutingReason;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -59,14 +58,14 @@ public class RoutingPlanner {
 		if (result.getStatus() != StepResult.StepStatus.WAITING) {
 			Logger.debug("Step routing clearing because step status is terminal connection=%s pipeline=%s stage=%s step=%s status=%s",
 					connectionId, signal.getPipelineType(), stageId(signal), stepName(signal), result.getStatus());
-			return RoutingPlan.clear(connectionId, RoutingClearReason.PIPELINE_FAILED);
+			return RoutingPlan.clear(connectionId);
 		}
 
 		Routing.Target target = resolveStepTarget(signal);
 		if (isBlank(target.getTarget())) {
 			Logger.debug("Step routing clearing because target is missing connection=%s pipeline=%s stage=%s step=%s",
 					connectionId, signal.getPipelineType(), stageId(signal), stepName(signal));
-			return RoutingPlan.clear(connectionId, RoutingClearReason.NO_TARGET);
+			return RoutingPlan.clear(connectionId);
 		}
 
 		Logger.debug("Step routing planned connection=%s pipeline=%s stage=%s step=%s target=%s",
@@ -89,14 +88,14 @@ public class RoutingPlanner {
 		if (result.getStatus() != PipelineStatus.COMPLETE) {
 			Logger.debug("Completion routing clearing because pipeline status is terminal connection=%s pipeline=%s status=%s",
 					connectionId, signal.getPipelineType(), result.getStatus());
-			return RoutingPlan.clear(connectionId, RoutingClearReason.PIPELINE_FAILED);
+			return RoutingPlan.clear(connectionId);
 		}
 
 		Routing.Target target = resolveCompletionTarget(signal);
 		if (isBlank(target.getTarget())) {
 			Logger.debug("Completion routing clearing because target is missing connection=%s pipeline=%s",
 					connectionId, signal.getPipelineType());
-			return RoutingPlan.clear(connectionId, RoutingClearReason.NO_TARGET);
+			return RoutingPlan.clear(connectionId);
 		}
 
 		Logger.debug("Completion routing planned connection=%s pipeline=%s target=%s",

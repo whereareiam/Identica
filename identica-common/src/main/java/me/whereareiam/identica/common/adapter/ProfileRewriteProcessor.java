@@ -3,7 +3,7 @@ package me.whereareiam.identica.common.adapter;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.ConnectionCoordinator;
+import me.whereareiam.identica.connection.ConnectionCoordinator;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareRequest;

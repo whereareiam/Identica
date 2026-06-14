@@ -5,6 +5,7 @@ import com.google.inject.Singleton;
 import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.base.IdenticEvent;
+import me.whereareiam.identica.event.connection.lifecycle.ConnectionDisconnectedEvent;
 import me.whereareiam.identica.event.delivery.DeliveryCheckpointReachedEvent;
 import me.whereareiam.identica.event.identity.IdentityAttachedEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentClearedEvent;
@@ -74,6 +75,11 @@ public class DeliveryLifecycle implements EventListener {
 
 			deliveryService.acknowledge(request.getId(), "scenario-resolved");
 		}
+	}
+
+	@IdenticEvent
+	public void onConnectionDisconnected(@NotNull ConnectionDisconnectedEvent event) {
+		deliveryService.invalidateByConnection(event.getConnectionUniqueId(), "connection-disconnected");
 	}
 
 	private void dispatch(

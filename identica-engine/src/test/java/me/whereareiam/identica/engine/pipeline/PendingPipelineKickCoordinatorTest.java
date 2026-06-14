@@ -2,13 +2,11 @@ package me.whereareiam.identica.engine.pipeline;
 
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.common.event.EventController;
+import me.whereareiam.identica.connection.ConnectionLifecycleService;
 import me.whereareiam.identica.engine.pipeline.scenario.PendingPipelineKickCoordinator;
-import me.whereareiam.identica.event.EventListener;
-import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.event.scenario.authentication.AuthenticationRequiredEvent;
 import me.whereareiam.identica.event.scenario.authentication.AuthenticationResolvedEvent;
 import me.whereareiam.identica.event.scenario.migration.MigrationRequiredEvent;
-import me.whereareiam.identica.event.scenario.migration.MigrationResolvedEvent;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.identity.actor.Identity;
@@ -16,7 +14,6 @@ import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.migration.MigrationContext;
 import me.whereareiam.identica.model.scheduler.*;
-import me.whereareiam.identica.service.DeliveryService;
 import me.whereareiam.identica.service.Scheduler;
 import me.whereareiam.identica.type.ScenarioResolution;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
@@ -33,11 +30,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.argThat;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @DisplayName("Pending Pipeline Kick Coordinator")
@@ -74,16 +68,16 @@ class PendingPipelineKickCoordinatorTest {
 		EventController eventManager = new EventController();
 		TestScheduler scheduler = new TestScheduler();
 		IdentityService identityService = mock(IdentityService.class);
-		DeliveryService deliveryService = mock(DeliveryService.class);
+		ConnectionLifecycleService connectionLifecycleService = mock(ConnectionLifecycleService.class);
 		TestIdentity identity = new TestIdentity(UUID.randomUUID(), "PlayerOne");
 		when(identityService.findByConnectionUniqueId(identity.getConnectionUniqueId())).thenReturn(Optional.of(identity));
 
 		new PendingPipelineKickCoordinator(
 				this::messages,
 				identityService,
-				deliveryService,
 				scheduler,
-				eventManager
+				eventManager,
+				connectionLifecycleService
 		);
 
 		UUID connectionUniqueId = identity.getConnectionUniqueId();
@@ -116,15 +110,13 @@ class PendingPipelineKickCoordinatorTest {
 		assertFalse(scheduler.hasDelayedTasks());
 	}
 
-	@DisplayName("Expiring a pending migration queues a next-join cancellation notice")
+	@DisplayName("Expiring a pending migration terminates the connection and disconnects the identity")
 	@Test
-	void expiredMigrationQueuesCancellationNotice() {
+	void expiredMigrationTerminatesAndDisconnects() {
 		EventController eventManager = new EventController();
 		TestScheduler scheduler = new TestScheduler();
 		IdentityService identityService = mock(IdentityService.class);
-		DeliveryService deliveryService = mock(DeliveryService.class);
-		ResolvedListener listener = new ResolvedListener();
-		eventManager.register(listener);
+		ConnectionLifecycleService connectionLifecycleService = mock(ConnectionLifecycleService.class);
 		UUID connectionUniqueId = UUID.randomUUID();
 		UUID accountUniqueId = UUID.randomUUID();
 		TestIdentity identity = new TestIdentity(connectionUniqueId, "PlayerOne");
@@ -134,9 +126,9 @@ class PendingPipelineKickCoordinatorTest {
 		new PendingPipelineKickCoordinator(
 				this::messages,
 				identityService,
-				deliveryService,
 				scheduler,
-				eventManager
+				eventManager,
+				connectionLifecycleService
 		);
 
 		MigrationContext context = MigrationContext.builder()
@@ -155,13 +147,8 @@ class PendingPipelineKickCoordinatorTest {
 
 		scheduler.runAll();
 
-		verify(deliveryService).queue(argThat(request -> accountUniqueId.equals(request.getTarget().getAccountUniqueId())));
-		MigrationResolvedEvent resolvedEvent = listener.lastResolved.get();
-		assertTrue(resolvedEvent != null
-				&& connectionUniqueId.equals(resolvedEvent.getConnectionUniqueId())
-				&& accountUniqueId.equals(resolvedEvent.getAccountUniqueId())
-				&& resolvedEvent.getReason() == ScenarioResolution.EXPIRED
-				&& !resolvedEvent.isSessionOpened());
+		verify(connectionLifecycleService).terminated(connectionUniqueId, accountUniqueId, me.whereareiam.identica.type.pipeline.PipelineType.MIGRATION);
+		assertEquals(Component.text("expired"), identity.lastDisconnect);
 	}
 
 	private Messages messages() {
@@ -235,6 +222,8 @@ class PendingPipelineKickCoordinatorTest {
 	}
 
 	private static final class TestIdentity extends Identity {
+		private Component lastDisconnect;
+
 		private TestIdentity(UUID uniqueId, String username) {
 			super(uniqueId, username);
 		}
@@ -264,15 +253,7 @@ class PendingPipelineKickCoordinatorTest {
 
 		@Override
 		public void disconnect(@NonNull Component reason) {
-		}
-	}
-
-	private static final class ResolvedListener implements EventListener {
-		private final AtomicReference<MigrationResolvedEvent> lastResolved = new AtomicReference<>();
-
-		@IdenticEvent
-		public void onResolved(MigrationResolvedEvent event) {
-			lastResolved.set(event);
+			lastDisconnect = reason;
 		}
 	}
 }

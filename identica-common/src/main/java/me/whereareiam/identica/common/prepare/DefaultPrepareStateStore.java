@@ -4,7 +4,6 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import me.whereareiam.identica.model.config.Engine;
-import me.whereareiam.identica.model.config.Settings;
 import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
 import me.whereareiam.identica.pipeline.prepare.PrepareStateStore;
 import me.whereareiam.identica.replication.ReplicationSystem;
@@ -17,9 +16,9 @@ import java.util.UUID;
 
 @Singleton
 public class DefaultPrepareStateStore implements PrepareStateStore {
-	private static final String CONNECTION_NAMESPACE = "prepare-state:connection";
-	private static final String UNIQUE_ID_NAMESPACE = "prepare-state:unique-id";
-	private static final String UNIQUE_ID_INDEX_NAMESPACE = "prepare-state:index";
+	private static final String CONNECTION_NAMESPACE = "identica:prepare-state:connection";
+	private static final String UNIQUE_ID_NAMESPACE = "identica:prepare-state:unique-id";
+	private static final String UNIQUE_ID_INDEX_NAMESPACE = "identica:prepare-state:index";
 
 	private final LocalCache<PrepareDecision> byConnectionKey;
 	private final LocalCache<PrepareDecision> byUniqueId;

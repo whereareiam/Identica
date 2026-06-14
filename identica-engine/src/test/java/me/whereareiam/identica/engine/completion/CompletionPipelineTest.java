@@ -1,5 +1,6 @@
 package me.whereareiam.identica.engine.completion;
 
+import me.whereareiam.identica.connection.ConnectionLifecycleService;
 import me.whereareiam.identica.engine.pipeline.PipelineExecutor;
 import me.whereareiam.identica.engine.pipeline.completion.group.context.CompletionContextGroup;
 import me.whereareiam.identica.engine.pipeline.completion.group.context.phase.BuildCompletionContextPhase;
@@ -47,10 +48,12 @@ class CompletionPipelineTest {
 		CompletionExtensionRegistry extensionRegistry = mock(CompletionExtensionRegistry.class);
 		SessionService sessionService = mock(SessionService.class);
 		ProviderManager providerManager = mock(ProviderManager.class);
+		ConnectionLifecycleService connectionLifecycleService = mock(ConnectionLifecycleService.class);
 		CompletionPipeline pipeline = new CompletionPipeline(
 				pendingStore,
 				registry(sessionService, providerManager, extensionRegistry),
-				new PipelineExecutor()
+				new PipelineExecutor(),
+				connectionLifecycleService
 		);
 
 		UUID connectionUniqueId = UUID.randomUUID();
@@ -91,6 +94,7 @@ class CompletionPipelineTest {
 						&& context.getSession().getProviderId().equals("credential")
 						&& context.getProvider() == provider
 		));
+		verify(connectionLifecycleService).completed(connectionUniqueId, accountUniqueId, PipelineType.MIGRATION);
 	}
 
 	private CompletionPipelineRegistry registry(

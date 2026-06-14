@@ -15,7 +15,6 @@ import me.whereareiam.identica.model.routing.attempt.RoutingAttemptState;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.routing.RoutingAttemptTrigger;
 import me.whereareiam.identica.type.routing.RoutingIntentStatus;
-import me.whereareiam.identica.type.routing.reason.RoutingClearReason;
 import me.whereareiam.identica.type.routing.reason.RoutingReason;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -49,7 +48,6 @@ class DefaultRoutingCoordinatorTest {
 		assertEquals(1, capture.reached);
 		assertEquals(1, capture.completionReached);
 		assertEquals(1, capture.cleared);
-		assertEquals(RoutingClearReason.REACHED, capture.clearReason);
 		assertFalse(store.peek(connectionUniqueId).isPresent());
 	}
 
@@ -103,7 +101,6 @@ class DefaultRoutingCoordinatorTest {
 		private int reached;
 		private int completionReached;
 		private int cleared;
-		private RoutingClearReason clearReason;
 
 		@IdenticEvent
 		public void onRoutingIntentReached(RoutingIntentReachedEvent event) {
@@ -118,7 +115,6 @@ class DefaultRoutingCoordinatorTest {
 		@IdenticEvent
 		public void onRoutingIntentCleared(RoutingIntentClearedEvent event) {
 			cleared++;
-			clearReason = event.getReason();
 		}
 	}
 }

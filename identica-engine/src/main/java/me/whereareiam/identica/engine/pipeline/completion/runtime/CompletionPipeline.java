@@ -3,6 +3,7 @@ package me.whereareiam.identica.engine.pipeline.completion.runtime;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.identica.connection.ConnectionLifecycleService;
 import me.whereareiam.identica.engine.pipeline.PipelineExecutor;
 import me.whereareiam.identica.engine.pipeline.completion.registry.CompletionPipelineRegistry;
 import me.whereareiam.identica.identity.actor.Identity;
@@ -21,6 +22,7 @@ public class CompletionPipeline {
 	private final CompletionPendingStore completionPendingStore;
 	private final CompletionPipelineRegistry registry;
 	private final PipelineExecutor executor;
+	private final ConnectionLifecycleService connectionLifecycleService;
 
 	public void complete(@NotNull Identity identity) {
 		CompletionPendingState pendingState = completionPendingStore.consume(identity.getUniqueId()).orElse(null);
@@ -64,5 +66,12 @@ public class CompletionPipeline {
 				})
 				.toCompletableFuture()
 				.join();
+
+		if (pendingState.getConnectionUniqueId() != null)
+			connectionLifecycleService.completed(
+					pendingState.getConnectionUniqueId(),
+					pendingState.getAccountUniqueId(),
+					pendingState.getPipelineType()
+			);
 	}
 }

@@ -1,12 +1,8 @@
 package me.whereareiam.identica.common.adapter;
 
-import me.whereareiam.identica.ConnectionCoordinator;
+import me.whereareiam.identica.connection.ConnectionCoordinator;
 import me.whereareiam.identica.handshake.HandshakeStore;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
-import me.whereareiam.identica.model.auth.ConnectionDecision;
-import me.whereareiam.identica.model.auth.request.AdvanceRequest;
-import me.whereareiam.identica.model.auth.request.ConnectionRequest;
-import me.whereareiam.identica.model.auth.request.ResumeRequest;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareRequest;
 import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
@@ -14,6 +10,7 @@ import me.whereareiam.identica.pipeline.prepare.PrepareStateStore;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -21,7 +18,6 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentCaptor.forClass;
-import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;

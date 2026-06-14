@@ -23,7 +23,6 @@ import me.whereareiam.identica.routing.RoutingCoordinator;
 import me.whereareiam.identica.routing.RoutingIntentStore;
 import me.whereareiam.identica.type.routing.RoutingIntentStatus;
 import me.whereareiam.identica.type.routing.RoutingPlanAction;
-import me.whereareiam.identica.type.routing.reason.RoutingClearReason;
 import me.whereareiam.identica.type.routing.reason.RoutingReason;
 import org.jetbrains.annotations.NotNull;
 
@@ -64,19 +63,18 @@ public class DefaultRoutingCoordinator implements RoutingCoordinator, RoutingAtt
 				intent.getAttemptState().getAttempts());
 		publishReached(intent, serverName);
 		if (intent.getAttemptPolicy().isConsumeOnReached())
-			clear(connectionUniqueId, RoutingClearReason.REACHED);
+			clear(connectionUniqueId);
 	}
 
 	@Override
-	public void clear(@NotNull UUID connectionUniqueId, @NotNull RoutingClearReason reason) {
+	public void clear(@NotNull UUID connectionUniqueId) {
 		RoutingIntent intent = routingIntentStore.consume(connectionUniqueId).orElse(null);
 		if (intent != null) {
 			intent.setStatus(RoutingIntentStatus.CLEARED);
 			intent.setUpdatedAt(System.currentTimeMillis());
 		}
-		Logger.debug("Routing intent cleared connection=%s reason=%s hadIntent=%s",
-				connectionUniqueId, reason, intent != null);
-		eventManager.call(new RoutingIntentClearedEvent(connectionUniqueId, intent, reason));
+		Logger.debug("Routing intent cleared connection=%s hadIntent=%s", connectionUniqueId, intent != null);
+		eventManager.call(new RoutingIntentClearedEvent(connectionUniqueId, intent));
 	}
 
 	@Override
@@ -155,10 +153,9 @@ public class DefaultRoutingCoordinator implements RoutingCoordinator, RoutingAtt
 		}
 
 		if (action == RoutingPlanAction.CLEAR) {
-			Logger.debug("Routing plan clearing connection=%s reason=%s",
-					plan.getConnectionUniqueId(), plan.getClearReason());
-			if (plan.getConnectionUniqueId() != null && plan.getClearReason() != null)
-				clear(plan.getConnectionUniqueId(), plan.getClearReason());
+			Logger.debug("Routing plan clearing connection=%s", plan.getConnectionUniqueId());
+			if (plan.getConnectionUniqueId() != null)
+				clear(plan.getConnectionUniqueId());
 			return;
 		}
 
@@ -172,7 +169,7 @@ public class DefaultRoutingCoordinator implements RoutingCoordinator, RoutingAtt
 					previous.getEndpoint().getServer(),
 					intent.getEndpoint().getServer(),
 					intent.getReason());
-			eventManager.call(new RoutingIntentClearedEvent(intent.getConnectionUniqueId(), previous, RoutingClearReason.REPLACED));
+			eventManager.call(new RoutingIntentClearedEvent(intent.getConnectionUniqueId(), previous));
 		}
 
 		routingIntentStore.put(intent);
@@ -195,7 +192,7 @@ public class DefaultRoutingCoordinator implements RoutingCoordinator, RoutingAtt
 		routingIntentStore.markExhausted(intent.getConnectionUniqueId());
 		eventManager.call(new RoutingIntentExhaustedEvent(intent));
 		if (intent.getAttemptPolicy().isConsumeOnExhausted())
-			clear(intent.getConnectionUniqueId(), RoutingClearReason.EXHAUSTED);
+			clear(intent.getConnectionUniqueId());
 	}
 
 	private void publishStarted(@NotNull RoutingIntent intent) {

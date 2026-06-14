@@ -5,6 +5,7 @@ import com.google.inject.Key;
 import lombok.Getter;
 import me.whereareiam.configura.Configura;
 import me.whereareiam.identica.command.CommandService;
+import me.whereareiam.identica.connection.ConnectionCoordinator;
 import me.whereareiam.identica.database.DatabaseService;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.lifecycle.IdenticaReadyEvent;

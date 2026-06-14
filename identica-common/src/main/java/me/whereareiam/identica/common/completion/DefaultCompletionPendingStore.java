@@ -15,7 +15,7 @@ import java.util.UUID;
 
 @Singleton
 public class DefaultCompletionPendingStore implements CompletionPendingStore {
-	private static final String NAMESPACE = "completion-pending:connection";
+	private static final String NAMESPACE = "identica:completion-pending:connection";
 
 	private final LocalCache<CompletionPendingState> cache;
 	private final Provider<Engine> engineProvider;

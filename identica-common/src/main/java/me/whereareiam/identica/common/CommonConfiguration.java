@@ -18,6 +18,7 @@ import me.whereareiam.identica.common.identity.IdentityConfiguration;
 import me.whereareiam.identica.common.identity.session.SessionConfiguration;
 import me.whereareiam.identica.common.listener.ListenerConfiguration;
 import me.whereareiam.identica.common.messaging.MessagingConfiguration;
+import me.whereareiam.identica.common.migration.MigrationConfiguration;
 import me.whereareiam.identica.common.prepare.PipelineStateConfiguration;
 import me.whereareiam.identica.common.provider.ProviderConfiguration;
 import me.whereareiam.identica.common.provider.SerializerEngineProvider;
@@ -57,6 +58,7 @@ public class CommonConfiguration extends AbstractModule {
 		install(new ReplicationConfiguration());
 		install(new IdentityConfiguration());
 		install(new SessionConfiguration());
+		install(new MigrationConfiguration());
 		install(new RoutingConfiguration());
 		install(new ConflictConfiguration());
 		install(new ProviderConfiguration());

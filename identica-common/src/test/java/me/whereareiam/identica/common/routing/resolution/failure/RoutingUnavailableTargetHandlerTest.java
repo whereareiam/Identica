@@ -2,6 +2,7 @@ package me.whereareiam.identica.common.routing.resolution.failure;
 
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.common.config.defaults.messages.MessagesDefaults;
+import me.whereareiam.identica.connection.ConnectionLifecycleService;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentExhaustedEvent;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.routing.RoutingEndpoint;
@@ -9,7 +10,6 @@ import me.whereareiam.identica.model.routing.RoutingIntent;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptFailure;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptPolicy;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptState;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.platform.adapter.PlatformRoutingAdapter;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.routing.reason.RoutingAttemptFailureReason;
@@ -77,13 +77,13 @@ class RoutingUnavailableTargetHandlerTest {
 				"No details provided."
 		));
 		PlatformRoutingAdapter platformRoutingAdapter = mock(PlatformRoutingAdapter.class);
+		ConnectionLifecycleService connectionLifecycleService = mock(ConnectionLifecycleService.class);
 		me.whereareiam.identica.common.event.EventController eventController = new me.whereareiam.identica.common.event.EventController();
 		new RoutingUnavailableTargetHandler(
 				() -> messages,
-				mock(PipelineStateStore.class),
 				mock(me.whereareiam.identica.identity.IdentityService.class),
-				mock(me.whereareiam.identica.identity.session.SessionService.class),
 				platformRoutingAdapter,
+				connectionLifecycleService,
 				eventController
 		);
 
@@ -95,6 +95,11 @@ class RoutingUnavailableTargetHandlerTest {
 
 		eventController.call(new RoutingIntentExhaustedEvent(intent));
 
+		verify(connectionLifecycleService).terminated(
+				intent.getConnectionUniqueId(),
+				null,
+				PipelineType.MIGRATION
+		);
 		ArgumentCaptor<Component> messageCaptor = ArgumentCaptor.forClass(Component.class);
 		verify(platformRoutingAdapter).disconnect(org.mockito.ArgumentMatchers.eq(intent.getConnectionUniqueId()), messageCaptor.capture());
 		assertEquals(

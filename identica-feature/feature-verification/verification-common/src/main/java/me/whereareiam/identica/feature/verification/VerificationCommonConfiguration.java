@@ -31,6 +31,7 @@ public class VerificationCommonConfiguration extends AbstractModule {
 		bind(VerificationChallengeStore.class).asEagerSingleton();
 		bind(VerificationService.class).to(DefaultVerificationService.class).asEagerSingleton();
 		bind(VerificationRegistry.class).to(DefaultVerificationRegistry.class).asEagerSingleton();
+		bind(VerificationDisconnectLifecycle.class).asEagerSingleton();
 		Multibinder.newSetBinder(binder(), VerificationMethod.class)
 				.addBinding()
 				.to(TotpVerificationMethod.class);

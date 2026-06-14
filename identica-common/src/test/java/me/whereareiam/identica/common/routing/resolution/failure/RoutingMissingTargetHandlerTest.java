@@ -2,17 +2,16 @@ package me.whereareiam.identica.common.routing.resolution.failure;
 
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.common.config.defaults.messages.MessagesDefaults;
+import me.whereareiam.identica.connection.ConnectionLifecycleService;
 import me.whereareiam.identica.event.routing.attempt.RoutingAttemptFinishedEvent;
 import me.whereareiam.identica.identity.IdentityAttachment;
 import me.whereareiam.identica.identity.IdentityService;
-import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.routing.RoutingEndpoint;
 import me.whereareiam.identica.model.routing.RoutingIntent;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptPolicy;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptReport;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptState;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.platform.adapter.PlatformRoutingAdapter;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.routing.RoutingAttemptTrigger;
@@ -32,10 +31,8 @@ import org.mockito.ArgumentCaptor;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 @DisplayName("Routing Missing Target Handler")
@@ -71,24 +68,22 @@ class RoutingMissingTargetHandlerTest {
 		}
 	};
 
-	@DisplayName("Missing targets disconnect immediately and clean up routing state")
+	@DisplayName("Missing targets emit termination and disconnect immediately")
 	@Test
-	void missingTargetsDisconnectImmediatelyAndCleanUpRoutingState() {
+	void missingTargetsEmitTerminationAndDisconnectImmediately() {
 		Messages messages = new MessagesDefaults().supply(new Messages());
 		messages.getScenarios().getAuthentication().getRouting().setMissingServer(List.of(
 				"Target server {server} does not exist."
 		));
-		PipelineStateStore pipelineStateStore = mock(PipelineStateStore.class);
 		IdentityService identityService = mock(IdentityService.class);
-		SessionService sessionService = mock(SessionService.class);
 		PlatformRoutingAdapter platformRoutingAdapter = mock(PlatformRoutingAdapter.class);
+		ConnectionLifecycleService connectionLifecycleService = mock(ConnectionLifecycleService.class);
 		me.whereareiam.identica.common.event.EventController eventController = new me.whereareiam.identica.common.event.EventController();
 		new RoutingMissingTargetHandler(
 				() -> messages,
-				pipelineStateStore,
 				identityService,
-				sessionService,
 				platformRoutingAdapter,
+				connectionLifecycleService,
 				eventController
 		);
 
@@ -102,7 +97,6 @@ class RoutingMissingTargetHandlerTest {
 				.build();
 
 		when(identityService.findAttachmentByConnectionUniqueId(intent.getConnectionUniqueId())).thenReturn(Optional.of(attachment));
-		when(sessionService.close(accountUniqueId)).thenReturn(CompletableFuture.completedFuture(null));
 
 		eventController.call(new RoutingAttemptFinishedEvent(
 				intent,
@@ -114,12 +108,11 @@ class RoutingMissingTargetHandlerTest {
 				)
 		));
 
-		verify(pipelineStateStore).clear(argThat(reference ->
-				intent.getConnectionUniqueId().equals(reference.getConnectionUniqueId())
-						&& reference.getAccountUniqueId() == null
-						&& reference.getConnectionKey() == null
-		));
-		verify(sessionService).close(accountUniqueId);
+		verify(connectionLifecycleService).terminated(
+				intent.getConnectionUniqueId(),
+				accountUniqueId,
+				PipelineType.AUTHENTICATION
+		);
 
 		ArgumentCaptor<Component> messageCaptor = ArgumentCaptor.forClass(Component.class);
 		verify(platformRoutingAdapter).disconnect(org.mockito.ArgumentMatchers.eq(intent.getConnectionUniqueId()), messageCaptor.capture());

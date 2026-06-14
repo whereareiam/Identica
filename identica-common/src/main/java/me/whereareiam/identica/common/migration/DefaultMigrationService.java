@@ -5,6 +5,8 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.Serializer;
+import me.whereareiam.identica.common.migration.confirmation.MigrationConfirmationStore;
+import me.whereareiam.identica.common.migration.confirmation.PendingConfirmationMigration;
 import me.whereareiam.identica.database.AccountPersistenceService;
 import me.whereareiam.identica.database.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.event.EventManager;
@@ -15,7 +17,6 @@ import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.logging.Logger;
-import me.whereareiam.identica.model.config.Commands;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.config.provider.Providers;
@@ -46,18 +47,15 @@ import me.whereareiam.identica.type.messaging.DeliveryCheckpoint;
 import me.whereareiam.identica.type.messaging.DeliverySemantics;
 import me.whereareiam.identica.type.messaging.DeliverySource;
 import me.whereareiam.identica.type.migration.MigrationCancelScope;
-import me.whereareiam.identica.type.migration.MigrationInitiator;
 import me.whereareiam.identica.type.migration.MigrationResultStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
@@ -77,22 +75,18 @@ public class DefaultMigrationService implements MigrationService {
 
 	private final Provider<Engine> engineProvider;
 	private final Provider<Providers> providersProvider;
-	private final Provider<Commands> commandsProvider;
 	private final Provider<Messages> messagesProvider;
-
-	private final Map<UUID, PendingConfirmationMigration> pending = new ConcurrentHashMap<>();
+	private final MigrationConfirmationStore migrationConfirmationStore;
 
 	@Override
 	public @NotNull MigrationResult request(@NotNull MigrationRequest request) {
 		UUID connectionUniqueId = request.getConnectionUniqueId();
 		if (connectionUniqueId == null) return result(MigrationResultStatus.FAILED, null);
 
-		PendingConfirmationMigration existing = pending.get(connectionUniqueId);
+		PendingConfirmationMigration existing = migrationConfirmationStore.find(connectionUniqueId).orElse(null);
 		if (existing != null) {
-			if (!isExpired(existing)) {
-				return result(MigrationResultStatus.PENDING_EXISTS, null);
-			}
-			pending.remove(connectionUniqueId);
+			if (!migrationConfirmationStore.isExpired(existing)) return result(MigrationResultStatus.PENDING_EXISTS, null);
+			migrationConfirmationStore.clear(connectionUniqueId);
 		}
 
 		if (hasPendingMigration(connectionUniqueId)) return result(MigrationResultStatus.PENDING_EXISTS, null);
@@ -119,7 +113,7 @@ public class DefaultMigrationService implements MigrationService {
 		);
 		MigrationResult targetValidation = validateTargetProvider(pendingMigration);
 		if (targetValidation != null) return targetValidation;
-		pending.put(connectionUniqueId, pendingMigration);
+		migrationConfirmationStore.put(pendingMigration);
 
 		return result(MigrationResultStatus.PENDING_CONFIRMATION, null);
 	}
@@ -127,48 +121,47 @@ public class DefaultMigrationService implements MigrationService {
 	@Override
 	public @NotNull MigrationResult confirm(@NotNull MigrationConfirm confirm) {
 		UUID connectionUniqueId = confirm.getConnectionUniqueId();
-		if (connectionUniqueId == null)
-			return result(MigrationResultStatus.FAILED, null);
+		if (connectionUniqueId == null) return result(MigrationResultStatus.FAILED, null);
 
-		PendingConfirmationMigration pendingMigration = pending.get(connectionUniqueId);
+		PendingConfirmationMigration pendingMigration = migrationConfirmationStore.find(connectionUniqueId).orElse(null);
 		if (pendingMigration == null) return result(MigrationResultStatus.NO_PENDING, null);
 
-		if (isExpired(pendingMigration)) {
-			pending.remove(connectionUniqueId);
+		if (migrationConfirmationStore.isExpired(pendingMigration)) {
+			migrationConfirmationStore.clear(connectionUniqueId);
 			return result(MigrationResultStatus.EXPIRED, null);
 		}
 
 		if (hasPendingMigration(connectionUniqueId)) {
-			pending.remove(connectionUniqueId);
+			migrationConfirmationStore.clear(connectionUniqueId);
 			return result(MigrationResultStatus.PENDING_EXISTS, null);
 		}
 		MigrationResult targetValidation = validateTargetProvider(pendingMigration);
 		if (targetValidation != null) {
-			pending.remove(connectionUniqueId);
+			migrationConfirmationStore.clear(connectionUniqueId);
 			return targetValidation;
 		}
 
-		if (!isUsernameFree(pendingMigration.username(), pendingMigration.uniqueId())) {
-			pending.remove(connectionUniqueId);
+		if (!isUsernameFree(pendingMigration.getUsername(), pendingMigration.getUniqueId())) {
+			migrationConfirmationStore.clear(connectionUniqueId);
 			return result(MigrationResultStatus.PRECHECK_DENIED, migrationLockedMessage());
 		}
 
 		MigrationPrecheckResult precheck = runPrechecks(pendingMigration);
 		if (precheck != null && !precheck.isAllowed()) {
-			pending.remove(connectionUniqueId);
+			migrationConfirmationStore.clear(connectionUniqueId);
 			return result(MigrationResultStatus.PRECHECK_DENIED, precheck.getMessage());
 		}
 
-		UUID accountUniqueId = pendingMigration.uniqueId();
+		UUID accountUniqueId = pendingMigration.getUniqueId();
 		if (accountUniqueId == null)
 			accountUniqueId = connectionUniqueId;
 
-		String targetProviderId = pendingMigration.targetProviderId();
+		String targetProviderId = pendingMigration.getTargetProviderId();
 		AccountProviderLink link = providerLinkPersistenceService
 				.findByUniqueIdAndProviderId(accountUniqueId, targetProviderId)
 				.orElse(null);
 		if (link != null && link.isPrimaryLink()) {
-			pending.remove(connectionUniqueId);
+			migrationConfirmationStore.clear(connectionUniqueId);
 			return result(MigrationResultStatus.ALREADY_PRIMARY, null);
 		}
 
@@ -179,7 +172,7 @@ public class DefaultMigrationService implements MigrationService {
 
 		closeSession(accountUniqueId);
 		disconnect(connectionUniqueId, kickMessage);
-		pending.remove(connectionUniqueId);
+		migrationConfirmationStore.clear(connectionUniqueId);
 
 		return result(MigrationResultStatus.STARTED, null);
 	}
@@ -190,7 +183,7 @@ public class DefaultMigrationService implements MigrationService {
 		UUID connectionUniqueId = resolveIdenticaUniqueId(start.getConnectionUniqueId(), accountUniqueId);
 		if (accountUniqueId == null) return result(MigrationResultStatus.FAILED, null);
 
-		pending.remove(connectionUniqueId);
+		migrationConfirmationStore.clear(connectionUniqueId);
 		if (hasPendingMigration(connectionUniqueId)) return result(MigrationResultStatus.PENDING_EXISTS, null);
 
 		String targetProviderId = normalize(start.getTargetProviderId());
@@ -209,7 +202,7 @@ public class DefaultMigrationService implements MigrationService {
 		MigrationResult targetValidation = validateTargetProvider(pendingMigration);
 		if (targetValidation != null) return targetValidation;
 
-		if (!isUsernameFree(pendingMigration.username(), pendingMigration.uniqueId())) {
+		if (!isUsernameFree(pendingMigration.getUsername(), pendingMigration.getUniqueId())) {
 			return result(MigrationResultStatus.PRECHECK_DENIED, migrationLockedMessage());
 		}
 
@@ -220,8 +213,7 @@ public class DefaultMigrationService implements MigrationService {
 		AccountProviderLink link = providerLinkPersistenceService
 				.findByUniqueIdAndProviderId(accountUniqueId, targetProviderId)
 				.orElse(null);
-		if (link != null && link.isPrimaryLink())
-			return result(MigrationResultStatus.ALREADY_PRIMARY, null);
+		if (link != null && link.isPrimaryLink()) return result(MigrationResultStatus.ALREADY_PRIMARY, null);
 
 		String kickMessage = resolveKickMessage(start.getKickMessage(), precheck);
 
@@ -243,7 +235,7 @@ public class DefaultMigrationService implements MigrationService {
 		boolean removed = false;
 
 		if (scope == MigrationCancelScope.CONFIRMATION || scope == MigrationCancelScope.ALL) {
-			removed = pending.remove(connectionUniqueId) != null;
+			removed = migrationConfirmationStore.consume(connectionUniqueId).isPresent();
 		}
 
 		if (scope == MigrationCancelScope.PENDING || scope == MigrationCancelScope.ALL) {
@@ -274,23 +266,23 @@ public class DefaultMigrationService implements MigrationService {
 
 		JourneyMode journeyMode = engineProvider.get().getScenarios().getMigration().getJourneyMode();
 		MigrationContext context = MigrationContext.builder()
-				.connectionUniqueId(pendingMigration.connectionUniqueId())
+				.connectionUniqueId(pendingMigration.getConnectionUniqueId())
 				.identity(new ConnectionIdentity(
 						accountUniqueId,
-						nonNull(pendingMigration.username()),
-						pendingMigration.ip()
+						nonNull(pendingMigration.getUsername()),
+						pendingMigration.getIp()
 				))
-				.targetProviderId(pendingMigration.targetProviderId())
+				.targetProviderId(pendingMigration.getTargetProviderId())
 				.build();
 
 		PipelineState pipelineState = PipelineState.initial();
 		pipelineState.setPipelineType(PipelineType.MIGRATION);
 		pipelineState.setScenario(context);
 		pipelineState.putItem(new MigrationPendingState(
-				pendingMigration.targetProviderId(),
-				pendingMigration.requestedAt(),
-				pendingMigration.initiator(),
-				pendingMigration.initiatorUniqueId()
+				pendingMigration.getTargetProviderId(),
+				pendingMigration.getRequestedAt(),
+				pendingMigration.getInitiator(),
+				pendingMigration.getInitiatorUniqueId()
 		), ttlMs);
 		pipelineState.putItem(new JourneyStateItem(journeyMode, null, 0), ttlMs);
 
@@ -302,11 +294,11 @@ public class DefaultMigrationService implements MigrationService {
 		}
 		Logger.debug(
 				"Stored migration pending connection=%s identica=%s target=%s username=%s ip=%s journeyMode=%s",
-				pendingMigration.connectionUniqueId(),
+				pendingMigration.getConnectionUniqueId(),
 				accountUniqueId,
-				pendingMigration.targetProviderId(),
-				pendingMigration.username(),
-				pendingMigration.ip(),
+				pendingMigration.getTargetProviderId(),
+				pendingMigration.getUsername(),
+				pendingMigration.getIp(),
 				journeyMode
 		);
 
@@ -314,7 +306,7 @@ public class DefaultMigrationService implements MigrationService {
 	}
 
 	private @Nullable MigrationResult validateTargetProvider(@NotNull PendingConfirmationMigration pendingMigration) {
-		String targetProviderId = pendingMigration.targetProviderId();
+		String targetProviderId = pendingMigration.getTargetProviderId();
 		if (targetProviderId == null || targetProviderId.isBlank())
 			return result(MigrationResultStatus.FAILED, null);
 
@@ -336,19 +328,18 @@ public class DefaultMigrationService implements MigrationService {
 	}
 
 	private MigrationPrecheckResult runPrechecks(@NotNull PendingConfirmationMigration pendingMigration) {
-		InternalProvider provider = resolveActiveProvider(pendingMigration.targetProviderId());
+		InternalProvider provider = resolveActiveProvider(pendingMigration.getTargetProviderId());
 		Set<ProviderMigrationPrecheck> prechecks = provider != null ? provider.getMigrationPrechecks() : null;
-		if (prechecks == null || prechecks.isEmpty())
-			return MigrationPrecheckResult.allow();
+		if (prechecks == null || prechecks.isEmpty()) return MigrationPrecheckResult.allow();
 
 		MigrationPrecheckContext context = MigrationPrecheckContext.builder()
-				.uniqueId(pendingMigration.uniqueId())
-				.connectionUniqueId(pendingMigration.connectionUniqueId())
-				.username(pendingMigration.username())
-				.ip(pendingMigration.ip())
-				.providerId(pendingMigration.targetProviderId())
-				.initiator(pendingMigration.initiator())
-				.initiatorUniqueId(pendingMigration.initiatorUniqueId())
+				.uniqueId(pendingMigration.getUniqueId())
+				.connectionUniqueId(pendingMigration.getConnectionUniqueId())
+				.username(pendingMigration.getUsername())
+				.ip(pendingMigration.getIp())
+				.providerId(pendingMigration.getTargetProviderId())
+				.initiator(pendingMigration.getInitiator())
+				.initiatorUniqueId(pendingMigration.getInitiatorUniqueId())
 				.build();
 
 		String kickMessage = null;
@@ -369,12 +360,10 @@ public class DefaultMigrationService implements MigrationService {
 		if (providerId == null || providerId.isBlank()) return null;
 
 		for (InternalProvider provider : providerManager.getProviders()) {
-			if (provider == null || provider.getDescriptor() == null)
-				continue;
+			if (provider == null || provider.getDescriptor() == null) continue;
 
 			String id = provider.getDescriptor().getId();
-			if (id.equalsIgnoreCase(providerId))
-				return provider;
+			if (id.equalsIgnoreCase(providerId)) return provider;
 		}
 		return null;
 	}
@@ -387,8 +376,7 @@ public class DefaultMigrationService implements MigrationService {
 
 		for (Providers.ProviderEntry entry : providers.getProviders()) {
 			if (entry == null || entry.getId().isBlank()) continue;
-			if (entry.getId().equalsIgnoreCase(providerId))
-				return true;
+			if (entry.getId().equalsIgnoreCase(providerId)) return true;
 		}
 		return false;
 	}
@@ -399,11 +387,11 @@ public class DefaultMigrationService implements MigrationService {
 	) {
 		JourneyPlan plan = migrationJourneyRegistry.resolvePlan(
 				MigrationContext.builder()
-						.connectionUniqueId(pendingMigration.connectionUniqueId())
+						.connectionUniqueId(pendingMigration.getConnectionUniqueId())
 						.identity(new ConnectionIdentity(
-								resolveIdenticaUniqueId(pendingMigration.uniqueId(), pendingMigration.connectionUniqueId()),
-								nonNull(pendingMigration.username()),
-								pendingMigration.ip()
+								resolveIdenticaUniqueId(pendingMigration.getUniqueId(), pendingMigration.getConnectionUniqueId()),
+								nonNull(pendingMigration.getUsername()),
+								pendingMigration.getIp()
 						))
 						.targetProviderId(providerId)
 						.build(),
@@ -412,10 +400,9 @@ public class DefaultMigrationService implements MigrationService {
 				providerId
 		);
 
-		for (JourneyPlan.StageEntry stage : plan.providerStages()) {
-			if (!stage.steps().isEmpty())
-				return true;
-		}
+		for (JourneyPlan.StageEntry stage : plan.providerStages())
+			if (!stage.steps().isEmpty()) return true;
+
 		return false;
 	}
 
@@ -442,11 +429,6 @@ public class DefaultMigrationService implements MigrationService {
 
 	private UUID resolveIdenticaUniqueId(@Nullable UUID accountUniqueId, @Nullable UUID fallback) {
 		return accountUniqueId != null ? accountUniqueId : fallback;
-	}
-
-	private boolean isExpired(@NotNull PendingConfirmationMigration pendingMigration) {
-		long ttlMs = commandsProvider.get().getBehavior().getMigration().getConfirmTtl().toMillis();
-		return ttlMs > 0 && pendingMigration.requestedAt() + ttlMs < System.currentTimeMillis();
 	}
 
 	private boolean isUsernameFree(@Nullable String username, @Nullable UUID currentUniqueId) {
@@ -505,21 +487,21 @@ public class DefaultMigrationService implements MigrationService {
 	}
 
 	private @Nullable PendingMigration findConfirmationPendingMigration(@NotNull UUID connectionUniqueId) {
-		PendingConfirmationMigration pendingMigration = pending.get(connectionUniqueId);
+		PendingConfirmationMigration pendingMigration = migrationConfirmationStore.find(connectionUniqueId).orElse(null);
 		if (pendingMigration == null) return null;
 
-		if (isExpired(pendingMigration)) {
-			pending.remove(connectionUniqueId);
+		if (migrationConfirmationStore.isExpired(pendingMigration)) {
+			migrationConfirmationStore.clear(connectionUniqueId);
 			return null;
 		}
 
 		return PendingMigration.builder()
-				.uniqueId(pendingMigration.uniqueId())
-				.connectionUniqueId(pendingMigration.connectionUniqueId())
-				.targetProviderId(pendingMigration.targetProviderId())
-				.requestedAt(pendingMigration.requestedAt())
-				.initiator(pendingMigration.initiator())
-				.initiatorUniqueId(pendingMigration.initiatorUniqueId())
+				.uniqueId(pendingMigration.getUniqueId())
+				.connectionUniqueId(pendingMigration.getConnectionUniqueId())
+				.targetProviderId(pendingMigration.getTargetProviderId())
+				.requestedAt(pendingMigration.getRequestedAt())
+				.initiator(pendingMigration.getInitiator())
+				.initiatorUniqueId(pendingMigration.getInitiatorUniqueId())
 				.phase(PendingMigration.Phase.CONFIRMATION)
 				.build();
 	}
@@ -528,6 +510,7 @@ public class DefaultMigrationService implements MigrationService {
 		PipelineStateReference reference = PipelineStateReference.builder()
 				.connectionUniqueId(connectionUniqueId)
 				.build();
+
 		PipelineState state = pipelineStateStore.find(reference).orElse(null);
 		if (state == null) {
 			Logger.debug("Migration pending lookup missed connection=%s", connectionUniqueId);
@@ -607,15 +590,4 @@ public class DefaultMigrationService implements MigrationService {
 		return String.join("\n", messagesProvider.get().getScenarios().getMigration().getCancelled());
 	}
 
-	private record PendingConfirmationMigration(
-			UUID uniqueId,
-			UUID connectionUniqueId,
-			String targetProviderId,
-			String username,
-			String ip,
-			MigrationInitiator initiator,
-			UUID initiatorUniqueId,
-			long requestedAt
-	) {
-	}
 }

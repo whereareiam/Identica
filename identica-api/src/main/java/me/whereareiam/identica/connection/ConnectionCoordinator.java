@@ -1,4 +1,4 @@
-package me.whereareiam.identica;
+package me.whereareiam.identica.connection;
 
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.model.auth.ConnectionDecision;

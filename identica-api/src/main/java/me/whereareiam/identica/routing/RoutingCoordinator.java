@@ -1,7 +1,6 @@
 package me.whereareiam.identica.routing;
 
 import me.whereareiam.identica.model.routing.RoutingSignal;
-import me.whereareiam.identica.type.routing.reason.RoutingClearReason;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
@@ -11,7 +10,7 @@ import java.util.UUID;
  * <p>
  * Pipeline code submits routing facts through {@link #accept(RoutingSignal)}.
  * Platform adapters report reached servers through {@link #markReached(UUID, String)}
- * and clear connection-scoped routing through {@link #clear(UUID, RoutingClearReason)}.
+ * and clear connection-scoped routing through {@link #clear(UUID)}.
  * Implementations own intent planning, persistence, and routing event publication.
  */
 public interface RoutingCoordinator {
@@ -32,10 +31,9 @@ public interface RoutingCoordinator {
 	void markReached(@NotNull UUID connectionUniqueId, @NotNull String serverName);
 
 	/**
-	 * Clears the routing intent for a connection and publishes the clear reason.
+	 * Clears the routing intent for a connection and publishes the clear event.
 	 *
 	 * @param connectionUniqueId connection unique id
-	 * @param reason reason the intent is being cleared
 	 */
-	void clear(@NotNull UUID connectionUniqueId, @NotNull RoutingClearReason reason);
+	void clear(@NotNull UUID connectionUniqueId);
 }

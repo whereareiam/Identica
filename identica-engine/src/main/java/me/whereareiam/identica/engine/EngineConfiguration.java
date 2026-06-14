@@ -2,7 +2,7 @@ package me.whereareiam.identica.engine;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.name.Names;
-import me.whereareiam.identica.ConnectionCoordinator;
+import me.whereareiam.identica.connection.ConnectionCoordinator;
 import me.whereareiam.identica.engine.pipeline.DefaultPipelineExtensionRegistry;
 import me.whereareiam.identica.engine.pipeline.DefaultPipelineStateStore;
 import me.whereareiam.identica.engine.pipeline.completion.extension.DefaultCompletionExtensionRegistry;

@@ -16,7 +16,6 @@ import me.whereareiam.identica.type.pipeline.journey.StageType;
 import me.whereareiam.identica.type.pipeline.journey.step.StepContextRequirement;
 import me.whereareiam.identica.type.routing.RoutingPlanAction;
 import me.whereareiam.identica.type.routing.RoutingRetryMode;
-import me.whereareiam.identica.type.routing.reason.RoutingClearReason;
 import me.whereareiam.identica.type.routing.reason.RoutingReason;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -29,6 +28,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 @DisplayName("Routing Planner")
 class RoutingPlannerTest {
@@ -118,7 +118,7 @@ class RoutingPlannerTest {
 
 		assertEquals(RoutingPlanAction.CLEAR, plan.getAction());
 		assertEquals(connectionId, plan.getConnectionUniqueId());
-		assertEquals(RoutingClearReason.PIPELINE_FAILED, plan.getClearReason());
+		assertNull(plan.getIntent());
 	}
 
 	@DisplayName("Step-specific overrides win over stage and scenario defaults")
@@ -162,7 +162,7 @@ class RoutingPlannerTest {
 		));
 
 		assertEquals(RoutingPlanAction.CLEAR, plan.getAction());
-		assertEquals(RoutingClearReason.NO_TARGET, plan.getClearReason());
+		assertNull(plan.getIntent());
 	}
 
 	private Routing settings() {

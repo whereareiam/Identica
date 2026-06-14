@@ -2,6 +2,8 @@ package me.whereareiam.identica.common.migration;
 
 import com.google.inject.Provider;
 import me.whereareiam.identica.common.config.defaults.EngineDefaults;
+import me.whereareiam.identica.common.migration.confirmation.MigrationConfirmationStore;
+import me.whereareiam.identica.common.replication.DefaultReplicationSystem;
 import me.whereareiam.identica.database.AccountPersistenceService;
 import me.whereareiam.identica.database.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.event.EventManager;
@@ -36,6 +38,7 @@ import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.PipelineStateReference;
 import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.provider.ProviderManager;
+import me.whereareiam.identica.replication.ReplicationAdapter;
 import me.whereareiam.identica.service.DeliveryService;
 import me.whereareiam.identica.type.ScenarioResolution;
 import me.whereareiam.identica.type.migration.MigrationInitiator;
@@ -417,21 +420,26 @@ class DefaultMigrationServiceTest {
 			Provider<Providers> providersProvider,
 			Provider<Commands> commandsProvider,
 			Provider<Messages> messagesProvider
-		) {
-			return new DefaultMigrationService(
-					providerManager,
-					migrationJourneyRegistry,
-					providerLinkPersistenceService,
-					accountPersistenceService,
-					pipelineStateStore,
-					sessionService,
-					identityService,
-					deliveryService,
-					eventManager,
-					this::engine,
-					providersProvider,
-					commandsProvider,
-				messagesProvider
+	) {
+		MigrationConfirmationStore migrationConfirmationStore = new MigrationConfirmationStore(
+				new DefaultReplicationSystem(mock(ReplicationAdapter.class)),
+				commandsProvider
+		);
+
+		return new DefaultMigrationService(
+				providerManager,
+				migrationJourneyRegistry,
+				providerLinkPersistenceService,
+				accountPersistenceService,
+				pipelineStateStore,
+				sessionService,
+				identityService,
+				deliveryService,
+				eventManager,
+				this::engine,
+				providersProvider,
+				messagesProvider,
+				migrationConfirmationStore
 		);
 	}
 

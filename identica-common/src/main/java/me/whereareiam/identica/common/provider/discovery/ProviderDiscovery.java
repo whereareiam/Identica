@@ -1,12 +1,12 @@
-package me.whereareiam.identica.common.provider;
+package me.whereareiam.identica.common.provider.discovery;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
-import me.whereareiam.identica.provider.ProviderDescriptorReader;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
+import me.whereareiam.identica.provider.ProviderDescriptorReader;
 import me.whereareiam.identica.type.provider.ProviderState;
 
 import java.io.InputStream;
@@ -15,10 +15,10 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Singleton
 public class ProviderDiscovery {

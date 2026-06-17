@@ -1,4 +1,4 @@
-package me.whereareiam.identica.common.provider.classloader;
+package me.whereareiam.identica.common.provider.runtime.classloader;
 
 import com.google.inject.Singleton;
 import org.jetbrains.annotations.NotNull;

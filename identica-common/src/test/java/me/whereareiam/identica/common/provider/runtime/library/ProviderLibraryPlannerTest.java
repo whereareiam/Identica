@@ -1,4 +1,4 @@
-package me.whereareiam.identica.common.provider.library;
+package me.whereareiam.identica.common.provider.runtime.library;
 
 import me.whereareiam.identica.model.provider.dependency.ProviderLibraries;
 import me.whereareiam.identica.model.provider.dependency.ProviderLibrary;

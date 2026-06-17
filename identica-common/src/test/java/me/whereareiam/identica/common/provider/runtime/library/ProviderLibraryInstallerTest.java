@@ -1,7 +1,6 @@
-package me.whereareiam.identica.common.provider.library;
+package me.whereareiam.identica.common.provider.runtime.library;
 
-import me.whereareiam.identica.common.provider.classloader.SharedCapabilityClassLoaderFactory;
-import me.whereareiam.identica.common.provider.dependency.ProviderDependencyLoggingAdapter;
+import me.whereareiam.identica.common.provider.runtime.classloader.SharedCapabilityClassLoaderFactory;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
 import me.whereareiam.identica.model.provider.dependency.ProviderLibraries;
 import me.whereareiam.identica.model.provider.dependency.ProviderLibrary;
@@ -25,7 +24,7 @@ class ProviderLibraryInstallerTest {
 		RecordingProviderLibraryInstaller installer = new RecordingProviderLibraryInstaller(
 				tempDir,
 				tempDir.resolve("capabilities"),
-				mock(ProviderDependencyLoggingAdapter.class),
+				mock(ProviderLibraryLoggingAdapter.class),
 				sharedCapabilityClassLoaderFactory
 		);
 		URLClassLoader providerClassLoader = new URLClassLoader(new java.net.URL[0], sharedCapabilityClassLoaderFactory.sharedClassLoader());
@@ -95,7 +94,7 @@ class ProviderLibraryInstallerTest {
 		private RecordingProviderLibraryInstaller(
 				@NotNull Path providersPath,
 				@NotNull Path capabilitiesPath,
-				@NotNull ProviderDependencyLoggingAdapter loggingHelper,
+				@NotNull ProviderLibraryLoggingAdapter loggingHelper,
 				@NotNull SharedCapabilityClassLoaderFactory sharedCapabilityClassLoaderFactory
 		) {
 			super(providersPath, capabilitiesPath, loggingHelper, sharedCapabilityClassLoaderFactory);

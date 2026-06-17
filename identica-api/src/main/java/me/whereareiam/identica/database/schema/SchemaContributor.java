@@ -24,7 +24,7 @@ import org.jetbrains.annotations.NotNull;
  */
 public interface SchemaContributor {
 	/**
-	 * Applies this contribution to the provided schema manager.
+	 * Applies this snapshot to the provided schema manager.
 	 *
 	 * @param schemaManager schema manager to configure
 	 */

@@ -4,7 +4,7 @@ import com.google.inject.*;
 import com.google.inject.Module;
 import com.google.inject.name.Names;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.common.provider.classloader.SharedCapabilityClassLoaderFactory;
+import me.whereareiam.identica.common.provider.runtime.classloader.SharedCapabilityClassLoaderFactory;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
@@ -124,7 +124,7 @@ public class DefaultProviderCapabilityCoordinator implements ProviderCapabilityC
 
 			String capabilityId = capabilityDeclaration.getCapability().getId();
 			if (contributionCounts.getOrDefault(capabilityId, 0) <= 0)
-				throw new IllegalStateException("Provider is missing required capability contribution: " + capabilityId);
+				throw new IllegalStateException("Provider is missing required capability snapshot: " + capabilityId);
 		}
 	}
 
@@ -138,7 +138,7 @@ public class DefaultProviderCapabilityCoordinator implements ProviderCapabilityC
 
 			String capabilityId = contribution.capability().getId();
 			if (!declaredCapabilityIds.contains(capabilityId))
-				throw new IllegalStateException("Provider exposed undeclared capability contribution: " + capabilityId);
+				throw new IllegalStateException("Provider exposed undeclared capability snapshot: " + capabilityId);
 
 			contributionCounts.merge(capabilityId, 1, Integer::sum);
 		}

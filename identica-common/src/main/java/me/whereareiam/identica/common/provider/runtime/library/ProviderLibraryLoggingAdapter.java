@@ -1,4 +1,4 @@
-package me.whereareiam.identica.common.provider.dependency;
+package me.whereareiam.identica.common.provider.runtime.library;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -10,7 +10,7 @@ import org.jetbrains.annotations.Nullable;
 
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
-public class ProviderDependencyLoggingAdapter implements LoggingHelper {
+public class ProviderLibraryLoggingAdapter implements LoggingHelper {
 	private final me.whereareiam.identica.logging.LoggingHelper loggingHelper;
 
 	@Override

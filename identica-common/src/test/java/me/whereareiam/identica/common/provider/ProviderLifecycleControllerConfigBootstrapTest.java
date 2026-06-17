@@ -13,16 +13,17 @@ import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.Reloadable;
 import me.whereareiam.identica.common.provider.capability.DefaultProviderCapabilityCoordinator;
 import me.whereareiam.identica.common.provider.capability.DefaultProviderCapabilityRegistry;
-import me.whereareiam.identica.common.provider.classloader.ProviderRuntimeClassLoaderFactory;
-import me.whereareiam.identica.common.provider.classloader.SharedCapabilityClassLoaderFactory;
-import me.whereareiam.identica.common.provider.dependency.ProviderDependencyLoggingAdapter;
-import me.whereareiam.identica.common.provider.factory.ProviderInstanceFactory;
-import me.whereareiam.identica.common.provider.injector.ProviderInjectorFactory;
-import me.whereareiam.identica.common.provider.library.ProviderLibraryInstaller;
-import me.whereareiam.identica.common.provider.library.ProviderLibraryPlanner;
-import me.whereareiam.identica.common.provider.library.SharedLibraryConflictTracker;
 import me.whereareiam.identica.common.provider.resolver.ProviderResolverRegistry;
-import me.whereareiam.identica.common.provider.resolver.ProviderWorkingPathResolver;
+import me.whereareiam.identica.common.provider.runtime.ProviderInstanceFactory;
+import me.whereareiam.identica.common.provider.runtime.ProviderLifecycleController;
+import me.whereareiam.identica.common.provider.runtime.classloader.ProviderRuntimeClassLoaderFactory;
+import me.whereareiam.identica.common.provider.runtime.classloader.SharedCapabilityClassLoaderFactory;
+import me.whereareiam.identica.common.provider.runtime.injector.ProviderInjectorFactory;
+import me.whereareiam.identica.common.provider.runtime.library.ProviderLibraryInstaller;
+import me.whereareiam.identica.common.provider.runtime.library.ProviderLibraryLoggingAdapter;
+import me.whereareiam.identica.common.provider.runtime.library.ProviderLibraryPlanner;
+import me.whereareiam.identica.common.provider.runtime.library.SharedLibraryConflictTracker;
+import me.whereareiam.identica.common.provider.runtime.resolver.ProviderWorkingPathResolver;
 import me.whereareiam.identica.common.registry.ReloadableRegistry;
 import me.whereareiam.identica.common.replication.store.DefaultScopedParticipantRegistry;
 import me.whereareiam.identica.config.ConfigProvider;
@@ -52,6 +53,7 @@ import me.whereareiam.identica.replication.store.participant.ConnectionDisconnec
 import me.whereareiam.identica.replication.store.participant.ConnectionTerminatedParticipant;
 import me.whereareiam.identica.type.event.EventOrder;
 import me.whereareiam.identica.type.provider.ProviderState;
+import me.whereareiam.identica.util.EventUtil;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -157,10 +159,6 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 					.build();
 	}
 
-	private static ProviderDescriptor descriptor() {
-		return descriptor(TestProvider.class.getName());
-	}
-
 	private static ProviderDescriptor descriptor(String mainClass) {
 		ProviderDescriptor descriptor = new ProviderDescriptor();
 		descriptor.setId("test-provider");
@@ -181,14 +179,17 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 
 			@Override
 			protected void configure() {
+				NoopEventManager eventManager = new NoopEventManager();
+				EventUtil.initialize(eventManager);
+
 				bind(ProviderWorkingPathResolver.class).asEagerSingleton();
 				bind(ProviderInstanceFactory.class).asEagerSingleton();
 				bind(ProviderLifecycleController.class).asEagerSingleton();
-			bind(ProviderCapabilityCoordinator.class).to(DefaultProviderCapabilityCoordinator.class).asEagerSingleton();
-			bind(ProviderCapabilityRegistry.class).to(DefaultProviderCapabilityRegistry.class).asEagerSingleton();
-			bind(new TypeLiteral<Registry<Reloadable>>() {}).to(ReloadableRegistry.class).asEagerSingleton();
-			bind(ConflictService.class).toInstance(new NoopConflictService());
-				bind(EventManager.class).toInstance(new NoopEventManager());
+				bind(ProviderCapabilityCoordinator.class).to(DefaultProviderCapabilityCoordinator.class).asEagerSingleton();
+				bind(ProviderCapabilityRegistry.class).to(DefaultProviderCapabilityRegistry.class).asEagerSingleton();
+				bind(new TypeLiteral<Registry<Reloadable>>() {}).to(ReloadableRegistry.class).asEagerSingleton();
+				bind(ConflictService.class).toInstance(new NoopConflictService());
+				bind(EventManager.class).toInstance(eventManager);
 				bind(HandshakeStore.class).toInstance(new NoopHandshakeStore());
 				bind(SchemaBootstrap.class).toInstance(contributor -> {});
 				bind(ProviderResolverRegistry.class).toInstance(new ProviderResolverRegistry());
@@ -221,7 +222,7 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 			return new ProviderLibraryInstaller(
 					tempDir.resolve("providers"),
 					tempDir.resolve("capabilities"),
-					org.mockito.Mockito.mock(ProviderDependencyLoggingAdapter.class),
+					org.mockito.Mockito.mock(ProviderLibraryLoggingAdapter.class),
 					new SharedCapabilityClassLoaderFactory()
 			) {
 				@Override

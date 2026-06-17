@@ -1,12 +1,11 @@
-package me.whereareiam.identica.common.provider.library;
+package me.whereareiam.identica.common.provider.runtime.library;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import me.whereareiam.attache.platform.standalone.StandaloneLibraryManager;
 import me.whereareiam.attache.type.VerbosityMode;
-import me.whereareiam.identica.common.provider.classloader.SharedCapabilityClassLoaderFactory;
-import me.whereareiam.identica.common.provider.dependency.ProviderDependencyLoggingAdapter;
+import me.whereareiam.identica.common.provider.runtime.classloader.SharedCapabilityClassLoaderFactory;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
 import me.whereareiam.identica.model.provider.dependency.ProviderLibraries;
 import org.jetbrains.annotations.NotNull;
@@ -19,14 +18,14 @@ import java.nio.file.Path;
 public class ProviderLibraryInstaller {
 	private final Path providersPath;
 	private final Path capabilitiesPath;
-	private final ProviderDependencyLoggingAdapter loggingHelper;
+	private final ProviderLibraryLoggingAdapter loggingHelper;
 	private final SharedCapabilityClassLoaderFactory sharedCapabilityClassLoaderFactory;
 
 	@Inject
 	public ProviderLibraryInstaller(
 			@Named("providersPath") @NotNull Path providersPath,
 			@Named("capabilitiesPath") @NotNull Path capabilitiesPath,
-			@NotNull ProviderDependencyLoggingAdapter loggingHelper,
+			@NotNull ProviderLibraryLoggingAdapter loggingHelper,
 			@NotNull SharedCapabilityClassLoaderFactory sharedCapabilityClassLoaderFactory
 	) {
 		this.providersPath = providersPath;

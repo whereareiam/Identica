@@ -12,12 +12,12 @@ import org.jetbrains.annotations.NotNull;
  */
 public interface SchemaBootstrap {
 	/**
-	 * Applies a single schema contribution.
+	 * Applies a single schema snapshot.
 	 *
-	 * <p>The contribution is executed against the already-initialized shared
+	 * <p>The snapshot is executed against the already-initialized shared
 	 * Jdbi-backed schema manager for the active database.
 	 *
-	 * @param contributor schema contribution to apply
+	 * @param contributor schema snapshot to apply
 	 */
 	void apply(@NotNull SchemaContributor contributor);
 }

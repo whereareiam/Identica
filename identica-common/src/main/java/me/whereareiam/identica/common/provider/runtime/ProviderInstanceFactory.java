@@ -1,4 +1,4 @@
-package me.whereareiam.identica.common.provider.factory;
+package me.whereareiam.identica.common.provider.runtime;
 
 import com.google.inject.Injector;
 import com.google.inject.Singleton;

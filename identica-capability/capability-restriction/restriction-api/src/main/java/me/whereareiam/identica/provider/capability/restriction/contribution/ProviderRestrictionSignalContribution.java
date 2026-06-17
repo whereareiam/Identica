@@ -12,7 +12,7 @@ import org.jetbrains.annotations.NotNull;
  */
 public interface ProviderRestrictionSignalContribution extends ProviderCapabilityContribution {
 	/**
-	 * Returns the restriction type this contribution supports.
+	 * Returns the restriction type this snapshot supports.
 	 *
 	 * @return supported restriction type
 	 */

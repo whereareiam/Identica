@@ -1,4 +1,4 @@
-package me.whereareiam.identica.common.provider.injector;
+package me.whereareiam.identica.common.provider.runtime.injector;
 
 import com.google.inject.Inject;
 import com.google.inject.Injector;

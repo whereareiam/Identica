@@ -4,11 +4,11 @@ import me.whereareiam.identica.type.provider.capability.ProviderCapability;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Provider-local contribution exposed for a declared capability.
+ * Provider-local snapshot exposed for a declared capability.
  */
 public interface ProviderCapabilityContribution {
 	/**
-	 * Returns the capability supported by this contribution.
+	 * Returns the capability supported by this snapshot.
 	 *
 	 * @return contributed capability
 	 */

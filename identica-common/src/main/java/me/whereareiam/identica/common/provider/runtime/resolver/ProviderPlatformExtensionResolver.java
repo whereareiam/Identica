@@ -1,4 +1,4 @@
-package me.whereareiam.identica.common.provider.resolver;
+package me.whereareiam.identica.common.provider.runtime.resolver;
 
 import com.google.inject.Singleton;
 import me.whereareiam.identica.provider.IdenticaProvider;

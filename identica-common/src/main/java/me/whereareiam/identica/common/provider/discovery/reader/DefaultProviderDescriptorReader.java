@@ -1,8 +1,8 @@
-package me.whereareiam.identica.common.provider.reader;
+package me.whereareiam.identica.common.provider.discovery.reader;
 
 import me.whereareiam.configura.Config;
-import me.whereareiam.identica.provider.ProviderDescriptorReader;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
+import me.whereareiam.identica.provider.ProviderDescriptorReader;
 
 import java.io.InputStream;
 

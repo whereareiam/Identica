@@ -1,4 +1,4 @@
-package me.whereareiam.identica.common.provider.library;
+package me.whereareiam.identica.common.provider.runtime.library;
 
 import com.google.inject.Singleton;
 import me.whereareiam.identica.model.provider.dependency.ProviderLibrary;

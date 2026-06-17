@@ -1,4 +1,4 @@
-package me.whereareiam.identica.common.provider.library;
+package me.whereareiam.identica.common.provider.runtime.library;
 
 import me.whereareiam.identica.model.provider.dependency.ProviderLibrary;
 import org.junit.jupiter.api.Test;
@@ -12,24 +12,24 @@ class SharedLibraryConflictTrackerTest {
 		SharedLibraryConflictTracker registry = new SharedLibraryConflictTracker();
 
 		assertDoesNotThrow(() -> {
-			registry.register(library("recognition", "1.0.0"));
-			registry.register(library("recognition", "1.0.0"));
+			registry.register(library("1.0.0"));
+			registry.register(library("1.0.0"));
 		});
 	}
 
 	@Test
 	void rejectsConflictingVersions() {
 		SharedLibraryConflictTracker registry = new SharedLibraryConflictTracker();
-		registry.register(library("recognition", "1.0.0"));
+		registry.register(library("1.0.0"));
 
 		assertThrows(IllegalStateException.class, () ->
-				registry.register(library("recognition", "2.0.0")));
+				registry.register(library("2.0.0")));
 	}
 
-	private static ProviderLibrary library(String artifactId, String version) {
+	private static ProviderLibrary library(String version) {
 		return ProviderLibrary.builder()
 				.groupId("me.whereareiam.identica.capability")
-				.artifactId(artifactId)
+				.artifactId("recognition")
 				.version(version)
 				.resolveTransitiveDependencies(false)
 				.build();

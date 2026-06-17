@@ -1,5 +1,8 @@
 package me.whereareiam.identica.provider.capability.recognition.store;
 
+import me.whereareiam.identica.Registry;
+import me.whereareiam.identica.event.connection.lifecycle.ConnectionCompletedEvent;
+import me.whereareiam.identica.event.connection.lifecycle.ConnectionTerminatedEvent;
 import me.whereareiam.identica.model.config.Replication;
 import me.whereareiam.identica.model.replication.ReplicationType;
 import me.whereareiam.identica.provider.capability.recognition.config.RecognitionSettings;
@@ -10,6 +13,8 @@ import me.whereareiam.identica.replication.cache.ReplicatedCache;
 import me.whereareiam.identica.replication.cache.base.ReplicationCacheBuilder;
 import me.whereareiam.identica.replication.codec.SnapshotCodec;
 import me.whereareiam.identica.replication.codec.SnapshotCodecFactory;
+import me.whereareiam.identica.replication.store.participant.ConnectionCompletedParticipant;
+import me.whereareiam.identica.replication.store.participant.ConnectionTerminatedParticipant;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,11 +35,13 @@ class DefaultRecognizedConnectionStoreTest {
 	@Test
 	void usesConfiguredNamespaceAndTtl() {
 		TestReplicationSystem replicationSystem = new TestReplicationSystem();
-		DefaultRecognizedConnectionStore store = new DefaultRecognizedConnectionStore(
-				replicationSystem,
-				() -> settings(Duration.ofSeconds(45), "recognition:test:connections"),
-				() -> replication(false)
-		);
+			DefaultRecognizedConnectionStore store = new DefaultRecognizedConnectionStore(
+					replicationSystem,
+					() -> settings(Duration.ofSeconds(45), "recognition:test:connections"),
+					() -> replication(false),
+					noopCompletedRegistry(),
+					noopTerminatedRegistry()
+			);
 		UUID connectionUniqueId = UUID.randomUUID();
 
 		store.markRecognized(connectionUniqueId);
@@ -50,11 +57,13 @@ class DefaultRecognizedConnectionStoreTest {
 	@Test
 	void requiresConfiguredRecognizedConnectionNamespace() {
 		IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
-				new DefaultRecognizedConnectionStore(
-						new TestReplicationSystem(),
-						() -> settings(Duration.ofSeconds(30), " "),
-						() -> replication(true)
-				));
+					new DefaultRecognizedConnectionStore(
+							new TestReplicationSystem(),
+							() -> settings(Duration.ofSeconds(30), " "),
+							() -> replication(true),
+							noopCompletedRegistry(),
+							noopTerminatedRegistry()
+					));
 
 		assertTrue(exception.getMessage().contains("providers.capabilities.recognition.settings.replication.recognizedConnectionNamespace"));
 	}
@@ -74,6 +83,68 @@ class DefaultRecognizedConnectionStoreTest {
 		Replication replication = new Replication();
 		replication.setEnabled(enabled);
 		return replication;
+	}
+
+	@DisplayName("Completion and termination boundaries consume recognized state")
+	@Test
+	void completionAndTerminationBoundariesConsumeRecognizedState() {
+		DefaultRecognizedConnectionStore completedStore = new DefaultRecognizedConnectionStore(
+				new TestReplicationSystem(),
+				() -> settings(Duration.ofSeconds(45), "recognition:test:completed"),
+				() -> replication(false),
+				noopCompletedRegistry(),
+				noopTerminatedRegistry()
+		);
+		UUID completedConnection = UUID.randomUUID();
+		completedStore.markRecognized(completedConnection);
+		completedStore.onConnectionCompleted(new ConnectionCompletedEvent(completedConnection, null, null));
+		assertFalse(completedStore.isRecognized(completedConnection));
+
+		DefaultRecognizedConnectionStore terminatedStore = new DefaultRecognizedConnectionStore(
+				new TestReplicationSystem(),
+				() -> settings(Duration.ofSeconds(45), "recognition:test:terminated"),
+				() -> replication(false),
+				noopCompletedRegistry(),
+				noopTerminatedRegistry()
+		);
+		UUID terminatedConnection = UUID.randomUUID();
+		terminatedStore.markRecognized(terminatedConnection);
+		terminatedStore.onConnectionTerminated(new ConnectionTerminatedEvent(terminatedConnection, null, null));
+		assertFalse(terminatedStore.isRecognized(terminatedConnection));
+	}
+
+	private static Registry<ConnectionCompletedParticipant> noopCompletedRegistry() {
+		return new Registry<>() {
+			@Override
+			public void register(ConnectionCompletedParticipant value) {
+			}
+
+			@Override
+			public void unregister(ConnectionCompletedParticipant value) {
+			}
+
+			@Override
+			public java.util.Set<ConnectionCompletedParticipant> values() {
+				return java.util.Set.of();
+			}
+		};
+	}
+
+	private static Registry<ConnectionTerminatedParticipant> noopTerminatedRegistry() {
+		return new Registry<>() {
+			@Override
+			public void register(ConnectionTerminatedParticipant value) {
+			}
+
+			@Override
+			public void unregister(ConnectionTerminatedParticipant value) {
+			}
+
+			@Override
+			public java.util.Set<ConnectionTerminatedParticipant> values() {
+				return java.util.Set.of();
+			}
+		};
 	}
 
 	private static final class TestReplicationSystem implements ReplicationSystem {

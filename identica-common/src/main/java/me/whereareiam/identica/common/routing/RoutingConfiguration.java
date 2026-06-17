@@ -1,7 +1,6 @@
 package me.whereareiam.identica.common.routing;
 
 import com.google.inject.AbstractModule;
-import me.whereareiam.identica.common.routing.resolution.RoutingConnectionLifecycle;
 import me.whereareiam.identica.common.routing.resolution.RoutingRetryCoordinator;
 import me.whereareiam.identica.common.routing.resolution.failure.RoutingMissingTargetHandler;
 import me.whereareiam.identica.common.routing.resolution.failure.RoutingUnavailableTargetHandler;
@@ -18,7 +17,6 @@ public class RoutingConfiguration extends AbstractModule {
 		bind(RoutingAttemptService.class).to(DefaultRoutingCoordinator.class);
 		bind(RoutingRetryCoordinator.class).asEagerSingleton();
 		bind(RoutingDriver.class).asEagerSingleton();
-		bind(RoutingConnectionLifecycle.class).asEagerSingleton();
 		bind(RoutingMissingTargetHandler.class).asEagerSingleton();
 		bind(RoutingUnavailableTargetHandler.class).asEagerSingleton();
 	}

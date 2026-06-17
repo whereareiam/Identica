@@ -3,10 +3,14 @@ package me.whereareiam.identica.feature.verification.challenge;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
+import me.whereareiam.identica.Registry;
+import me.whereareiam.identica.event.connection.lifecycle.ConnectionDisconnectedEvent;
 import me.whereareiam.identica.feature.verification.model.challenge.PendingVerificationChallenge;
 import me.whereareiam.identica.feature.verification.model.config.VerificationSettings;
 import me.whereareiam.identica.replication.ReplicationSystem;
 import me.whereareiam.identica.replication.cache.LocalCache;
+import me.whereareiam.identica.replication.store.base.AbstractDisconnectScopedStore;
+import me.whereareiam.identica.replication.store.participant.ConnectionDisconnectedParticipant;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -17,7 +21,7 @@ import java.util.UUID;
 import java.util.function.UnaryOperator;
 
 @Singleton
-public class VerificationChallengeStore {
+public class VerificationChallengeStore extends AbstractDisconnectScopedStore {
 	private static final String RECORD_NAMESPACE = "verification:challenge:records";
 	private static final String ACTIVE_NAMESPACE = "verification:challenge:active";
 	private static final String VERIFIED_NAMESPACE = "verification:challenge:verified";
@@ -32,12 +36,14 @@ public class VerificationChallengeStore {
 	@Inject
 	public VerificationChallengeStore(
 			@NotNull ReplicationSystem replicationSystem,
-			@NotNull Provider<VerificationSettings> verificationProvider
+			@NotNull Provider<VerificationSettings> verificationProvider,
+			@NotNull Registry<ConnectionDisconnectedParticipant> participants
 	) {
-		this.records = replicationSystem.cache(RECORD_NAMESPACE).local();
-		this.active = replicationSystem.cache(ACTIVE_NAMESPACE).local();
-		this.verified = replicationSystem.cache(VERIFIED_NAMESPACE).local();
-		this.accountIndex = replicationSystem.cache(INDEX_NAMESPACE).local();
+		super(replicationSystem, participants);
+		this.records = localCache(RECORD_NAMESPACE);
+		this.active = localCache(ACTIVE_NAMESPACE);
+		this.verified = localCache(VERIFIED_NAMESPACE);
+		this.accountIndex = localCache(INDEX_NAMESPACE);
 		this.verificationProvider = verificationProvider;
 	}
 
@@ -99,6 +105,13 @@ public class VerificationChallengeStore {
 
 		for (String verifiedKey : index.verifiedKeys())
 			verified.invalidate(verifiedKey).join();
+	}
+
+	@Override
+	public void onConnectionDisconnected(@NotNull ConnectionDisconnectedEvent event) {
+		UUID uniqueId = event.getAccountUniqueId();
+		if (uniqueId == null) return;
+		clearByUniqueId(uniqueId);
 	}
 
 	private long ttlMs() {

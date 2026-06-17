@@ -50,8 +50,8 @@ public class CommonConfiguration extends AbstractModule {
 				.asEagerSingleton();
 
 		install(new ConfigBindings());
-		install(new RegistryConfiguration());
-		install(new ConnectionStateConfiguration());
+			install(new RegistryConfiguration());
+			install(new ConnectionStateConfiguration());
 		install(new PipelineStateConfiguration());
 		install(new MessagingConfiguration());
 		install(new SentinelConfiguration());

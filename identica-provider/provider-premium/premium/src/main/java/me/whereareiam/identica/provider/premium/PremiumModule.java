@@ -20,15 +20,19 @@ import me.whereareiam.identica.provider.premium.profile.PremiumProfileStore;
 import me.whereareiam.identica.provider.premium.resolver.PremiumEligibilityResolver;
 import me.whereareiam.identica.provider.premium.resolver.PremiumSubjectResolver;
 import me.whereareiam.identica.provider.subject.SubjectResolver;
+import me.whereareiam.identica.replication.store.participant.AccountLifecycleParticipant;
 
 public class PremiumModule extends AbstractModule {
 	@Override
 	protected void configure() {
 		// Configs
 		bind(PremiumSettingsProvider.class).asEagerSingleton();
-		bind(PremiumSettings.class).toProvider(PremiumSettingsProvider.class);
-		bind(PremiumProfileStore.class).asEagerSingleton();
-		bind(PremiumMessagesProvider.class).asEagerSingleton();
+			bind(PremiumSettings.class).toProvider(PremiumSettingsProvider.class);
+			bind(PremiumProfileStore.class).asEagerSingleton();
+			Multibinder.newSetBinder(binder(), AccountLifecycleParticipant.class)
+					.addBinding()
+					.to(PremiumProfileStore.class);
+			bind(PremiumMessagesProvider.class).asEagerSingleton();
 		bind(PremiumMessages.class).toProvider(PremiumMessagesProvider.class);
 		bind(PremiumCommandsProvider.class).asEagerSingleton();
 

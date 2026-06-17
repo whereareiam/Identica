@@ -1,5 +1,7 @@
 package me.whereareiam.identica.feature.verification.challenge;
 
+import me.whereareiam.identica.Registry;
+import me.whereareiam.identica.event.connection.lifecycle.ConnectionDisconnectedEvent;
 import me.whereareiam.identica.feature.verification.model.challenge.PendingVerificationChallenge;
 import me.whereareiam.identica.feature.verification.model.config.VerificationSettings;
 import me.whereareiam.identica.model.replication.ReplicationPage;
@@ -10,6 +12,7 @@ import me.whereareiam.identica.replication.cache.LocalCache;
 import me.whereareiam.identica.replication.cache.ReplicatedCache;
 import me.whereareiam.identica.replication.cache.base.ReplicationCacheBuilder;
 import me.whereareiam.identica.replication.codec.SnapshotCodecFactory;
+import me.whereareiam.identica.replication.store.participant.ConnectionDisconnectedParticipant;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
@@ -27,10 +30,11 @@ class VerificationChallengeStoreTest {
 	@DisplayName("Clearing by unique id removes only that account's active and verified state")
 	@Test
 	void clearByUniqueIdRemovesOnlyIndexedAccountState() {
-		VerificationChallengeStore store = new VerificationChallengeStore(
-				new TestReplicationSystem(),
-				this::settings
-		);
+			VerificationChallengeStore store = new VerificationChallengeStore(
+					new TestReplicationSystem(),
+					this::settings,
+					noopRegistry()
+			);
 		UUID clearedUniqueId = UUID.randomUUID();
 		UUID retainedUniqueId = UUID.randomUUID();
 		PendingVerificationChallenge clearedActive = record("challenge-active-cleared", clearedUniqueId, "auth", "login");
@@ -55,7 +59,25 @@ class VerificationChallengeStoreTest {
 				retainedActive.getChallengeId(),
 				store.findActive(retainedUniqueId, "auth", "login").orElseThrow().getChallengeId()
 		);
-		assertTrue(store.consumeVerified(retainedUniqueId, "premium", "migration"));
+			assertTrue(store.consumeVerified(retainedUniqueId, "premium", "migration"));
+	}
+
+	@DisplayName("Disconnect boundary clears the matching account challenge state")
+	@Test
+	void connectionDisconnectedClearsIndexedAccountState() {
+		VerificationChallengeStore store = new VerificationChallengeStore(
+				new TestReplicationSystem(),
+				this::settings,
+				noopRegistry()
+		);
+		UUID uniqueId = UUID.randomUUID();
+		PendingVerificationChallenge record = record("challenge-active", uniqueId, "auth", "login");
+		store.put(record);
+
+		store.onConnectionDisconnected(new ConnectionDisconnectedEvent(UUID.randomUUID(), uniqueId, null));
+
+		assertTrue(store.find(record.getChallengeId()).isEmpty());
+		assertTrue(store.findActive(uniqueId, "auth", "login").isEmpty());
 	}
 
 	private @NotNull PendingVerificationChallenge record(
@@ -183,5 +205,22 @@ class VerificationChallengeStoreTest {
 					)
 			);
 		}
+	}
+
+	private Registry<ConnectionDisconnectedParticipant> noopRegistry() {
+		return new Registry<>() {
+			@Override
+			public void register(ConnectionDisconnectedParticipant value) {
+			}
+
+			@Override
+			public void unregister(ConnectionDisconnectedParticipant value) {
+			}
+
+			@Override
+			public Set<ConnectionDisconnectedParticipant> values() {
+				return Set.of();
+			}
+		};
 	}
 }

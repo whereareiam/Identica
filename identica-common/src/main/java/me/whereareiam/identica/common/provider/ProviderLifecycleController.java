@@ -3,6 +3,7 @@ package me.whereareiam.identica.common.provider;
 import com.google.inject.*;
 import com.google.inject.Module;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.common.config.ConfigInitializer;
 import me.whereareiam.identica.common.provider.classloader.ProviderRuntimeClassLoaderFactory;
 import me.whereareiam.identica.common.provider.factory.ProviderInstanceFactory;
@@ -35,15 +36,19 @@ import me.whereareiam.identica.provider.eligibility.ProviderEligibilityResolver;
 import me.whereareiam.identica.provider.migration.ProviderMigrationPrecheck;
 import me.whereareiam.identica.provider.resolver.ProviderResolver;
 import me.whereareiam.identica.provider.subject.SubjectResolver;
+import me.whereareiam.identica.replication.store.participant.AccountLifecycleParticipant;
+import me.whereareiam.identica.replication.store.participant.ConnectionCompletedParticipant;
+import me.whereareiam.identica.replication.store.participant.ConnectionDisconnectedParticipant;
+import me.whereareiam.identica.replication.store.participant.ConnectionTerminatedParticipant;
 import me.whereareiam.identica.type.provider.ProviderFeature;
 import me.whereareiam.identica.type.provider.ProviderState;
 
 import java.net.URLClassLoader;
 import java.nio.file.Path;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+
+// TODO Rewrite
 
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
@@ -54,6 +59,10 @@ public class ProviderLifecycleController {
 	private static final TypeLiteral<Set<ProviderMigrationPrecheck>> MIGRATION_PRECHECKS = new TypeLiteral<>() {};
 	private static final TypeLiteral<Set<SchemaContributor>> SCHEMA_CONTRIBUTORS = new TypeLiteral<>() {};
 	private static final TypeLiteral<Set<ProviderPlatformBinding>> PLATFORM_BINDINGS = new TypeLiteral<>() {};
+	private static final TypeLiteral<Set<ConnectionDisconnectedParticipant>> CONNECTION_DISCONNECTED_PARTICIPANTS = new TypeLiteral<>() {};
+	private static final TypeLiteral<Set<ConnectionCompletedParticipant>> CONNECTION_COMPLETED_PARTICIPANTS = new TypeLiteral<>() {};
+	private static final TypeLiteral<Set<ConnectionTerminatedParticipant>> CONNECTION_TERMINATED_PARTICIPANTS = new TypeLiteral<>() {};
+	private static final TypeLiteral<Set<AccountLifecycleParticipant>> ACCOUNT_LIFECYCLE_PARTICIPANTS = new TypeLiteral<>() {};
 
 	private final ProviderWorkingPathResolver workingPathResolver;
 	private final ProviderRuntimeClassLoaderFactory providerRuntimeClassLoaderFactory;
@@ -68,9 +77,17 @@ public class ProviderLifecycleController {
 	private final SchemaBootstrap schemaBootstrap;
 	private final EventManager eventManager;
 	private final HandshakeStore handshakeStore;
+	private final Registry<ConnectionDisconnectedParticipant> connectionDisconnectedParticipants;
+	private final Registry<ConnectionCompletedParticipant> connectionCompletedParticipants;
+	private final Registry<ConnectionTerminatedParticipant> connectionTerminatedParticipants;
+	private final Registry<AccountLifecycleParticipant> accountLifecycleParticipants;
 
 	private final ConcurrentHashMap<InternalProvider, Set<HandshakePolicy>> providerHandshakePolicies = new ConcurrentHashMap<>();
 	private final ConcurrentHashMap<InternalProvider, Set<ProviderPlatformBinding>> providerPlatformBindings = new ConcurrentHashMap<>();
+	private final ConcurrentHashMap<InternalProvider, Set<ConnectionDisconnectedParticipant>> providerConnectionDisconnectedParticipants = new ConcurrentHashMap<>();
+	private final ConcurrentHashMap<InternalProvider, Set<ConnectionCompletedParticipant>> providerConnectionCompletedParticipants = new ConcurrentHashMap<>();
+	private final ConcurrentHashMap<InternalProvider, Set<ConnectionTerminatedParticipant>> providerConnectionTerminatedParticipants = new ConcurrentHashMap<>();
+	private final ConcurrentHashMap<InternalProvider, Set<AccountLifecycleParticipant>> providerAccountLifecycleParticipants = new ConcurrentHashMap<>();
 
 	public void loadProvider(InternalProvider internal) {
 		if (internal == null || internal.getState() != ProviderState.DISCOVERED) return;
@@ -269,6 +286,10 @@ public class ProviderLifecycleController {
 		if (internal == null || injector == null) return;
 		providerHandshakePolicies.put(internal, copySet(resolveSet(injector, HANDSHAKE_POLICIES)));
 		providerPlatformBindings.put(internal, copySet(resolveSet(injector, PLATFORM_BINDINGS)));
+		providerConnectionDisconnectedParticipants.put(internal, copyOrderedSet(resolveSet(injector, CONNECTION_DISCONNECTED_PARTICIPANTS)));
+		providerConnectionCompletedParticipants.put(internal, copyOrderedSet(resolveSet(injector, CONNECTION_COMPLETED_PARTICIPANTS)));
+		providerConnectionTerminatedParticipants.put(internal, copyOrderedSet(resolveSet(injector, CONNECTION_TERMINATED_PARTICIPANTS)));
+		providerAccountLifecycleParticipants.put(internal, copyOrderedSet(resolveSet(injector, ACCOUNT_LIFECYCLE_PARTICIPANTS)));
 		internal.setEligibilityResolvers(copySet(resolveSet(injector, ELIGIBILITY_RESOLVERS)));
 		internal.setSubjectResolvers(copySet(resolveSet(injector, SUBJECT_RESOLVERS)));
 		internal.setMigrationPrechecks(copySet(resolveSet(injector, MIGRATION_PRECHECKS)));
@@ -277,6 +298,26 @@ public class ProviderLifecycleController {
 
 	private void registerProviderBindings(InternalProvider internal) {
 		if (internal == null) return;
+		Set<ConnectionDisconnectedParticipant> disconnectedParticipants = providerConnectionDisconnectedParticipants.get(internal);
+		if (disconnectedParticipants != null)
+			for (ConnectionDisconnectedParticipant participant : disconnectedParticipants)
+				connectionDisconnectedParticipants.register(participant);
+
+		Set<ConnectionCompletedParticipant> completedParticipants = providerConnectionCompletedParticipants.get(internal);
+		if (completedParticipants != null)
+			for (ConnectionCompletedParticipant participant : completedParticipants)
+				connectionCompletedParticipants.register(participant);
+
+		Set<ConnectionTerminatedParticipant> terminatedParticipants = providerConnectionTerminatedParticipants.get(internal);
+		if (terminatedParticipants != null)
+			for (ConnectionTerminatedParticipant participant : terminatedParticipants)
+				connectionTerminatedParticipants.register(participant);
+
+		Set<AccountLifecycleParticipant> accountParticipants = providerAccountLifecycleParticipants.get(internal);
+		if (accountParticipants != null)
+			for (AccountLifecycleParticipant participant : accountParticipants)
+				accountLifecycleParticipants.register(participant);
+
 		Set<HandshakePolicy> policies = providerHandshakePolicies.get(internal);
 		if (policies != null)
 			for (HandshakePolicy policy : policies)
@@ -295,6 +336,26 @@ public class ProviderLifecycleController {
 
 	private void unregisterProviderBindings(InternalProvider internal) {
 		if (internal == null) return;
+
+		Set<ConnectionDisconnectedParticipant> disconnectedParticipants = providerConnectionDisconnectedParticipants.remove(internal);
+		if (disconnectedParticipants != null)
+			for (ConnectionDisconnectedParticipant participant : disconnectedParticipants)
+				connectionDisconnectedParticipants.unregister(participant);
+
+		Set<ConnectionCompletedParticipant> completedParticipants = providerConnectionCompletedParticipants.remove(internal);
+		if (completedParticipants != null)
+			for (ConnectionCompletedParticipant participant : completedParticipants)
+				connectionCompletedParticipants.unregister(participant);
+
+		Set<ConnectionTerminatedParticipant> terminatedParticipants = providerConnectionTerminatedParticipants.remove(internal);
+		if (terminatedParticipants != null)
+			for (ConnectionTerminatedParticipant participant : terminatedParticipants)
+				connectionTerminatedParticipants.unregister(participant);
+
+		Set<AccountLifecycleParticipant> accountParticipants = providerAccountLifecycleParticipants.remove(internal);
+		if (accountParticipants != null)
+			for (AccountLifecycleParticipant participant : accountParticipants)
+				accountLifecycleParticipants.unregister(participant);
 
 		Set<ProviderPlatformBinding> platformBindings = providerPlatformBindings.remove(internal);
 		if (platformBindings != null)
@@ -321,6 +382,13 @@ public class ProviderLifecycleController {
 			return Set.of();
 
 		return Set.copyOf(values);
+	}
+
+	private <T> Set<T> copyOrderedSet(Set<T> values) {
+		if (values == null || values.isEmpty())
+			return Set.of();
+
+		return Collections.unmodifiableSet(new LinkedHashSet<>(values));
 	}
 
 	private void fireProviderDisabled(InternalProvider internal) {

@@ -1,8 +1,11 @@
 package me.whereareiam.identica.common.routing;
 
+import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.common.event.EventController;
 import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.base.IdenticEvent;
+import me.whereareiam.identica.event.connection.lifecycle.ConnectionDisconnectedEvent;
+import me.whereareiam.identica.event.connection.lifecycle.ConnectionTerminatedEvent;
 import me.whereareiam.identica.event.routing.completion.CompletionRoutingReachedEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentClearedEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentReachedEvent;
@@ -12,6 +15,8 @@ import me.whereareiam.identica.model.routing.attempt.RoutingAttemptDecision;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptPolicy;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptRequest;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptState;
+import me.whereareiam.identica.replication.store.participant.ConnectionDisconnectedParticipant;
+import me.whereareiam.identica.replication.store.participant.ConnectionTerminatedParticipant;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.routing.RoutingAttemptTrigger;
 import me.whereareiam.identica.type.routing.RoutingIntentStatus;
@@ -33,7 +38,7 @@ class DefaultRoutingCoordinatorTest {
 		EventController events = new EventController();
 		ReachedCapture capture = new ReachedCapture();
 		events.register(capture);
-		DefaultRoutingCoordinator coordinator = new DefaultRoutingCoordinator(null, store, events);
+		DefaultRoutingCoordinator coordinator = new DefaultRoutingCoordinator(null, store, events, noopDisconnectedRegistry(), noopTerminatedRegistry());
 		UUID connectionUniqueId = UUID.randomUUID();
 		store.put(intent(connectionUniqueId, "lobby", RoutingReason.COMPLETION, RoutingAttemptPolicy.defaultCompletion()));
 
@@ -58,7 +63,7 @@ class DefaultRoutingCoordinatorTest {
 		EventController events = new EventController();
 		ReachedCapture capture = new ReachedCapture();
 		events.register(capture);
-		DefaultRoutingCoordinator coordinator = new DefaultRoutingCoordinator(null, store, events);
+		DefaultRoutingCoordinator coordinator = new DefaultRoutingCoordinator(null, store, events, noopDisconnectedRegistry(), noopTerminatedRegistry());
 		UUID connectionUniqueId = UUID.randomUUID();
 		store.put(intent(connectionUniqueId, "lobby", RoutingReason.STEP, RoutingAttemptPolicy.defaultStep()));
 
@@ -95,6 +100,60 @@ class DefaultRoutingCoordinatorTest {
 				null,
 				System.currentTimeMillis()
 		);
+	}
+
+	@DisplayName("Disconnect and termination boundaries clear current routing intents")
+	@Test
+	void disconnectAndTerminationBoundariesClearCurrentIntent() {
+		DefaultRoutingIntentStore store = new DefaultRoutingIntentStore();
+		DefaultRoutingCoordinator coordinator = new DefaultRoutingCoordinator(null, store, new EventController(), noopDisconnectedRegistry(), noopTerminatedRegistry());
+		UUID disconnectedConnection = UUID.randomUUID();
+		store.put(intent(disconnectedConnection, "lobby", RoutingReason.STEP, RoutingAttemptPolicy.defaultStep()));
+
+		coordinator.onConnectionDisconnected(new ConnectionDisconnectedEvent(disconnectedConnection, null, null));
+
+		assertFalse(store.peek(disconnectedConnection).isPresent());
+
+		UUID terminatedConnection = UUID.randomUUID();
+		store.put(intent(terminatedConnection, "lobby", RoutingReason.STEP, RoutingAttemptPolicy.defaultStep()));
+
+		coordinator.onConnectionTerminated(new ConnectionTerminatedEvent(terminatedConnection, null, null));
+
+		assertFalse(store.peek(terminatedConnection).isPresent());
+	}
+
+	private Registry<ConnectionDisconnectedParticipant> noopDisconnectedRegistry() {
+		return new Registry<>() {
+			@Override
+			public void register(ConnectionDisconnectedParticipant value) {
+			}
+
+			@Override
+			public void unregister(ConnectionDisconnectedParticipant value) {
+			}
+
+			@Override
+			public java.util.Set<ConnectionDisconnectedParticipant> values() {
+				return java.util.Set.of();
+			}
+		};
+	}
+
+	private Registry<ConnectionTerminatedParticipant> noopTerminatedRegistry() {
+		return new Registry<>() {
+			@Override
+			public void register(ConnectionTerminatedParticipant value) {
+			}
+
+			@Override
+			public void unregister(ConnectionTerminatedParticipant value) {
+			}
+
+			@Override
+			public java.util.Set<ConnectionTerminatedParticipant> values() {
+				return java.util.Set.of();
+			}
+		};
 	}
 
 	private static final class ReachedCapture implements EventListener {

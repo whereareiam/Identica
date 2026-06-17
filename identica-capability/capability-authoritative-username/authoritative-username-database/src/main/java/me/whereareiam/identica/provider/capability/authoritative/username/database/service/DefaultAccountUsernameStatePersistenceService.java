@@ -2,15 +2,14 @@ package me.whereareiam.identica.provider.capability.authoritative.username.datab
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import me.whereareiam.identica.event.EventListener;
-import me.whereareiam.identica.event.EventManager;
+import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.event.account.AccountLifecycleEvent;
-import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.provider.capability.authoritative.username.database.AccountUsernameStatePersistenceService;
 import me.whereareiam.identica.provider.capability.authoritative.username.database.mapper.AuthoritativeUsernameStateMapper;
 import me.whereareiam.identica.provider.capability.authoritative.username.database.repository.AuthoritativeUsernameStateRepository;
 import me.whereareiam.identica.provider.capability.authoritative.username.model.account.AccountUsernameState;
 import me.whereareiam.identica.provider.capability.authoritative.username.type.AccountUsernameSource;
+import me.whereareiam.identica.replication.store.participant.AccountLifecycleParticipant;
 import me.whereareiam.identica.type.event.EventOrder;
 import org.jetbrains.annotations.NotNull;
 
@@ -18,16 +17,16 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Singleton
-public class DefaultAccountUsernameStatePersistenceService implements AccountUsernameStatePersistenceService, EventListener {
+public class DefaultAccountUsernameStatePersistenceService implements AccountUsernameStatePersistenceService, AccountLifecycleParticipant {
 	private final AuthoritativeUsernameStateRepository repository;
 
 	@Inject
 	public DefaultAccountUsernameStatePersistenceService(
 			@NotNull AuthoritativeUsernameStateRepository repository,
-			@NotNull EventManager eventManager
+			@NotNull Registry<AccountLifecycleParticipant> participants
 	) {
 		this.repository = repository;
-		eventManager.register(this);
+		participants.register(this);
 	}
 
 	@Override
@@ -51,11 +50,16 @@ public class DefaultAccountUsernameStatePersistenceService implements AccountUse
 		repository.delete(uniqueId);
 	}
 
-	@IdenticEvent(EventOrder.HIGH)
+	@Override
 	public void onAccountLifecycle(@NotNull AccountLifecycleEvent event) {
 		UUID uniqueId = event.getIdentity().getAccountUniqueId();
 		if (uniqueId == null) return;
 
 		delete(uniqueId);
+	}
+
+	@Override
+	public @NotNull EventOrder order() {
+		return EventOrder.HIGH;
 	}
 }

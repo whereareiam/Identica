@@ -2,10 +2,8 @@ package me.whereareiam.identica.feature.verification.database;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import me.whereareiam.identica.event.EventListener;
-import me.whereareiam.identica.event.EventManager;
+import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.event.account.AccountLifecycleEvent;
-import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.feature.verification.database.mapper.VerificationEnrollmentMapper;
 import me.whereareiam.identica.feature.verification.database.mapper.VerificationRecoveryCodeMapper;
 import me.whereareiam.identica.feature.verification.database.mapper.VerificationSelectionMapper;
@@ -15,6 +13,7 @@ import me.whereareiam.identica.feature.verification.database.repository.Verifica
 import me.whereareiam.identica.feature.verification.model.VerificationRecoveryCode;
 import me.whereareiam.identica.feature.verification.model.enrollment.VerificationEnrollment;
 import me.whereareiam.identica.feature.verification.model.selection.VerificationSelection;
+import me.whereareiam.identica.replication.store.participant.AccountLifecycleParticipant;
 import me.whereareiam.identica.type.event.EventOrder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -24,7 +23,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Singleton
-public class DefaultVerificationPersistenceService implements VerificationPersistenceService, EventListener {
+public class DefaultVerificationPersistenceService implements VerificationPersistenceService, AccountLifecycleParticipant {
 	private final VerificationEnrollmentRepository enrollmentRepository;
 	private final VerificationSelectionRepository selectionRepository;
 	private final VerificationRecoveryCodeRepository recoveryCodeRepository;
@@ -34,12 +33,12 @@ public class DefaultVerificationPersistenceService implements VerificationPersis
 			VerificationEnrollmentRepository enrollmentRepository,
 			VerificationSelectionRepository selectionRepository,
 			VerificationRecoveryCodeRepository recoveryCodeRepository,
-			EventManager eventManager
+			Registry<AccountLifecycleParticipant> participants
 	) {
 		this.enrollmentRepository = enrollmentRepository;
 		this.selectionRepository = selectionRepository;
 		this.recoveryCodeRepository = recoveryCodeRepository;
-		eventManager.register(this);
+		participants.register(this);
 	}
 
 	@Override
@@ -192,10 +191,15 @@ public class DefaultVerificationPersistenceService implements VerificationPersis
 		selectionRepository.delete(uniqueId, providerId);
 	}
 
-	@IdenticEvent(EventOrder.HIGH)
+	@Override
 	public void onAccountLifecycle(@NotNull AccountLifecycleEvent event) {
 		UUID uniqueId = event.getIdentity().getAccountUniqueId();
 		if (uniqueId == null) return;
 		deleteAll(uniqueId);
+	}
+
+	@Override
+	public @NotNull EventOrder order() {
+		return EventOrder.HIGH;
 	}
 }

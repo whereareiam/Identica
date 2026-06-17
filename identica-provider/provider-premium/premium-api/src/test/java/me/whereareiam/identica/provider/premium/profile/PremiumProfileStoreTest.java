@@ -1,7 +1,7 @@
 package me.whereareiam.identica.provider.premium.profile;
 
-import me.whereareiam.identica.event.EventListener;
-import me.whereareiam.identica.event.EventManager;
+import me.whereareiam.identica.Registry;
+import me.whereareiam.identica.event.account.AccountLifecycleEvent;
 import me.whereareiam.identica.model.replication.ReplicationPage;
 import me.whereareiam.identica.model.replication.ReplicationType;
 import me.whereareiam.identica.provider.premium.config.PremiumSettings;
@@ -11,6 +11,7 @@ import me.whereareiam.identica.replication.cache.LocalCache;
 import me.whereareiam.identica.replication.cache.ReplicatedCache;
 import me.whereareiam.identica.replication.cache.base.ReplicationCacheBuilder;
 import me.whereareiam.identica.replication.codec.SnapshotCodecFactory;
+import me.whereareiam.identica.replication.store.participant.AccountLifecycleParticipant;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,11 +29,11 @@ class PremiumProfileStoreTest {
 	@DisplayName("Stores, loads, and clears premium profiles by username")
 	@Test
 	void saveFindAndClearByUsernameOnly() {
-		PremiumProfileStore store = new PremiumProfileStore(
-				this::settings,
-				new TestReplicationSystem(),
-				new NoopEventManager()
-		);
+			PremiumProfileStore store = new PremiumProfileStore(
+					this::settings,
+					new TestReplicationSystem(),
+					noopRegistry()
+			);
 
 		store.save("PremiumUser", "profile-id");
 
@@ -48,29 +49,6 @@ class PremiumProfileStoreTest {
 		PremiumSettings settings = new PremiumSettings();
 		settings.setProfileSnapshotTtl(Duration.ofMinutes(1));
 		return settings;
-	}
-
-	private static final class NoopEventManager implements EventManager {
-		@Override
-		public void register(EventListener eventListener) {
-		}
-
-		@Override
-		public <T extends me.whereareiam.identica.event.base.Event> void registerListener(
-				Class<T> event,
-				Object listener,
-				java.lang.reflect.Method method,
-				me.whereareiam.identica.type.event.EventOrder order
-		) {
-		}
-
-		@Override
-		public void unregister(EventListener eventListener) {
-		}
-
-		@Override
-		public void call(me.whereareiam.identica.event.base.Event event) {
-		}
 	}
 
 	private static final class TestReplicationSystem implements ReplicationSystem {
@@ -115,6 +93,38 @@ class PremiumProfileStoreTest {
 				}
 			};
 		}
+	}
+
+	@DisplayName("Account lifecycle clears the cached profile")
+	@Test
+	void accountLifecycleClearsCachedProfile() {
+		PremiumProfileStore store = new PremiumProfileStore(this::settings, new TestReplicationSystem(), noopRegistry());
+		store.save("PremiumUser", "profile-id");
+
+		store.onAccountLifecycle(new AccountLifecycleEvent(new me.whereareiam.identica.identity.actor.ConnectionIdentity(
+				java.util.UUID.randomUUID(),
+				"PremiumUser",
+				null
+		)));
+
+		assertNull(store.find("PremiumUser"));
+	}
+
+	private static Registry<AccountLifecycleParticipant> noopRegistry() {
+		return new Registry<>() {
+			@Override
+			public void register(AccountLifecycleParticipant value) {
+			}
+
+			@Override
+			public void unregister(AccountLifecycleParticipant value) {
+			}
+
+			@Override
+			public java.util.Set<AccountLifecycleParticipant> values() {
+				return java.util.Set.of();
+			}
+		};
 	}
 
 	private static final class TestReplicatedCache<T> implements ReplicatedCache<T>, LocalCache<T> {

@@ -5,6 +5,7 @@ import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Names;
 import me.whereareiam.identica.model.config.Commands;
 import me.whereareiam.identica.provider.credential.account.AutoupgradeLifecycle;
+import me.whereareiam.identica.provider.credential.account.CredentialAccountCleanup;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.account.DefaultCredentialAccountService;
 import me.whereareiam.identica.provider.credential.command.*;
@@ -14,7 +15,6 @@ import me.whereareiam.identica.provider.credential.config.CredentialSettings;
 import me.whereareiam.identica.provider.credential.config.provider.CredentialCommandsProvider;
 import me.whereareiam.identica.provider.credential.config.provider.CredentialMessagesProvider;
 import me.whereareiam.identica.provider.credential.config.provider.CredentialSettingsProvider;
-import me.whereareiam.identica.provider.credential.listener.CredentialAccountClearListener;
 import me.whereareiam.identica.provider.credential.migration.CredentialMigrationPrecheck;
 import me.whereareiam.identica.provider.credential.resolver.CredentialSubjectResolver;
 import me.whereareiam.identica.provider.credential.sentinel.BruteForceSentinelDefinition;
@@ -22,6 +22,7 @@ import me.whereareiam.identica.provider.credential.sentinel.BruteForceSentinelLi
 import me.whereareiam.identica.provider.credential.util.PasswordRules;
 import me.whereareiam.identica.provider.migration.ProviderMigrationPrecheck;
 import me.whereareiam.identica.provider.subject.SubjectResolver;
+import me.whereareiam.identica.replication.store.participant.AccountLifecycleParticipant;
 
 public class CommonConfiguration extends AbstractModule {
 	@Override
@@ -36,13 +37,16 @@ public class CommonConfiguration extends AbstractModule {
 		bind(CredentialCommands.class)
 				.annotatedWith(Names.named("credential"))
 				.toProvider(CredentialCommandsProvider.class);
-		bind(Commands.class)
-				.annotatedWith(Names.named("credential"))
-				.toProvider(CredentialCommandsProvider.class);
+			bind(Commands.class)
+					.annotatedWith(Names.named("credential"))
+					.toProvider(CredentialCommandsProvider.class);
 
-		bind(CredentialAccountService.class).to(DefaultCredentialAccountService.class).asEagerSingleton();
-		bind(CredentialAccountClearListener.class).asEagerSingleton();
-		bind(AutoupgradeLifecycle.class).asEagerSingleton();
+			bind(CredentialAccountService.class).to(DefaultCredentialAccountService.class).asEagerSingleton();
+			bind(CredentialAccountCleanup.class).asEagerSingleton();
+			Multibinder.newSetBinder(binder(), AccountLifecycleParticipant.class)
+					.addBinding()
+					.to(CredentialAccountCleanup.class);
+			bind(AutoupgradeLifecycle.class).asEagerSingleton();
 		bind(PasswordRules.class).asEagerSingleton();
 
 		bind(BruteForceSentinelDefinition.class).asEagerSingleton();

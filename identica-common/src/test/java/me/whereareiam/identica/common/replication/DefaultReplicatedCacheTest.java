@@ -51,7 +51,7 @@ class DefaultReplicatedCacheTest {
 				0L
 		);
 
-		assertEquals(Optional.empty(), cache.getFresh(null).join());
+		assertEquals(Optional.empty(), cache.getFresh((String) null).join());
 	}
 
 	@DisplayName("Falls back to the local cache when the adapter is unavailable")

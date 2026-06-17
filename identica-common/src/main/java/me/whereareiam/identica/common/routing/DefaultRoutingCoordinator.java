@@ -2,8 +2,10 @@ package me.whereareiam.identica.common.routing;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import lombok.RequiredArgsConstructor;
+import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.event.EventManager;
+import me.whereareiam.identica.event.connection.lifecycle.ConnectionDisconnectedEvent;
+import me.whereareiam.identica.event.connection.lifecycle.ConnectionTerminatedEvent;
 import me.whereareiam.identica.event.routing.attempt.RoutingAttemptFinishedEvent;
 import me.whereareiam.identica.event.routing.attempt.RoutingAttemptStartedEvent;
 import me.whereareiam.identica.event.routing.completion.CompletionRoutingReachedEvent;
@@ -18,6 +20,8 @@ import me.whereareiam.identica.model.routing.RoutingSignal;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptDecision;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptReport;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptRequest;
+import me.whereareiam.identica.replication.store.participant.ConnectionDisconnectedParticipant;
+import me.whereareiam.identica.replication.store.participant.ConnectionTerminatedParticipant;
 import me.whereareiam.identica.routing.RoutingAttemptService;
 import me.whereareiam.identica.routing.RoutingCoordinator;
 import me.whereareiam.identica.routing.RoutingIntentStore;
@@ -30,11 +34,27 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Singleton
-@RequiredArgsConstructor(onConstructor_ = @Inject)
-public class DefaultRoutingCoordinator implements RoutingCoordinator, RoutingAttemptService {
+public class DefaultRoutingCoordinator implements
+		RoutingCoordinator, RoutingAttemptService,
+		ConnectionDisconnectedParticipant, ConnectionTerminatedParticipant {
 	private final RoutingPlanner routingPlanner;
 	private final RoutingIntentStore routingIntentStore;
 	private final EventManager eventManager;
+
+	@Inject
+	public DefaultRoutingCoordinator(
+			@NotNull RoutingPlanner routingPlanner,
+			@NotNull RoutingIntentStore routingIntentStore,
+			@NotNull EventManager eventManager,
+			@NotNull Registry<ConnectionDisconnectedParticipant> disconnectedParticipants,
+			@NotNull Registry<ConnectionTerminatedParticipant> terminatedParticipants
+	) {
+		this.routingPlanner = routingPlanner;
+		this.routingIntentStore = routingIntentStore;
+		this.eventManager = eventManager;
+		disconnectedParticipants.register(this);
+		terminatedParticipants.register(this);
+	}
 
 	@Override
 	public void accept(@NotNull RoutingSignal signal) {
@@ -145,6 +165,16 @@ public class DefaultRoutingCoordinator implements RoutingCoordinator, RoutingAtt
 		return routingIntentStore.peek(connectionUniqueId);
 	}
 
+	@Override
+	public void onConnectionDisconnected(@NotNull ConnectionDisconnectedEvent event) {
+		clear(event.getConnectionUniqueId());
+	}
+
+	@Override
+	public void onConnectionTerminated(@NotNull ConnectionTerminatedEvent event) {
+		clear(event.getConnectionUniqueId());
+	}
+
 	private void apply(@NotNull RoutingPlan plan) {
 		RoutingPlanAction action = plan.getAction();
 		if (action == RoutingPlanAction.IGNORE) {
@@ -210,4 +240,5 @@ public class DefaultRoutingCoordinator implements RoutingCoordinator, RoutingAtt
 		if (intent.getReason() == RoutingReason.COMPLETION)
 			eventManager.call(new CompletionRoutingReachedEvent(intent, currentServer));
 	}
+
 }

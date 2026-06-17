@@ -1,20 +1,21 @@
 package me.whereareiam.identica.common.handshake;
 
+import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.common.replication.DefaultReplicationSystem;
 import me.whereareiam.identica.common.replication.ReplicationTestFixtures;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.auth.handshake.HandshakeInstruction;
 import me.whereareiam.identica.model.config.Replication;
+import me.whereareiam.identica.replication.store.participant.AccountLifecycleParticipant;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.Optional;
+import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 
 @DisplayName("Default Handshake Store")
@@ -24,11 +25,12 @@ class DefaultHandshakeStoreTest {
 	void consumeUsesMatchingUsernameAndIp() {
 		ReplicationTestFixtures.TestReplicationAdapter adapter = new ReplicationTestFixtures.TestReplicationAdapter();
 		adapter.available = false;
-		DefaultHandshakeStore store = new DefaultHandshakeStore(
-				new DefaultReplicationSystem(adapter),
-				this::replication,
-				mock(EventManager.class)
-		);
+			DefaultHandshakeStore store = new DefaultHandshakeStore(
+					new DefaultReplicationSystem(adapter),
+					this::replication,
+					mock(EventManager.class),
+					noopRegistry()
+			);
 		HandshakeInstruction instruction = HandshakeInstruction.create(
 				new ConnectionIdentity("PlayerOne", "1.1.1.1"),
 				Duration.ofMinutes(1).toMillis()
@@ -46,11 +48,12 @@ class DefaultHandshakeStoreTest {
 	void consumeRequiresMatchingIp() {
 		ReplicationTestFixtures.TestReplicationAdapter adapter = new ReplicationTestFixtures.TestReplicationAdapter();
 		adapter.available = false;
-		DefaultHandshakeStore store = new DefaultHandshakeStore(
-				new DefaultReplicationSystem(adapter),
-				this::replication,
-				mock(EventManager.class)
-		);
+			DefaultHandshakeStore store = new DefaultHandshakeStore(
+					new DefaultReplicationSystem(adapter),
+					this::replication,
+					mock(EventManager.class),
+					noopRegistry()
+			);
 		HandshakeInstruction instruction = HandshakeInstruction.create(
 				new ConnectionIdentity("PlayerOne", "1.1.1.1"),
 				Duration.ofMinutes(1).toMillis()
@@ -68,5 +71,22 @@ class DefaultHandshakeStoreTest {
 		cache.setInstructions("instructions");
 		replication.setCache(cache);
 		return replication;
+	}
+
+	private Registry<AccountLifecycleParticipant> noopRegistry() {
+		return new Registry<>() {
+			@Override
+			public void register(AccountLifecycleParticipant value) {
+			}
+
+			@Override
+			public void unregister(AccountLifecycleParticipant value) {
+			}
+
+			@Override
+			public Set<AccountLifecycleParticipant> values() {
+				return Set.of();
+			}
+		};
 	}
 }

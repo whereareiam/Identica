@@ -3,14 +3,15 @@ package me.whereareiam.identica.provider.premium.profile;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
-import me.whereareiam.identica.event.EventListener;
-import me.whereareiam.identica.event.EventManager;
+import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.event.account.AccountLifecycleEvent;
-import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.model.replication.ReplicationType;
 import me.whereareiam.identica.provider.premium.config.PremiumSettings;
 import me.whereareiam.identica.replication.ReplicationSystem;
 import me.whereareiam.identica.replication.cache.ReplicatedCache;
+import me.whereareiam.identica.replication.store.base.AbstractAccountScopedStore;
+import me.whereareiam.identica.replication.store.participant.AccountLifecycleParticipant;
+import me.whereareiam.identica.replication.store.scope.AccountScopedStore;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -18,7 +19,7 @@ import java.time.Duration;
 import java.util.Locale;
 
 @Singleton
-public class PremiumProfileStore implements EventListener {
+public class PremiumProfileStore extends AbstractAccountScopedStore implements AccountScopedStore {
 	private static final String KEY_USERNAME_PREFIX = "u:";
 
 	private final @NotNull Provider<PremiumSettings> settingsProvider;
@@ -28,13 +29,13 @@ public class PremiumProfileStore implements EventListener {
 	public PremiumProfileStore(
 			@NotNull Provider<PremiumSettings> settingsProvider,
 			@NotNull ReplicationSystem replicationSystem,
-			@NotNull EventManager eventManager
+			@NotNull Registry<AccountLifecycleParticipant> participants
 	) {
+		super(replicationSystem, participants);
 		this.settingsProvider = settingsProvider;
 		ReplicationType<PremiumProfileSnapshot, PremiumProfileSnapshot> type =
 				ReplicationType.identity(PremiumProfileSnapshot.class);
-		this.cache = replicationSystem.cache(resolveNamespace(settingsProvider)).replicated(type);
-		eventManager.register(this);
+		this.cache = replicatedCache(resolveNamespace(settingsProvider), type);
 	}
 
 	public void save(@Nullable String username, @NotNull String profileId) {
@@ -60,7 +61,7 @@ public class PremiumProfileStore implements EventListener {
 		cache.invalidate(key).join();
 	}
 
-	@IdenticEvent
+	@Override
 	public void onAccountLifecycle(@NotNull AccountLifecycleEvent event) {
 		String username = event.getIdentity().getUsername();
 		if (username.isBlank()) return;

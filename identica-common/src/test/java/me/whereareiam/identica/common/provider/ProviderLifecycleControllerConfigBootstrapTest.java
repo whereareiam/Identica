@@ -24,6 +24,7 @@ import me.whereareiam.identica.common.provider.library.SharedLibraryConflictTrac
 import me.whereareiam.identica.common.provider.resolver.ProviderResolverRegistry;
 import me.whereareiam.identica.common.provider.resolver.ProviderWorkingPathResolver;
 import me.whereareiam.identica.common.registry.ReloadableRegistry;
+import me.whereareiam.identica.common.replication.store.DefaultScopedParticipantRegistry;
 import me.whereareiam.identica.config.ConfigProvider;
 import me.whereareiam.identica.conflict.ConflictService;
 import me.whereareiam.identica.conflict.ConflictType;
@@ -45,6 +46,10 @@ import me.whereareiam.identica.provider.ProviderPlatformBinding;
 import me.whereareiam.identica.provider.ProviderPlatformExtension;
 import me.whereareiam.identica.provider.capability.ProviderCapabilityCoordinator;
 import me.whereareiam.identica.provider.capability.ProviderCapabilityRegistry;
+import me.whereareiam.identica.replication.store.participant.AccountLifecycleParticipant;
+import me.whereareiam.identica.replication.store.participant.ConnectionCompletedParticipant;
+import me.whereareiam.identica.replication.store.participant.ConnectionDisconnectedParticipant;
+import me.whereareiam.identica.replication.store.participant.ConnectionTerminatedParticipant;
 import me.whereareiam.identica.type.event.EventOrder;
 import me.whereareiam.identica.type.provider.ProviderState;
 import org.jetbrains.annotations.NotNull;
@@ -102,20 +107,66 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 		assertEquals(1, ProbePlatformBinding.unregisterCount());
 	}
 
+	@DisplayName("Enabling and disabling a provider registers and unregisters boundary participants")
+	@Test
+	void enablingAndDisablingAProviderRegistersAndUnregistersBoundaryParticipants(@TempDir Path tempDir) {
+		Injector injector = Guice.createInjector(new ProviderLifecycleTestModule(tempDir));
+		ProviderLifecycleController controller = injector.getInstance(ProviderLifecycleController.class);
+		InternalProvider provider = discoveredProvider();
+
+		assertTrue(injector.getInstance(Key.get(new TypeLiteral<Registry<ConnectionDisconnectedParticipant>>() {})).values().isEmpty());
+		assertTrue(injector.getInstance(Key.get(new TypeLiteral<Registry<AccountLifecycleParticipant>>() {})).values().isEmpty());
+
+		controller.loadProvider(provider);
+		controller.enableProvider(provider);
+
+		assertEquals(1, injector.getInstance(Key.get(new TypeLiteral<Registry<ConnectionDisconnectedParticipant>>() {})).values().size());
+		assertEquals(1, injector.getInstance(Key.get(new TypeLiteral<Registry<AccountLifecycleParticipant>>() {})).values().size());
+
+		controller.disableProvider(provider);
+
+		assertTrue(injector.getInstance(Key.get(new TypeLiteral<Registry<ConnectionDisconnectedParticipant>>() {})).values().isEmpty());
+		assertTrue(injector.getInstance(Key.get(new TypeLiteral<Registry<AccountLifecycleParticipant>>() {})).values().isEmpty());
+	}
+
+	@DisplayName("Boundary participants are unregistered even when provider disable fails")
+	@Test
+	void boundaryParticipantsAreUnregisteredWhenProviderDisableFails(@TempDir Path tempDir) {
+		Injector injector = Guice.createInjector(new ProviderLifecycleTestModule(tempDir));
+		ProviderLifecycleController controller = injector.getInstance(ProviderLifecycleController.class);
+		InternalProvider provider = discoveredProvider(ThrowingDisableProvider.class.getName());
+
+		controller.loadProvider(provider);
+		controller.enableProvider(provider);
+		controller.disableProvider(provider);
+
+		assertEquals(ProviderState.FAILED, provider.getState());
+		assertTrue(injector.getInstance(Key.get(new TypeLiteral<Registry<ConnectionDisconnectedParticipant>>() {})).values().isEmpty());
+		assertTrue(injector.getInstance(Key.get(new TypeLiteral<Registry<AccountLifecycleParticipant>>() {})).values().isEmpty());
+	}
+
 	private static InternalProvider discoveredProvider() {
+		return discoveredProvider(TestProvider.class.getName());
+	}
+
+	private static InternalProvider discoveredProvider(String mainClass) {
 		return InternalProvider.builder()
-				.path(Path.of("ignored.jar"))
-				.descriptor(descriptor())
-				.state(ProviderState.DISCOVERED)
-				.build();
+					.path(Path.of("ignored.jar"))
+					.descriptor(descriptor(mainClass))
+					.state(ProviderState.DISCOVERED)
+					.build();
 	}
 
 	private static ProviderDescriptor descriptor() {
+		return descriptor(TestProvider.class.getName());
+	}
+
+	private static ProviderDescriptor descriptor(String mainClass) {
 		ProviderDescriptor descriptor = new ProviderDescriptor();
 		descriptor.setId("test-provider");
 		descriptor.setName("Test Provider");
 		descriptor.setVersion("1.0.0");
-		descriptor.setMain(TestProvider.class.getName());
+		descriptor.setMain(mainClass);
 		descriptor.setSupportedPlatforms(List.of("any"));
 		descriptor.setLibraries(ProviderLibraries.empty());
 		return descriptor;
@@ -128,20 +179,21 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 			this.tempDir = tempDir;
 		}
 
-		@Override
-		protected void configure() {
-			bind(ProviderWorkingPathResolver.class).asEagerSingleton();
-			bind(ProviderInstanceFactory.class).asEagerSingleton();
-			bind(ProviderLifecycleController.class).asEagerSingleton();
+			@Override
+			protected void configure() {
+				bind(ProviderWorkingPathResolver.class).asEagerSingleton();
+				bind(ProviderInstanceFactory.class).asEagerSingleton();
+				bind(ProviderLifecycleController.class).asEagerSingleton();
 			bind(ProviderCapabilityCoordinator.class).to(DefaultProviderCapabilityCoordinator.class).asEagerSingleton();
 			bind(ProviderCapabilityRegistry.class).to(DefaultProviderCapabilityRegistry.class).asEagerSingleton();
 			bind(new TypeLiteral<Registry<Reloadable>>() {}).to(ReloadableRegistry.class).asEagerSingleton();
 			bind(ConflictService.class).toInstance(new NoopConflictService());
-			bind(EventManager.class).toInstance(new NoopEventManager());
-			bind(HandshakeStore.class).toInstance(new NoopHandshakeStore());
-			bind(SchemaBootstrap.class).toInstance(contributor -> {});
-			bind(ProviderResolverRegistry.class).toInstance(new ProviderResolverRegistry());
-		}
+				bind(EventManager.class).toInstance(new NoopEventManager());
+				bind(HandshakeStore.class).toInstance(new NoopHandshakeStore());
+				bind(SchemaBootstrap.class).toInstance(contributor -> {});
+				bind(ProviderResolverRegistry.class).toInstance(new ProviderResolverRegistry());
+				bind(DefaultScopedParticipantRegistry.class).asEagerSingleton();
+			}
 
 		@Provides
 		@Singleton
@@ -189,10 +241,10 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 			return new ProviderLibraryPlanner(new SharedLibraryConflictTracker());
 		}
 
-		@Provides
-		@Singleton
-        ProviderInjectorFactory provideInjectorFactory() {
-			return new ProviderInjectorFactory(null) {
+			@Provides
+			@Singleton
+	        ProviderInjectorFactory provideInjectorFactory() {
+				return new ProviderInjectorFactory(null) {
 				@Override
 				public Injector create(
 						Path workingPath,
@@ -200,12 +252,36 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 						IdenticaProvider probeProvider,
 						ProviderPlatformExtension probePlatformExtension,
 						@NotNull List<Module> capabilityModules
-				) {
-					return Guice.createInjector(new ProviderRootModule(), new ProviderRuntimeModule(workingPath, probeProvider));
-				}
-			};
+					) {
+						return Guice.createInjector(new ProviderRootModule(), new ProviderRuntimeModule(workingPath, probeProvider));
+					}
+				};
+			}
+
+		@Provides
+		@Singleton
+		Registry<ConnectionDisconnectedParticipant> provideConnectionDisconnectedParticipants(DefaultScopedParticipantRegistry registry) {
+			return registry.disconnected();
 		}
-	}
+
+		@Provides
+		@Singleton
+		Registry<AccountLifecycleParticipant> provideAccountLifecycleParticipants(DefaultScopedParticipantRegistry registry) {
+			return registry.accounts();
+		}
+
+		@Provides
+		@Singleton
+		Registry<ConnectionCompletedParticipant> provideConnectionCompletedParticipants(DefaultScopedParticipantRegistry registry) {
+			return registry.completed();
+		}
+
+		@Provides
+			@Singleton
+			Registry<ConnectionTerminatedParticipant> provideConnectionTerminatedParticipants(DefaultScopedParticipantRegistry registry) {
+				return registry.terminated();
+			}
+		}
 
 	private static final class ProviderRootModule extends AbstractModule {
 		@Override
@@ -258,6 +334,13 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 		}
 	}
 
+	public static class ThrowingDisableProvider extends TestProvider {
+		@Override
+		public void onDisable() {
+			throw new IllegalStateException("boom");
+		}
+	}
+
 	private static final class TestProviderModule extends AbstractModule {
 		@Override
 		protected void configure() {
@@ -267,6 +350,12 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 			Multibinder.newSetBinder(binder(), ProviderPlatformBinding.class)
 					.addBinding()
 					.to(ProbePlatformBinding.class);
+			Multibinder.newSetBinder(binder(), ConnectionDisconnectedParticipant.class)
+					.addBinding()
+					.to(ProbeConnectionDisconnectedParticipant.class);
+			Multibinder.newSetBinder(binder(), AccountLifecycleParticipant.class)
+					.addBinding()
+					.to(ProbeAccountLifecycleParticipant.class);
 		}
 	}
 
@@ -295,6 +384,18 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 
 		private static int unregisterCount() {
 			return UNREGISTER_COUNT.get();
+		}
+	}
+
+	private static final class ProbeConnectionDisconnectedParticipant implements ConnectionDisconnectedParticipant {
+		@Override
+		public void onConnectionDisconnected(@NotNull me.whereareiam.identica.event.connection.lifecycle.ConnectionDisconnectedEvent event) {
+		}
+	}
+
+	private static final class ProbeAccountLifecycleParticipant implements AccountLifecycleParticipant {
+		@Override
+		public void onAccountLifecycle(@NotNull me.whereareiam.identica.event.account.AccountLifecycleEvent event) {
 		}
 	}
 

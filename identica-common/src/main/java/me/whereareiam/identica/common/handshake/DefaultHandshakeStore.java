@@ -3,20 +3,22 @@ package me.whereareiam.identica.common.handshake;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
-import me.whereareiam.identica.replication.cache.ReplicatedCache;
-import me.whereareiam.identica.replication.ReplicationSystem;
-import me.whereareiam.identica.model.replication.ReplicationType;
-import me.whereareiam.identica.model.replication.ReplicationPage;
-import me.whereareiam.identica.event.EventListener;
+import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.account.AccountLifecycleEvent;
-import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.event.handshake.HandshakeInstructionEvent;
-import me.whereareiam.identica.handshake.policy.HandshakePolicy;
 import me.whereareiam.identica.handshake.HandshakeStore;
+import me.whereareiam.identica.handshake.policy.HandshakePolicy;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.auth.handshake.HandshakeInstruction;
 import me.whereareiam.identica.model.config.Replication;
+import me.whereareiam.identica.model.replication.ReplicationPage;
+import me.whereareiam.identica.model.replication.ReplicationType;
+import me.whereareiam.identica.replication.ReplicationSystem;
+import me.whereareiam.identica.replication.cache.ReplicatedCache;
+import me.whereareiam.identica.replication.store.base.AbstractAccountScopedStore;
+import me.whereareiam.identica.replication.store.participant.AccountLifecycleParticipant;
+import me.whereareiam.identica.replication.store.scope.AccountScopedStore;
 import me.whereareiam.identica.type.event.EventOrder;
 import org.jetbrains.annotations.NotNull;
 
@@ -27,7 +29,7 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 @Singleton
-public final class DefaultHandshakeStore implements HandshakeStore, EventListener {
+public final class DefaultHandshakeStore extends AbstractAccountScopedStore implements HandshakeStore, AccountScopedStore {
 	private static final String KEY_SEPARATOR = "|";
 	private final Set<HandshakePolicy> policies = new CopyOnWriteArraySet<>();
 	private final ReplicatedCache<HandshakeInstruction> cache;
@@ -35,14 +37,15 @@ public final class DefaultHandshakeStore implements HandshakeStore, EventListene
 
 	@Inject
 	public DefaultHandshakeStore(
-			ReplicationSystem replicationSystem,
-			Provider<Replication> replicationProvider,
-			EventManager eventManager
+			@NotNull ReplicationSystem replicationSystem,
+			@NotNull Provider<Replication> replicationProvider,
+			@NotNull EventManager eventManager,
+			@NotNull Registry<AccountLifecycleParticipant> participants
 	) {
+		super(replicationSystem, participants);
 		ReplicationType<HandshakeInstruction, HandshakeInstruction> type = ReplicationType.identity(HandshakeInstruction.class);
-		this.cache = replicationSystem.cache(resolveNamespace(replicationProvider)).replicated(type);
+		this.cache = replicatedCache(resolveNamespace(replicationProvider), type);
 		this.eventManager = eventManager;
-		eventManager.register(this);
 	}
 
 	@Override
@@ -95,11 +98,16 @@ public final class DefaultHandshakeStore implements HandshakeStore, EventListene
 		cache.invalidate(resolveKey(username, ip)).join();
 	}
 
-	@IdenticEvent(EventOrder.LOWEST)
+	@Override
 	public void onAccountLifecycle(@NotNull AccountLifecycleEvent event) {
 		String username = event.getIdentity().getUsername();
 		if (username.isBlank()) return;
 		invalidateInstruction(username, "");
+	}
+
+	@Override
+	public @NotNull EventOrder order() {
+		return EventOrder.LOWEST;
 	}
 
 	private Optional<HandshakeInstruction> readByKey(@NotNull String key) {

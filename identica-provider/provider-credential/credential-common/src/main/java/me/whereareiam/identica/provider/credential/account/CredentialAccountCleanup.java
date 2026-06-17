@@ -1,14 +1,12 @@
-package me.whereareiam.identica.provider.credential.listener;
+package me.whereareiam.identica.provider.credential.account;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.database.provider.ProviderLinkPersistenceService;
-import me.whereareiam.identica.event.EventListener;
-import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.account.AccountLifecycleEvent;
-import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.provider.credential.CredentialConstants;
-import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
+import me.whereareiam.identica.replication.store.participant.AccountLifecycleParticipant;
 import me.whereareiam.identica.type.event.EventOrder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -16,24 +14,19 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 @Singleton
-public class CredentialAccountClearListener implements EventListener {
+@RequiredArgsConstructor(onConstructor_ = @Inject)
+public class CredentialAccountCleanup implements AccountLifecycleParticipant {
 	private final CredentialAccountService credentialService;
 	private final ProviderLinkPersistenceService providerLinkPersistenceService;
 
-	@Inject
-	public CredentialAccountClearListener(
-			@NotNull CredentialAccountService credentialService,
-			@NotNull ProviderLinkPersistenceService providerLinkPersistenceService,
-			@NotNull EventManager eventManager
-	) {
-		this.credentialService = credentialService;
-		this.providerLinkPersistenceService = providerLinkPersistenceService;
-		eventManager.register(this);
-	}
-
-	@IdenticEvent(EventOrder.LOW)
+	@Override
 	public void onAccountLifecycle(@NotNull AccountLifecycleEvent event) {
 		deleteByUniqueId(event.getIdentity().getAccountUniqueId());
+	}
+
+	@Override
+	public @NotNull EventOrder order() {
+		return EventOrder.LOW;
 	}
 
 	private void deleteByUniqueId(@Nullable UUID uniqueId) {

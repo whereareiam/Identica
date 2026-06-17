@@ -14,7 +14,6 @@ import me.whereareiam.identica.provider.capability.recognition.eligibility.Recog
 import me.whereareiam.identica.provider.capability.recognition.eligibility.RecognitionEligibilityService;
 import me.whereareiam.identica.provider.capability.recognition.pipeline.RecognitionAppliedLifecycle;
 import me.whereareiam.identica.provider.capability.recognition.pipeline.RecognitionPipelineExtension;
-import me.whereareiam.identica.provider.capability.recognition.pipeline.RecognizedConnectionLifecycle;
 import me.whereareiam.identica.provider.capability.recognition.store.DefaultRecognizedConnectionStore;
 import me.whereareiam.identica.provider.capability.recognition.store.DefaultSessionRecognitionStore;
 import me.whereareiam.identica.provider.capability.recognition.store.RecognizedConnectionStore;
@@ -43,7 +42,6 @@ public class RecognitionGlobalModule extends AbstractModule {
 		// Pipeline
 		bind(RecognitionPipelineExtension.class).asEagerSingleton();
 		bind(RecognitionAppliedLifecycle.class).asEagerSingleton();
-		bind(RecognizedConnectionLifecycle.class).asEagerSingleton();
 	}
 
 	@Provides

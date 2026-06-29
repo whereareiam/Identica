@@ -4,6 +4,7 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.identica.database.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.engine.pipeline.scenario.shared.group.journey.JourneyState;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.pipeline.scenario.shared.ProviderSelectedEvent;
@@ -14,6 +15,7 @@ import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.config.Settings;
+import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.ScenarioTransitionItem;
 import me.whereareiam.identica.model.pipeline.authentication.AuthenticationOutcomeItem;
@@ -45,7 +47,9 @@ import me.whereareiam.identica.type.pipeline.journey.JourneyExecutionPolicy;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.step.StepContextRequirement;
 import me.whereareiam.identica.type.pipeline.journey.step.StepWaitReason;
+import me.whereareiam.identica.type.provider.ProviderCapability;
 import me.whereareiam.identica.type.provider.ProviderOrigin;
+import me.whereareiam.identica.util.UniqueIdGenerator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -62,6 +66,7 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 	private final Provider<Messages> messagesProvider;
 	private final ProviderManager providerManager;
 	private final PipelineStateStore pipelineStateStore;
+	private final ProviderLinkPersistenceService providerLinkPersistenceService;
 	private final RoutingCoordinator routingCoordinator;
 
 	@Override
@@ -179,6 +184,8 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 						if (failedProviderId != null && excludedProviders.add(failedProviderId)) {
 							recordExcludedProviders(pipelineState, context, pipelineType, excludedProviders);
 							JourneyExecutionPlan updatedPlan = removeExcludedProviders(plan, excludedProviders);
+							if (!hasProviderBlocks(updatedPlan))
+								return fallbackResult.result;
 							if (!updatedPlan.equals(plan) && !updatedPlan.blocks().isEmpty()) {
 								plan = updatedPlan;
 								pending = null;
@@ -266,6 +273,15 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 			return new FallbackOutcome(PipelineResult.failed(journeyNoCompletionMessage()), null);
 
 		return null;
+	}
+
+	private boolean hasProviderBlocks(@NotNull JourneyExecutionPlan plan) {
+		for (JourneyExecutionBlock block : plan.blocks()) {
+			if (block == null) continue;
+			if (block.providerId() != null && !block.providerId().isBlank())
+				return true;
+		}
+		return false;
 	}
 
 	private @Nullable PipelineResult executeBlock(
@@ -692,20 +708,50 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 	private void applyProviderContext(@NotNull ScenarioContext context, @NotNull String providerId) {
 		ProviderContext provider = context.getProvider();
 		String username = context.getUsername() != null ? context.getUsername() : "";
+		String resolvedProviderSubject = resolveProviderSubject(context, providerId);
 		if (provider == null) {
 			context.setProvider(ProviderContext.builder()
 					.providerId(providerId)
+					.providerSubject(resolvedProviderSubject)
 					.providerUsername(username)
 					.source(ProviderOrigin.AUTO)
 					.build());
 			return;
 		}
 
+		boolean providerChanged = provider.getProviderId() == null || !provider.getProviderId().equalsIgnoreCase(providerId);
 		provider.setProviderId(providerId);
+		if (providerChanged || provider.getProviderSubject() == null || provider.getProviderSubject().isBlank())
+			provider.setProviderSubject(resolvedProviderSubject);
 		if (provider.getProviderUsername().isBlank())
 			provider.setProviderUsername(username);
 		if (provider.getSource() == null)
 			provider.setSource(ProviderOrigin.AUTO);
+	}
+
+	private @Nullable String resolveProviderSubject(
+			@NotNull ScenarioContext context,
+			@NotNull String providerId
+	) {
+		UUID accountUniqueId = context.getAccountUniqueId();
+		String linkedSubject = accountUniqueId == null || providerId.isBlank()
+				? null
+				: providerLinkPersistenceService.findByUniqueIdAndProviderId(accountUniqueId, providerId)
+					.filter(link -> !link.getProviderSubject().isBlank())
+					.map(AccountProviderLink::getProviderSubject)
+					.orElse(null);
+		if (linkedSubject != null) return linkedSubject;
+
+		InternalProvider provider = resolveProvider(providerId);
+		if (provider == null || provider.getDescriptor() == null) return null;
+		if (!provider.getDescriptor().hasCapability(ProviderCapability.OFFLINE_MODE)) return null;
+
+		String username = context.getUsername();
+		if (username == null || username.isBlank())
+			return null;
+
+		UUID offlineUniqueId = UniqueIdGenerator.offlinePlayerUniqueId(username);
+		return offlineUniqueId != null ? offlineUniqueId.toString() : null;
 	}
 
 	private boolean matchesProvider(@Nullable String expected, @Nullable String actual) {

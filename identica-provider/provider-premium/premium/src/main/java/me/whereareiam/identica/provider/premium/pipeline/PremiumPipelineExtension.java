@@ -6,6 +6,7 @@ import me.whereareiam.identica.pipeline.extension.PipelineExtensionBuilder;
 import me.whereareiam.identica.provider.premium.step.*;
 import me.whereareiam.identica.type.pipeline.PipelineScope;
 import me.whereareiam.identica.type.pipeline.PipelineType;
+import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.StageType;
 import org.jetbrains.annotations.NotNull;
 
@@ -57,6 +58,7 @@ public class PremiumPipelineExtension implements PipelineExtension {
 				providerId,
 				StageType.PROVIDER,
 				PipelineType.AUTHENTICATION,
+				JourneyMode.SEAMLESS,
 				premiumRecognitionStep
 		);
 		builder.registerStep(
@@ -64,6 +66,23 @@ public class PremiumPipelineExtension implements PipelineExtension {
 				providerId,
 				StageType.PROVIDER,
 				PipelineType.AUTHENTICATION,
+				JourneyMode.INTERACTIVE,
+				premiumRecognitionStep
+		);
+		builder.registerStep(
+				PipelineScope.AUTHENTICATION,
+				providerId,
+				StageType.PROVIDER,
+				PipelineType.AUTHENTICATION,
+				JourneyMode.SEAMLESS,
+				premiumVerificationStep
+		);
+		builder.registerStep(
+				PipelineScope.AUTHENTICATION,
+				providerId,
+				StageType.PROVIDER,
+				PipelineType.AUTHENTICATION,
+				JourneyMode.INTERACTIVE,
 				premiumVerificationStep
 		);
 

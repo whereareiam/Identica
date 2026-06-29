@@ -1,5 +1,6 @@
 package me.whereareiam.identica.engine.pipeline.scenario.shared.group.journey.phase;
 
+import me.whereareiam.identica.database.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.engine.pipeline.scenario.shared.group.journey.JourneyState;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.identity.IdentityService;
@@ -56,6 +57,7 @@ class ExecutePlanPhaseTest {
 		EventManager eventManager = mock(EventManager.class);
 		ProviderManager providerManager = mock(ProviderManager.class);
 		PipelineStateStore pipelineStateStore = mock(PipelineStateStore.class);
+		ProviderLinkPersistenceService providerLinkPersistenceService = mock(ProviderLinkPersistenceService.class);
 		RoutingCoordinator routingCoordinator = mock(RoutingCoordinator.class);
 		when(pipelineStateStore.find(any(me.whereareiam.identica.model.pipeline.state.PipelineStateReference.class)))
 				.thenReturn(Optional.empty());
@@ -67,6 +69,7 @@ class ExecutePlanPhaseTest {
                 Messages::new,
 				providerManager,
 				pipelineStateStore,
+				providerLinkPersistenceService,
 				routingCoordinator
 		);
 
@@ -155,6 +158,7 @@ class ExecutePlanPhaseTest {
 		EventManager eventManager = mock(EventManager.class);
 		ProviderManager providerManager = mock(ProviderManager.class);
 		PipelineStateStore pipelineStateStore = mock(PipelineStateStore.class);
+		ProviderLinkPersistenceService providerLinkPersistenceService = mock(ProviderLinkPersistenceService.class);
 		RoutingCoordinator routingCoordinator = mock(RoutingCoordinator.class);
 		when(pipelineStateStore.find(any(PipelineStateReference.class))).thenReturn(Optional.empty());
 
@@ -165,6 +169,7 @@ class ExecutePlanPhaseTest {
 				Messages::new,
 				providerManager,
 				pipelineStateStore,
+				providerLinkPersistenceService,
 				routingCoordinator
 		);
 
@@ -219,6 +224,7 @@ class ExecutePlanPhaseTest {
 		EventManager eventManager = mock(EventManager.class);
 		ProviderManager providerManager = mock(ProviderManager.class);
 		PipelineStateStore pipelineStateStore = mock(PipelineStateStore.class);
+		ProviderLinkPersistenceService providerLinkPersistenceService = mock(ProviderLinkPersistenceService.class);
 		RoutingCoordinator routingCoordinator = mock(RoutingCoordinator.class);
 		when(pipelineStateStore.find(any(PipelineStateReference.class)))
 				.thenReturn(Optional.empty());
@@ -231,6 +237,7 @@ class ExecutePlanPhaseTest {
 				Messages::new,
 				providerManager,
 				pipelineStateStore,
+				providerLinkPersistenceService,
 				routingCoordinator
 		);
 

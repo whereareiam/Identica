@@ -25,6 +25,6 @@ public class CredentialSettingsProvider extends ConfigProvider<CredentialSetting
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(CredentialSettingsDefaults.class), CredentialSettings.class);
+		return Config.configured().withDefaults(CredentialSettingsDefaults.class);
 	}
 }

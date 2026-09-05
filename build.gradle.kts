@@ -19,8 +19,7 @@ extensions.configure<AttacheExtension>("attache") {
     transitive.set(true)
 
     mavenLocal()
-    repository("https://maven.whereareiam.me/release")
-    repository("https://maven.whereareiam.me/development")
+    repository("https://registry.whereareiam.me/maven/packages")
 }
 
 defaultTasks("pluginJars")

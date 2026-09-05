@@ -25,6 +25,6 @@ public class PremiumCommandsProvider extends ConfigProvider<PremiumCommands> {
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(PremiumCommandsDefaults.class), PremiumCommands.class);
+		return Config.configured().withDefaults(PremiumCommandsDefaults.class);
 	}
 }

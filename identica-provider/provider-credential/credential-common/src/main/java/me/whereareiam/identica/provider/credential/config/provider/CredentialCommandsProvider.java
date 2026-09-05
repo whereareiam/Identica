@@ -25,6 +25,6 @@ public class CredentialCommandsProvider extends ConfigProvider<CredentialCommand
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(CredentialCommandsDefaults.class), CredentialCommands.class);
+		return Config.configured().withDefaults(CredentialCommandsDefaults.class);
 	}
 }

@@ -25,6 +25,6 @@ public class ProvidersProvider extends ConfigProvider<Providers> {
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(ProvidersDefaults.class), Providers.class);
+		return Config.configured().withDefaults(ProvidersDefaults.class);
 	}
 }

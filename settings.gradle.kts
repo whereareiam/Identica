@@ -8,8 +8,7 @@ pluginManagement {
         mavenLocal()
         gradlePluginPortal()
         mavenCentral()
-        maven("https://maven.whereareiam.me/release")
-        maven("https://maven.whereareiam.me/development")
+        maven("https://registry.whereareiam.me/maven/packages")
     }
 }
 
@@ -19,8 +18,7 @@ dependencyResolutionManagement {
     repositories {
         mavenLocal()
         mavenCentral()
-        maven("https://maven.whereareiam.me/release")
-        maven("https://maven.whereareiam.me/development")
+        maven("https://registry.whereareiam.me/maven/packages")
         maven("https://repo.papermc.io/repository/maven-public/")
         maven("https://oss.sonatype.org/content/repositories/snapshots/")
     }

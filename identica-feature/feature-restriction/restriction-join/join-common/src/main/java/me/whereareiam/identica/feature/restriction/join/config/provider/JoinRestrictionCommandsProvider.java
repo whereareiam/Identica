@@ -25,6 +25,6 @@ public class JoinRestrictionCommandsProvider extends ConfigProvider<JoinRestrict
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(JoinRestrictionCommandsDefaults.class), JoinRestrictionCommands.class);
+		return Config.configured().withDefaults(JoinRestrictionCommandsDefaults.class);
 	}
 }

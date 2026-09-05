@@ -25,6 +25,6 @@ public class MessagesProvider extends ConfigProvider<Messages> {
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(MessagesDefaults.class), Messages.class);
+		return Config.configured().withDefaults(MessagesDefaults.class);
 	}
 }

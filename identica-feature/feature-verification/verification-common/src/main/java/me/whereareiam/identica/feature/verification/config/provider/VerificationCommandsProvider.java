@@ -25,6 +25,6 @@ public class VerificationCommandsProvider extends ConfigProvider<VerificationCom
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(VerificationCommandsDefaults.class), VerificationCommands.class);
+		return Config.configured().withDefaults(VerificationCommandsDefaults.class);
 	}
 }

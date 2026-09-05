@@ -25,6 +25,6 @@ public class SettingsProvider extends ConfigProvider<Settings> {
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(SettingsDefaults.class), Settings.class);
+		return Config.configured().withDefaults(SettingsDefaults.class);
 	}
 }

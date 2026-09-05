@@ -25,6 +25,6 @@ public class VerificationSettingsProvider extends ConfigProvider<VerificationSet
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(VerificationDefaults.class), VerificationSettings.class);
+		return Config.configured().withDefaults(VerificationDefaults.class);
 	}
 }

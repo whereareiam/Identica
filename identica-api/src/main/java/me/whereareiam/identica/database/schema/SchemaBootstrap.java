@@ -7,7 +7,7 @@ import org.jetbrains.annotations.NotNull;
  * Identica database.
  *
  * <p>Providers use this bootstrap service during their load phase to register
- * additional entity packages and migration scopes without hardcoding those
+ * additional entity packages and schema options without hardcoding those
  * details in core database startup.
  */
 public interface SchemaBootstrap {

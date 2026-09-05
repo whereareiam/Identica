@@ -25,6 +25,6 @@ public class JoinRestrictionMessagesProvider extends ConfigProvider<JoinRestrict
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(JoinRestrictionMessagesDefaults.class), JoinRestrictionMessages.class);
+		return Config.configured().withDefaults(JoinRestrictionMessagesDefaults.class);
 	}
 }

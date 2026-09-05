@@ -25,9 +25,6 @@ public class AuthoritativeUsernameMessagesProvider extends ConfigProvider<Author
 
 	@Override
 	protected Configura configura() {
-		return versioned(
-				Config.configured().withDefaults(AuthoritativeUsernameMessagesDefaults.class),
-				AuthoritativeUsernameMessages.class
-		);
+		return Config.configured().withDefaults(AuthoritativeUsernameMessagesDefaults.class);
 	}
 }

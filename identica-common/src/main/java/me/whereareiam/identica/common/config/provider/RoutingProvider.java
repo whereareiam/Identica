@@ -25,6 +25,6 @@ public class RoutingProvider extends ConfigProvider<Routing> {
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(RoutingDefaults.class), Routing.class);
+		return Config.configured().withDefaults(RoutingDefaults.class);
 	}
 }

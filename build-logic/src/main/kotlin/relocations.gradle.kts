@@ -14,6 +14,7 @@ tasks.withType<ShadowJar>().configureEach {
     relocate("com.google.common", "me.whereareiam.identica.library.guava")
     relocate("org.bstats", "me.whereareiam.identica.library.bstats")
     relocate("org.jdbi", "me.whereareiam.identica.library.jdbi")
+    relocate("me.whereareiam.strata", "me.whereareiam.identica.library.strata")
     relocate("me.whereareiam.dialectica", "me.whereareiam.identica.library.dialectica")
     relocate("com.fasterxml.jackson", "me.whereareiam.identica.library.jackson")
     relocate("org.yaml.snakeyaml", "me.whereareiam.identica.library.snakeyaml")

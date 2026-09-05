@@ -25,6 +25,6 @@ public class RestrictionSettingsProvider extends ConfigProvider<RestrictionSetti
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(RestrictionSettingsDefaults.class), RestrictionSettings.class);
+		return Config.configured().withDefaults(RestrictionSettingsDefaults.class);
 	}
 }

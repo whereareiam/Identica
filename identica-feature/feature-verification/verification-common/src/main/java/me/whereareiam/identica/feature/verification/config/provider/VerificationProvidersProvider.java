@@ -29,11 +29,11 @@ public class VerificationProvidersProvider extends ConfigProvider<Providers> {
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withFeature(ExtensionFeature.rule(ConfigDocumentRule.when(
+		return Config.configured().withFeature(ExtensionFeature.rule(ConfigDocumentRule.when(
 				Providers.ProviderEntry.Features.class,
 				VerificationProviders.class,
 				VerificationProvidersProvider::isVerificationFeaturesNode
-		))), Providers.class);
+		)));
 	}
 
 	private static boolean isVerificationFeaturesNode(@NotNull DocumentTypeContext context) {

@@ -25,6 +25,6 @@ public class SentinelSettingsProvider extends ConfigProvider<SentinelSettings> {
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(SentinelSettingsDefaults.class), SentinelSettings.class);
+		return Config.configured().withDefaults(SentinelSettingsDefaults.class);
 	}
 }

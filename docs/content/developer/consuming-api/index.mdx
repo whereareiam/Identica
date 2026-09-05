@@ -17,10 +17,7 @@ Identica itself provides the API at runtime.
 
 ## Repositories
 
-Identica publishes API artifacts to these Maven repositories:
-
-- Release repository: [https://maven.whereareiam.me/release](https://maven.whereareiam.me/release)
-- Development repository: [https://maven.whereareiam.me/development](https://maven.whereareiam.me/development)
+Identica publishes release and development artifacts to the [public Maven registry](https://registry.whereareiam.me/maven/packages).
 
 ## Adding the dependency
 
@@ -28,7 +25,7 @@ Identica publishes API artifacts to these Maven repositories:
   <Tab value="Gradle Kotlin DSL">
 ```kotlin
 repositories {
-    maven("https://maven.whereareiam.me/release")
+    maven("https://registry.whereareiam.me/maven/packages")
 }
 
 dependencies {
@@ -39,7 +36,7 @@ dependencies {
   <Tab value="Gradle Groovy DSL">
 ```groovy
 repositories {
-    maven { url = uri("https://maven.whereareiam.me/release") }
+    maven { url = uri("https://registry.whereareiam.me/maven/packages") }
 }
 
 dependencies {
@@ -52,7 +49,7 @@ dependencies {
 <repositories>
   <repository>
     <id>identica-release</id>
-    <url>https://maven.whereareiam.me/release</url>
+    <url>https://registry.whereareiam.me/maven/packages</url>
   </repository>
 </repositories>
 
@@ -68,7 +65,7 @@ dependencies {
   </Tab>
 </Tabs>
 
-If you intentionally target development builds instead of releases, switch the repository URL to the development repository and use a development version.
+For development builds, use a development version with the same repository.
 
 ## Versioning semantics
 
@@ -79,8 +76,8 @@ Identica currently publishes two main API version streams:
 
 In practice:
 
-- release versions are published to the release repository from tagged releases
-- development versions are published to the development repository from the `dev` branch
+- release versions are published from tagged releases
+- development versions are published from the `dev` branch
 - development versions use the format `dev-<short-commit-sha>`
 
 If you are writing a normal addon plugin, prefer release versions.
@@ -88,18 +85,7 @@ Use development versions only when you intentionally depend on unreleased API ch
 
 ## Javadocs
 
-Use these links to browse the generated API documentation for the latest published release and the latest published development build:
-
-- latest release: <MavenVersionLink
-    metadataUrl="https://maven.whereareiam.me/release/me/whereareiam/identica/api/maven-metadata.xml"
-    hrefTemplate="https://maven.whereareiam.me/javadoc/release/me/whereareiam/identica/api/{version}"
-    selector="release"
-  />
-- latest development build: <MavenVersionLink
-    metadataUrl="https://maven.whereareiam.me/development/me/whereareiam/identica/api/maven-metadata.xml"
-    hrefTemplate="https://maven.whereareiam.me/javadoc/development/me/whereareiam/identica/api/{version}"
-    selector="latest"
-  />
+Download the matching `javadoc` artifact from the Maven registry or let your IDE resolve it alongside the API dependency.
 
 ## Initialization and lifecycle
 

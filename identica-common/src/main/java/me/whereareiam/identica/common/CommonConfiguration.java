@@ -29,10 +29,16 @@ import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.logging.BannerContributor;
 import me.whereareiam.identica.util.EventUtil;
 import me.whereareiam.keystone.serializer.SerializerEngine;
+import me.whereareiam.identica.type.PluginType;
+import me.whereareiam.strata.common.Strata;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 @RequiredArgsConstructor
 public class CommonConfiguration extends AbstractModule {
@@ -81,6 +87,12 @@ public class CommonConfiguration extends AbstractModule {
 	@Inject
 	void initializeConfigura(Configura configura) {
 		Config.setConfigured(configura);
+	}
+
+	@Provides
+	@Singleton
+	@NotNull Strata provideStrata() {
+		return new Strata(List.of(), Map.of("platform", PluginType.getExactType().name().toLowerCase(Locale.ROOT)));
 	}
 
 	@Provides

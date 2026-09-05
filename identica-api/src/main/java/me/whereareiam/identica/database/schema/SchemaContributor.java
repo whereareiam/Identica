@@ -6,7 +6,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Contributes provider-owned Dialectica schema configuration.
  *
- * <p>Implementations may register entity packages, migration scopes, and other
+ * <p>Implementations may register entity packages and other
  * schema-manager options for a provider-specific persistence slice.
  *
  * <p>Example:
@@ -15,9 +15,7 @@ import org.jetbrains.annotations.NotNull;
  *     @Override
  *     public void contribute(@NotNull SchemaManager schemaManager) {
  *         schemaManager
- *                 .scanPackages("me.whereareiam.identica.provider.credential.database.entity")
- *                 .registerMigrationScope("credential-accounts", scope -> scope
- *                         .scanPackages("me.whereareiam.identica.provider.credential.database.migration"));
+ *                 .scanPackages("me.whereareiam.identica.provider.credential.database.entity");
  *     }
  * }
  * }</pre>

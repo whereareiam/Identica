@@ -24,6 +24,14 @@ import java.util.UUID;
  */
 public interface VerificationService {
 	/**
+	 * Checks whether the provider supports verification and its effective policy enables it.
+	 *
+	 * @param providerId provider from the current authenticated session
+	 * @return whether verification applies to this provider
+	 */
+	boolean isEnabledForProvider(@NotNull String providerId);
+
+	/**
 	 * Resolves the provider verification requirement.
 	 *
 	 * @param request verification resolution request

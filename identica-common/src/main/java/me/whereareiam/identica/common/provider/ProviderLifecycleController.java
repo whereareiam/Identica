@@ -29,25 +29,28 @@ import me.whereareiam.identica.model.provider.dependency.ProviderLibraries;
 import me.whereareiam.identica.provider.IdenticaProvider;
 import me.whereareiam.identica.provider.ProviderPlatformBinding;
 import me.whereareiam.identica.provider.ProviderPlatformExtension;
-import me.whereareiam.identica.provider.capability.ProviderCapabilityCoordinator;
-import me.whereareiam.identica.provider.capability.bootstrap.ProviderCapabilityBootstrap;
+import me.whereareiam.identica.feature.FeatureRegistry;
+import me.whereareiam.identica.feature.FeatureProviderContext;
+import me.whereareiam.identica.feature.ProviderFeatureContribution;
+import me.whereareiam.identica.type.provider.ProviderTrait;
 import me.whereareiam.identica.provider.eligibility.ProviderEligibilityResolver;
 import me.whereareiam.identica.provider.migration.ProviderMigrationPrecheck;
 import me.whereareiam.identica.provider.resolver.ProviderResolver;
 import me.whereareiam.identica.provider.subject.SubjectResolver;
-import me.whereareiam.identica.type.provider.ProviderFeature;
 import me.whereareiam.identica.type.provider.ProviderState;
 
 import java.net.URLClassLoader;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class ProviderLifecycleController {
+	private static final TypeLiteral<Set<ProviderFeatureContribution>> FEATURE_CONTRIBUTIONS = new TypeLiteral<>() {};
 	private static final TypeLiteral<Set<HandshakePolicy>> HANDSHAKE_POLICIES = new TypeLiteral<>() {};
 	private static final TypeLiteral<Set<ProviderEligibilityResolver>> ELIGIBILITY_RESOLVERS = new TypeLiteral<>() {};
 	private static final TypeLiteral<Set<SubjectResolver>> SUBJECT_RESOLVERS = new TypeLiteral<>() {};
@@ -63,7 +66,7 @@ public class ProviderLifecycleController {
 	private final ProviderInstanceFactory instanceFactory;
 	private final ProviderPlatformExtensionResolver platformExtensionResolver;
 	private final ProviderResolverRegistry resolverRegistry;
-	private final ProviderCapabilityCoordinator capabilityCoordinator;
+	private final FeatureRegistry features;
 	private final ConflictService conflictService;
 	private final SchemaBootstrap schemaBootstrap;
 	private final EventManager eventManager;
@@ -92,45 +95,46 @@ public class ProviderLifecycleController {
 			}
 
 			IdenticaProvider probeProvider = instanceFactory.instantiateProvider(providerClass);
-			if (probeProvider != null) {
-				probeProvider.setDescriptor(descriptor);
-				probeProvider.setWorkingPath(workingPath);
-			}
+			if (probeProvider == null)
+				throw new IllegalStateException("Provider " + descriptor.getId()
+						+ " must expose a no-argument constructor for dependency declarations");
+			probeProvider.setDescriptor(descriptor);
+			probeProvider.setWorkingPath(workingPath);
 
-			ProviderLibraries libraries = probeProvider != null
-					? probeProvider.libraries()
-					: ProviderLibraries.empty();
+			ProviderLibraries libraries = probeProvider.libraries();
 
 			ProviderLibraryPlanner.ProviderLibraryPlan libraryPlan = providerLibraryPlanner.plan(libraries);
-			providerLibraryInstaller.installSharedCapabilityApis(libraryPlan.sharedCapabilityApis());
+			providerLibraryInstaller.installSharedLibraries(libraryPlan.sharedLibraries());
 			providerLibraryInstaller.installProviderRuntime(descriptor, libraryPlan.providerRuntimeLibraries(), classLoader);
 			Class<? extends ProviderPlatformExtension> platformExtensionClass = platformExtensionResolver.resolve(probeProvider);
 			ProviderPlatformExtension probePlatformExtension = platformExtensionClass != null
 					? instanceFactory.instantiatePlatformExtension(platformExtensionClass)
 					: null;
 
-			List<ProviderCapabilityBootstrap> capabilityBootstraps = capabilityCoordinator.resolveBootstraps(
-					descriptor,
-					probeProvider != null ? probeProvider.declaredCapabilities() : List.of()
-			);
-			descriptor.setDeclaredFeatureIds(probeProvider != null
-					? probeProvider.declaredFeatures().stream()
-							.filter(feature -> feature != null && !feature.getId().isBlank())
-							.map(ProviderFeature::getId)
-							.map(id -> id.trim().toLowerCase(Locale.ROOT))
-							.distinct()
-							.toList()
-					: List.of());
+			descriptor.setTraits(Set.copyOf(probeProvider.traits()));
+			Set<String> participatingFeatures = new LinkedHashSet<>();
+			for (String featureId : probeProvider.supportedFeatures()) {
+				String normalized = normalizeFeatureId(featureId);
+				if (!features.isAvailable(normalized))
+					throw new IllegalStateException("Provider " + descriptor.getId() + " declares unknown feature: " + normalized);
+				participatingFeatures.add(normalized);
+			}
+
+			descriptor.setSupportedFeatureIds(List.copyOf(participatingFeatures));
 			internal.setWorkingPath(workingPath);
-			capabilityCoordinator.installGlobalCapabilities(internal, capabilityBootstraps);
-			List<Module> capabilityModules = capabilityCoordinator.resolveLocalModules(internal, capabilityBootstraps);
+			List<Module> featureModules = features.providerModules(FeatureProviderContext.builder()
+					.providerId(descriptor.getId())
+					.workingPath(workingPath)
+					.descriptor(descriptor)
+					.features(features)
+					.build());
 
 			Injector providerInjector = injectorFactory.create(
 					workingPath,
 					descriptor,
 					probeProvider,
 					probePlatformExtension,
-					capabilityModules
+					featureModules
 			);
 
 			applySchemaContributors(providerInjector);
@@ -161,11 +165,7 @@ public class ProviderLifecycleController {
 			internal.setClassLoader(classLoader);
 			prewarmProviderConfigs(providerInjector, internal);
 			storeBindings(internal, providerInjector);
-			capabilityCoordinator.validateCapabilityContributions(
-					descriptor,
-					capabilityBootstraps,
-					internal.getCapabilityContributions() != null ? internal.getCapabilityContributions() : Set.of()
-			);
+
 			internal.setState(ProviderState.LOADED);
 			if (checkRequirements(internal))
 				return;
@@ -272,7 +272,11 @@ public class ProviderLifecycleController {
 		internal.setEligibilityResolvers(copySet(resolveSet(injector, ELIGIBILITY_RESOLVERS)));
 		internal.setSubjectResolvers(copySet(resolveSet(injector, SUBJECT_RESOLVERS)));
 		internal.setMigrationPrechecks(copySet(resolveSet(injector, MIGRATION_PRECHECKS)));
-		internal.setCapabilityContributions(copySet(capabilityCoordinator.resolveCapabilityContributions(injector)));
+		Set<ProviderFeatureContribution> contributions = copySet(resolveSet(injector, FEATURE_CONTRIBUTIONS));
+		for (ProviderFeatureContribution contribution : contributions)
+			if (!internal.getDescriptor().supportsFeature(contribution.featureId()))
+				throw new IllegalStateException("Provider contributed to an unavailable feature: " + contribution.featureId());
+		internal.setFeatureContributions(contributions);
 	}
 
 	private void registerProviderBindings(InternalProvider internal) {
@@ -351,6 +355,12 @@ public class ProviderLifecycleController {
 
 		if (!prepared.isEmpty())
 			Logger.info("Prepared provider configs for %s: %s", safeId(internal), String.join(", ", prepared));
+	}
+
+	private String normalizeFeatureId(String featureId) {
+		String normalized = featureId.trim().toLowerCase(Locale.ROOT);
+		if (normalized.isBlank()) throw new IllegalArgumentException("Provider feature id cannot be blank");
+		return normalized;
 	}
 
 	private String safeId(InternalProvider internal) {

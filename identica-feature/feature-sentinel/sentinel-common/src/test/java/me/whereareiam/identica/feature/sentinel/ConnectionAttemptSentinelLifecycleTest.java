@@ -3,9 +3,9 @@ package me.whereareiam.identica.feature.sentinel;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.connection.attempt.ConnectionResumeAttemptEvent;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
-import me.whereareiam.identica.model.sentinel.SentinelDecision;
-import me.whereareiam.identica.sentinel.SentinelService;
-import me.whereareiam.identica.type.sentinel.SentinelScope;
+import me.whereareiam.identica.feature.sentinel.model.SentinelDecision;
+import me.whereareiam.identica.feature.sentinel.SentinelService;
+import me.whereareiam.identica.feature.sentinel.type.SentinelScope;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -29,7 +29,7 @@ class ConnectionAttemptSentinelLifecycleTest {
 		when(sentinelService.evaluate(eq(SentinelScope.RESUME), any()))
 				.thenReturn(Optional.of(SentinelDecision.limited(null, 30, "blocked")));
 
-		ConnectionAttemptSentinelLifecycle lifecycle = new ConnectionAttemptSentinelLifecycle(sentinelService, eventManager);
+		ConnectionAttemptSentinelLifecycle lifecycle = new ConnectionAttemptSentinelLifecycle(sentinelService, mock(me.whereareiam.identica.pipeline.state.PipelineStateStore.class));
 		ConnectionResumeAttemptEvent event = new ConnectionResumeAttemptEvent(
 				UUID.randomUUID(),
 				UUID.randomUUID(),

@@ -1,10 +1,13 @@
 package me.whereareiam.identica.provider.credential.completion;
 
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import com.google.inject.Provider;
+import me.whereareiam.identica.feature.FeatureRegistry;
+import me.whereareiam.identica.feature.recognition.store.RecognizedConnectionStore;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.pipeline.completion.CompletionContext;
-import me.whereareiam.identica.provider.capability.recognition.store.RecognizedConnectionStore;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.config.defaults.CredentialMessagesDefaults;
 import me.whereareiam.identica.type.pipeline.PipelineType;
@@ -80,6 +83,25 @@ class CredentialCompletionStepTest {
 		assertFalse(lines.stream().anyMatch(line -> line.contains("Welcome back")));
 	}
 
+	@Test
+	void authenticationCompletesWithoutRecognitionBindings() {
+		CredentialMessages messages = new CredentialMessagesDefaults().supply(new CredentialMessages());
+		Injector injector = Guice.createInjector();
+		InspectableCredentialCompletionStep step = new InspectableCredentialCompletionStep(() -> messages, features(false), injector);
+
+		assertEquals(messages.getCompletion().getAuthentication().getBody(), step.lines(context(false, PipelineType.AUTHENTICATION)));
+	}
+
+	private static FeatureRegistry features(boolean installed) {
+		FeatureRegistry features = mock(FeatureRegistry.class);
+		when(features.isEnabled("credential", "recognition")).thenReturn(installed);
+		return features;
+	}
+
+	private static Injector injector(RecognizedConnectionStore store) {
+		return Guice.createInjector(binder -> binder.bind(RecognizedConnectionStore.class).toInstance(store));
+	}
+
 	private CompletionContext context(boolean recognized, PipelineType pipelineType) {
 		TestIdentity identity = new TestIdentity();
 		return CompletionContext.builder()
@@ -106,7 +128,11 @@ class CredentialCompletionStepTest {
 				Provider<CredentialMessages> messagesProvider,
 				RecognizedConnectionStore recognizedConnectionStore
 		) {
-			super(messagesProvider, recognizedConnectionStore);
+			super(messagesProvider, features(true), injector(recognizedConnectionStore));
+		}
+
+		private InspectableCredentialCompletionStep(Provider<CredentialMessages> messagesProvider, FeatureRegistry features, Injector injector) {
+			super(messagesProvider, features, injector);
 		}
 
 		private List<String> lines(CompletionContext context) {

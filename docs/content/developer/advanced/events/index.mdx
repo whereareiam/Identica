@@ -66,7 +66,7 @@ The current API exposes event groups such as:
 - routing events
 - session events
 - provider events
-- verification events
+- feature-owned events such as verification enrollment (when that feature is selected)
 - account and identity events
 
 That means addon plugins can react at different levels, from high-level scenario start events down to specific verification or routing decisions.
@@ -76,12 +76,12 @@ That means addon plugins can react at different levels, from high-level scenario
 Some events are only informational.
 Others can be modified or cancelled.
 
-For example, `VerificationEnrollEvent` is cancellable and lets listeners rewrite the provider or method before enrollment begins.
+For example, `VerificationEnrollEvent` is cancellable and lets listeners rewrite the provider or method before enrollment begins. It belongs to the verification feature API. Depend on that API at compile time and register the listener after Identica initializes. Verification behavior follows the effective settings of the provider involved.
 
 ```java
 import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.base.IdenticEvent;
-import me.whereareiam.identica.event.verification.enroll.VerificationEnrollEvent;
+import me.whereareiam.identica.feature.verification.event.enroll.VerificationEnrollEvent;
 
 public final class ExampleVerificationListener implements EventListener {
     @IdenticEvent

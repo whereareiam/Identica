@@ -3,7 +3,7 @@ package me.whereareiam.identica.feature.sentinel.model;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
-import me.whereareiam.identica.sentinel.SentinelDefinition;
+import me.whereareiam.identica.feature.sentinel.SentinelDefinition;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

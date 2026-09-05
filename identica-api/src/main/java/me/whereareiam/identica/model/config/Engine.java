@@ -96,10 +96,6 @@ public class Engine extends ConfigDocument {
 		 */
 		private boolean allowResume;
 		/**
-		 * Whether resumed auth/registration flows may bypass active provider restrictions.
-		 */
-		private boolean allowProviderRestrictionResumeBypass;
-		/**
 		 * Preferred journey mode for this scenario.
 		 */
 		private @NotNull JourneyMode journeyMode;

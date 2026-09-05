@@ -20,7 +20,7 @@ When changing behavior:
 - `identica-api`
   Public API, contracts, events, shared models, and extension points.
 - `identica-common`
-  Shared runtime behavior, configuration defaults, provider coordination, routing, migration, replication integration, verification flows, and general domain logic.
+  Shared runtime behavior, configuration defaults, provider coordination, routing, migration, replication integration, compiled feature lifecycle coordination, and general domain logic.
 - `identica-engine`
   Pipeline, step, prepare, and completion orchestration.
 - `identica-adapter-*`
@@ -29,6 +29,10 @@ When changing behavior:
   Velocity and BungeeCord/Waterfall platform wiring, APIs, listeners, adapters, and bootstraps.
 - `identica-provider/*`
   Provider-specific behavior, including the official credential and premium providers.
+- `identica-feature/*`
+  Compiled features: verification, recognition, sentinel, restriction, and restriction-join. Feature API, implementation, persistence, commands, and pipeline contributions stay in their owning feature modules; join restriction is nested under `feature-restriction/restriction-join`.
+- `identica-trait/*`
+  Shared mandatory behavior driven by provider traits, including authoritative usernames. These modules are compiled into Identica and are not feature toggles.
 - `identica-integration/*`
   External integrations such as bStats.
 - `build-logic/`
@@ -46,6 +50,8 @@ When changing behavior:
 - For persistence, replication, or command infrastructure, start in the relevant `identica-adapter-*` module.
 - For proxy-specific behavior, bootstrap flow, or listeners, start in `identica-platform/*`.
 - For credential-specific or premium-specific behavior, start in `identica-provider/*`.
+- For shared behavior driven by provider identity guarantees, start in `identica-trait/*`. Trait declarations remain in `identica-api`.
+- For optional behavior, feature-specific APIs, settings, persistence, or pipeline contributions, start in `identica-feature/*`. Core owns the `IdenticaFeature` contract and startup lifecycle; providers declare identity traits and supported feature integrations.
 - For build behavior or packaging conventions, check `build-logic/`.
 - For user-visible behavior changes, check the matching pages under `docs/content/`.
 

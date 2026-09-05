@@ -1,0 +1,22 @@
+Provider overrides are nested inside a provider entry under `features`.
+Add the subtree documented by the feature when you need provider-specific behavior. Recognition and join-restriction override blocks are not created merely because a provider declares an integration.
+
+For shared settings that support overrides, omitted fields inherit the shared values. See each feature's reference for fields with different defaults or participation rules, including verification.
+
+For example:
+
+```yaml
+providers:
+  - id: "credential"
+    features:
+      recognition:
+        enabled: true
+      restriction:
+        join:
+          enabled: true
+          allow:
+            - linked
+            - recognized
+```
+
+These overrides apply to features the provider declares in `supportedFeatures()`. All implementations are compiled into Identica.

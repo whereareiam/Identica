@@ -31,7 +31,6 @@ public class EngineDefaults implements DefaultsProvider<Engine> {
 		scenario.setPipelineTtl(Duration.ofMinutes(5));
 		scenario.setAdvanceLockTtl(Duration.ofSeconds(5));
 		scenario.setAllowResume(true);
-		scenario.setAllowProviderRestrictionResumeBypass(false);
 		scenario.setPipelineConcurrencyPolicy(PipelineConcurrencyPolicy.DENY_NEW);
 		scenario.setJourneyMode(JourneyMode.SEAMLESS);
 		scenario.setJourneyPolicy(JourneyPolicy.PREFER);
@@ -43,7 +42,6 @@ public class EngineDefaults implements DefaultsProvider<Engine> {
 		scenario.setPipelineTtl(Duration.ofMinutes(5));
 		scenario.setAdvanceLockTtl(Duration.ofSeconds(5));
 		scenario.setAllowResume(true);
-		scenario.setAllowProviderRestrictionResumeBypass(false);
 		scenario.setPipelineConcurrencyPolicy(PipelineConcurrencyPolicy.DENY_NEW);
 		scenario.setAutoSelectSingleProvider(false);
 		scenario.setJourneyMode(JourneyMode.SEAMLESS);
@@ -56,7 +54,6 @@ public class EngineDefaults implements DefaultsProvider<Engine> {
 		scenario.setPipelineTtl(Duration.ofMinutes(5));
 		scenario.setAdvanceLockTtl(Duration.ofSeconds(5));
 		scenario.setAllowResume(true);
-		scenario.setAllowProviderRestrictionResumeBypass(false);
 		scenario.setJourneyMode(JourneyMode.INTERACTIVE);
 		scenario.setJourneyPolicy(JourneyPolicy.PREFER);
 		return scenario;

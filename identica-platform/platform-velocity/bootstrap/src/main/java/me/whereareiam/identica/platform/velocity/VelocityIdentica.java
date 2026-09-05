@@ -17,12 +17,18 @@ import me.whereareiam.identica.adapter.command.CommandConfiguration;
 import me.whereareiam.identica.adapter.database.DatabaseConfiguration;
 import me.whereareiam.identica.adapter.replication.ReplicationConfiguration;
 import me.whereareiam.identica.common.CommonConfiguration;
+import me.whereareiam.identica.common.Identica;
 import me.whereareiam.identica.engine.EngineConfiguration;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.lifecycle.IdenticaBootstrappedEvent;
 import me.whereareiam.identica.event.lifecycle.IdenticaReadyEvent;
 import me.whereareiam.identica.event.lifecycle.IdenticaShutdownEvent;
-import me.whereareiam.identica.feature.verification.VerificationFeatureConfiguration;
+import me.whereareiam.identica.common.feature.FeatureRuntime;
+import me.whereareiam.identica.feature.BuiltinFeatures;
+import me.whereareiam.identica.trait.authoritative.username.UsernameConfiguration;
+import com.google.inject.Module;
+import java.util.ArrayList;
+import java.util.List;
 import me.whereareiam.identica.platform.velocity.logging.VelocityLoggingHelper;
 import me.whereareiam.identica.type.PluginType;
 import org.jetbrains.annotations.Nullable;
@@ -42,6 +48,7 @@ public class VelocityIdentica {
 	private final Path dataPath;
 	private final Logger logger;
 	private @Nullable EventManager eventManager;
+	private @Nullable FeatureRuntime featureRuntime;
 
 	@Inject
 	public VelocityIdentica(
@@ -65,24 +72,47 @@ public class VelocityIdentica {
 		libraryManager.setVerbosityMode(VerbosityMode.SUMMARY);
 		libraryManager.loadDescriptors();
 
-		Injector injector = Guice.createInjector(
+		featureRuntime = BuiltinFeatures.runtime(dataPath);
+		List<Module> modules = new ArrayList<>(List.of(
 				new CommonConfiguration(dataPath),
-				new VerificationFeatureConfiguration(),
+				new UsernameConfiguration(dataPath.resolve("identity/username")),
 				new EngineConfiguration(),
 				new VelocityConfiguration(proxyServer, this, pluginContainer, dataPath, logger),
 				new CommandConfiguration(),
 				new DatabaseConfiguration(),
 				new ReplicationConfiguration()
-		);
+		));
+		modules.addAll(featureRuntime.modules());
+		Injector injector;
+		try {
+			injector = Guice.createInjector(modules);
+		} catch (RuntimeException | Error failure) {
+			try {
+				featureRuntime.shutdown();
+			} catch (RuntimeException | Error cleanupFailure) {
+				failure.addSuppressed(cleanupFailure);
+			}
+			throw failure;
+		}
 		EventManager eventManager = injector.getInstance(EventManager.class);
 		this.eventManager = eventManager;
-		eventManager.call(new IdenticaBootstrappedEvent());
-		eventManager.call(new IdenticaReadyEvent());
+		try {
+			injector.getInstance(Identica.class).bootstrap();
+			featureRuntime.initialize(injector);
+			eventManager.call(new IdenticaBootstrappedEvent());
+			eventManager.call(new IdenticaReadyEvent());
+		} catch (RuntimeException | Error failure) {
+			eventManager.call(new IdenticaShutdownEvent());
+			throw failure;
+		}
 	}
 
 	@Subscribe
 	public void onProxyShutdown(ProxyShutdownEvent event) {
-		if (eventManager == null) return;
-		eventManager.call(new IdenticaShutdownEvent());
+		try {
+			if (eventManager != null) eventManager.call(new IdenticaShutdownEvent());
+		} finally {
+			if (featureRuntime != null) featureRuntime.shutdown();
+		}
 	}
 }

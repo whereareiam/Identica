@@ -3,8 +3,8 @@ package me.whereareiam.identica.feature.sentinel;
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelMessages;
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelSettings;
 import me.whereareiam.identica.feature.sentinel.type.ResumeSpamSentinelDefinition;
-import me.whereareiam.identica.model.sentinel.SentinelContext;
-import me.whereareiam.identica.model.sentinel.SentinelPolicy;
+import me.whereareiam.identica.feature.sentinel.model.SentinelContext;
+import me.whereareiam.identica.feature.sentinel.model.SentinelPolicy;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -35,7 +35,7 @@ class ResumeSpamSentinelDefinitionTest {
 		resumeSpamMessages.setDenied(List.of("Please wait {seconds}s."));
 		messages.setResumeSpam(resumeSpamMessages);
 
-		ResumeSpamSentinelDefinition definition = new ResumeSpamSentinelDefinition(new SentinelRegistry(), () -> settings, () -> messages);
+		ResumeSpamSentinelDefinition definition = new ResumeSpamSentinelDefinition( () -> settings, () -> messages);
 		SentinelPolicy policy = definition.policy(SentinelContext.builder().username("player").ip("127.0.0.1").build());
 
 		assertNotNull(policy.getLockout());

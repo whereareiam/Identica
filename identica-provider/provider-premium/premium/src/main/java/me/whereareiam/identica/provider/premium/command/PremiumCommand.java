@@ -1,6 +1,7 @@
 package me.whereareiam.identica.provider.premium.command;
 
 import com.google.inject.Inject;
+import com.google.inject.Injector;
 import com.google.inject.Provider;
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.annotation.Argument;
@@ -43,15 +44,14 @@ public class PremiumCommand extends ProtectedActionCommand<MigrationRequest> {
 			MigrationService migrationService,
 			Provider<PremiumMessages> messagesProvider,
 			Provider<Messages> coreMessagesProvider,
-			Provider<VerificationMessages> verificationMessagesProvider,
-			VerificationService verificationService,
+			@NotNull Injector injector,
 			SessionService sessionService
 	) {
-		super(verificationService);
+		super(injector.getInstance(VerificationService.class));
 		this.migrationService = migrationService;
 		this.messagesProvider = messagesProvider;
 		this.coreMessagesProvider = coreMessagesProvider;
-		this.verificationMessagesProvider = verificationMessagesProvider;
+		this.verificationMessagesProvider = () -> injector.getInstance(VerificationMessages.class);
 		this.sessionService = sessionService;
 	}
 

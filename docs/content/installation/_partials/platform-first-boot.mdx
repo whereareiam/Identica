@@ -11,11 +11,17 @@
     - `plugins/identica/commands`
     - `plugins/identica/features/sentinel/settings`
     - `plugins/identica/features/sentinel/messages`
+    - `plugins/identica/features/recognition/settings`
+    - `plugins/identica/features/restriction/settings`
+    - `plugins/identica/features/restriction/join/settings`
+    - `plugins/identica/features/restriction/join/commands`
+    - `plugins/identica/features/restriction/join/messages`
+    - `plugins/identica/identity/username/conflicts`
+    - `plugins/identica/identity/username/messages`
     - `plugins/identica/features/verification/settings`
     - `plugins/identica/persistence`
     - `plugins/identica/replication`
     - `plugins/identica/providers/conflicts`
-    - `plugins/identica/providers/capabilities`
     - `plugins/identica/providers/providers`
 
     The current default boot path creates a configuration marker with `type=YAML`.
@@ -27,23 +33,31 @@
 
     Review these generated locations after the first boot:
 
-    - `plugins/identica/settings`
-    - `plugins/identica/engine`
-    - `plugins/identica/routing`
-    - `plugins/identica/messages`
-    - `plugins/identica/commands`
-    - `plugins/identica/features/sentinel/settings`
-    - `plugins/identica/features/sentinel/messages`
-    - `plugins/identica/features/verification/settings`
-    - `plugins/identica/features/verification/messages`
-    - `plugins/identica/persistence`
-    - `plugins/identica/replication`
-    - `plugins/identica/providers/conflicts`
-    - `plugins/identica/providers/capabilities`
-    - `plugins/identica/providers/providers`
+    - `plugins/Identica/settings`
+    - `plugins/Identica/engine`
+    - `plugins/Identica/routing`
+    - `plugins/Identica/messages`
+    - `plugins/Identica/commands`
+    - `plugins/Identica/features/sentinel/settings`
+    - `plugins/Identica/features/sentinel/messages`
+    - `plugins/Identica/features/recognition/settings`
+    - `plugins/Identica/features/restriction/settings`
+    - `plugins/Identica/features/restriction/join/settings`
+    - `plugins/Identica/features/restriction/join/commands`
+    - `plugins/Identica/features/restriction/join/messages`
+    - `plugins/Identica/identity/username/conflicts`
+    - `plugins/Identica/identity/username/messages`
+    - `plugins/Identica/features/verification/settings`
+    - `plugins/Identica/features/verification/messages`
+    - `plugins/Identica/persistence`
+    - `plugins/Identica/replication`
+    - `plugins/Identica/providers/conflicts`
+    - `plugins/Identica/providers/providers`
 
     The current default boot path creates a configuration marker with `type=YAML`.
 
     It is safe to stop the proxy after these files exist.
   </ContentTab>
 </ContentTabs>
+
+All built-in features are compiled into Identica. Configure their shared defaults and provider overrides; no feature installation or selection file is used.

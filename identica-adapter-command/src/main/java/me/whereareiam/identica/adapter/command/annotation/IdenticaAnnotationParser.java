@@ -146,6 +146,13 @@ public class IdenticaAnnotationParser<C> {
 		}
 
 		@Override
+		public @NotNull CommandManager<C> command(@NotNull Command<? extends C> command) {
+			// AnnotationParser returns the parsed commands itself. Keeping a second
+			// tree here would retain handlers after their lifecycle owner shuts down.
+			return this;
+		}
+
+		@Override
 		public boolean hasPermission(@NotNull C sender, @NotNull String permission) {
 			return true;
 		}

@@ -5,3 +5,5 @@ description: Overview of configuration owned by Identica's sentinel feature.
 
 Sentinel adds protections that watch for repeated or risky actions.
 Sentinels exist as different types across Identica: some apply more broadly, while others only apply to a specific provider or provider flow.
+
+Sentinel is compiled into Identica. Its shared `enabled` setting supplies the default for provider-owned checks; providers can override `features.sentinel.enabled`. Global connection checks use shared settings because they run before a provider is known. See [Settings](./settings/index.mdx).

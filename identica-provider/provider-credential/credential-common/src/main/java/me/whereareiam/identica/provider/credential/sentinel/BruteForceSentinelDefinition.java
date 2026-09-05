@@ -4,14 +4,15 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.model.sentinel.SentinelContext;
-import me.whereareiam.identica.model.sentinel.SentinelPolicy;
+import me.whereareiam.identica.feature.FeatureRegistry;
+import me.whereareiam.identica.feature.sentinel.model.SentinelContext;
+import me.whereareiam.identica.feature.sentinel.model.SentinelPolicy;
 import me.whereareiam.identica.provider.credential.CredentialConstants;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.config.CredentialSettings;
-import me.whereareiam.identica.sentinel.SentinelDefinition;
-import me.whereareiam.identica.type.sentinel.SentinelMode;
-import me.whereareiam.identica.type.sentinel.SentinelScope;
+import me.whereareiam.identica.feature.sentinel.SentinelDefinition;
+import me.whereareiam.identica.feature.sentinel.type.SentinelMode;
+import me.whereareiam.identica.feature.sentinel.type.SentinelScope;
 
 import java.util.List;
 
@@ -24,8 +25,14 @@ public class BruteForceSentinelDefinition implements SentinelDefinition {
 			SentinelScope.ADVANCE
 	};
 
+	private final FeatureRegistry features;
 	private final Provider<CredentialSettings> settingsProvider;
 	private final Provider<CredentialMessages> messagesProvider;
+
+	@Override
+	public String providerId() {
+		return CredentialConstants.PROVIDER_ID;
+	}
 
 	@Override
 	public String id() {
@@ -56,7 +63,7 @@ public class BruteForceSentinelDefinition implements SentinelDefinition {
 		SentinelPolicy policy = new SentinelPolicy();
 		int maxAttempts = bruteForce != null ? bruteForce.getMaxAttempts() : 0;
 		policy.setMaxAttempts(maxAttempts);
-		policy.setEnabled(maxAttempts > 0);
+		policy.setEnabled(features.isEnabled(CredentialConstants.PROVIDER_ID, "sentinel") && maxAttempts > 0);
 
 		CredentialSettings.Scenario.Authentication.Bruteforce.Lockout lockout = bruteForce != null
 				? bruteForce.getLockout()

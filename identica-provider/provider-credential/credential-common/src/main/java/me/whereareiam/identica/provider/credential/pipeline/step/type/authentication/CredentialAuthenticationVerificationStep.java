@@ -1,9 +1,11 @@
 package me.whereareiam.identica.provider.credential.pipeline.step.type.authentication;
 
 import com.google.inject.Inject;
+import com.google.inject.Injector;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import me.whereareiam.identica.database.provider.ProviderLinkPersistenceService;
+import me.whereareiam.identica.feature.FeatureRegistry;
 import me.whereareiam.identica.feature.verification.VerificationService;
 import me.whereareiam.identica.feature.verification.model.resolution.VerificationResolutionRequest;
 import me.whereareiam.identica.feature.verification.model.resolution.VerificationResolutionResult;
@@ -26,18 +28,22 @@ import java.util.concurrent.CompletableFuture;
 public class CredentialAuthenticationVerificationStep extends AbstractCredentialStep {
 	private final Provider<CredentialMessages> messagesProvider;
 	private final ProviderLinkPersistenceService providerLinkPersistenceService;
-	private final VerificationService verificationService;
+
+	private final @NotNull FeatureRegistry features;
+	private final @NotNull Injector injector;
 
 	@Inject
 	public CredentialAuthenticationVerificationStep(
 			Provider<CredentialMessages> messagesProvider,
 			ProviderLinkPersistenceService providerLinkPersistenceService,
-			VerificationService verificationService
+			@NotNull FeatureRegistry features,
+			@NotNull Injector injector
 	) {
 		super("password-authentication-verification");
+		this.features = features;
+		this.injector = injector;
 		this.messagesProvider = messagesProvider;
 		this.providerLinkPersistenceService = providerLinkPersistenceService;
-		this.verificationService = verificationService;
 	}
 
 	@Override
@@ -47,6 +53,9 @@ public class CredentialAuthenticationVerificationStep extends AbstractCredential
 
 	@Override
 	public @NotNull CompletableFuture<StepResult> execute(@NotNull ScenarioContext context) {
+		if (!features.isEnabled("credential", "verification"))
+			return CompletableFuture.completedFuture(StepResult.complete(context));
+
 		String providerSubject = requireProviderSubject(context);
 		UUID uniqueId = providerLinkPersistenceService.findBySubject(CredentialConstants.PROVIDER_ID, providerSubject)
 				.map(AccountProviderLink::getUniqueId)
@@ -61,7 +70,7 @@ public class CredentialAuthenticationVerificationStep extends AbstractCredential
 			return CompletableFuture.completedFuture(StepResult.complete(context));
 		}
 
-		VerificationResolutionResult result = verificationService.resolveVerification(VerificationResolutionRequest.builder()
+		VerificationResolutionResult result = injector.getInstance(VerificationService.class).resolveVerification(VerificationResolutionRequest.builder()
 				.uniqueId(uniqueId)
 				.providerId(CredentialConstants.PROVIDER_ID)
 				.purpose("authentication")

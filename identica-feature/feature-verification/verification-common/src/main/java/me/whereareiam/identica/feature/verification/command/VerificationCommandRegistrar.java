@@ -15,6 +15,8 @@ public class VerificationCommandRegistrar {
 	private final VerificationMethodSuggestions verificationMethodSuggestions;
 	private final VerificationCommands verificationCommands;
 	private final Set<Object> commandInstances;
+	private Set<String> registeredKeys = Set.of();
+	private boolean registered;
 
 	@Inject
 	public VerificationCommandRegistrar(
@@ -30,7 +32,20 @@ public class VerificationCommandRegistrar {
 	}
 
 	public void registerCommands() {
+		if (registered) return;
+		registered = true;
+		registeredKeys = Set.copyOf(verificationCommands.getCommands().keySet());
 		commandService.registerSuggestionProvider(VerificationMethodSuggestions.KEY, verificationMethodSuggestions);
 		commandService.registerCommandInstances(verificationCommands.getCommands(), commandInstances.toArray());
+	}
+	public void unregisterCommands() {
+		if (!registered) return;
+		try {
+			commandService.unregisterCommands(registeredKeys);
+		} finally {
+			commandService.unregisterSuggestionProvider(VerificationMethodSuggestions.KEY);
+			registeredKeys = Set.of();
+			registered = false;
+		}
 	}
 }

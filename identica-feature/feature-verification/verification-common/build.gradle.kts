@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     implementation(projects.featureVerificationApi)
+
     compileOnly(projects.identicaAdapterCommand)
     compileOnly(libs.cloud.core)
 

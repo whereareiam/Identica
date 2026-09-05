@@ -29,7 +29,6 @@ public class ReplicationDefaults implements DefaultsProvider<Replication> {
 		cache.setReservations("identica:reservation");
 		cache.setInstructions("identica:handshake-instructions");
 		cache.setAttempts("identica:provider-attempts");
-		cache.setSentinels("identica:sentinels");
 		Replication.Delivery delivery = new Replication.Delivery();
 		delivery.setRequests("identica:delivery:requests");
 		delivery.setConnectionIndex("identica:delivery:index:connection");

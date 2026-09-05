@@ -28,7 +28,7 @@ class SharedLibraryConflictTrackerTest {
 
 	private static ProviderLibrary library(String artifactId, String version) {
 		return ProviderLibrary.builder()
-				.groupId("me.whereareiam.identica.capability")
+				.groupId("example.provider.library")
 				.artifactId(artifactId)
 				.version(version)
 				.resolveTransitiveDependencies(false)

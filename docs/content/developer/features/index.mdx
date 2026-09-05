@@ -1,0 +1,54 @@
+---
+title: Provider traits and features
+description: Identity guarantees, supported integrations, and operator-controlled feature policies.
+---
+
+Identica compiles its feature implementations into the plugin. Source modules separate ownership; operators choose feature behavior through global and per-provider configuration.
+
+## Provider traits
+
+`IdenticaProvider.traits()` returns `Set<ProviderTrait>`. A trait states an identity guarantee supplied by the implementation. It is not an operator toggle.
+
+`ProviderTrait.AUTHORITATIVE_USERNAME` means Identica follows the provider's verified username for its primary account link, subject to manual authority and conflict policy. Premium declares this trait. Credential does not. Provider configuration cannot grant the trait.
+
+The implementation lives under `identica-trait/trait-authoritative-username`, with packages beneath `me.whereareiam.identica.trait.authoritative.username`. It is always composed as an identity subsystem, not listed in `supportedFeatures()`. See [Username authority](../../configuration/identity/username/index.mdx).
+
+## Supported features
+
+`IdenticaProvider.supportedFeatures()` returns the feature IDs the provider integrates with. Support is declared by the provider developer; enablement is chosen by the operator. Declaring support does not activate the feature or override configuration.
+
+```java
+@Override
+public Set<ProviderTrait> traits() {
+    return Set.of(ProviderTrait.AUTHORITATIVE_USERNAME);
+}
+
+@Override
+public Set<String> supportedFeatures() {
+    return Set.of("recognition", "verification", "restriction", "restriction-join");
+}
+```
+
+Providers expose a no-argument constructor so the loader can inspect their declarations before injection. Declarations must not rely on injected services. Declaring an unknown feature prevents that provider from loading. Explicitly enabling a known feature that the provider does not support also produces a provider loading error.
+
+## Configuration
+
+Each feature owns its settings under `features/<id>/`; join restriction uses `features/restriction/join/`. Provider overrides live under `providers[].features`. Omitted values inherit the feature's global defaults. An explicit provider `enabled: false` disables that feature for that provider, while `enabled: true` can override a global default of false.
+
+`FeatureRegistry.isEnabled(providerId, featureId)` combines declared support and the effective enable policy. `isAvailable(featureId)` only describes compiled availability and is not a check for operator enablement. Provider integrations must use the former when deciding whether to execute optional behavior.
+
+Verification's global provider policy is `defaults` in `features/verification/settings`. Recognition and sentinel use their settings' `enabled` value. Restriction has its own `enabled` default; join restriction adds `enabled` and `allow` in `features/restriction/join/settings`. Disabling the enclosing `features.restriction.enabled` switch also disables join restriction for that provider.
+
+Protected actions evaluate verification for the current session's provider. A target provider's settings must not bypass the source session's verification policy.
+
+## Implementation ownership
+
+`identica-feature` composes the built-in implementations explicitly through `BuiltinFeatures`. There is no feature directory scanner, separate feature installation, or build-time feature selector. Feature module jars are build dependencies compiled into the final plugin.
+
+`IdenticaFeature` owns shared modules, initialization, shutdown, and optional provider-local contributions. Its internal dependency declarations determine wiring order. `configurationPath()` identifies the provider settings subtree, and `enabledByDefault(context)` reads the feature-owned shared default. Global services are initialized once; providers contribute only their integrations.
+
+Keep listeners, commands, pipeline extensions, models, persistence and configuration with the subsystem that owns them. Register lifecycle resources during initialization and remove them during shutdown, including partial initialization failures. Mandatory identity subsystems use `RuntimeLifecycle`; they do not appear in the feature registry.
+
+## Validation
+
+Test trait behavior without feature flags, support separately from enablement, explicit false values, inherited global values, and different settings on different providers. Test lifecycle cleanup and verify that shared provider configuration retains unrelated feature settings.

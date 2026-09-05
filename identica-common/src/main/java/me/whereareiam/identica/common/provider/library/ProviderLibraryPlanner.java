@@ -19,14 +19,14 @@ public class ProviderLibraryPlanner {
 	public @NotNull ProviderLibraryPlan plan(@Nullable ProviderLibraries libraries) {
 		if (libraries == null) return ProviderLibraryPlan.empty();
 
-		List<ProviderLibrary> sharedCapabilityApis = new ArrayList<>();
+		List<ProviderLibrary> sharedLibraries = new ArrayList<>();
 		List<ProviderLibrary> providerRuntimeLibraries = new ArrayList<>();
 		for (ProviderLibrary library : libraries.getLibraries() != null ? libraries.getLibraries() : List.<ProviderLibrary>of()) {
 			if (library == null) continue;
 
-			if (isSharedCapabilityApi(library)) {
+			if (isSharedLibrary(library)) {
 				if (sharedConflicts.register(library))
-					sharedCapabilityApis.add(library);
+					sharedLibraries.add(library);
 				continue;
 			}
 
@@ -34,7 +34,7 @@ public class ProviderLibraryPlanner {
 		}
 
 		return new ProviderLibraryPlan(
-				copyOf(libraries, sharedCapabilityApis),
+				copyOf(libraries, sharedLibraries),
 				copyOf(libraries, providerRuntimeLibraries)
 		);
 	}
@@ -49,13 +49,13 @@ public class ProviderLibraryPlanner {
 		return copy;
 	}
 
-	private boolean isSharedCapabilityApi(@NotNull ProviderLibrary library) {
+	private boolean isSharedLibrary(@NotNull ProviderLibrary library) {
 		String loader = library.getLoader();
 		return loader != null && "shared".equalsIgnoreCase(loader.trim());
 	}
 
 	public record ProviderLibraryPlan(
-			@NotNull ProviderLibraries sharedCapabilityApis,
+			@NotNull ProviderLibraries sharedLibraries,
 			@NotNull ProviderLibraries providerRuntimeLibraries
 	) {
 		public static @NotNull ProviderLibraryPlan empty() {

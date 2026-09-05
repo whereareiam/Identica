@@ -5,6 +5,8 @@ description: Field-by-field explanation of Identica's conflict resolution config
 
 The conflicts configuration controls how Identica resolves provider conflicts such as username collisions.
 
+This document lives under `providers/conflicts` and provides optional generic overrides for contributed conflict types. Core does not supply username-specific default rules. The optional [Username](../identity/username/index.mdx) feature owns its defaults in `identity/username/conflicts`. A `rules.username` entry in `providers/conflicts` takes precedence over those feature rules.
+
 Conflicts are configured per conflict key.
 Each key defines:
 
@@ -12,17 +14,17 @@ Each key defines:
 - optional ordered `cases` rules
 - an ordered list of resolvers inside each rule
 
-## conflicts
+## rules
 
 - Takes: a map keyed by conflict key
 - Affects: how Identica resolves registered conflicts before allowing or denying progress
 
-Use this section when you want to change the resolver chain for a conflict type or define type-specific behavior for a matching rule selector.
+Use this section when you want to override the resolver chain for a conflict type or define type-specific behavior for a matching rule selector. The example below is an explicit username override, not generated core configuration. Leave `rules.username` absent here to use the username identity subsystem's own rules.
 
 <Tabs items={["YAML", "JSON"]}>
   <Tab value="YAML">
 ```yaml
-conflicts:
+rules:
   username:
     default:
       resolvers:
@@ -47,7 +49,7 @@ conflicts:
   <Tab value="JSON">
 ```json
 {
-  "conflicts": {
+  "rules": {
     "username": {
       "default": {
         "resolvers": [
@@ -102,14 +104,14 @@ If no rule produces a result, Identica logs a warning and allows the conflict.
 Rule matching is owned by the contributed conflict type for that key.
 Core stores the opaque `when` object but does not interpret it.
 
-## conflicts.[key].default
+## rules.[key].default
 
 - Takes: a conflict rule object
 - Affects: the fallback resolver chain for that conflict key
 
 The `default` rule runs when no matching case rule produces a non-pass result.
 
-## conflicts.[key].cases
+## rules.[key].cases
 
 - Takes: a list of conflict rule objects
 - Current default: `[]`
@@ -118,7 +120,7 @@ The `default` rule runs when no matching case rule produces a non-pass result.
 Each case rule is checked in list order.
 The contributed conflict type decides whether the rule's `when` object matches the current conflict context.
 
-## conflicts.[key].cases[].when
+## rules.[key].cases[].when
 
 - Takes: an object
 - Current default: `{}`
@@ -126,8 +128,8 @@ The contributed conflict type decides whether the rule's `when` object matches t
 
 The shape and meaning of `when` is owned by the contributed conflict type for that key.
 
-## conflicts.[key].default.force
-## conflicts.[key].cases[].force
+## rules.[key].default.force
+## rules.[key].cases[].force
 
 <Badge type="warning">Advanced</Badge>
 
@@ -137,24 +139,24 @@ The shape and meaning of `when` is owned by the contributed conflict type for th
 
 Leave this disabled unless you intentionally want to bypass normal resolver compatibility checks.
 
-## conflicts.[key].default.resolvers
-## conflicts.[key].cases[].resolvers
+## rules.[key].default.resolvers
+## rules.[key].cases[].resolvers
 
 - Takes: a list of resolver entries
 - Affects: the ordered resolver chain for the selected rule
 
 Each resolver entry selects a resolver type and provides its configuration parameters.
 
-## conflicts.[key].default.resolvers[].id
-## conflicts.[key].cases[].resolvers[].id
+## rules.[key].default.resolvers[].id
+## rules.[key].cases[].resolvers[].id
 
 - Takes: a string
 - Affects: which registered conflict resolver is invoked
 
 Resolver ids must match a resolver registered by a contributed conflict type or another installed module.
 
-## conflicts.[key].default.resolvers[].parameters
-## conflicts.[key].cases[].resolvers[].parameters
+## rules.[key].default.resolvers[].parameters
+## rules.[key].cases[].resolvers[].parameters
 
 - Takes: an object
 - Current default: `{}`

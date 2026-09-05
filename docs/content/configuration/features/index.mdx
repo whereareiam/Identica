@@ -1,11 +1,54 @@
 ---
 title: Features
-description: Overview of feature-owned configuration areas and feature-scoped provider extensions.
+description: Configure built-in behavior globally and independently for each supporting provider.
 ---
 
-Feature-owned configuration lives in this section when an installed feature contributes its own settings, documents, or nested provider overrides.
+All features are compiled into Identica. Providers declare which features they support, and operators decide where those features are used.
 
-## Current feature docs
+## Global defaults and provider overrides
 
+Shared settings live under `features/`. Overrides live in `providers/providers` under each provider's `features` object. Omitted fields inherit the shared defaults. Explicit `enabled: true` or `enabled: false` changes behavior for that provider only.
+
+For example:
+
+```yaml
+providers:
+  - id: credential
+    features:
+      recognition:
+        enabled: false
+      verification:
+        enabled: true
+        required: true
+  - id: premium
+    features:
+      recognition:
+        enabled: true
+      verification:
+        enabled: false
+```
+
+This enables recognition only for Premium and requires verification for Credential. The feature implementation remains available for both. A provider must declare support before an explicit enable override can be used.
+
+| Feature | Shared settings | Provider override |
+| --- | --- | --- |
+| Recognition | `features/recognition/settings` | `features.recognition` |
+| Verification | `features/verification/settings` | `features.verification` |
+| Sentinel | `features/sentinel/settings` | `features.sentinel.enabled` once a provider is known |
+| Restrictions | `features/restriction/settings` | `features.restriction.enabled` |
+| Join restriction | `features/restriction/join/settings` | `features.restriction.join` |
+
+Recognition and sentinel inherit the shared `enabled` value. Verification inherits its shared `defaults` policy, including `enabled`, `required`, and methods. Join restriction inherits `enabled` and `allow` from its shared settings. An enclosing restriction switch of false disables join restriction too.
+
+Sentinel also owns global connection checks that run before a provider is known. Those checks use shared settings. Once a provider is selected, Sentinel honors that provider's enable switch. Credential's brute-force rule only applies to Credential attempts and retains its detailed policy in Credential's settings.
+
+## Identity traits
+
+Authoritative usernames are an identity guarantee, not a toggleable feature. Premium declares `AUTHORITATIVE_USERNAME`; Identica follows its verified username unless manual authority or conflict policy says otherwise. There is no `features.username.enabled` switch. See [Username authority](../identity/username/index.mdx).
+
+## Feature references
+
+- [Recognition](./recognition/index.mdx)
+- [Restrictions](./restriction/index.mdx)
 - [Sentinel](./sentinel/index.mdx)
 - [Verification](./verification/index.mdx)

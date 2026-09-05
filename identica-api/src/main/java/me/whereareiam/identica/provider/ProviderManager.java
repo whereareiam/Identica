@@ -2,8 +2,7 @@ package me.whereareiam.identica.provider;
 
 import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.provider.resolver.ProviderResolver;
-import me.whereareiam.identica.type.provider.ProviderFeature;
-import me.whereareiam.identica.type.provider.capability.ProviderCapability;
+import me.whereareiam.identica.type.provider.ProviderTrait;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,36 +31,36 @@ public interface ProviderManager {
 	List<InternalProvider> getProviders();
 
 	/**
-	 * Finds providers that advertise all requested capabilities.
+	 * Finds providers that advertise all requested traits.
 	 *
-	 * @param capabilities required capabilities
+	 * @param traits required traits
 	 * @return immutable list of matching providers ordered by priority
 	 */
-	@NotNull List<InternalProvider> findProviders(@NotNull ProviderCapability... capabilities);
+	@NotNull List<InternalProvider> findProvidersByTraits(@NotNull ProviderTrait... traits);
 
 	/**
-	 * Finds the highest priority provider that advertises all requested capabilities.
+	 * Finds the highest priority provider that advertises all requested traits.
 	 *
-	 * @param capabilities required capabilities
+	 * @param traits required traits
 	 * @return matching provider or {@code null} when none match
 	 */
-	@Nullable InternalProvider findProvider(@NotNull ProviderCapability... capabilities);
+	@Nullable InternalProvider findProviderByTraits(@NotNull ProviderTrait... traits);
 
 	/**
-	 * Finds providers that advertise all requested built-in features.
+	 * Finds providers that support all requested features.
 	 *
-	 * @param features required features
+	 * @param features supported integrations to match
 	 * @return immutable list of matching providers ordered by priority
 	 */
-	@NotNull List<InternalProvider> findProvidersByFeatures(@NotNull ProviderFeature... features);
+	@NotNull List<InternalProvider> findProvidersByFeatures(@NotNull String... features);
 
 	/**
-	 * Finds the highest priority provider that advertises all requested built-in features.
+	 * Finds the highest priority provider that supports all requested features.
 	 *
-	 * @param features required features
+	 * @param features supported integrations to match
 	 * @return matching provider or {@code null} when none match
 	 */
-	@Nullable InternalProvider findProviderByFeatures(@NotNull ProviderFeature... features);
+	@Nullable InternalProvider findProviderByFeatures(@NotNull String... features);
 
 	/**
 	 * Registers a resolver used during provider loading.

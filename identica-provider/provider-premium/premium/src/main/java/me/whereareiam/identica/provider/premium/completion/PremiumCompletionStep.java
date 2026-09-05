@@ -1,11 +1,13 @@
 package me.whereareiam.identica.provider.premium.completion;
 
 import com.google.inject.Inject;
+import com.google.inject.Injector;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
+import me.whereareiam.identica.feature.FeatureRegistry;
+import me.whereareiam.identica.feature.recognition.store.RecognizedConnectionStore;
 import me.whereareiam.identica.model.pipeline.completion.CompletionContext;
 import me.whereareiam.identica.pipeline.completion.step.AbstractMessageCompletionStep;
-import me.whereareiam.identica.provider.capability.recognition.store.RecognizedConnectionStore;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import org.jetbrains.annotations.NotNull;
@@ -17,16 +19,20 @@ import java.util.UUID;
 @Singleton
 public class PremiumCompletionStep extends AbstractMessageCompletionStep {
 	private final Provider<PremiumMessages> messagesProvider;
-	private final RecognizedConnectionStore recognizedConnectionStore;
+
+	private final @NotNull FeatureRegistry features;
+	private final @NotNull Injector injector;
 
 	@Inject
 	public PremiumCompletionStep(
 			Provider<PremiumMessages> messagesProvider,
-			RecognizedConnectionStore recognizedConnectionStore
+			@NotNull FeatureRegistry features,
+			@NotNull Injector injector
 	) {
 		super("premium-completion");
+		this.features = features;
+		this.injector = injector;
 		this.messagesProvider = messagesProvider;
-		this.recognizedConnectionStore = recognizedConnectionStore;
 	}
 
 	@Override
@@ -57,7 +63,8 @@ public class PremiumCompletionStep extends AbstractMessageCompletionStep {
 	}
 
 	private boolean isRecognized(@NotNull CompletionContext context) {
+		if (!features.isEnabled("premium", "recognition")) return false;
 		UUID connectionUniqueId = context.getIdentity().getConnectionUniqueId();
-		return connectionUniqueId != null && recognizedConnectionStore.isRecognized(connectionUniqueId);
+		return connectionUniqueId != null && injector.getInstance(RecognizedConnectionStore.class).isRecognized(connectionUniqueId);
 	}
 }

@@ -5,6 +5,7 @@
     "settings",
     "providers",
     "features",
+    "identity",
     "engine",
     "routing",
     "commands",

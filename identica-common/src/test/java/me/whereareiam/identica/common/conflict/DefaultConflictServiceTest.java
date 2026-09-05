@@ -112,6 +112,27 @@ class DefaultConflictServiceTest {
 		assertFalse(secondCalled.get());
 	}
 
+	@Test
+	void usesTypeOwnedRulesUntilACentralOverrideIsConfigured() {
+		Conflicts configuration = new Conflicts();
+		DefaultConflictService service = new DefaultConflictService(() -> configuration, Set.of());
+		@SuppressWarnings("unchecked")
+		ConflictType<ConflictSubject> type = org.mockito.Mockito.mock(ConflictType.class);
+		org.mockito.Mockito.when(type.getKey()).thenReturn("optional-feature");
+		org.mockito.Mockito.when(type.getDefaultRules()).thenReturn(rules(defaultRule(entry("feature-rule"))));
+		service.register(type);
+		service.register(resolver("feature-rule", new AtomicBoolean(), ConflictResolution.deny("feature")));
+		service.register(resolver("override", new AtomicBoolean(), ConflictResolution.allow()));
+
+		assertEquals(ConflictResolution.Decision.DENY, service.resolve(context("optional-feature")).getDecision());
+		assertTrue(configuration.getRules().isEmpty());
+		configuration.getRules().put("optional-feature", rules(defaultRule(entry("override"))));
+		assertEquals(ConflictResolution.Decision.ALLOW, service.resolve(context("optional-feature")).getDecision());
+		configuration.getRules().clear();
+		service.unregister(type);
+		assertNull(service.resolve(context("optional-feature")));
+	}
+
 	private Conflicts.ConflictRules rules(Conflicts.ConflictRules.ConflictRule defaultRule) {
 		Conflicts.ConflictRules rules = new Conflicts.ConflictRules();
 		rules.setDefaultRule(defaultRule);

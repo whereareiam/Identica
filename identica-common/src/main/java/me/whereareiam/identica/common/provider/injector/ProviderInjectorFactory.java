@@ -6,6 +6,7 @@ import com.google.inject.Module;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
+import me.whereareiam.identica.feature.FeatureRegistry;
 import me.whereareiam.identica.provider.IdenticaProvider;
 import me.whereareiam.identica.provider.ProviderPlatformExtension;
 import org.jetbrains.annotations.NotNull;
@@ -25,7 +26,7 @@ public class ProviderInjectorFactory {
 			ProviderDescriptor descriptor,
 			IdenticaProvider probeProvider,
 			@Nullable ProviderPlatformExtension probePlatformExtension,
-			@NotNull List<Module> capabilityModules
+			@NotNull List<Module> featureModules
 	) {
 		List<Module> modules = new ArrayList<>();
 		modules.add(new ProviderInjectorConfiguration(workingPath, descriptor));
@@ -34,9 +35,12 @@ public class ProviderInjectorFactory {
 		if (!providerModules.isEmpty())
 			modules.addAll(providerModules);
 
+		if (probeProvider != null)
+			modules.addAll(probeProvider.featureModules(injector.getInstance(FeatureRegistry.class)));
+
 		List<Module> platformModules = probePlatformExtension != null ? probePlatformExtension.modules() : List.of();
 		if (!platformModules.isEmpty()) modules.addAll(platformModules);
-		if (!capabilityModules.isEmpty()) modules.addAll(capabilityModules);
+		if (!featureModules.isEmpty()) modules.addAll(featureModules);
 
 		return injector.createChildInjector(modules);
 	}

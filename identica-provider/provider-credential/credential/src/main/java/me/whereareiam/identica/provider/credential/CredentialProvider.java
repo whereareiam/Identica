@@ -1,22 +1,21 @@
 package me.whereareiam.identica.provider.credential;
 
 import com.google.inject.Inject;
+import com.google.inject.Injector;
+import com.google.inject.Key;
 import com.google.inject.Module;
+import com.google.inject.TypeLiteral;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import me.whereareiam.identica.BuildConfig;
-import me.whereareiam.identica.Constants;
 import me.whereareiam.identica.Registry;
-import me.whereareiam.identica.feature.verification.VerificationFeature;
+import me.whereareiam.identica.feature.FeatureRegistry;
+import me.whereareiam.identica.feature.sentinel.SentinelDefinition;
 import me.whereareiam.identica.model.provider.dependency.ProviderLibraries;
 import me.whereareiam.identica.model.provider.dependency.ProviderLibrary;
 import me.whereareiam.identica.pipeline.completion.extension.CompletionExtensionRegistry;
 import me.whereareiam.identica.pipeline.extension.PipelineExtensionRegistry;
 import me.whereareiam.identica.provider.IdenticaProvider;
-import me.whereareiam.identica.provider.capability.bootstrap.ProviderCapabilityBootstrap;
-import me.whereareiam.identica.provider.capability.recognition.bootstrap.RecognitionCapabilityBootstrap;
-import me.whereareiam.identica.provider.capability.restriction.bootstrap.RestrictionCapabilityBootstrap;
-import me.whereareiam.identica.provider.capability.restriction.join.bootstrap.JoinRestrictionCapabilityBootstrap;
 import me.whereareiam.identica.provider.credential.command.CommandRegistrar;
 import me.whereareiam.identica.provider.credential.completion.CredentialCompletionExtension;
 import me.whereareiam.identica.provider.credential.cryptography.CryptographyModule;
@@ -25,11 +24,12 @@ import me.whereareiam.identica.provider.credential.cryptography.bcrypt.BcryptCry
 import me.whereareiam.identica.provider.credential.database.DatabaseModule;
 import me.whereareiam.identica.provider.credential.pipeline.CredentialPipelineExtension;
 import me.whereareiam.identica.provider.credential.sentinel.BruteForceSentinelDefinition;
-import me.whereareiam.identica.sentinel.SentinelDefinition;
-import me.whereareiam.identica.type.provider.ProviderFeature;
+import me.whereareiam.identica.provider.credential.sentinel.CredentialSentinelModule;
+import me.whereareiam.identica.type.provider.ProviderTrait;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+import java.util.Set;
 
 @NoArgsConstructor
 @SuppressWarnings("unused")
@@ -40,8 +40,8 @@ public class CredentialProvider extends IdenticaProvider {
 	private CompletionExtensionRegistry completionExtensionRegistry;
 	private CredentialPipelineExtension credentialPipelineExtension;
 	private CredentialCompletionExtension credentialCompletionExtension;
-	private Registry<SentinelDefinition> sentinelRegistry;
-	private BruteForceSentinelDefinition bruteForceSentinelDefinition;
+	private @NotNull FeatureRegistry features;
+	private @NotNull Injector injector;
 
 	@Override
 	public @NotNull List<Module> modules() {
@@ -55,62 +55,24 @@ public class CredentialProvider extends IdenticaProvider {
 	}
 
 	@Override
-	public @NotNull List<ProviderCapabilityBootstrap> declaredCapabilities() {
-		return List.of(
-				RestrictionCapabilityBootstrap.INSTANCE,
-				JoinRestrictionCapabilityBootstrap.INSTANCE,
-				RecognitionCapabilityBootstrap.INSTANCE
-		);
+	public @NotNull List<Module> featureModules(@NotNull FeatureRegistry features) {
+		return features.isAvailable("sentinel") ? List.of(new CredentialSentinelModule()) : List.of();
 	}
 
 	@Override
-	public @NotNull List<ProviderFeature> declaredFeatures() {
-		return List.of(VerificationFeature.FEATURE);
+	public @NotNull Set<ProviderTrait> traits() {
+		return Set.of();
+	}
+
+	@Override
+	public @NotNull Set<String> supportedFeatures() {
+		return Set.of("verification", "recognition", "restriction", "restriction-join", "sentinel");
 	}
 
 	@Override
 	public @NotNull ProviderLibraries libraries() {
 		ProviderLibraries libraries = new ProviderLibraries();
 		libraries.setLibraries(List.of(
-				ProviderLibrary.builder()
-						.groupId("me.whereareiam.identica.capability")
-						.artifactId("restriction-api")
-						.version(Constants.VERSION)
-						.resolveTransitiveDependencies(false)
-						.loader("shared")
-						.build(),
-				ProviderLibrary.builder()
-						.groupId("me.whereareiam.identica.capability")
-						.artifactId("restriction")
-						.version(Constants.VERSION)
-						.resolveTransitiveDependencies(false)
-						.build(),
-				ProviderLibrary.builder()
-						.groupId("me.whereareiam.identica.capability")
-						.artifactId("restriction-join-api")
-						.version(Constants.VERSION)
-						.resolveTransitiveDependencies(false)
-						.loader("shared")
-						.build(),
-				ProviderLibrary.builder()
-						.groupId("me.whereareiam.identica.capability")
-						.artifactId("restriction-join")
-						.version(Constants.VERSION)
-						.resolveTransitiveDependencies(false)
-						.build(),
-				ProviderLibrary.builder()
-						.groupId("me.whereareiam.identica.capability")
-						.artifactId("recognition-api")
-						.version(Constants.VERSION)
-						.resolveTransitiveDependencies(false)
-						.loader("shared")
-						.build(),
-				ProviderLibrary.builder()
-						.groupId("me.whereareiam.identica.capability")
-						.artifactId("recognition")
-						.version(Constants.VERSION)
-						.resolveTransitiveDependencies(false)
-						.build(),
 				ProviderLibrary.builder()
 						.groupId("at.favre.lib")
 						.artifactId("bcrypt")
@@ -130,13 +92,17 @@ public class CredentialProvider extends IdenticaProvider {
 		commandRegistrar.registerCommands();
 		pipelineExtensionRegistry.register(credentialPipelineExtension);
 		completionExtensionRegistry.register(credentialCompletionExtension);
-		sentinelRegistry.register(bruteForceSentinelDefinition);
+		if (features.isAvailable("sentinel"))
+			injector.getInstance(Key.get(new TypeLiteral<Registry<SentinelDefinition>>() {}))
+					.register(injector.getInstance(BruteForceSentinelDefinition.class));
 	}
 
 	@Override
 	public void onDisable() {
 		pipelineExtensionRegistry.unregister(CredentialPipelineExtension.extensionId());
 		completionExtensionRegistry.unregister(CredentialCompletionExtension.extensionId());
-		sentinelRegistry.unregister(bruteForceSentinelDefinition);
+		if (features.isAvailable("sentinel"))
+			injector.getInstance(Key.get(new TypeLiteral<Registry<SentinelDefinition>>() {}))
+					.unregister(injector.getInstance(BruteForceSentinelDefinition.class));
 	}
 }

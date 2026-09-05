@@ -10,11 +10,10 @@ import me.whereareiam.configura.Config;
 import me.whereareiam.configura.Configura;
 import me.whereareiam.configura.merge.defaults.DefaultsProvider;
 import me.whereareiam.identica.Registry;
+import me.whereareiam.identica.feature.FeatureRegistry;
 import me.whereareiam.identica.Reloadable;
-import me.whereareiam.identica.common.provider.capability.DefaultProviderCapabilityCoordinator;
-import me.whereareiam.identica.common.provider.capability.DefaultProviderCapabilityRegistry;
 import me.whereareiam.identica.common.provider.classloader.ProviderRuntimeClassLoaderFactory;
-import me.whereareiam.identica.common.provider.classloader.SharedCapabilityClassLoaderFactory;
+import me.whereareiam.identica.common.provider.classloader.SharedLibraryClassLoaderFactory;
 import me.whereareiam.identica.common.provider.dependency.ProviderDependencyLoggingAdapter;
 import me.whereareiam.identica.common.provider.factory.ProviderInstanceFactory;
 import me.whereareiam.identica.common.provider.injector.ProviderInjectorFactory;
@@ -43,8 +42,6 @@ import me.whereareiam.identica.model.provider.dependency.ProviderLibraries;
 import me.whereareiam.identica.provider.IdenticaProvider;
 import me.whereareiam.identica.provider.ProviderPlatformBinding;
 import me.whereareiam.identica.provider.ProviderPlatformExtension;
-import me.whereareiam.identica.provider.capability.ProviderCapabilityCoordinator;
-import me.whereareiam.identica.provider.capability.ProviderCapabilityRegistry;
 import me.whereareiam.identica.type.event.EventOrder;
 import me.whereareiam.identica.type.provider.ProviderState;
 import org.jetbrains.annotations.NotNull;
@@ -102,6 +99,67 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 		assertEquals(1, ProbePlatformBinding.unregisterCount());
 	}
 
+	@Test
+	void unknownFeatureFailsBeforeProviderConstruction(@TempDir Path tempDir) {
+		Injector injector = Guice.createInjector(new ProviderLifecycleTestModule(tempDir));
+		InternalProvider provider = discoveredProvider();
+		provider.getDescriptor().setMain(RequiredFeatureProvider.class.getName());
+
+		injector.getInstance(ProviderLifecycleController.class).loadProvider(provider);
+
+		assertEquals(ProviderState.FAILED, provider.getState());
+		assertNull(provider.getProvider());
+		assertFalse(Files.exists(tempDir.resolve("providers/Test Provider/settings.yml")));
+	}
+
+	@Test
+	void optionalFeaturesOnlyParticipateWhenInstalled(@TempDir Path tempDir) {
+		Injector injector = Guice.createInjector(new ProviderLifecycleTestModule(tempDir));
+		FeatureRegistry features = injector.getInstance(FeatureRegistry.class);
+		org.mockito.Mockito.when(features.isAvailable("recognition")).thenReturn(true);
+		org.mockito.Mockito.when(features.isAvailable("verification")).thenReturn(true);
+		InternalProvider provider = discoveredProvider();
+		provider.getDescriptor().setMain(OptionalFeatureProvider.class.getName());
+
+		injector.getInstance(ProviderLifecycleController.class).loadProvider(provider);
+
+		assertEquals(ProviderState.LOADED, provider.getState());
+		assertEquals(Set.of("recognition", "verification"), Set.copyOf(provider.getDescriptor().getSupportedFeatureIds()));
+		assertTrue(provider.getDescriptor().getTraits().isEmpty());
+	}
+
+	@Test
+	void rejectsProvidersWhoseDependenciesCannotBeInspected(@TempDir Path tempDir) {
+		Injector injector = Guice.createInjector(new ProviderLifecycleTestModule(tempDir));
+		InternalProvider provider = discoveredProvider();
+		provider.getDescriptor().setMain(InjectionOnlyProvider.class.getName());
+
+		injector.getInstance(ProviderLifecycleController.class).loadProvider(provider);
+
+		assertEquals(ProviderState.FAILED, provider.getState());
+		assertNull(provider.getProvider());
+	}
+
+	public static class InjectionOnlyProvider extends RequiredFeatureProvider {
+		@Inject
+		public InjectionOnlyProvider(Injector injector) {
+		}
+	}
+
+	public static class RequiredFeatureProvider extends TestProvider {
+		@Override
+		public @NotNull Set<String> supportedFeatures() {
+			return Set.of("verification");
+		}
+	}
+
+	public static class OptionalFeatureProvider extends TestProvider {
+		@Override
+		public @NotNull Set<String> supportedFeatures() {
+			return Set.of("verification", "recognition");
+		}
+	}
+
 	private static InternalProvider discoveredProvider() {
 		return InternalProvider.builder()
 				.path(Path.of("ignored.jar"))
@@ -133,8 +191,7 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 			bind(ProviderWorkingPathResolver.class).asEagerSingleton();
 			bind(ProviderInstanceFactory.class).asEagerSingleton();
 			bind(ProviderLifecycleController.class).asEagerSingleton();
-			bind(ProviderCapabilityCoordinator.class).to(DefaultProviderCapabilityCoordinator.class).asEagerSingleton();
-			bind(ProviderCapabilityRegistry.class).to(DefaultProviderCapabilityRegistry.class).asEagerSingleton();
+			bind(FeatureRegistry.class).toInstance(org.mockito.Mockito.mock(FeatureRegistry.class));
 			bind(new TypeLiteral<Registry<Reloadable>>() {}).to(ReloadableRegistry.class).asEagerSingleton();
 			bind(ConflictService.class).toInstance(new NoopConflictService());
 			bind(EventManager.class).toInstance(new NoopEventManager());
@@ -155,7 +212,7 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 		@Provides
 		@Singleton
 		ProviderRuntimeClassLoaderFactory provideProviderRuntimeClassLoaderFactory() {
-			return new ProviderRuntimeClassLoaderFactory(new SharedCapabilityClassLoaderFactory()) {
+			return new ProviderRuntimeClassLoaderFactory(new SharedLibraryClassLoaderFactory(getClass().getClassLoader())) {
 				@Override
 				public URLClassLoader create(Path jarPath) {
 					return new URLClassLoader(new java.net.URL[0], getClass().getClassLoader());
@@ -168,9 +225,8 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 		ProviderLibraryInstaller provideProviderLibraryInstaller() {
 			return new ProviderLibraryInstaller(
 					tempDir.resolve("providers"),
-					tempDir.resolve("capabilities"),
-					org.mockito.Mockito.mock(ProviderDependencyLoggingAdapter.class),
-					new SharedCapabilityClassLoaderFactory()
+						org.mockito.Mockito.mock(ProviderDependencyLoggingAdapter.class),
+					new SharedLibraryClassLoaderFactory(getClass().getClassLoader())
 			) {
 				@Override
 				protected void install(

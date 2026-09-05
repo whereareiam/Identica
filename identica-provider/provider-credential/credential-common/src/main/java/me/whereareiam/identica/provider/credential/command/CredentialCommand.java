@@ -1,6 +1,7 @@
 package me.whereareiam.identica.provider.credential.command;
 
 import com.google.inject.Inject;
+import com.google.inject.Injector;
 import com.google.inject.Provider;
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.annotation.Argument;
@@ -42,15 +43,14 @@ public class CredentialCommand extends ProtectedActionCommand<MigrationRequest> 
 	public CredentialCommand(
 			Provider<CredentialMessages> messagesProvider,
 			Provider<Messages> coreMessagesProvider,
-			Provider<VerificationMessages> verificationMessagesProvider,
+			@NotNull Injector injector,
 			MigrationService migrationService,
-			VerificationService verificationService,
 			SessionService sessionService
 	) {
-		super(verificationService);
+		super(injector.getInstance(VerificationService.class));
 		this.messagesProvider = messagesProvider;
 		this.coreMessagesProvider = coreMessagesProvider;
-		this.verificationMessagesProvider = verificationMessagesProvider;
+		this.verificationMessagesProvider = () -> injector.getInstance(VerificationMessages.class);
 		this.migrationService = migrationService;
 		this.sessionService = sessionService;
 	}

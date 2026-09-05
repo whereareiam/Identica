@@ -2,7 +2,7 @@ package me.whereareiam.identica.feature.sentinel;
 
 import com.google.inject.Singleton;
 import me.whereareiam.identica.Registry;
-import me.whereareiam.identica.sentinel.SentinelDefinition;
+import me.whereareiam.identica.feature.sentinel.SentinelDefinition;
 
 import java.util.Collections;
 import java.util.Set;

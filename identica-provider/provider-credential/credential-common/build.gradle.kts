@@ -3,23 +3,13 @@ plugins {
 }
 
 dependencies {
-    // capabilities
-    compileOnly(projects.capabilityRecognition)
-
-    // features
+    compileOnly(projects.featureRecognitionApi)
     compileOnly(projects.featureSentinelApi)
     compileOnly(projects.featureVerificationApi)
-
-    // general
     compileOnly(projects.providerCredentialApi)
 
-    // capabilities
-    testImplementation(projects.capabilityRecognition)
-
-    // features
+    testImplementation(projects.featureRecognitionApi)
     testImplementation(projects.featureSentinelApi)
     testImplementation(projects.featureVerificationApi)
-
-    // general
     testImplementation(projects.providerCredentialApi)
 }

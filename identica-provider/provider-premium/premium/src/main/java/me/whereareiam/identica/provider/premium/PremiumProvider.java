@@ -4,19 +4,10 @@ import com.google.inject.Inject;
 import com.google.inject.Module;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
-import me.whereareiam.identica.Constants;
-import me.whereareiam.identica.feature.verification.VerificationFeature;
-import me.whereareiam.identica.model.provider.dependency.ProviderLibraries;
-import me.whereareiam.identica.model.provider.dependency.ProviderLibrary;
 import me.whereareiam.identica.pipeline.completion.extension.CompletionExtensionRegistry;
 import me.whereareiam.identica.pipeline.extension.PipelineExtensionRegistry;
 import me.whereareiam.identica.provider.IdenticaProvider;
 import me.whereareiam.identica.provider.ProviderPlatformExtension;
-import me.whereareiam.identica.provider.capability.authoritative.username.bootstrap.AuthoritativeUsernameCapabilityBootstrap;
-import me.whereareiam.identica.provider.capability.bootstrap.ProviderCapabilityBootstrap;
-import me.whereareiam.identica.provider.capability.recognition.bootstrap.RecognitionCapabilityBootstrap;
-import me.whereareiam.identica.provider.capability.restriction.bootstrap.RestrictionCapabilityBootstrap;
-import me.whereareiam.identica.provider.capability.restriction.join.bootstrap.JoinRestrictionCapabilityBootstrap;
 import me.whereareiam.identica.provider.premium.command.CommandRegistrar;
 import me.whereareiam.identica.provider.premium.completion.PremiumCompletionExtension;
 import me.whereareiam.identica.provider.premium.completion.PremiumCompletionStep;
@@ -29,10 +20,11 @@ import me.whereareiam.identica.provider.premium.pipeline.step.type.authenticatio
 import me.whereareiam.identica.provider.premium.pipeline.step.type.migration.PremiumMigrationCompleteStep;
 import me.whereareiam.identica.provider.premium.platform.bungeecord.PremiumBungeeCordExtension;
 import me.whereareiam.identica.provider.premium.platform.velocity.PremiumVelocityExtension;
-import me.whereareiam.identica.type.provider.ProviderFeature;
+import me.whereareiam.identica.type.provider.ProviderTrait;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+import java.util.Set;
 
 @NoArgsConstructor
 @SuppressWarnings("unused")
@@ -57,78 +49,13 @@ public class PremiumProvider extends IdenticaProvider {
 	}
 
 	@Override
-	public @NotNull ProviderLibraries libraries() {
-		ProviderLibraries libraries = new ProviderLibraries();
-		libraries.setLibraries(List.of(
-				ProviderLibrary.builder()
-						.groupId("me.whereareiam.identica.capability")
-						.artifactId("restriction-api")
-						.version(Constants.VERSION)
-						.resolveTransitiveDependencies(false)
-						.loader("shared")
-						.build(),
-				ProviderLibrary.builder()
-						.groupId("me.whereareiam.identica.capability")
-						.artifactId("restriction")
-						.version(Constants.VERSION)
-						.resolveTransitiveDependencies(false)
-						.build(),
-				ProviderLibrary.builder()
-						.groupId("me.whereareiam.identica.capability")
-						.artifactId("restriction-join-api")
-						.version(Constants.VERSION)
-						.resolveTransitiveDependencies(false)
-						.loader("shared")
-						.build(),
-				ProviderLibrary.builder()
-						.groupId("me.whereareiam.identica.capability")
-						.artifactId("restriction-join")
-						.version(Constants.VERSION)
-						.resolveTransitiveDependencies(false)
-						.build(),
-				ProviderLibrary.builder()
-						.groupId("me.whereareiam.identica.capability")
-						.artifactId("recognition-api")
-						.version(Constants.VERSION)
-						.resolveTransitiveDependencies(false)
-						.loader("shared")
-						.build(),
-				ProviderLibrary.builder()
-						.groupId("me.whereareiam.identica.capability")
-						.artifactId("recognition")
-						.version(Constants.VERSION)
-						.resolveTransitiveDependencies(false)
-						.build(),
-				ProviderLibrary.builder()
-						.groupId("me.whereareiam.identica.capability")
-						.artifactId("authoritative-username-api")
-						.version(Constants.VERSION)
-						.resolveTransitiveDependencies(false)
-						.loader("shared")
-						.build(),
-				ProviderLibrary.builder()
-						.groupId("me.whereareiam.identica.capability")
-						.artifactId("authoritative-username")
-						.version(Constants.VERSION)
-						.resolveTransitiveDependencies(false)
-						.build()
-		));
-		return libraries;
+	public @NotNull Set<ProviderTrait> traits() {
+		return java.util.Set.of(ProviderTrait.AUTHORITATIVE_USERNAME);
 	}
 
 	@Override
-	public @NotNull List<ProviderCapabilityBootstrap> declaredCapabilities() {
-		return List.of(
-				RestrictionCapabilityBootstrap.INSTANCE,
-				JoinRestrictionCapabilityBootstrap.INSTANCE,
-				RecognitionCapabilityBootstrap.INSTANCE,
-				AuthoritativeUsernameCapabilityBootstrap.INSTANCE
-		);
-	}
-
-	@Override
-	public @NotNull List<ProviderFeature> declaredFeatures() {
-		return List.of(VerificationFeature.FEATURE);
+	public @NotNull Set<String> supportedFeatures() {
+		return Set.of("verification", "recognition", "restriction", "restriction-join", "sentinel");
 	}
 
 	@Override

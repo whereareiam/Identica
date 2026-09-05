@@ -6,16 +6,19 @@ import me.whereareiam.identica.conflict.ConflictType;
 import me.whereareiam.identica.conflict.resolver.ConflictResolver;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
 import me.whereareiam.identica.model.provider.dependency.ProviderLibraries;
-import me.whereareiam.identica.provider.capability.bootstrap.ProviderCapabilityBootstrap;
-import me.whereareiam.identica.type.provider.ProviderFeature;
+import me.whereareiam.identica.type.provider.ProviderTrait;
+import me.whereareiam.identica.feature.FeatureRegistry;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 
 /**
- * Base class for Identica providers loaded at runtime.
+ * Base class for Identica providers loaded at runtime. Implementations must expose
+ * a no-argument constructor so dependencies can be checked before injection.
+ * Dependency declarations must not depend on injected services.
  */
 @Setter
 @SuppressWarnings("unused")
@@ -25,25 +28,16 @@ public abstract class IdenticaProvider {
 	protected @Nullable ProviderPlatformExtension platformExtension;
 
 	/**
-	 * Provides runtime dependency metadata required before capability bootstraps
-	 * can be resolved.
+	 * Supplies provider-owned runtime libraries. Built-in feature implementations and APIs are supplied by Identica.
 	 *
-	 * <p>Libraries may target either the provider-local runtime classloader or
-	 * the shared capability API parent classloader. Capability runtime artifacts
-	 * and their shared APIs should be declared here so the provider loader can
-	 * make them available before calling {@link #declaredCapabilities()}. Libraries
-	 * with {@code loader = "shared"} are installed into the shared capability
-	 * API parent loader, while libraries without an explicit loader target are
-	 * treated as provider-local.</p>
-	 *
-	 * @return provider libraries descriptor
+	 * @return provider library descriptor
 	 */
 	public @NotNull ProviderLibraries libraries() {
 		return ProviderLibraries.empty();
 	}
 
 	/**
-	 * Provides Guice modules for this eligibility.
+	 * Provides Guice modules for this provider.
 	 *
 	 * @return list of modules to install
 	 */
@@ -52,23 +46,33 @@ public abstract class IdenticaProvider {
 	}
 
 	/**
-	 * Provides capability bootstraps declared by this provider.
+	 * Declares identity guarantees supplied by this provider. Traits are fixed by
+	 * the implementation and cannot be enabled through feature configuration.
 	 *
-	 * <p>The returned bootstraps are resolved after {@link #libraries()} has
-	 * been loaded into the appropriate runtime classloaders.</p>
-	 *
-	 * @return capability bootstraps
+	 * @return provider identity traits
 	 */
-	public @NotNull List<ProviderCapabilityBootstrap> declaredCapabilities() {
-		return List.of();
+	public @NotNull Set<ProviderTrait> traits() {
+		return Set.of();
 	}
 
 	/**
-	 * Provides built-in features declared by this provider.
+	 * Identifies built-in features this provider integrates with. Operators choose
+	 * which supported features to use through provider configuration.
 	 *
-	 * @return built-in feature declarations
+	 * @return supported feature identifiers
 	 */
-	public @NotNull List<ProviderFeature> declaredFeatures() {
+	public @NotNull Set<String> supportedFeatures() {
+		return Set.of();
+	}
+
+	/**
+	 * Supplies provider-owned integration bindings for compiled features.
+	 * Called after supported features have been validated.
+	 *
+	 * @param features compiled feature registry
+	 * @return modules containing available integrations
+	 */
+	public @NotNull List<Module> featureModules(@NotNull FeatureRegistry features) {
 		return List.of();
 	}
 
@@ -83,18 +87,18 @@ public abstract class IdenticaProvider {
 	}
 
 	/**
-	 * Provide conflict resolvers owned by this eligibility.
+	 * Provide conflict resolvers owned by this provider.
 	 *
-	 * @return list of eligibility-defined resolvers
+	 * @return list of provider-defined resolvers
 	 */
 	public @NotNull List<ConflictResolver> getConflictResolvers() {
 		return List.of();
 	}
 
 	/**
-	 * Provide conflict types owned by this eligibility.
+	 * Provide conflict types owned by this provider.
 	 *
-	 * @return list of eligibility-defined conflict types
+	 * @return list of provider-defined conflict types
 	 */
 	public @NotNull List<ConflictType> getConflictTypes() {
 		return List.of();

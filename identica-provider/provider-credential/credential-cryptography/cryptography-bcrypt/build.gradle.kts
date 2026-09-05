@@ -4,8 +4,8 @@ plugins {
 
 dependencies {
     compileOnly(projects.providerCredentialApi)
-    testImplementation(projects.providerCredentialApi)
-
     compileOnly(libs.bcrypt)
+
+    testImplementation(projects.providerCredentialApi)
     testImplementation(libs.bcrypt)
 }

@@ -9,5 +9,5 @@ dependencies {
 }
 
 toolkitPublish {
-    artifactId.set("verification")
+    artifactId.set("verification-api")
 }

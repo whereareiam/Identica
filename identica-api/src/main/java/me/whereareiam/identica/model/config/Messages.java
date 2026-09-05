@@ -534,10 +534,6 @@ public class Messages extends ConfigDocument {
 		 * Message shown when an existing session is kicked due to a new login.
 		 */
 		private @NotNull List<String> concurrentLoginKick;
-		/**
-		 * Message shown when resume or advance requests are sentineled.
-		 */
-		private @NotNull List<String> resumeSentineled;
 		private @NotNull Journey journey;
 		private @NotNull Prepare prepare;
 
@@ -634,17 +630,6 @@ public class Messages extends ConfigDocument {
 		public static class Authentication extends Scenario {
 			private @NotNull List<String> authenticationFailed;
 			private @NotNull List<String> sessionBuildFailed;
-			/**
-			 * Message shown when entrypoint selection is required for conflicts.
-			 * Placeholders:
-			 * - {incomingProvider}
-			 * - {existingProvider}
-			 * - {incomingProviderId}
-			 * - {existingProviderId}
-			 * - {incomingHost}
-			 * - {existingHost}
-			 */
-			private @NotNull List<String> conflictEntrypointRequired;
 		}
 
 		@Getter
@@ -717,7 +702,6 @@ public class Messages extends ConfigDocument {
 				public static class Identity {
 					private @NotNull List<String> groupMissingResult;
 					private @NotNull List<String> profileMissing;
-					private @NotNull List<String> replicationMissing;
 					private @NotNull List<String> accountMissing;
 					private @NotNull Provider provider;
 

@@ -18,7 +18,7 @@ public class SharedLibraryConflictTracker {
 		if (existing == null) return true;
 		if (sameCoordinates(existing, library)) return false;
 
-		throw new IllegalStateException("Shared capability API library conflict for "
+		throw new IllegalStateException("Shared provider library conflict for "
 				+ coordinates(existing)
 				+ " != "
 				+ coordinates(library));

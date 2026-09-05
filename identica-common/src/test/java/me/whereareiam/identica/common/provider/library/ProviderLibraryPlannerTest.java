@@ -29,13 +29,13 @@ class ProviderLibraryPlannerTest {
 
 		assertEquals(
 				Set.of("recognition-api", "external-api"),
-				artifactIds(plan.sharedCapabilityApis())
+				artifactIds(plan.sharedLibraries())
 		);
 		assertEquals(
 				Set.of("recognition-runtime", "external-runtime"),
 				artifactIds(plan.providerRuntimeLibraries())
 		);
-		assertEquals(List.of("https://repo.example/releases"), plan.sharedCapabilityApis().getRepositories());
+		assertEquals(List.of("https://repo.example/releases"), plan.sharedLibraries().getRepositories());
 		assertEquals(List.of("https://repo.example/releases"), plan.providerRuntimeLibraries().getRepositories());
 	}
 
@@ -51,7 +51,7 @@ class ProviderLibraryPlannerTest {
 		ProviderLibraryPlanner.ProviderLibraryPlan plan = new ProviderLibraryPlanner(new SharedLibraryConflictTracker())
 				.plan(libraries);
 
-		assertEquals(List.of("recognition-api"), plan.sharedCapabilityApis().getLibraries().stream()
+		assertEquals(List.of("recognition-api"), plan.sharedLibraries().getLibraries().stream()
 				.map(ProviderLibrary::getArtifactId)
 				.toList());
 		assertEquals(List.of("recognition-runtime"), plan.providerRuntimeLibraries().getLibraries().stream()
@@ -67,7 +67,7 @@ class ProviderLibraryPlannerTest {
 
 	private static @NotNull ProviderLibrary shared(@NotNull String artifactId, @NotNull String version) {
 		return ProviderLibrary.builder()
-				.groupId("me.whereareiam.identica.capability")
+				.groupId("example.provider.library")
 				.artifactId(artifactId)
 				.version(version)
 				.resolveTransitiveDependencies(false)
@@ -77,7 +77,7 @@ class ProviderLibraryPlannerTest {
 
 	private static @NotNull ProviderLibrary local(@NotNull String artifactId, @NotNull String version) {
 		return ProviderLibrary.builder()
-				.groupId("me.whereareiam.identica.capability")
+				.groupId("example.provider.library")
 				.artifactId(artifactId)
 				.version(version)
 				.resolveTransitiveDependencies(false)

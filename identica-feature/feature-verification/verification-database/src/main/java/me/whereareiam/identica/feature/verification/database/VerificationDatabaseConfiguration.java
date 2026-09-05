@@ -11,7 +11,7 @@ import org.jdbi.v3.core.Jdbi;
 public class VerificationDatabaseConfiguration extends AbstractModule {
 	@Override
 	protected void configure() {
-		bind(VerificationPersistenceService.class).to(DefaultVerificationPersistenceService.class).asEagerSingleton();
+		bind(VerificationPersistenceService.class).to(DefaultVerificationPersistenceService.class).in(Singleton.class);
 	}
 
 	@Provides

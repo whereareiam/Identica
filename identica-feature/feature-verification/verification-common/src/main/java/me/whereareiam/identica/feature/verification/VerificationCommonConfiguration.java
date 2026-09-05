@@ -1,7 +1,6 @@
 package me.whereareiam.identica.feature.verification;
 
 import com.google.inject.AbstractModule;
-import com.google.inject.Inject;
 import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Names;
@@ -27,10 +26,10 @@ public class VerificationCommonConfiguration extends AbstractModule {
 		bind(VerificationCommands.class).toProvider(VerificationCommandsProvider.class);
 		bind(VerificationMessages.class).toProvider(VerificationMessagesProvider.class);
 		bind(VerificationSettings.class).toProvider(VerificationSettingsProvider.class);
-		bind(VerificationEnrollmentStore.class).asEagerSingleton();
-		bind(VerificationChallengeStore.class).asEagerSingleton();
-		bind(VerificationService.class).to(DefaultVerificationService.class).asEagerSingleton();
-		bind(VerificationRegistry.class).to(DefaultVerificationRegistry.class).asEagerSingleton();
+		bind(VerificationEnrollmentStore.class).in(com.google.inject.Singleton.class);
+		bind(VerificationChallengeStore.class).in(com.google.inject.Singleton.class);
+		bind(VerificationService.class).to(DefaultVerificationService.class).in(com.google.inject.Singleton.class);
+		bind(VerificationRegistry.class).to(DefaultVerificationRegistry.class).in(com.google.inject.Singleton.class);
 		Multibinder.newSetBinder(binder(), VerificationMethod.class)
 				.addBinding()
 				.to(TotpVerificationMethod.class);
@@ -46,11 +45,6 @@ public class VerificationCommonConfiguration extends AbstractModule {
 		commands.addBinding().to(VerificationSelectionCommand.class);
 		commands.addBinding().to(VerificationResetCommand.class);
 
-		bind(VerificationCommandRegistrar.class).asEagerSingleton();
-	}
-
-	@Inject
-	void registerVerificationCommands(VerificationCommandRegistrar registrar) {
-		registrar.registerCommands();
+		bind(VerificationCommandRegistrar.class).in(com.google.inject.Singleton.class);
 	}
 }

@@ -4,8 +4,8 @@ plugins {
 
 dependencies {
     compileOnly(projects.providerCredentialApi)
-    testImplementation(projects.providerCredentialApi)
-
     compileOnly(libs.argon2)
+
+    testImplementation(projects.providerCredentialApi)
     testImplementation(libs.argon2)
 }

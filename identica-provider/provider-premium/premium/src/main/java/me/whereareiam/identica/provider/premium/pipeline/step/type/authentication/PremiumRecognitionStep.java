@@ -1,30 +1,32 @@
 package me.whereareiam.identica.provider.premium.pipeline.step.type.authentication;
 
 import com.google.inject.Inject;
+import com.google.inject.Injector;
 import com.google.inject.Singleton;
+import me.whereareiam.identica.feature.FeatureRegistry;
+import me.whereareiam.identica.feature.recognition.SessionRecognitionService;
+import me.whereareiam.identica.feature.recognition.store.RecognizedConnectionStore;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.journey.step.type.InteractiveStep;
-import me.whereareiam.identica.provider.capability.recognition.SessionRecognitionService;
-import me.whereareiam.identica.provider.capability.recognition.store.RecognizedConnectionStore;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
 
 @Singleton
 public class PremiumRecognitionStep extends InteractiveStep {
-	private final SessionRecognitionService sessionRecognitionService;
-	private final RecognizedConnectionStore recognizedConnectionStore;
+	private final @NotNull FeatureRegistry features;
+	private final @NotNull Injector injector;
 
 	@Inject
 	public PremiumRecognitionStep(
-			SessionRecognitionService sessionRecognitionService,
-			RecognizedConnectionStore recognizedConnectionStore
+			@NotNull FeatureRegistry features,
+			@NotNull Injector injector
 	) {
 		super("premium-recognition");
-		this.sessionRecognitionService = sessionRecognitionService;
-		this.recognizedConnectionStore = recognizedConnectionStore;
+		this.features = features;
+		this.injector = injector;
 	}
 
 	@Override
@@ -34,11 +36,14 @@ public class PremiumRecognitionStep extends InteractiveStep {
 
 	@Override
 	public @NotNull CompletableFuture<StepResult> execute(@NotNull ScenarioContext context) {
+		if (!features.isEnabled("premium", "recognition"))
+			return CompletableFuture.completedFuture(StepResult.proceed(context));
+
 		ProviderContext provider = context.getProvider();
 		if (provider == null)
 			return CompletableFuture.completedFuture(StepResult.proceed(context));
 
-		boolean recognized = sessionRecognitionService.matches(
+		boolean recognized = injector.getInstance(SessionRecognitionService.class).matches(
 				provider.getProviderId(),
 				provider.getProviderSubject(),
 				provider.getProviderUsername(),
@@ -46,7 +51,7 @@ public class PremiumRecognitionStep extends InteractiveStep {
 				context.getIdentity().getOrigin()
 		);
 		if (recognized && context.getIdentity().getConnectionUniqueId() != null)
-			recognizedConnectionStore.markRecognized(context.getIdentity().getConnectionUniqueId());
+			injector.getInstance(RecognizedConnectionStore.class).markRecognized(context.getIdentity().getConnectionUniqueId());
 
 		return CompletableFuture.completedFuture(recognized
 				? StepResult.complete(context)

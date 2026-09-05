@@ -14,3 +14,5 @@ Instead of finishing login immediately, Identica asks for a code from the built-
 The player enters the current code from their authenticator app, verification succeeds, and only then does the login flow complete.
 
 If verification is optional instead of required, the same provider can still work without forcing that second step for every player or every situation.
+
+Verification is compiled into Identica. Shared defaults live under `features/verification/`; providers override them in `providers[].features.verification`. See [Settings](./settings/index.mdx).

@@ -6,6 +6,8 @@ description: Field-by-field explanation of Identica's verification settings.
 This page provides the settings for verification and allows you to control its behavior.
 You can also override the default behavior through provider overrides in `providers[].features.verification`.
 
+Shared settings live under `features/verification/settings`. Messages live under `features/verification/messages`. Provider-specific settings inherit the shared `defaults` policy.
+
 ## Settings
 
 ### challengeTtl
@@ -154,17 +156,28 @@ This changes the formatting style of generated recovery codes, not whether they 
 
 The verification feature contributes provider-scoped verification fields inside the providers configuration through `providers[].features.verification`.
 
-<Callout title="Declared subtree behavior" type="info">
-  Provider-scoped verification defaults are only applied when a provider declares a `features.verification` subtree.
-  In the current source, the official `credential` and `premium` providers then default to enabled verification with one enabled `totp` method.
-</Callout>
+The shared `defaults` object in `features/verification/settings` supplies the provider policy. Missing provider nodes and missing fields inherit it; defaults are not copied into provider overrides.
+
+```yaml
+defaults:
+  enabled: true
+  required: false
+  unavailableSelectionPolicy: KEEP_LOCKED
+  methods:
+    - id: totp
+      enabled: true
+      priority: 100
+```
+
+A provider can override only the fields it needs. An explicit empty `methods: []` permits no methods for that provider.
 
 ### features.verification.enabled
 
 - Takes: `true` or `false`
+- Current default: inherits `defaults.enabled` (`true`)
 - Affects: whether this provider participates in the shared verification system
 
-If the provider does not declare `features.verification` at all, it does not participate through this feature-owned subtree.
+If no provider override is present, the shared defaults apply to providers that declare verification support.
 
 ### features.verification.required
 
@@ -175,7 +188,7 @@ If the provider does not declare `features.verification` at all, it does not par
 ### features.verification.unavailableSelectionPolicy
 
 - Takes: `"CLEAR_SELECTION"` or `"KEEP_LOCKED"`
-- Current default: `KEEP_LOCKED` in the current declared defaults for official providers
+- Current default: inherits `defaults.unavailableSelectionPolicy` (`KEEP_LOCKED`)
 - Affects: what happens when the selected verification method is unavailable
 
 ### features.verification.methods
@@ -183,7 +196,7 @@ If the provider does not declare `features.verification` at all, it does not par
 - Takes: a list of method entries
 - Affects: which verification methods can be used for this provider and in what order
 
-In the current declared defaults for the official `credential` and `premium` providers, this contains one enabled `totp` entry with priority `100`.
+For any provider ID with an explicit verification node, this defaults to one enabled `totp` entry with priority `100`.
 
 Each method entry supports:
 

@@ -23,6 +23,10 @@ Because of that, this documentation describes:
   These flags show that a setting is intentionally configurable, but should be changed with more care than ordinary options. Unmarked settings are normal day-to-day configuration.
 </Callout>
 
+## Feature selection and settings
+
+Feature settings live under `features/<id>/`, with join restriction nested under `features/restriction/join/`. Provider-specific overrides belong to `providers[].features` and inherit shared defaults. All features are compiled into Identica. See [Features](./features/index.mdx) for configuration.
+
 ## Common value formats
 
 Across configuration areas, values commonly appear in a few recurring forms:

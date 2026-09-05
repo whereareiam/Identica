@@ -1,11 +1,14 @@
 package me.whereareiam.identica.provider.premium.step;
 
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import me.whereareiam.identica.feature.FeatureRegistry;
+import me.whereareiam.identica.feature.recognition.SessionRecognitionService;
+import me.whereareiam.identica.feature.recognition.store.RecognizedConnectionStore;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
-import me.whereareiam.identica.provider.capability.recognition.SessionRecognitionService;
-import me.whereareiam.identica.provider.capability.recognition.store.RecognizedConnectionStore;
 import me.whereareiam.identica.provider.premium.pipeline.step.type.authentication.PremiumRecognitionStep;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,7 +25,7 @@ class PremiumRecognitionStepTest {
 		SessionRecognitionService recognitionService = mock(SessionRecognitionService.class);
 		RecognizedConnectionStore recognizedConnectionStore = mock(RecognizedConnectionStore.class);
 		when(recognitionService.matches(any(), any(), any(), any(), any())).thenReturn(true);
-		PremiumRecognitionStep step = new PremiumRecognitionStep(recognitionService, recognizedConnectionStore);
+		PremiumRecognitionStep step = injector(recognitionService, recognizedConnectionStore).getInstance(PremiumRecognitionStep.class);
 		AuthContext context = context();
 
 		StepResult result = step.execute(context).join();
@@ -38,13 +41,33 @@ class PremiumRecognitionStepTest {
 		SessionRecognitionService recognitionService = mock(SessionRecognitionService.class);
 		RecognizedConnectionStore recognizedConnectionStore = mock(RecognizedConnectionStore.class);
 		when(recognitionService.matches(any(), any(), any(), any(), any())).thenReturn(false);
-		PremiumRecognitionStep step = new PremiumRecognitionStep(recognitionService, recognizedConnectionStore);
+		PremiumRecognitionStep step = injector(recognitionService, recognizedConnectionStore).getInstance(PremiumRecognitionStep.class);
 		AuthContext context = context();
 
 		StepResult result = step.execute(context).join();
 
 		assertEquals(StepResult.StepStatus.CONTINUE, result.getStatus());
 		verify(recognizedConnectionStore, never()).markRecognized(any());
+	}
+
+	@Test
+	void continuesWithoutRecognitionBindings() {
+		FeatureRegistry features = mock(FeatureRegistry.class);
+		Injector injector = Guice.createInjector(binder -> binder.bind(FeatureRegistry.class).toInstance(features));
+
+		StepResult result = injector.getInstance(PremiumRecognitionStep.class).execute(context()).join();
+
+		assertEquals(StepResult.StepStatus.CONTINUE, result.getStatus());
+	}
+
+	private Injector injector(SessionRecognitionService service, RecognizedConnectionStore store) {
+		FeatureRegistry features = mock(FeatureRegistry.class);
+		when(features.isEnabled("premium", "recognition")).thenReturn(true);
+		return Guice.createInjector(binder -> {
+			binder.bind(FeatureRegistry.class).toInstance(features);
+			binder.bind(SessionRecognitionService.class).toInstance(service);
+			binder.bind(RecognizedConnectionStore.class).toInstance(store);
+		});
 	}
 
 	private AuthContext context() {

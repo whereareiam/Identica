@@ -19,7 +19,6 @@ import me.whereareiam.identica.feature.verification.type.UnavailableSelectionPol
 import me.whereareiam.identica.feature.verification.type.status.VerificationChallengeStatus;
 import me.whereareiam.identica.feature.verification.type.status.VerificationResolutionStatus;
 import me.whereareiam.identica.provider.ProviderManager;
-import me.whereareiam.identica.type.provider.capability.ProviderCapability;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -29,8 +28,6 @@ import java.util.UUID;
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class VerificationRequirementResolver {
-	// TODO Migrate and use capbility api class
-	private static final ProviderCapability VERIFICATION_CAPABILITY = ProviderCapability.of("verification");
 	private final VerificationPersistenceService persistenceService;
 	private final VerificationChallengeStore challengeStore;
 	private final VerificationPolicyResolver policyResolver;
@@ -169,6 +166,6 @@ public class VerificationRequirementResolver {
 				.anyMatch(provider -> provider != null
 						&& provider.getDescriptor() != null
 						&& providerId.equalsIgnoreCase(provider.getDescriptor().getId())
-						&& provider.getDescriptor().hasCapability(VERIFICATION_CAPABILITY));
+						&& provider.getDescriptor().supportsFeature("verification"));
 	}
 }

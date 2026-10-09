@@ -7,6 +7,13 @@ import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.annotation.Argument;
 import me.whereareiam.identica.annotation.Command;
 import me.whereareiam.identica.annotation.Definition;
+import me.whereareiam.identica.database.provider.ProviderLinkPersistenceService;
+import me.whereareiam.identica.database.provider.ProviderProfilePersistenceService;
+import me.whereareiam.identica.identity.account.AccountService;
+import me.whereareiam.identica.model.identity.Account;
+import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
+import me.whereareiam.identica.model.identity.provider.AccountProviderProfile;
+import me.whereareiam.identica.provider.credential.CredentialConstants;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.cryptography.CryptographyService;
@@ -27,6 +34,10 @@ public class ManagementCommand {
 	private final CredentialAccountService credentialService;
 	private final CryptographyService cryptographyService;
 	private final PasswordRules passwordPolicy;
+	private final AccountService accountService;
+	private final ProviderLinkPersistenceService providerLinkPersistenceService;
+	private final ProviderProfilePersistenceService providerProfilePersistenceService;
+	private final UniqueIdGenerator uniqueIdGenerator;
 
 	@Definition("admin-force-register")
 	@Command("identica credential register <username> <password>")
@@ -55,6 +66,11 @@ public class ManagementCommand {
 
 		PasswordCandidate candidate = cryptographyService.hash(password);
 		if (candidate == null) {
+			sendMessage(sender, messages.getNotFound());
+			return;
+		}
+
+		if (!ensureAccount(username, providerSubject)) {
 			sendMessage(sender, messages.getNotFound());
 			return;
 		}
@@ -118,6 +134,47 @@ public class ManagementCommand {
 				.message(message)
 				.build();
 		sender.sendMessage(Serializer.serialize(content));
+	}
+
+	/**
+	 * Gives the credential the account a registering player would get: an Identica account, its Credential
+	 * link and the provider profile. Without them the player would join as unregistered despite the password.
+	 * An existing account of that username receives the link; it is primary only when the account has none.
+	 */
+	private boolean ensureAccount(@NotNull String username, @NotNull String providerSubject) {
+		String providerId = CredentialConstants.PROVIDER_ID;
+		if (providerLinkPersistenceService.findBySubject(providerId, providerSubject).isPresent())
+			return true;
+
+		long now = System.currentTimeMillis();
+		Account account = accountService.find(username).stream().findFirst().orElse(null);
+		if (account == null) {
+			UUID uniqueId = uniqueIdGenerator.resolveConfiguredUniqueId(username, providerSubject, null);
+			if (uniqueId == null) return false;
+
+			account = accountService.create(Account.builder()
+					.uniqueId(uniqueId)
+					.username(username)
+					.createdAt(now)
+					.lastSeenAt(now)
+					.build());
+		}
+
+		providerLinkPersistenceService.upsert(AccountProviderLink.builder()
+				.uniqueId(account.getUniqueId())
+				.providerId(providerId)
+				.providerSubject(providerSubject)
+				.primaryLink(providerLinkPersistenceService.findByUniqueId(account.getUniqueId()).isEmpty())
+				.linkedAt(now)
+				.lastSeenAt(now)
+				.build());
+		providerProfilePersistenceService.upsert(AccountProviderProfile.builder()
+				.providerId(providerId)
+				.providerSubject(providerSubject)
+				.providerUsername(username)
+				.build());
+
+		return true;
 	}
 
 	private String resolveProviderSubject(String username) {

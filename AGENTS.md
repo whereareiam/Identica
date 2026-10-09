@@ -133,18 +133,6 @@ Do not replace these libraries with unrelated alternatives in the same area unle
 - Prefer extending the closest existing test suite instead of creating a parallel testing style.
 - Database and replication changes may need integration-style coverage in addition to unit tests.
 
-### Dev Scenarios
-
-Development scenarios under `dev/` are for **real runtime testing**.
-
-- use them to verify that the plugin starts successfully
-- use them to exercise flows with real players
-- expect them to start long-running local servers that do not stop on their own
-- do not treat them like quick disposable verification commands
-- inspect their logs when troubleshooting runtime behavior
-
-Each backend and proxy server produces its own logs, and Identica debug logging is enabled in these scenarios. Those logs are a primary troubleshooting source when startup, routing, authentication, migration, or verification behavior looks wrong.
-
 ---
 
 ## Branching And Pull Requests

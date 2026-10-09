@@ -91,7 +91,7 @@ jobs:
           path: distribution
 
       - name: Format Spigot release notes
-        uses: whereareiam/blockops/primitive/release/notes/format@feature/v4-structure
+        uses: whereareiam/blockops/primitive/release/notes/format@v4
         with:
           format: bbcode
           release-body: ${{ needs.resolve.outputs.body }}
@@ -124,7 +124,7 @@ jobs:
           persist-credentials: false
 
       - id: plan
-        uses: whereareiam/blockops/primitive/distribution/plan/resolve@feature/v4-structure
+        uses: whereareiam/blockops/primitive/distribution/plan/resolve@v4
         with:
           release-tag: ${{ needs.resolve.outputs.tag }}
           release-name: ${{ needs.resolve.outputs.name }}
@@ -148,7 +148,7 @@ jobs:
           name: Identica-${{ needs.plan.outputs.version }}
           path: distribution
 
-      - uses: whereareiam/blockops/primitive/distribution/publication/publish@feature/v4-structure
+      - uses: whereareiam/blockops/primitive/distribution/publication/publish@v4
         with:
           provider-credentials: |
             modrinth: ${{ secrets.MODRINTH_TOKEN }}

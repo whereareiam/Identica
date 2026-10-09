@@ -27,7 +27,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Group changes by title prefix
-        uses: whereareiam/blockops/primitive/release/draft/regroup@feature/v4-structure
+        uses: whereareiam/blockops/primitive/release/draft/regroup@v4
         with:
           release-id: ${{ steps.drafter.outputs.id }}
           release-body: ${{ steps.drafter.outputs.body }}

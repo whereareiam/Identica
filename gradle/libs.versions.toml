@@ -3,7 +3,7 @@
 # plugins
 shadow = "9.3.0"
 buildconfig = "6.0.7"
-toolkit = "feature-distribution-845d453"
+toolkit = "dev-e2f8ced"
 freefair = "9.5.0"
 
 # compile time processing

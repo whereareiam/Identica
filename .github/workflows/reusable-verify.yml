@@ -64,7 +64,7 @@ jobs:
           VERSION: ${{ steps.identity.outputs.version }}
         run: ./gradlew --no-daemon test assembleDistribution
 
-      - uses: whereareiam/devops/primitive/report/junit/publish@feature/junit-artifact-name
+      - uses: whereareiam/devops/primitive/report/junit/publish@v3
         if: always()
         with:
           name: Test results

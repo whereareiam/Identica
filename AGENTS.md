@@ -149,6 +149,7 @@ Do not replace these libraries with unrelated alternatives in the same area unle
 
 - Every pull request gets the metadata check (title and label) and the quick checks: tests and `assembleDistribution`.
 - Label a pull request with exactly one of `feature`, `change`, `bug`, `dependencies`, or with `skip-changelog`; `major` may accompany a category.
+- A run keeps as artifacts only what someone downloads: `identica-plugins-<version>` from a development build or release, and `test-results` when a test failed.
 - Development builds are started manually and publish a branch-qualified version. A published GitHub release publishes Maven artifacts, attaches the distribution, and publishes to the stores; a manual run of the release workflow only republishes to the stores.
 - Entry workflows only select a trigger and call `reusable-verify.yml` and `reusable-publish.yml`; shared steps come from `whereareiam/devops` and `whereareiam/blockops`.
 

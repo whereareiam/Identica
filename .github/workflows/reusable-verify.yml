@@ -12,6 +12,11 @@ on:
         required: false
         type: string
         default: ""
+      distribution:
+        description: Also upload the plugin files as the identica-plugins-<version> artifact.
+        required: false
+        type: boolean
+        default: false
     outputs:
       version:
         description: Artifact version that was verified.
@@ -59,15 +64,17 @@ jobs:
           VERSION: ${{ steps.identity.outputs.version }}
         run: ./gradlew --no-daemon test assembleDistribution
 
-      - uses: whereareiam/devops/primitive/report/junit/publish@v3
+      - uses: whereareiam/devops/primitive/report/junit/publish@feature/junit-artifact-name
         if: always()
         with:
           name: Test results
+          artifact-name: test-results
 
       - name: Upload distribution
+        if: inputs.distribution
         uses: actions/upload-artifact@v6
         with:
-          name: Identica-${{ steps.identity.outputs.version }}
+          name: identica-plugins-${{ steps.identity.outputs.version }}
           path: build/distribution/
           if-no-files-found: error
           compression-level: 0

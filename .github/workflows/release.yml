@@ -62,6 +62,7 @@ jobs:
     with:
       ref: ${{ needs.resolve.outputs.tag }}
       version: ${{ needs.resolve.outputs.tag }}
+      distribution: true
 
   # A manual run only republishes to the stores; Maven and the GitHub release keep what the release published.
   publish:
@@ -87,7 +88,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v6
         with:
-          name: Identica-${{ needs.verify.outputs.version }}
+          name: identica-plugins-${{ needs.verify.outputs.version }}
           path: distribution
 
       - name: Format Spigot release notes
@@ -145,7 +146,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v6
         with:
-          name: Identica-${{ needs.plan.outputs.version }}
+          name: identica-plugins-${{ needs.plan.outputs.version }}
           path: distribution
 
       - uses: whereareiam/blockops/primitive/distribution/publication/publish@v4

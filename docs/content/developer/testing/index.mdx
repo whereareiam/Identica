@@ -1,0 +1,61 @@
+---
+title: Live tests
+description: Run and write player journeys against the packaged plugin on a real proxy.
+---
+
+The `identica-testing` module starts the packaged plugin and providers on a real Velocity proxy with Paper backends and drives simulated players through them with [Anvil](https://github.com/whereareiam/anvil). Unit tests stay in their own modules; these tests cover what a player experiences when joining.
+
+## Run the tests
+
+Run from the repository root with Java 21:
+
+```shell
+./gradlew :identica-testing:anvilTest
+```
+
+The task builds the plugin and provider jars, downloads the proxy and server distributions on first use, and starts a fresh network for every test. The first run takes several minutes; later runs reuse the downloads and Identica's own libraries. `./gradlew test` and `pluginJars` do not start these tests.
+
+Run one class or one test with `--tests`:
+
+```shell
+./gradlew :identica-testing:anvilTest --tests '*CredentialFirstJoinTest'
+```
+
+When a test fails, its network is kept under `identica-testing/build/anvil/<scenario>/<run>/`. Each process folder holds an `anvil-console.log`, and Identica's debug logging is enabled in every test network.
+
+## Premium account tests
+
+Tests tagged `premium` sign in with a real Minecraft account and skip themselves when none is stored. Sign in once per machine:
+
+```shell
+./gradlew :identica-testing:anvilAccount --login=main
+```
+
+Follow the printed device-code link. The account is stored under `~/.anvil/accounts`, outside the repository, and holds refresh tokens: keep it on developer machines and out of CI.
+
+Whether a username belongs to a premium account is answered by a local stub, not by Mojang, so a test decides it with `MojangProfiles.premium("Alice")`. The premium login itself is still verified against Mojang's session server.
+
+## Write a test
+
+A test declares its network with `@Identica` and describes a player with `Journey`:
+
+```java
+@Test
+@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+void registersWithCredential(ScenarioContext anvil) {
+	Journey.offline(anvil, "Alice").join()
+			.on(AUTH)
+			.sees(Prompt.PROVIDER_CHOICE, Prompt.CREDENTIAL_OFFERED)
+			.enroll(Provider.CREDENTIAL)
+			.sees(Prompt.REGISTRATION_PASSWORD)
+			.register("Secret-123")
+			.on(LOBBY)
+			.sees(Prompt.REGISTERED_WITH_CREDENTIAL);
+}
+```
+
+`@Identica` sets the journey mode and policy, the enabled providers, provider entrypoints, and `autoSelectSingleProvider`. The network is one Velocity proxy, an `auth` server for authentication and registration steps, and a `lobby` that completed players reach.
+
+Each `Journey` step checks both sides: what the player's client receives, and what the proxy reports on its own console for connections, server changes, and disconnect reasons. A message expectation only considers messages received since the previous one, so a prompt repeated after a reconnect is not satisfied by its earlier occurrence.
+
+Use `Accounts` for players who already have an account, and add new player-facing texts to `Prompt` instead of repeating them in tests.

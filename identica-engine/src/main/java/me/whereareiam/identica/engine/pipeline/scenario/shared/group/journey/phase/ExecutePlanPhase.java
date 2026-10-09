@@ -42,6 +42,7 @@ import me.whereareiam.identica.type.pipeline.PipelineStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.pipeline.journey.JourneyExecutionPolicy;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
 import me.whereareiam.identica.type.pipeline.journey.step.StepContextRequirement;
 import me.whereareiam.identica.type.pipeline.journey.step.StepWaitReason;
 import me.whereareiam.identica.type.provider.ProviderOrigin;
@@ -476,6 +477,9 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 					break;
 				}
 
+				if (status == PipelineStatus.WAITING && requiresForbiddenInteraction(stepResult, pipelineType, journeyMode))
+					return PipelineResult.denied(journeyInteractionRequiredMessage());
+
 				if (status == PipelineStatus.WAITING || status == PipelineStatus.REQUIRE_RECONNECT)
 					persistPending(pipelineState, context, journeyMode, stage.getId(), index);
 
@@ -656,6 +660,21 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 		pipelineState.putItem(new JourneyStateItem(resolvedJourneyMode, resolvedStageId, resolvedStepIndex), ttlMs);
 	}
 
+	/**
+	 * A strictly seamless journey must not prompt: a waiting step that needs player input is refused instead of
+	 * silently turning the journey interactive. A merely preferred seamless mode keeps the prompt.
+	 */
+	private boolean requiresForbiddenInteraction(
+			@NotNull StepResult stepResult,
+			@NotNull PipelineType pipelineType,
+			@NotNull JourneyMode journeyMode
+	) {
+		if (journeyMode != JourneyMode.SEAMLESS) return false;
+		if (stepResult.getWaitReason() != StepWaitReason.INPUT) return false;
+
+		return scenarioSettings(pipelineType).getJourneyPolicy() == JourneyPolicy.STRICT;
+	}
+
 	private boolean isOnline(@NotNull ScenarioContext context) {
 		UUID connectionId = context.getConnectionUniqueId();
         return connectionId != null
@@ -778,6 +797,14 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 				.getJourney()
 				.getStage()
 				.getNoCompletion());
+	}
+
+	private @NotNull String journeyInteractionRequiredMessage() {
+		return String.join("\n", messagesProvider.get()
+				.getEngine()
+				.getJourney()
+				.getStep()
+				.getInteractionRequired());
 	}
 
 	private @NotNull String journeyStepNoStatusMessage() {

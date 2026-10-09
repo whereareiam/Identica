@@ -571,6 +571,7 @@ public class Messages extends ConfigDocument {
 			@ToString
 			public static class Step {
 				private @NotNull List<String> noStatus;
+				private @NotNull List<String> interactionRequired;
 				private @NotNull Enrollment enrollment;
 
 				/**

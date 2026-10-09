@@ -10,6 +10,7 @@ import me.whereareiam.identica.provider.premium.pipeline.step.type.authenticatio
 import me.whereareiam.identica.provider.premium.pipeline.step.type.authentication.PremiumVerificationStep;
 import me.whereareiam.identica.provider.premium.pipeline.step.type.migration.PremiumMigrationCompleteStep;
 import me.whereareiam.identica.type.pipeline.PipelineType;
+import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.StageType;
 import org.jetbrains.annotations.NotNull;
 
@@ -56,18 +57,24 @@ public class PremiumPipelineExtension implements PipelineExtension {
 				StageType.PROVIDER,
 				finalizeProfileStep
 		);
-		builder.registerStep(
-				PipelineType.AUTHENTICATION,
-				providerId,
-				StageType.PROVIDER,
-				premiumRecognitionStep
-		);
-		builder.registerStep(
-				PipelineType.AUTHENTICATION,
-				providerId,
-				StageType.PROVIDER,
-				premiumVerificationStep
-		);
+		// Recognition and verification are the only steps that complete a premium authentication. They are
+		// interactive steps, which a seamless journey leaves out unless they are registered for it explicitly.
+		for (JourneyMode journeyMode : JourneyMode.values()) {
+			builder.registerStep(
+					PipelineType.AUTHENTICATION,
+					providerId,
+					StageType.PROVIDER,
+					journeyMode,
+					premiumRecognitionStep
+			);
+			builder.registerStep(
+					PipelineType.AUTHENTICATION,
+					providerId,
+					StageType.PROVIDER,
+					journeyMode,
+					premiumVerificationStep
+			);
+		}
 
 		builder.registerStep(
 				PipelineType.MIGRATION,

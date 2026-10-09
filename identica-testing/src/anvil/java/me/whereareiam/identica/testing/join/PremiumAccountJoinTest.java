@@ -42,12 +42,34 @@ class PremiumAccountJoinTest {
 
 	@Test
 	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.PREMIUM)
-	void joinsWhenPremiumIsTheOnlyProvider(ScenarioContext anvil) {
+	void joinsAndReturnsWhenPremiumIsTheOnlyProvider(ScenarioContext anvil) {
 		AuthenticationAccount account = premium(anvil);
 
 		Journey.premium(anvil, account).join()
 				.on(LOBBY)
-				.sees(Prompt.REGISTERED_WITH_PREMIUM);
+				.sees(Prompt.REGISTERED_WITH_PREMIUM)
+				.leave()
+				.rejoin()
+				.on(LOBBY);
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE)
+	void returnsToTheLobbyInInteractiveModeAfterRegisteringWithPremium(ScenarioContext anvil) {
+		AuthenticationAccount account = premium(anvil);
+
+		Journey player = Journey.premium(anvil, account).join()
+				.on(AUTH)
+				.sees(Prompt.PROVIDER_CHOICE, Prompt.PREMIUM_OFFERED)
+				.enroll(Provider.PREMIUM);
+		assertTrue(player.kicked().contains(Prompt.PREMIUM_REJOIN_TO_VERIFY.getText()));
+
+		player.rejoin()
+				.on(LOBBY)
+				.sees(Prompt.REGISTERED_WITH_PREMIUM)
+				.leave()
+				.rejoin()
+				.on(LOBBY);
 	}
 
 	@Test

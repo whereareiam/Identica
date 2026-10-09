@@ -3,8 +3,10 @@ package me.whereareiam.identica.testing.join;
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.JourneyMode;
+import me.whereareiam.identica.testing.environment.JourneyPolicy;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.fixture.Accounts;
+import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.testing.journey.Prompt;
 import org.junit.jupiter.api.Test;
 
@@ -55,6 +57,38 @@ class CredentialReturningJoinTest {
 				.rejoin()
 				.on(AUTH)
 				.sees(Prompt.LOGIN);
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	void logsInToAnAccountAnAdministratorRegisteredInInteractiveMode(ScenarioContext anvil) {
+		logsInToAnAdministratorRegisteredAccount(anvil);
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL)
+	void logsInToAnAccountAnAdministratorRegisteredInSeamlessMode(ScenarioContext anvil) {
+		logsInToAnAdministratorRegisteredAccount(anvil);
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.SEAMLESS, policy = JourneyPolicy.STRICT, providers = Provider.CREDENTIAL)
+	void refusesARegisteredPlayerWhoWouldHaveToTypeInStrictSeamlessMode(ScenarioContext anvil) {
+		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
+
+		Journey.offline(anvil, "Alice").attempt()
+				.kickedWith(Prompt.INTERACTION_REQUIRED);
+	}
+
+	private void logsInToAnAdministratorRegisteredAccount(ScenarioContext anvil) {
+		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
+
+		Journey.offline(anvil, "Alice").join()
+				.on(AUTH)
+				.sees(Prompt.LOGIN)
+				.login(PASSWORD)
+				.on(LOBBY)
+				.sees(Prompt.AUTHENTICATED_WITH_PASSWORD);
 	}
 
 	private void logsIn(ScenarioContext anvil) {

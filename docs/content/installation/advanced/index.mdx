@@ -48,14 +48,14 @@ If multiple runtimes will share the same replicated state, keep them on the same
     You do not need the API jar for a normal installation.
   </ContentTab>
   <ContentTab value="GitHub Development Builds">
-    Use [Development builds](https://github.com/whereareiam/Identica/actions/workflows/development.yml) when you want the newest build from the `dev` branch.
+    Use [Development builds](https://github.com/whereareiam/Identica/actions/workflows/development.yml) when you want a build of the `dev` branch that is newer than the latest release. A maintainer starts them, so not every commit has one.
 
     Download flow:
 
     1. Open the [Development build workflow page](https://github.com/whereareiam/Identica/actions/workflows/development.yml).
     2. Open the newest successful run for the `dev` branch.
     3. Scroll to the artifacts section of that workflow run.
-    4. Download the artifact named `Build artifacts`.
+    4. Download the artifact named `identica-plugins-dev-<commit>`.
     5. Extract the downloaded archive.
     6. Choose one installation style from the extracted files:
 

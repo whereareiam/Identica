@@ -3,7 +3,7 @@
 # plugins
 shadow = "9.3.0"
 buildconfig = "6.0.7"
-toolkit = "dev-8c0271b"
+toolkit = "dev-e2f8ced"
 freefair = "9.5.0"
 
 # compile time processing
@@ -140,5 +140,6 @@ bStats-bungeecord = ["bStats", "bStats-bungeecord"]
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 buildconfig = { id = "com.github.gmazzo.buildconfig", version.ref = "buildconfig" }
 attache = { id = "me.whereareiam.attache", version.ref = "attache" }
+toolkit-distribution = { id = "me.whereareiam.toolkit.distribution", version.ref = "toolkit" }
 toolkit-versioning = { id = "me.whereareiam.toolkit.versioning", version.ref = "toolkit" }
 freefair-lombok = { id = "io.freefair.lombok", version.ref = "freefair" }

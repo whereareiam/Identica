@@ -47,6 +47,7 @@ public class VelocityIdentica {
 	private final PluginContainer pluginContainer;
 	private final Path dataPath;
 	private final Logger logger;
+	private final VelocityStartupGuard startupGuard = new VelocityStartupGuard();
 	private @Nullable EventManager eventManager;
 	private @Nullable FeatureRuntime featureRuntime;
 
@@ -65,6 +66,17 @@ public class VelocityIdentica {
 
 	@Subscribe
 	public void onProxyInitialization(ProxyInitializeEvent event) {
+		proxyServer.getEventManager().register(this, startupGuard);
+		try {
+			initialize();
+		} catch (RuntimeException | Error failure) {
+			logger.error("Identica failed to start. Every connection is refused until the proxy is restarted with the problem fixed.");
+			throw failure;
+		}
+		startupGuard.open();
+	}
+
+	private void initialize() {
 		PluginType.setPluginType(PluginType.VELOCITY);
 		VelocityLoggingHelper.setLogger(logger);
 

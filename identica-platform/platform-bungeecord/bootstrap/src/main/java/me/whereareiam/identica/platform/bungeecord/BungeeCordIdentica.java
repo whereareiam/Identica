@@ -26,12 +26,24 @@ import net.kyori.adventure.platform.bungeecord.BungeeAudiences;
 import net.md_5.bungee.api.plugin.Plugin;
 
 public class BungeeCordIdentica extends Plugin {
+	private final BungeeCordStartupGuard startupGuard = new BungeeCordStartupGuard();
 	private Injector injector;
 	private BungeeAudiences audiences;
 	private FeatureRuntime featureRuntime;
 
 	@Override
 	public void onEnable() {
+		getProxy().getPluginManager().registerListener(this, startupGuard);
+		try {
+			initialize();
+		} catch (RuntimeException | Error failure) {
+			getLogger().severe("Identica failed to start. Every connection is refused until the proxy is restarted with the problem fixed.");
+			throw failure;
+		}
+		startupGuard.open();
+	}
+
+	private void initialize() {
 		PluginType.setPluginType(PluginType.BUNGEECORD);
 		BungeeCordLoggingHelper.setLogger(getLogger());
 

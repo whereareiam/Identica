@@ -2,6 +2,7 @@ package me.whereareiam.identica.testing.environment;
 
 import me.whereareiam.anvil.api.model.scenario.AnvilScenario;
 import me.whereareiam.anvil.integration.junit.AnvilScenarioFactory;
+import me.whereareiam.identica.testing.fixture.MojangProfiles;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
@@ -25,7 +26,11 @@ public final class IdenticaScenarios implements AnvilScenarioFactory<Identica> {
 		Map<String, String> configuration = new LinkedHashMap<>();
 		configuration.put("engine.yml", engine(identica));
 		configuration.put("routing.yml", routing());
+		configuration.put("settings.yml", "level: 3\n");
 		configuration.put("providers/providers.yml", providers(enabled, identica.entrypoints()));
+		configuration.put("providers/Premium/settings.yml", premium());
+
+		MojangProfiles.reset();
 
 		return IdenticaNetwork.velocity(name(identica, enabled), configuration);
 	}
@@ -44,6 +49,17 @@ public final class IdenticaScenarios implements AnvilScenarioFactory<Identica> {
 				""".formatted(identica.mode(), identica.policy());
 		return "scenarios:\n  authentication:\n" + scenario + "  registration:\n" + scenario
 				+ "    autoSelectSingleProvider: " + identica.autoSelectSingleProvider() + "\n";
+	}
+
+	/**
+	 * Premium asks the test's profile stub, not Mojang, whether a username is premium, and does not cache the answer.
+	 */
+	private static String premium() {
+		return """
+				lookup:
+				  profileEndpoint: "%s"
+				  cacheTtl: "0s"
+				""".formatted(MojangProfiles.endpoint());
 	}
 
 	private static String routing() {

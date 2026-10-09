@@ -1,9 +1,12 @@
 package me.whereareiam.identica.testing.journey;
 
+import me.whereareiam.anvil.api.model.player.AuthenticationAccount;
 import me.whereareiam.anvil.api.model.player.PlayerIdentity;
+import me.whereareiam.anvil.api.model.player.PlayerOptions;
 import me.whereareiam.anvil.api.player.SimulatedPlayer;
 import me.whereareiam.anvil.api.process.ProcessConsole;
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
+import me.whereareiam.anvil.api.type.AuthenticationMode;
 import me.whereareiam.anvil.capability.messages.Messages;
 import me.whereareiam.anvil.capability.server.Server;
 import me.whereareiam.anvil.capability.session.Session;
@@ -14,6 +17,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -43,6 +47,8 @@ public final class Journey {
 	private int read;
 	private long console;
 	private Instant connectedAt = Instant.EPOCH;
+	private int connections;
+	private String matched = "";
 
 	private Journey(ScenarioContext anvil, SimulatedPlayer player, String name) {
 		this.name = name;
@@ -58,6 +64,38 @@ public final class Journey {
 	 */
 	public static Journey offline(ScenarioContext anvil, String name) {
 		return new Journey(anvil, anvil.players().create(name), name);
+	}
+
+	/**
+	 * Creates a player that signs in with a stored premium account and has not connected yet. The player carries
+	 * the account's own username.
+	 */
+	public static Journey premium(ScenarioContext anvil, AuthenticationAccount account) {
+		String name = Objects.requireNonNull(account.getUsername(), "Stored account has no username");
+		SimulatedPlayer player = anvil.players().create(PlayerOptions.builder()
+				.name(name)
+				.authentication(AuthenticationMode.ON_REQUEST)
+				.accountId(account.getAccountId())
+				.build());
+		return new Journey(anvil, player, name);
+	}
+
+	/**
+	 * Connects without expecting an outcome, for joins the proxy may refuse.
+	 */
+	public Journey attempt() {
+		paceLogin();
+		session.connect();
+		return this;
+	}
+
+	/**
+	 * Reconnects without expecting an outcome, for joins the proxy may refuse.
+	 */
+	public Journey attemptAgain() {
+		paceLogin();
+		session.rejoin();
+		return this;
 	}
 
 	/**
@@ -125,6 +163,7 @@ public final class Journey {
 				String message = history.get(index);
 				if (prompts.stream().allMatch(expected -> message.contains(expected.getText()))) {
 					read = index + 1;
+					matched = message;
 					return this;
 				}
 			}
@@ -133,6 +172,14 @@ public final class Journey {
 				return fail(name + " did not receive " + prompts + "; new messages: " + unread());
 			sleep(Duration.ofMillis(100));
 		}
+	}
+
+	/**
+	 * Expects the message matched by the previous {@link #sees} not to contain a prompt.
+	 */
+	public Journey without(Prompt prompt) {
+		assertFalse(matched.contains(prompt.getText()), name + " must not be offered " + prompt + " in: " + matched);
+		return this;
 	}
 
 	/**
@@ -172,6 +219,38 @@ public final class Journey {
 		assertFalse(unread.stream().anyMatch(line -> line.contains(prompt.getText())),
 				name + " must not receive " + prompt + "; new messages: " + unread);
 		return this;
+	}
+
+	/**
+	 * Expects the proxy to drop the connection attempt before the player is in: the client ends up disconnected
+	 * and the proxy reports the closed initial connection without ever reporting the player as connected.
+	 *
+	 * @return the reason the client ended with
+	 */
+	public String refused() {
+		reported("[initial connection] ", "has disconnected");
+		Instant deadline = Instant.now().plus(TIMEOUT);
+		while (session.state().connected() && Instant.now().isBefore(deadline)) sleep(Duration.ofMillis(100));
+		assertFalse(session.state().connected(), name + " must not be connected");
+		List<String> accepted = proxy.read(0, 2000).getLines().stream().map(line -> line.getText())
+				.filter(line -> line.contains("[connected player] " + name + " (") && line.contains("has connected"))
+				.toList();
+		assertEquals(connections, accepted.size(), "The proxy must not accept " + name + "; console: " + accepted);
+		return String.valueOf(session.state().kickReason());
+	}
+
+	/**
+	 * Returns the identity the player's current backend observes.
+	 */
+	public PlayerIdentity identity() {
+		return server.identity();
+	}
+
+	/**
+	 * Describes the connection state and unread messages, for diagnostics.
+	 */
+	public String describe() {
+		return "connected=" + session.state().connected() + " kick=" + session.state().kickReason() + " unread=" + unread();
 	}
 
 	public Journey enroll(Provider provider) {
@@ -214,6 +293,7 @@ public final class Journey {
 	private Journey accepted() {
 		session.connected(Duration.ofSeconds(30));
 		reported("[connected player] " + name + " (", "has connected");
+		connections++;
 		return this;
 	}
 

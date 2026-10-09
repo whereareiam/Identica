@@ -32,8 +32,9 @@ class CredentialFirstJoinTest {
 
 	@Test
 	@Identica(mode = JourneyMode.SEAMLESS, policy = JourneyPolicy.STRICT, providers = Provider.CREDENTIAL)
-	void selectsTheOnlyProviderItselfInStrictSeamlessMode(ScenarioContext anvil) {
-		registersWithoutChoosingTheProvider(anvil);
+	void refusesAPlayerWhoWouldHaveToTypeInStrictSeamlessMode(ScenarioContext anvil) {
+		Journey.offline(anvil, "Alice").attempt()
+				.kickedWith(Prompt.INTERACTION_REQUIRED);
 	}
 
 	@Test

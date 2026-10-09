@@ -17,7 +17,6 @@ import java.util.UUID;
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * A player signed in to a real premium account joins. These tests need the developer's stored account and skip
@@ -61,8 +60,8 @@ class PremiumAccountJoinTest {
 		Journey player = Journey.premium(anvil, account).join()
 				.on(AUTH)
 				.sees(Prompt.PROVIDER_CHOICE, Prompt.PREMIUM_OFFERED)
-				.enroll(Provider.PREMIUM);
-		assertTrue(player.kicked().contains(Prompt.PREMIUM_REJOIN_TO_VERIFY.getText()));
+				.enroll(Provider.PREMIUM)
+				.kickedWith(Prompt.PREMIUM_REJOIN_TO_VERIFY);
 
 		player.rejoin()
 				.on(LOBBY)
@@ -80,8 +79,8 @@ class PremiumAccountJoinTest {
 		Journey player = Journey.premium(anvil, account).join()
 				.on(AUTH)
 				.sees(Prompt.PROVIDER_CHOICE, Prompt.PREMIUM_OFFERED, Prompt.CREDENTIAL_OFFERED)
-				.enroll(Provider.PREMIUM);
-		assertTrue(player.kicked().contains(Prompt.PREMIUM_REJOIN_TO_VERIFY.getText()));
+				.enroll(Provider.PREMIUM)
+				.kickedWith(Prompt.PREMIUM_REJOIN_TO_VERIFY);
 
 		player.rejoin()
 				.on(LOBBY)

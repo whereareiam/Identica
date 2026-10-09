@@ -19,6 +19,7 @@ public enum Prompt {
 	REGISTERED_WITH_PREMIUM("Your account was registered via premium provider."),
 	LOGIN("Use /login [Password] to continue."),
 	INVALID_PASSWORD("Invalid password."),
+	INTERACTION_REQUIRED("your sign-in needs your input."),
 	AUTHENTICATED_WITH_PASSWORD("You were authenticated via password.");
 
 	private final String text;

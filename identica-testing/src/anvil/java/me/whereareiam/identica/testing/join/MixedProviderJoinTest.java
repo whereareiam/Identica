@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * An offline player joins a network with both providers, where Premium outranks Credential. Whether the player's
@@ -79,8 +78,8 @@ class MixedProviderJoinTest {
 		Journey alice = Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
 				.sees(Prompt.PROVIDER_CHOICE, Prompt.PREMIUM_OFFERED)
-				.enroll(Provider.PREMIUM);
-		assertTrue(alice.kicked().contains(Prompt.PREMIUM_REJOIN_TO_VERIFY.getText()));
+				.enroll(Provider.PREMIUM)
+				.kickedWith(Prompt.PREMIUM_REJOIN_TO_VERIFY);
 
 		alice.attemptAgain().refused();
 

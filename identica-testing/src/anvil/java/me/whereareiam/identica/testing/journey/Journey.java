@@ -276,12 +276,17 @@ public final class Journey {
 	}
 
 	/**
-	 * Expects the proxy to disconnect the player and returns the reason the client received.
+	 * Expects the proxy to disconnect the player for a reason: the proxy reports the disconnect and, on the
+	 * following console lines, the reason, and the client ends up disconnected. The client's own view of the reason is not asserted,
+	 * because a client may see the connection close before it reads the disconnect message.
 	 */
-	public String kicked() {
-		String reason = session.kicked(TIMEOUT);
+	public Journey kickedWith(Prompt reason) {
 		reported("[connected player] " + name + " (", "has disconnected");
-		return reason;
+		reported(reason.getText(), "");
+		Instant deadline = Instant.now().plus(TIMEOUT);
+		while (session.state().connected() && Instant.now().isBefore(deadline)) sleep(Duration.ofMillis(100));
+		assertFalse(session.state().connected(), name + " must be disconnected");
+		return this;
 	}
 
 	private void paceLogin() {

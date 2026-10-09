@@ -403,6 +403,15 @@ public class MessagesDefaults implements DefaultsProvider<Messages> {
 				"",
 				"<dark_gray>discord.arcadeya.com"
 		));
+		step.setInteractionRequired(List.of(
+				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
+				"",
+				"<white>This server only signs players in automatically,</white>",
+				"<white>and your sign-in needs your input.</white>",
+				"<white>Please contact a server administrator.</white>",
+				"",
+				"<dark_gray>discord.arcadeya.com"
+		));
 		Messages.Engine.Journey.Step.Enrollment enrollment = new Messages.Engine.Journey.Step.Enrollment();
 		enrollment.setBody(List.of(
 				" ",

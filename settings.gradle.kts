@@ -4,6 +4,12 @@ enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 pluginManagement {
     includeBuild("build-logic")
 
+    // The live test module follows one Anvil version for its plugins and modules.
+    val anvilVersion = providers.gradleProperty("anvilVersion").get()
+    resolutionStrategy.eachPlugin {
+        if (requested.id.id.startsWith("me.whereareiam.anvil")) useVersion(anvilVersion)
+    }
+
     repositories {
         mavenLocal()
         gradlePluginPortal()
@@ -21,11 +27,16 @@ dependencyResolutionManagement {
         maven("https://registry.whereareiam.me/maven/packages")
         maven("https://repo.papermc.io/repository/maven-public/")
         maven("https://oss.sonatype.org/content/repositories/snapshots/")
+        maven("https://repo.opencollab.dev/main/")
+        maven("https://repo.opencollab.dev/maven-snapshots/")
     }
 }
 
 include(":identica-api")
 project(":identica-api").projectDir = file("identica-api")
+
+include(":identica-testing")
+project(":identica-testing").projectDir = file("identica-testing")
 
 include(":identica-common")
 project(":identica-common").projectDir = file("identica-common")

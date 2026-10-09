@@ -25,6 +25,6 @@ public class CommandsProvider extends ConfigProvider<Commands> {
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(CommandsDefaults.class), Commands.class);
+		return Config.configured().withDefaults(CommandsDefaults.class);
 	}
 }

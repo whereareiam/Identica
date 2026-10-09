@@ -24,4 +24,6 @@ dependencies {
     annotationProcessor(libs.velocity)
 
     attache(libs.cloud.velocity)
+
+    testRuntimeOnly(libs.strata.common)
 }

@@ -25,6 +25,6 @@ public class RecognitionSettingsProvider extends ConfigProvider<RecognitionSetti
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(RecognitionSettingsDefaults.class), RecognitionSettings.class);
+		return Config.configured().withDefaults(RecognitionSettingsDefaults.class);
 	}
 }

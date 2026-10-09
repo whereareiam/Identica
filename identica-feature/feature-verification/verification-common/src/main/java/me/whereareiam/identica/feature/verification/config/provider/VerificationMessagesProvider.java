@@ -25,6 +25,6 @@ public class VerificationMessagesProvider extends ConfigProvider<VerificationMes
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(VerificationMessagesDefaults.class), VerificationMessages.class);
+		return Config.configured().withDefaults(VerificationMessagesDefaults.class);
 	}
 }

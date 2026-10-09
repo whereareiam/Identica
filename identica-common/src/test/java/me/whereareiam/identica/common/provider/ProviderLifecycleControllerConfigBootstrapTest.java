@@ -363,7 +363,7 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 
 		@Override
 		protected Configura configura() {
-			return versioned(Config.configured().withDefaults(TestDefaults.class), TestDocument.class);
+			return Config.configured().withDefaults(TestDefaults.class);
 		}
 	}
 
@@ -376,7 +376,7 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 
 		@Override
 		protected Configura configura() {
-			return versioned(Config.configured().withDefaults(TestDefaults.class), TestDocument.class);
+			return Config.configured().withDefaults(TestDefaults.class);
 		}
 	}
 
@@ -389,7 +389,7 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 
 		@Override
 		protected Configura configura() {
-			return versioned(Config.configured().withDefaults(TestDefaults.class), TestDocument.class);
+			return Config.configured().withDefaults(TestDefaults.class);
 		}
 	}
 

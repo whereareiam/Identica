@@ -8,9 +8,6 @@ public final class AuthoritativeUsernameSchemaContributor implements SchemaContr
 	@Override
 	public void contribute(@NotNull SchemaManager schemaManager) {
 		ClassLoader classLoader = AuthoritativeUsernameSchemaContributor.class.getClassLoader();
-		schemaManager
-				.scanPackages(classLoader, "me.whereareiam.identica.trait.authoritative.username.database.entity")
-				.registerMigrationScope("authoritative-username", scope -> scope
-						.scanPackages(classLoader, "me.whereareiam.identica.trait.authoritative.username.database.migration"));
+		schemaManager.scanPackages(classLoader, "me.whereareiam.identica.trait.authoritative.username.database.entity");
 	}
 }

@@ -28,6 +28,6 @@ public class UsernameConflictsProvider extends ConfigProvider<Conflicts> {
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(UsernameConflictsDefaults.class), Conflicts.class);
+		return Config.configured().withDefaults(UsernameConflictsDefaults.class);
 	}
 }

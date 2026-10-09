@@ -25,6 +25,6 @@ public class EngineProvider extends ConfigProvider<Engine> {
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(EngineDefaults.class), Engine.class);
+		return Config.configured().withDefaults(EngineDefaults.class);
 	}
 }

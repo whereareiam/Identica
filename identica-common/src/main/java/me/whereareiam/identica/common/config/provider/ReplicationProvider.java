@@ -25,6 +25,6 @@ public class ReplicationProvider extends ConfigProvider<Replication> {
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(ReplicationDefaults.class), Replication.class);
+		return Config.configured().withDefaults(ReplicationDefaults.class);
 	}
 }

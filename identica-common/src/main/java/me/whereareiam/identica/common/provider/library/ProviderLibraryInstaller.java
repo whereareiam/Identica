@@ -74,8 +74,7 @@ public class ProviderLibraryInstaller {
 		libraryManager.setVerbosityMode(VerbosityMode.QUIET);
 		libraryManager.addMavenLocal();
 		libraryManager.addMavenCentral();
-		libraryManager.addRepository("https://maven.whereareiam.me/release");
-		libraryManager.addRepository("https://maven.whereareiam.me/development");
+		libraryManager.addRepository("https://registry.whereareiam.me/maven/packages");
 
 		if (libraries.getRepositories() != null) {
 			for (String repository : libraries.getRepositories())

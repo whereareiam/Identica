@@ -25,6 +25,6 @@ public class SentinelMessagesProvider extends ConfigProvider<SentinelMessages> {
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(SentinelMessagesDefaults.class), SentinelMessages.class);
+		return Config.configured().withDefaults(SentinelMessagesDefaults.class);
 	}
 }

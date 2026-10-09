@@ -254,7 +254,7 @@ public final class IdenticaAPI {
 	 * Gets the configured base Configura instance used by Identica.
 	 *
 	 * <p>External addons can derive their own configuration copies from this instance
-	 * with methods such as {@code withDefaults(...)} or {@code withVersioned(...)}
+	 * with default providers or document features
 	 * while keeping Identica's configured format and modules.</p>
 	 *
 	 * @return the configured base Configura instance

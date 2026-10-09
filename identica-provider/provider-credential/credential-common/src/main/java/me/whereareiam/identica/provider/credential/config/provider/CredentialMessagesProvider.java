@@ -25,6 +25,6 @@ public class CredentialMessagesProvider extends ConfigProvider<CredentialMessage
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(CredentialMessagesDefaults.class), CredentialMessages.class);
+		return Config.configured().withDefaults(CredentialMessagesDefaults.class);
 	}
 }

@@ -24,6 +24,6 @@ public class ConflictsProvider extends ConfigProvider<Conflicts> {
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured(), Conflicts.class);
+		return Config.configured();
 	}
 }

@@ -25,6 +25,6 @@ public class PremiumMessagesProvider extends ConfigProvider<PremiumMessages> {
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured().withDefaults(PremiumMessagesDefaults.class), PremiumMessages.class);
+		return Config.configured().withDefaults(PremiumMessagesDefaults.class);
 	}
 }

@@ -38,6 +38,7 @@ import me.whereareiam.identica.type.pipeline.journey.StageType;
 import me.whereareiam.identica.type.pipeline.journey.step.StepContextRequirement;
 import me.whereareiam.identica.type.provider.ProviderOrigin;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -310,7 +311,25 @@ class ExecutePlanPhaseTest {
 		assertEquals(PipelineStatus.WAITING, seamlessWaitingResult(JourneyPolicy.STRICT, StepWaitReason.ONLINE).getStatus());
 	}
 
+	@DisplayName("A strict seamless journey reports the refused input when its last provider needed it")
+	@Test
+	void strictSeamlessJourneyReportsRefusedInputAfterTheLastProvider() {
+		PipelineResult result = seamlessWaitingResult(JourneyPolicy.STRICT, StepWaitReason.INPUT, JourneyExecutionPolicy.FALLBACK, "credential");
+
+		assertEquals(PipelineStatus.DENIED, result.getStatus());
+		assertEquals("interaction-required", result.getMessage());
+	}
+
 	private PipelineResult seamlessWaitingResult(@NotNull JourneyPolicy policy, @NotNull StepWaitReason reason) {
+		return seamlessWaitingResult(policy, reason, JourneyExecutionPolicy.SEQUENTIAL, null);
+	}
+
+	private PipelineResult seamlessWaitingResult(
+			@NotNull JourneyPolicy policy,
+			@NotNull StepWaitReason reason,
+			@NotNull JourneyExecutionPolicy blockPolicy,
+			@Nullable String providerId
+	) {
 		IdentityService identityService = mock(IdentityService.class);
 		PipelineStateStore pipelineStateStore = mock(PipelineStateStore.class);
 		when(pipelineStateStore.find(any(PipelineStateReference.class))).thenReturn(Optional.empty());
@@ -359,12 +378,28 @@ class ExecutePlanPhaseTest {
 				.allowFallback(true)
 				.build();
 		Step waiting = step("waits", ignored -> StepResult.waiting("prompt", reason));
-		JourneyExecutionPlan plan = new JourneyExecutionPlan(List.of(new JourneyExecutionBlock(
-				"group-provider",
-				JourneyExecutionPolicy.SEQUENTIAL,
-				null,
-				List.of(new JourneyExecutionStage(providerStage, List.of(journeyStep(StageType.PROVIDER, waiting, 10))))
-		)));
+		JourneyStage endStage = JourneyStage.builder()
+				.id(StageType.END.id())
+				.type(StageType.END)
+				.order(300)
+				.pipelineTypes(EnumSet.of(PipelineType.AUTHENTICATION))
+				.journeyModes(EnumSet.of(JourneyMode.SEAMLESS))
+				.allowFallback(true)
+				.build();
+		JourneyExecutionPlan plan = new JourneyExecutionPlan(List.of(
+				new JourneyExecutionBlock(
+						"group-provider",
+						blockPolicy,
+						providerId,
+						List.of(new JourneyExecutionStage(providerStage, List.of(journeyStep(StageType.PROVIDER, waiting, 10))))
+				),
+				new JourneyExecutionBlock(
+						"group-end",
+						JourneyExecutionPolicy.SEQUENTIAL,
+						null,
+						List.of(new JourneyExecutionStage(endStage, List.of(journeyStep(StageType.END, step("end", StepResult::proceed), 10))))
+				)
+		));
 
 		JourneyState state = new JourneyState();
 		state.setContext(context);

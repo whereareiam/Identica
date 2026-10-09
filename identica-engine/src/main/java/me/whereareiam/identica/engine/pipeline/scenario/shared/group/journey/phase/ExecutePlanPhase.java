@@ -153,6 +153,7 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 			@NotNull JourneyExecutionPlan plan
 	) {
 		Set<String> excludedProviders = new HashSet<>(loadExcludedProviders(context));
+		PipelineResult interactionDenial = null;
 
 		restart:
 		while (true) {
@@ -176,10 +177,18 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 							region.blocks()
 					);
 					if (fallbackResult != null && fallbackResult.result != null) {
+						if (isInteractionDenial(fallbackResult.result))
+							interactionDenial = fallbackResult.result;
+
 						String failedProviderId = normalizeProviderId(fallbackResult.failedProviderId);
 						if (failedProviderId != null && excludedProviders.add(failedProviderId)) {
 							recordExcludedProviders(pipelineState, context, pipelineType, excludedProviders);
 							JourneyExecutionPlan updatedPlan = removeExcludedProviders(plan, excludedProviders);
+							// Another provider may still sign the player in without input. Once none is left, the
+							// player learns that input was the obstacle instead of continuing without a provider.
+							if (interactionDenial != null && !hasProviderBlock(updatedPlan))
+								return interactionDenial;
+
 							if (!updatedPlan.equals(plan) && !updatedPlan.blocks().isEmpty()) {
 								plan = updatedPlan;
 								pending = null;
@@ -673,6 +682,19 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 		if (stepResult.getWaitReason() != StepWaitReason.INPUT) return false;
 
 		return scenarioSettings(pipelineType).getJourneyPolicy() == JourneyPolicy.STRICT;
+	}
+
+	private boolean isInteractionDenial(@NotNull PipelineResult result) {
+		return result.getStatus() == PipelineStatus.DENIED
+				&& journeyInteractionRequiredMessage().equals(result.getMessage());
+	}
+
+	private boolean hasProviderBlock(@NotNull JourneyExecutionPlan plan) {
+		for (JourneyExecutionBlock block : plan.blocks())
+			if (block != null && block.policy() == JourneyExecutionPolicy.FALLBACK && normalizeProviderId(block.providerId()) != null)
+				return true;
+
+		return false;
 	}
 
 	private boolean isOnline(@NotNull ScenarioContext context) {

@@ -18,5 +18,5 @@ docs/versioned_sidebars/
 docs/versions.json
 .scriptorium/
 
-# temp
+# local runtime data of the removed dev scenarios
 /dev/server/

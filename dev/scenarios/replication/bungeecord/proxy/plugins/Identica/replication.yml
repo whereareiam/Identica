@@ -1,4 +1,0 @@
-enabled: true
-serverId: "replication-bungeecord"
-redis:
-  password: "identica"

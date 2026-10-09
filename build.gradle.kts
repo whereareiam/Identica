@@ -4,8 +4,6 @@ import me.whereareiam.toolkit.versioning.extension.ToolkitVersioningExtension
 plugins {
     alias(libs.plugins.attache)
     alias(libs.plugins.toolkit.versioning)
-    alias(libs.plugins.spawner)
-    id("dev-scenarios")
 }
 
 allprojects {

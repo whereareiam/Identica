@@ -42,6 +42,7 @@ import me.whereareiam.identica.type.pipeline.PipelineStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.pipeline.journey.JourneyExecutionPolicy;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
 import me.whereareiam.identica.type.pipeline.journey.step.StepContextRequirement;
 import me.whereareiam.identica.type.pipeline.journey.step.StepWaitReason;
 import me.whereareiam.identica.type.provider.ProviderOrigin;
@@ -152,6 +153,7 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 			@NotNull JourneyExecutionPlan plan
 	) {
 		Set<String> excludedProviders = new HashSet<>(loadExcludedProviders(context));
+		PipelineResult interactionDenial = null;
 
 		restart:
 		while (true) {
@@ -175,10 +177,18 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 							region.blocks()
 					);
 					if (fallbackResult != null && fallbackResult.result != null) {
+						if (isInteractionDenial(fallbackResult.result))
+							interactionDenial = fallbackResult.result;
+
 						String failedProviderId = normalizeProviderId(fallbackResult.failedProviderId);
 						if (failedProviderId != null && excludedProviders.add(failedProviderId)) {
 							recordExcludedProviders(pipelineState, context, pipelineType, excludedProviders);
 							JourneyExecutionPlan updatedPlan = removeExcludedProviders(plan, excludedProviders);
+							// Another provider may still sign the player in without input. Once none is left, the
+							// player learns that input was the obstacle instead of continuing without a provider.
+							if (interactionDenial != null && !hasProviderBlock(updatedPlan))
+								return interactionDenial;
+
 							if (!updatedPlan.equals(plan) && !updatedPlan.blocks().isEmpty()) {
 								plan = updatedPlan;
 								pending = null;
@@ -476,6 +486,9 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 					break;
 				}
 
+				if (status == PipelineStatus.WAITING && requiresForbiddenInteraction(stepResult, pipelineType, journeyMode))
+					return PipelineResult.denied(journeyInteractionRequiredMessage());
+
 				if (status == PipelineStatus.WAITING || status == PipelineStatus.REQUIRE_RECONNECT)
 					persistPending(pipelineState, context, journeyMode, stage.getId(), index);
 
@@ -656,6 +669,34 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 		pipelineState.putItem(new JourneyStateItem(resolvedJourneyMode, resolvedStageId, resolvedStepIndex), ttlMs);
 	}
 
+	/**
+	 * A strictly seamless journey must not prompt: a waiting step that needs player input is refused instead of
+	 * silently turning the journey interactive. A merely preferred seamless mode keeps the prompt.
+	 */
+	private boolean requiresForbiddenInteraction(
+			@NotNull StepResult stepResult,
+			@NotNull PipelineType pipelineType,
+			@NotNull JourneyMode journeyMode
+	) {
+		if (journeyMode != JourneyMode.SEAMLESS) return false;
+		if (stepResult.getWaitReason() != StepWaitReason.INPUT) return false;
+
+		return scenarioSettings(pipelineType).getJourneyPolicy() == JourneyPolicy.STRICT;
+	}
+
+	private boolean isInteractionDenial(@NotNull PipelineResult result) {
+		return result.getStatus() == PipelineStatus.DENIED
+				&& journeyInteractionRequiredMessage().equals(result.getMessage());
+	}
+
+	private boolean hasProviderBlock(@NotNull JourneyExecutionPlan plan) {
+		for (JourneyExecutionBlock block : plan.blocks())
+			if (block != null && block.policy() == JourneyExecutionPolicy.FALLBACK && normalizeProviderId(block.providerId()) != null)
+				return true;
+
+		return false;
+	}
+
 	private boolean isOnline(@NotNull ScenarioContext context) {
 		UUID connectionId = context.getConnectionUniqueId();
         return connectionId != null
@@ -778,6 +819,14 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 				.getJourney()
 				.getStage()
 				.getNoCompletion());
+	}
+
+	private @NotNull String journeyInteractionRequiredMessage() {
+		return String.join("\n", messagesProvider.get()
+				.getEngine()
+				.getJourney()
+				.getStep()
+				.getInteractionRequired());
 	}
 
 	private @NotNull String journeyStepNoStatusMessage() {

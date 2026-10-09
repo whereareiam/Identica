@@ -7,6 +7,7 @@ import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
 import me.whereareiam.identica.model.pipeline.journey.execution.JourneyExecutionBlock;
 import me.whereareiam.identica.model.pipeline.journey.execution.JourneyExecutionPlan;
@@ -32,10 +33,12 @@ import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.pipeline.journey.JourneyExecutionPolicy;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
+import me.whereareiam.identica.type.pipeline.journey.step.StepWaitReason;
 import me.whereareiam.identica.type.pipeline.journey.StageType;
 import me.whereareiam.identica.type.pipeline.journey.step.StepContextRequirement;
 import me.whereareiam.identica.type.provider.ProviderOrigin;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -292,6 +295,118 @@ class ExecutePlanPhaseTest {
 
 		assertTrue(subjectResolved.get());
 		assertEquals(PipelineStatus.COMPLETE, result.getState().getResult().getStatus());
+	}
+
+	@DisplayName("A strict seamless journey denies a step that waits for player input")
+	@Test
+	void strictSeamlessJourneyDeniesAStepWaitingForInput() {
+		assertEquals(PipelineStatus.DENIED, seamlessWaitingResult(JourneyPolicy.STRICT, StepWaitReason.INPUT).getStatus());
+		assertEquals("interaction-required", seamlessWaitingResult(JourneyPolicy.STRICT, StepWaitReason.INPUT).getMessage());
+	}
+
+	@DisplayName("A seamless journey keeps waiting when the mode is only preferred or the step waits for presence")
+	@Test
+	void seamlessJourneyKeepsWaitingWhenInputIsAllowedOrNotNeeded() {
+		assertEquals(PipelineStatus.WAITING, seamlessWaitingResult(JourneyPolicy.PREFER, StepWaitReason.INPUT).getStatus());
+		assertEquals(PipelineStatus.WAITING, seamlessWaitingResult(JourneyPolicy.STRICT, StepWaitReason.ONLINE).getStatus());
+	}
+
+	@DisplayName("A strict seamless journey reports the refused input when its last provider needed it")
+	@Test
+	void strictSeamlessJourneyReportsRefusedInputAfterTheLastProvider() {
+		PipelineResult result = seamlessWaitingResult(JourneyPolicy.STRICT, StepWaitReason.INPUT, JourneyExecutionPolicy.FALLBACK, "credential");
+
+		assertEquals(PipelineStatus.DENIED, result.getStatus());
+		assertEquals("interaction-required", result.getMessage());
+	}
+
+	private PipelineResult seamlessWaitingResult(@NotNull JourneyPolicy policy, @NotNull StepWaitReason reason) {
+		return seamlessWaitingResult(policy, reason, JourneyExecutionPolicy.SEQUENTIAL, null);
+	}
+
+	private PipelineResult seamlessWaitingResult(
+			@NotNull JourneyPolicy policy,
+			@NotNull StepWaitReason reason,
+			@NotNull JourneyExecutionPolicy blockPolicy,
+			@Nullable String providerId
+	) {
+		IdentityService identityService = mock(IdentityService.class);
+		PipelineStateStore pipelineStateStore = mock(PipelineStateStore.class);
+		when(pipelineStateStore.find(any(PipelineStateReference.class))).thenReturn(Optional.empty());
+		when(identityService.findByConnectionUniqueId(any(UUID.class))).thenReturn(Optional.empty());
+
+		Engine settings = settings();
+		settings.getScenarios().getAuthentication().setJourneyMode(JourneyMode.SEAMLESS);
+		settings.getScenarios().getAuthentication().setJourneyPolicy(policy);
+		Messages messages = new Messages();
+		Messages.Engine engine = new Messages.Engine();
+		Messages.Engine.Journey journey = new Messages.Engine.Journey();
+		Messages.Engine.Journey.Step stepMessages = new Messages.Engine.Journey.Step();
+		stepMessages.setInteractionRequired(List.of("interaction-required"));
+		journey.setStep(stepMessages);
+		engine.setJourney(journey);
+		messages.setEngine(engine);
+
+		ExecutePlanPhase phase = new ExecutePlanPhase(
+				identityService,
+				mock(EventManager.class),
+				() -> settings,
+				() -> messages,
+				mock(ProviderManager.class),
+				providerOperations(),
+				pipelineStateStore,
+				mock(RoutingCoordinator.class)
+		);
+
+		UUID accountUniqueId = UUID.randomUUID();
+		AuthContext context = AuthContext.builder()
+				.connectionUniqueId(UUID.randomUUID())
+				.accountUniqueId(accountUniqueId)
+				.identity(new ConnectionIdentity(accountUniqueId, "PlayerOne", "127.0.0.1"))
+				.intendedServer("auth")
+				.build();
+		PipelineState pipelineState = PipelineState.initial();
+		pipelineState.setPipelineType(PipelineType.AUTHENTICATION);
+		pipelineState.setScenario(context);
+
+		JourneyStage providerStage = JourneyStage.builder()
+				.id(StageType.PROVIDER.id())
+				.type(StageType.PROVIDER)
+				.order(200)
+				.pipelineTypes(EnumSet.of(PipelineType.AUTHENTICATION))
+				.journeyModes(EnumSet.of(JourneyMode.SEAMLESS))
+				.allowFallback(true)
+				.build();
+		Step waiting = step("waits", ignored -> StepResult.waiting("prompt", reason));
+		JourneyStage endStage = JourneyStage.builder()
+				.id(StageType.END.id())
+				.type(StageType.END)
+				.order(300)
+				.pipelineTypes(EnumSet.of(PipelineType.AUTHENTICATION))
+				.journeyModes(EnumSet.of(JourneyMode.SEAMLESS))
+				.allowFallback(true)
+				.build();
+		JourneyExecutionPlan plan = new JourneyExecutionPlan(List.of(
+				new JourneyExecutionBlock(
+						"group-provider",
+						blockPolicy,
+						providerId,
+						List.of(new JourneyExecutionStage(providerStage, List.of(journeyStep(StageType.PROVIDER, waiting, 10))))
+				),
+				new JourneyExecutionBlock(
+						"group-end",
+						JourneyExecutionPolicy.SEQUENTIAL,
+						null,
+						List.of(new JourneyExecutionStage(endStage, List.of(journeyStep(StageType.END, step("end", StepResult::proceed), 10))))
+				)
+		));
+
+		JourneyState state = new JourneyState();
+		state.setContext(context);
+		state.setJourneyMode(JourneyMode.SEAMLESS);
+		state.setExecutionPlan(plan);
+
+		return phase.execute(pipelineState, state).toCompletableFuture().join().getState().getResult();
 	}
 
 	private Engine settings() {

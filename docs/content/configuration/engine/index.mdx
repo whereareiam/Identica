@@ -138,6 +138,9 @@ Behavior in current source:
 For most setups, `PREFER` is the better default.
 If you set `STRICT`, a flow that could have worked in the other mode may fail or end up with no useful steps instead of falling back.
 
+With `SEAMLESS` and `STRICT`, Identica never prompts. When a step needs player input, such as a provider choice or a password, the player is disconnected with the `engine.journey.step.interactionRequired` message instead of receiving the prompt.
+A provider that always needs input, such as `credential` without session recognition, therefore cannot register or authenticate anyone in that configuration.
+
 ### authentication
 
 The `authentication` scenario controls login-time identity resolution and session opening.

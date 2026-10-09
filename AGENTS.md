@@ -124,11 +124,13 @@ Do not replace these libraries with unrelated alternatives in the same area unle
 - `./gradlew test`
 - `./gradlew pluginJars`
 - `./gradlew test pluginJars`
+- `./gradlew test assembleDistribution` (what the CI checks run)
 
 ### Verification Guidance
 
 - Prefer targeted Gradle tasks for the module you changed before running broad root verification.
 - `pluginJars` is the main packaging task for proxy bootstrap jars and bundled provider jars.
+- `assembleDistribution` collects the shipped files under their final names in `build/distribution/`; the root `toolkitDistribution` block declares them, and workflows upload that directory as it is.
 - Add or update automated tests when behavior changes.
 - Prefer extending the closest existing test suite instead of creating a parallel testing style.
 - Database and replication changes may need integration-style coverage in addition to unit tests.
@@ -142,6 +144,13 @@ Do not replace these libraries with unrelated alternatives in the same area unle
 - Build each feature, fix, or isolated piece of work in its own `feature/...` branch.
 - Merge feature work into `dev` through a pull request.
 - Release work is merged from `dev` into a `release` branch through a pull request.
+
+### Pull Request Checks
+
+- Every pull request gets the metadata check (title and label) and the quick checks: tests and `assembleDistribution`.
+- Label a pull request with exactly one of `feature`, `change`, `bug`, `dependencies`, or with `skip-changelog`; `major` may accompany a category.
+- Development builds are started manually and publish a branch-qualified version. A published GitHub release publishes Maven artifacts, attaches the distribution, and publishes to the stores; a manual run of the release workflow only republishes to the stores.
+- Entry workflows only select a trigger and call `reusable-verify.yml` and `reusable-publish.yml`; shared steps come from `whereareiam/devops` and `whereareiam/blockops`.
 
 ### Pull Request Titles
 

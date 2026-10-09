@@ -11,6 +11,14 @@ Run from the repository root with Java 21:
 
 `pluginJars` builds the Velocity and BungeeCord bootstrap jars, the platform bundle, and the official provider jars under `build/libs/`.
 
+To get the files a development build or a release ships, under their final names, run:
+
+```shell
+./gradlew assembleDistribution
+```
+
+It writes `Identica-API-<version>.jar`, `Identica-BUNDLE-<version>.jar`, `Identica-VELOCITY-<version>.jar`, `Identica-PLATFORMS-<version>.zip` with both proxy jars, and the two provider jars to `build/distribution/`. The version comes from the `VERSION` environment variable and defaults to `dev`.
+
 Every plugin build includes all built-in feature implementations and the username identity subsystem. Operators configure feature use globally and per provider; they do not install feature jars or choose which implementations are compiled.
 
 The Gradle submodules remain separate for API boundaries, ownership, and testing. Their intermediate jars are build dependencies, not additional Minecraft plugins or operator-installable features.

@@ -3,6 +3,7 @@ import me.whereareiam.toolkit.versioning.extension.ToolkitVersioningExtension
 
 plugins {
     alias(libs.plugins.attache)
+    alias(libs.plugins.toolkit.distribution)
     alias(libs.plugins.toolkit.versioning)
 }
 
@@ -33,6 +34,20 @@ tasks.register("pluginJars") {
         ":provider-credential-runtime:shadowJar",
         ":provider-premium-runtime:shadowJar"
     )
+}
+
+// Files a development build or a release ships; assembleDistribution writes them to build/distribution.
+toolkitDistribution {
+    file("API", ":identica-api", "jar")
+    file("BUNDLE", ":identica-platform:bundle", "shadowJar")
+    // Modrinth takes the Velocity jar on its own; the GitHub release ships both proxies in one archive.
+    file("VELOCITY", ":platform-velocity-bootstrap", "shadowJar")
+    archive("PLATFORMS") {
+        file("BUNGEECORD", ":platform-bungeecord-bootstrap", "shadowJar")
+        file("VELOCITY", ":platform-velocity-bootstrap", "shadowJar")
+    }
+    file("Credential", ":provider-credential-runtime", "shadowJar")
+    file("Premium", ":provider-premium-runtime", "shadowJar")
 }
 
 val validatePipelineStructure = tasks.register("validatePipelineStructure") {

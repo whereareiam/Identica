@@ -1,78 +1,33 @@
 name: Development build
+run-name: "Development build of ${{ github.ref_name }}"
 
 on:
-  push:
-    branches:
-      - dev
   workflow_dispatch:
 
+concurrency:
+  group: development-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
 jobs:
-  prepare:
-    runs-on: ubuntu-latest
-    outputs:
-      name: ${{ steps.details.outputs.name }}
-      version: ${{ steps.details.outputs.version }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Extract project details
-        id: details
-        run: |
-          echo "name=$(grep 'rootProject.name' settings.gradle.kts | awk -F "=" '{print $2}' | tr -d ' \"\n')" >> $GITHUB_OUTPUT
-          branch_name="${GITHUB_REF_NAME//\//-}"
-          echo "version=${branch_name}-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
-
-  build:
-    needs: prepare
-    if: always() && needs.prepare.result == 'success'
-    runs-on: ubuntu-latest
+  verify:
+    name: Verify
     permissions:
       contents: read
       checks: write
-      packages: write
+    uses: ./.github/workflows/reusable-verify.yml
+    with:
+      ref: ${{ github.sha }}
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Build project
-        uses: ./.github/actions/gradle-build
-        env:
-          PUBLISH_USER: ${{ secrets.PUBLISH_USER }}
-          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-          VERSION: ${{ needs.prepare.outputs.version }}
-        with:
-          gradle-command: ./gradlew --no-daemon test pluginJars publish
-          ignore-test-failures: 'true'
-
-      - name: Create output directory
-        run: mkdir output
-
-      - name: Move API
-        run: mv identica-api/build/libs/identica-api-${{ needs.prepare.outputs.version }}.jar output/${{ needs.prepare.outputs.name }}-API-${{ needs.prepare.outputs.version }}.jar
-
-      - name: Move bundle jar
-        run: mv build/libs/${{ needs.prepare.outputs.name }}-${{ needs.prepare.outputs.version }}-BUNDLE.jar output/${{ needs.prepare.outputs.name }}-BUNDLE-${{ needs.prepare.outputs.version }}.jar
-
-      - name: Package platform-specific jars
-        run: |
-          mkdir output/platforms
-          mv build/libs/${{ needs.prepare.outputs.name }}-${{ needs.prepare.outputs.version }}-BUNGEECORD.jar output/platforms/${{ needs.prepare.outputs.name }}-BUNGEECORD-${{ needs.prepare.outputs.version }}.jar
-          mv build/libs/${{ needs.prepare.outputs.name }}-${{ needs.prepare.outputs.version }}-VELOCITY.jar output/platforms/${{ needs.prepare.outputs.name }}-VELOCITY-${{ needs.prepare.outputs.version }}.jar
-          (
-            cd output/platforms
-            zip -q -r ../${{ needs.prepare.outputs.name }}-PLATFORMS-${{ needs.prepare.outputs.version }}.zip .
-          )
-          rm -rf output/platforms
-
-      - name: Move provider jars
-        run: |
-          mv build/libs/Credential-${{ needs.prepare.outputs.version }}.jar output/${{ needs.prepare.outputs.name }}-Credential-${{ needs.prepare.outputs.version }}.jar
-          mv build/libs/Premium-${{ needs.prepare.outputs.version }}.jar output/${{ needs.prepare.outputs.name }}-Premium-${{ needs.prepare.outputs.version }}.jar
-
-      - name: Archive artifacts
-        uses: actions/upload-artifact@v6
-        with:
-          name: Build artifacts
-          path: output/
+  publish:
+    name: Publish
+    needs: verify
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/reusable-publish.yml
+    with:
+      commit: ${{ needs.verify.outputs.commit }}
+      version: ${{ needs.verify.outputs.version }}

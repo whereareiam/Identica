@@ -4,5 +4,6 @@ plugins {
 
 dependencies {
     compileOnly(projects.identicaApi)
+
     testImplementation(projects.identicaApi)
 }

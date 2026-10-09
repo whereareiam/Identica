@@ -24,7 +24,6 @@ import me.whereareiam.identica.common.provider.SerializerEngineProvider;
 import me.whereareiam.identica.common.registry.RegistryConfiguration;
 import me.whereareiam.identica.common.replication.ReplicationConfiguration;
 import me.whereareiam.identica.common.routing.RoutingConfiguration;
-import me.whereareiam.identica.common.sentinel.SentinelConfiguration;
 import me.whereareiam.identica.config.ConfigurationTypeResolver;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.logging.BannerContributor;
@@ -53,7 +52,6 @@ public class CommonConfiguration extends AbstractModule {
 		install(new ConnectionStateConfiguration());
 		install(new PipelineStateConfiguration());
 		install(new MessagingConfiguration());
-		install(new SentinelConfiguration());
 		install(new ReplicationConfiguration());
 		install(new IdentityConfiguration());
 		install(new SessionConfiguration());
@@ -66,6 +64,7 @@ public class CommonConfiguration extends AbstractModule {
 		bind(EventManager.class).to(EventController.class);
 		bind(SerializerEngine.class).toProvider(SerializerEngineProvider.class);
 		Multibinder.newSetBinder(binder(), BannerContributor.class);
+		Multibinder.newSetBinder(binder(), me.whereareiam.identica.lifecycle.RuntimeLifecycle.class);
 		bind(Identica.class).asEagerSingleton();
 	}
 
@@ -106,13 +105,6 @@ public class CommonConfiguration extends AbstractModule {
 	@Named("providersPath")
 	Path provideProvidersPath(@Named("dataPath") Path dataPath) {
 		return ensureDirectory(dataPath.resolve("providers"), "providers");
-	}
-
-	@Provides
-	@Singleton
-	@Named("capabilitiesPath")
-	Path provideCapabilitiesPath(@Named("providersPath") Path providersPath) {
-		return ensureDirectory(providersPath.resolve("capabilities"), "capabilities");
 	}
 
 	@Provides

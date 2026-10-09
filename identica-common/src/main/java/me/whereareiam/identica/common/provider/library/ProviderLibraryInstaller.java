@@ -5,7 +5,7 @@ import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import me.whereareiam.attache.platform.standalone.StandaloneLibraryManager;
 import me.whereareiam.attache.type.VerbosityMode;
-import me.whereareiam.identica.common.provider.classloader.SharedCapabilityClassLoaderFactory;
+import me.whereareiam.identica.common.provider.classloader.SharedLibraryClassLoaderFactory;
 import me.whereareiam.identica.common.provider.dependency.ProviderDependencyLoggingAdapter;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
 import me.whereareiam.identica.model.provider.dependency.ProviderLibraries;
@@ -18,29 +18,26 @@ import java.nio.file.Path;
 @Singleton
 public class ProviderLibraryInstaller {
 	private final Path providersPath;
-	private final Path capabilitiesPath;
 	private final ProviderDependencyLoggingAdapter loggingHelper;
-	private final SharedCapabilityClassLoaderFactory sharedCapabilityClassLoaderFactory;
+	private final SharedLibraryClassLoaderFactory sharedLibraryClassLoaderFactory;
 
 	@Inject
 	public ProviderLibraryInstaller(
 			@Named("providersPath") @NotNull Path providersPath,
-			@Named("capabilitiesPath") @NotNull Path capabilitiesPath,
 			@NotNull ProviderDependencyLoggingAdapter loggingHelper,
-			@NotNull SharedCapabilityClassLoaderFactory sharedCapabilityClassLoaderFactory
+			@NotNull SharedLibraryClassLoaderFactory sharedLibraryClassLoaderFactory
 	) {
 		this.providersPath = providersPath;
-		this.capabilitiesPath = capabilitiesPath;
 		this.loggingHelper = loggingHelper;
-		this.sharedCapabilityClassLoaderFactory = sharedCapabilityClassLoaderFactory;
+		this.sharedLibraryClassLoaderFactory = sharedLibraryClassLoaderFactory;
 	}
 
-	public void installSharedCapabilityApis(@NotNull ProviderLibraries sharedCapabilityApis) {
+	public void installSharedLibraries(@NotNull ProviderLibraries sharedLibraries) {
 		install(
-				capabilitiesPath,
+				providersPath,
 				".libraries/shared",
-				sharedCapabilityApis,
-				sharedCapabilityClassLoaderFactory.sharedClassLoader()
+				sharedLibraries,
+				sharedLibraryClassLoaderFactory.sharedClassLoader()
 		);
 	}
 

@@ -1,0 +1,254 @@
+---
+title: Username
+description: Provider-controlled username synchronization behavior.
+---
+
+Identica follows the verified username supplied by a provider declaring `ProviderTrait.AUTHORITATIVE_USERNAME`. Premium declares this trait through `traits()`; Credential does not.
+
+This is mandatory identity behavior, not a toggleable feature. Synchronization applies to the primary provider link and respects manual username authority. User configuration cannot grant the trait or turn it into a feature switch.
+
+Messages live under `identity/username/messages`.
+
+## Conflicts
+
+This subsystem contributes the built-in `username` conflict type.
+Username conflict defaults and settings live in `identity/username/conflicts`. This uses the shared `Conflicts` document shape: a top-level `rules` map with a `username` entry.
+
+The optional generic override at `providers/conflicts` takes precedence when it contains `rules.username`. Leave that entry absent to use the identity-owned rules. The [Conflicts](../../providers/conflicts.mdx) page describes the shared rule structure.
+This section documents the username-specific selector and resolver behavior for `rules.username`.
+
+A username conflict happens when a provider with the `AUTHORITATIVE_USERNAME` trait wants to apply a username that is already used by another active account.
+If no active conflicting account is found, normal username synchronization continues without conflict resolution.
+
+A identity-owned conflict document uses this shape:
+
+```yaml
+rules:
+  username:
+    default:
+      resolvers:
+        - id: format_display
+          parameters:
+            format:
+              pattern: "{username}*"
+            target: joiner
+    cases:
+      - when:
+          providers: [premium, credential]
+        resolvers:
+          - id: format_display
+            parameters:
+              format:
+                pattern: "{username}_{incomingProvider:8}"
+              target: joiner
+```
+
+Before resolvers run, the subsystem also applies an entrypoint guard.
+When the incoming account and the active conflicting account belong to different providers and both providers expose entrypoints, Identica requires that collision to be handled from a provider entrypoint flow.
+If the flow did not come from an entrypoint, the conflict is denied with the subsystem's `pipeline.policy.entrypointRequired` message.
+
+### Example situation
+
+With the generated default conflict rules:
+
+- An active `credential` account is already using `Steve`.
+- A `premium` account with the `AUTHORITATIVE_USERNAME` trait joins and also reports `Steve`.
+- Identica detects a username conflict before applying the update.
+- The `premium` + `credential` case rule runs first.
+- That default case formats the incoming side as `{username}_{incomingProvider}`.
+- In simple terms, the joining side gets a name like `Steve_Premium`.
+
+For other provider combinations that do not match a specific case rule, the generated default rule appends `*` to the incoming side instead, such as `Steve*`.
+
+The selector field below decides when a case rule applies.
+
+### rules.username.cases[].when.providers
+
+- Takes: a list of provider ids
+- Affects: which provider combination a case rule applies to
+
+The rule matches when both provider ids are present in the conflict context, regardless of their order in the list.
+Most rules should contain exactly two provider ids such as `premium` and `credential`.
+
+The resolver fields below configure the built-in `format_display` resolver for `rules.username`.
+
+### format_display
+
+`format_display` formats a replacement username from the current conflict context and returns that formatted value as the resolver result.
+
+#### rules.username.default.resolvers[].parameters.format.pattern
+#### rules.username.cases[].resolvers[].parameters.format.pattern
+
+- Takes: a string
+- Affects: the formatted username override produced by `format_display`
+
+Supported placeholders:
+
+- `{username}` or `{requested}`
+- `{incomingProvider}` and `{existingProvider}`
+- `{incomingProviderId}` and `{existingProviderId}`
+- `{random}` or `{random:4}`
+
+Provider display-name placeholders support optional truncation with `:maxSymbolCount`.
+
+Examples:
+
+```text
+{incomingProvider}
+{incomingProvider:8}
+{existingProvider:6}
+{username}_{incomingProvider:8}_{random:3}
+```
+
+Only `{incomingProvider}` and `{existingProvider}` support truncation.
+
+#### rules.username.default.resolvers[].parameters.format.uppercase
+#### rules.username.cases[].resolvers[].parameters.format.uppercase
+
+- Takes: `true` or `false`
+- Current default: `false`
+- Affects: whether the full formatted result is converted to uppercase
+
+#### rules.username.default.resolvers[].parameters.format.lowercase
+#### rules.username.cases[].resolvers[].parameters.format.lowercase
+
+- Takes: `true` or `false`
+- Current default: `false`
+- Affects: whether the full formatted result is converted to lowercase
+
+Avoid enabling both `uppercase` and `lowercase` at the same time.
+
+#### rules.username.default.resolvers[].parameters.target
+#### rules.username.cases[].resolvers[].parameters.target
+
+- Takes: `"joiner"`, `"existing"`, or `"both"`
+- Current default: `"joiner"`
+- Affects: which side receives the formatted override value
+
+`joiner` means the incoming account side.
+
+Pattern with provider-name truncation:
+
+<Tabs items={["YAML", "JSON"]}>
+  <Tab value="YAML">
+```yaml
+resolvers:
+  - id: "format_display"
+    parameters:
+      format:
+        pattern: "{username}_{incomingProvider:8}"
+      target: "joiner"
+```
+  </Tab>
+  <Tab value="JSON">
+```json
+{
+  "resolvers": [
+    {
+      "id": "format_display",
+      "parameters": {
+        "format": {
+          "pattern": "{username}_{incomingProvider:8}"
+        },
+        "target": "joiner"
+      }
+    }
+  ]
+}
+```
+  </Tab>
+</Tabs>
+
+Pattern with full-result uppercase formatting:
+
+<Tabs items={["YAML", "JSON"]}>
+  <Tab value="YAML">
+```yaml
+resolvers:
+  - id: "format_display"
+    parameters:
+      format:
+        pattern: "{username}_{incomingProvider}"
+        uppercase: true
+      target: "joiner"
+```
+  </Tab>
+  <Tab value="JSON">
+```json
+{
+  "resolvers": [
+    {
+      "id": "format_display",
+      "parameters": {
+        "format": {
+          "pattern": "{username}_{incomingProvider}",
+          "uppercase": true
+        },
+        "target": "joiner"
+      }
+    }
+  ]
+}
+```
+  </Tab>
+</Tabs>
+
+Pattern applied to both sides:
+
+<Tabs items={["YAML", "JSON"]}>
+  <Tab value="YAML">
+```yaml
+resolvers:
+  - id: "format_display"
+    parameters:
+      format:
+        pattern: "{username}_{random:3}"
+      target: "both"
+```
+  </Tab>
+  <Tab value="JSON">
+```json
+{
+  "resolvers": [
+    {
+      "id": "format_display",
+      "parameters": {
+        "format": {
+          "pattern": "{username}_{random:3}"
+        },
+        "target": "both"
+      }
+    }
+  ]
+}
+```
+  </Tab>
+</Tabs>
+
+## Messages
+
+Username pipeline messages live in `identity/username/messages` and apply across the subsystem's authentication, registration, and migration contributions.
+
+### pipeline.identity.synchronizationFailed
+
+- Takes: a list of message lines
+- Current default: a built-in username synchronization failure message
+- Affects: the message shown when the feature cannot synchronize the account username
+
+### pipeline.policy.entrypointRequired
+
+- Takes: a list of message lines
+- Current default: a built-in provider entrypoint requirement message
+- Affects: the message shown when a username conflict must be handled through a provider entrypoint
+
+For example:
+
+```yaml
+pipeline:
+  identity:
+    synchronizationFailed:
+      - "<red>Unable to synchronize your username.</red>"
+  policy:
+    entrypointRequired:
+      - "<yellow>Use the entrypoint for {existingProvider} or {incomingProvider}.</yellow>"
+```

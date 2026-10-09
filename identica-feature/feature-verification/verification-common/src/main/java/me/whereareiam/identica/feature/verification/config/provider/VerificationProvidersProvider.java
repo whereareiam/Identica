@@ -11,7 +11,6 @@ import me.whereareiam.configura.feature.extension.api.ConfigDocumentRule;
 import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.Reloadable;
 import me.whereareiam.identica.config.ConfigProvider;
-import me.whereareiam.identica.feature.verification.config.defaults.VerificationProvidersDefaults;
 import me.whereareiam.identica.feature.verification.model.config.VerificationProviders;
 import me.whereareiam.identica.model.config.provider.Providers;
 import org.jetbrains.annotations.NotNull;
@@ -30,15 +29,11 @@ public class VerificationProvidersProvider extends ConfigProvider<Providers> {
 
 	@Override
 	protected Configura configura() {
-		return versioned(Config.configured()
-				.withDefaults(VerificationProvidersDefaults.class)
-				.withFeature(ExtensionFeature.rule(
-						ConfigDocumentRule.when(
-								Providers.ProviderEntry.Features.class,
-								VerificationProviders.class,
-								VerificationProvidersProvider::isVerificationFeaturesNode
-						)
-				)), Providers.class);
+		return versioned(Config.configured().withFeature(ExtensionFeature.rule(ConfigDocumentRule.when(
+				Providers.ProviderEntry.Features.class,
+				VerificationProviders.class,
+				VerificationProvidersProvider::isVerificationFeaturesNode
+		))), Providers.class);
 	}
 
 	private static boolean isVerificationFeaturesNode(@NotNull DocumentTypeContext context) {

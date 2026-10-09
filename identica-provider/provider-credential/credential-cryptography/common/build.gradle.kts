@@ -4,5 +4,6 @@ plugins {
 
 dependencies {
     compileOnly(projects.providerCredentialApi)
+
     testImplementation(projects.providerCredentialApi)
 }

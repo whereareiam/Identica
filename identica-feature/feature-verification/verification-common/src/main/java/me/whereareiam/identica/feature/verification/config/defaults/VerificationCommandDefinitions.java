@@ -76,7 +76,7 @@ public class VerificationCommandDefinitions {
 						"Reset verification state for a player",
 						"{alias} <target> [provider]",
 						Map.of("target", "Player/UUID", "provider", "Provider id")
-				)
+				).toBuilder().permission("identica.admin.2fa.reset").build()
 		);
 	}
 

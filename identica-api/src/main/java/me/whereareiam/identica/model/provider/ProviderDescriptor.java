@@ -4,12 +4,12 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import me.whereareiam.identica.model.provider.dependency.ProviderLibraries;
-import me.whereareiam.identica.type.provider.ProviderFeature;
-import me.whereareiam.identica.type.provider.capability.ProviderCapability;
+import me.whereareiam.identica.type.provider.ProviderTrait;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Set;
 import java.util.List;
 import java.util.Locale;
 
@@ -30,64 +30,26 @@ public class ProviderDescriptor {
 	private @NotNull List<String> supportedPlatforms;
 
 	/**
-	 * Declared capability ids resolved from provider-supplied bootstraps.
+	 * Identity guarantees declared by the provider implementation.
 	 */
-	private @NotNull List<String> declaredCapabilityIds = new ArrayList<>();
+	private @NotNull Set<ProviderTrait> traits = Set.of();
 	/**
-	 * Declared feature ids resolved from provider-supplied declarations.
+	 * Feature integrations supported by the provider, independently of enablement.
 	 */
-	private @NotNull List<String> declaredFeatureIds = new ArrayList<>();
+	private @NotNull List<String> supportedFeatureIds = new ArrayList<>();
 
 	private int priority = 0;
 
 	private ProviderLibraries libraries;
 
 	/**
-	 * Checks whether the provider advertises the capability.
+	 * Checks a guarantee supplied by this provider implementation.
 	 *
-	 * @param capability capability to check
-	 * @return {@code true} when the capability is listed
+	 * @param trait identity trait to check
+	 * @return whether the provider supplies the guarantee
 	 */
-	public boolean hasCapability(@Nullable ProviderCapability capability) {
-		if (capability == null) return false;
-		for (String entry : declaredCapabilityIds)
-			if (capability.matches(entry))
-				return true;
-
-		return false;
-	}
-
-	/**
-	 * Checks whether the provider advertises a capability id.
-	 *
-	 * @param capabilityId capability id to check
-	 * @return {@code true} when the id is listed
-	 */
-	public boolean hasCapabilityId(@Nullable String capabilityId) {
-		if (capabilityId == null || capabilityId.isBlank() || declaredCapabilityIds.isEmpty()) return false;
-
-		String normalized = capabilityId.trim().toLowerCase(Locale.ROOT);
-		for (String entry : declaredCapabilityIds) {
-			if (entry == null || entry.isBlank()) continue;
-			if (normalized.equals(entry.trim().toLowerCase(Locale.ROOT)))
-				return true;
-		}
-
-		return false;
-	}
-
-	/**
-	 * Checks whether the provider advertises the feature.
-	 *
-	 * @param feature feature to check
-	 * @return {@code true} when the feature is listed
-	 */
-	public boolean hasFeature(@Nullable ProviderFeature feature) {
-		if (feature == null) return false;
-		for (String entry : declaredFeatureIds)
-			if (feature.matches(entry)) return true;
-
-		return false;
+	public boolean hasTrait(@NotNull ProviderTrait trait) {
+		return traits.contains(trait);
 	}
 
 	/**
@@ -96,11 +58,11 @@ public class ProviderDescriptor {
 	 * @param featureId feature id to check
 	 * @return {@code true} when the id is listed
 	 */
-	public boolean hasFeatureId(@Nullable String featureId) {
-		if (featureId == null || featureId.isBlank() || declaredFeatureIds.isEmpty()) return false;
+	public boolean supportsFeature(@Nullable String featureId) {
+		if (featureId == null || featureId.isBlank() || supportedFeatureIds.isEmpty()) return false;
 
 		String normalized = featureId.trim().toLowerCase(Locale.ROOT);
-		for (String entry : declaredFeatureIds) {
+		for (String entry : supportedFeatureIds) {
 			if (entry == null || entry.isBlank()) continue;
 			if (normalized.equals(entry.trim().toLowerCase(Locale.ROOT))) return true;
 		}

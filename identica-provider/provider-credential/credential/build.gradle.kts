@@ -5,33 +5,20 @@ plugins {
 }
 
 dependencies {
-    // capabilities
-    compileOnly(projects.capabilityRestriction)
-    compileOnly(projects.capabilityRestrictionJoin)
-    compileOnly(projects.capabilityRecognition)
+    implementation(projects.providerCredentialApi)
+    implementation(projects.providerCredentialCommon)
+    implementation(projects.providerCredentialCryptographyArgon2)
+    implementation(projects.providerCredentialCryptographyBcrypt)
+    implementation(projects.providerCredentialCryptographyCommon)
+    implementation(projects.providerCredentialDatabase)
 
-    // features
+    compileOnly(projects.featureRecognitionApi)
     compileOnly(projects.featureSentinelApi)
     compileOnly(projects.featureVerificationApi)
 
-    // general
-    implementation(projects.providerCredentialApi)
-    implementation(projects.providerCredentialCommon)
-    implementation(projects.providerCredentialDatabase)
-    implementation(projects.providerCredentialCryptographyCommon)
-    implementation(projects.providerCredentialCryptographyBcrypt)
-    implementation(projects.providerCredentialCryptographyArgon2)
-
-    // capabilities
-    testImplementation(projects.capabilityRestriction)
-    testImplementation(projects.capabilityRestrictionJoin)
-    testImplementation(projects.capabilityRecognition)
-
-    // features
+    testImplementation(projects.featureRecognitionApi)
     testImplementation(projects.featureSentinelApi)
     testImplementation(projects.featureVerificationApi)
-
-    // general
     testImplementation(projects.providerCredentialApi)
 }
 

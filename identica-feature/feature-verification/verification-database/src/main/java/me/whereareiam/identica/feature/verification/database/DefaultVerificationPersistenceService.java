@@ -3,7 +3,6 @@ package me.whereareiam.identica.feature.verification.database;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import me.whereareiam.identica.event.EventListener;
-import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.account.AccountLifecycleEvent;
 import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.feature.verification.database.mapper.VerificationEnrollmentMapper;
@@ -33,13 +32,11 @@ public class DefaultVerificationPersistenceService implements VerificationPersis
 	public DefaultVerificationPersistenceService(
 			VerificationEnrollmentRepository enrollmentRepository,
 			VerificationSelectionRepository selectionRepository,
-			VerificationRecoveryCodeRepository recoveryCodeRepository,
-			EventManager eventManager
+			VerificationRecoveryCodeRepository recoveryCodeRepository
 	) {
 		this.enrollmentRepository = enrollmentRepository;
 		this.selectionRepository = selectionRepository;
 		this.recoveryCodeRepository = recoveryCodeRepository;
-		eventManager.register(this);
 	}
 
 	@Override

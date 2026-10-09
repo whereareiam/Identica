@@ -5,14 +5,14 @@ import com.google.inject.Singleton;
 import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.base.IdenticEvent;
-import me.whereareiam.identica.model.sentinel.SentinelContext;
-import me.whereareiam.identica.model.sentinel.SentinelDecision;
+import me.whereareiam.identica.feature.sentinel.model.SentinelContext;
+import me.whereareiam.identica.feature.sentinel.model.SentinelDecision;
 import me.whereareiam.identica.provider.credential.CredentialConstants;
 import me.whereareiam.identica.provider.credential.event.authentication.AuthenticationAttemptDecision;
 import me.whereareiam.identica.provider.credential.event.authentication.AuthenticationAttemptFailedEvent;
 import me.whereareiam.identica.provider.credential.event.authentication.AuthenticationAttemptSucceededEvent;
 import me.whereareiam.identica.provider.credential.model.authentication.AuthenticationAttemptContext;
-import me.whereareiam.identica.sentinel.SentinelService;
+import me.whereareiam.identica.feature.sentinel.SentinelService;
 import org.jetbrains.annotations.NotNull;
 
 @Singleton
@@ -49,6 +49,7 @@ public class BruteForceSentinelLifecycle implements EventListener {
 	private SentinelContext sentinelContext(@NotNull AuthenticationAttemptFailedEvent event) {
 		AuthenticationAttemptContext context = event.getContext();
 		return SentinelContext.builder()
+				.providerId(CredentialConstants.PROVIDER_ID)
 				.connectionUniqueId(context.getConnectionUniqueId())
 				.uniqueId(context.getAccountUniqueId())
 				.username(context.getUsername())
@@ -59,6 +60,7 @@ public class BruteForceSentinelLifecycle implements EventListener {
 	private SentinelContext sentinelContext(@NotNull AuthenticationAttemptSucceededEvent event) {
 		AuthenticationAttemptContext context = event.getContext();
 		return SentinelContext.builder()
+				.providerId(CredentialConstants.PROVIDER_ID)
 				.connectionUniqueId(context.getConnectionUniqueId())
 				.uniqueId(context.getAccountUniqueId())
 				.username(context.getUsername())

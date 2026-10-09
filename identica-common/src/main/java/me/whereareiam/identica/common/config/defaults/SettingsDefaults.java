@@ -4,7 +4,6 @@ import com.google.inject.Singleton;
 import me.whereareiam.configura.merge.defaults.DefaultsProvider;
 import me.whereareiam.identica.model.Event;
 import me.whereareiam.identica.model.config.Settings;
-import me.whereareiam.identica.model.sentinel.SentinelPolicy;
 import me.whereareiam.identica.type.event.EventPriority;
 import me.whereareiam.identica.type.identity.UniqueIdMode;
 import me.whereareiam.identica.type.platform.PlatformType;
@@ -21,7 +20,6 @@ public class SettingsDefaults implements DefaultsProvider<Settings> {
 		settings.setLevel(2);
 		settings.setIdentity(defaultIdentity());
 		settings.setSessions(defaultSessions());
-		settings.setSentinels(defaultSentinels());
 
 		Settings.Listeners listeners = new Settings.Listeners();
 		listeners.setEvents(defaultListenerEvents());
@@ -41,25 +39,6 @@ public class SettingsDefaults implements DefaultsProvider<Settings> {
 		sessions.setConcurrencyPolicy(SessionConcurrencyPolicy.REPLACE_EXISTING);
 		sessions.setActiveTtl(Duration.ofHours(12));
 		return sessions;
-	}
-
-	private Settings.Sentinels defaultSentinels() {
-		Settings.Sentinels sentinels = new Settings.Sentinels();
-		SentinelPolicy resumeSpam = new SentinelPolicy();
-		resumeSpam.setEnabled(false);
-		resumeSpam.setMaxAttempts(10);
-
-		SentinelPolicy.Lockout lockout = new SentinelPolicy.Lockout();
-		lockout.setEnabled(true);
-		lockout.setDuration(Duration.ofSeconds(30));
-		resumeSpam.setLockout(lockout);
-
-		SentinelPolicy.Warning warning = new SentinelPolicy.Warning();
-		warning.setEnabled(false);
-		warning.setThresholdPercentage(0);
-		resumeSpam.setWarning(warning);
-		sentinels.setResumeSpam(resumeSpam);
-		return sentinels;
 	}
 
 	private Map<String, Event> defaultListenerEvents() {

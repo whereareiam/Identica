@@ -9,12 +9,14 @@ platform {
 }
 
 dependencies {
+    testImplementation(libs.jdbi.core)
+    testImplementation(libs.jdbi.sqlobject)
+    testImplementation(libs.dialectica)
+    testImplementation(libs.commandant)
     testImplementation(libs.velocity)
     testImplementation(libs.cloud.velocity)
 
     implementation(projects.platformVelocityApi)
-    implementation(projects.featureSentinel)
-    implementation(projects.featureVerification)
     implementation(libs.bundles.bStats.velocity)
     implementation(libs.attache.velocity)
 

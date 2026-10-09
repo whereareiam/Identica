@@ -110,7 +110,7 @@ The main rules are:
 - check `IdenticaAPI.isInitialized()` before accessing services directly
 - or wait until Identica has finished bootstrapping and then resolve services
 
-The API entry point is [IdenticaAPI.java](/home/whereareiam/IdeaProjects/Identica/identica-api/src/main/java/me/whereareiam/identica/IdenticaAPI.java).
+The API entry point is `me.whereareiam.identica.IdenticaAPI`.
 That class exposes both generic `getService(...)` access and convenience methods for common services.
 
 Platform startup and lifecycle integration depend on the platform your addon targets.
@@ -186,15 +186,26 @@ public final class ExampleAddon {
 If there is no convenience method for the service you want, use `getService(...)`.
 
 ```java
-import me.whereareiam.identica.IdenticaAPI;
-import me.whereareiam.identica.verification.VerificationService;
+FeatureRegistry features = IdenticaAPI.getService(FeatureRegistry.class);
+```
 
-public final class ExampleAddon {
-    public VerificationService verificationService() {
-        return IdenticaAPI.getService(VerificationService.class);
-    }
+Here `FeatureRegistry` is `me.whereareiam.identica.feature.FeatureRegistry`. Call this only after Identica is initialized.
+
+## Feature services and provider policy
+
+Feature implementations are compiled into Identica. After initialization, resolve their APIs normally and check effective provider enablement before running optional integrations.
+
+```java
+FeatureRegistry features = IdenticaAPI.getService(FeatureRegistry.class);
+if (features.isEnabled(providerId, "verification")) {
+    VerificationService verification = IdenticaAPI.getService(VerificationService.class);
+    // Resolve verification for this provider.
 }
 ```
+
+`isEnabled` combines provider-declared support with global defaults and provider overrides. Provider traits are inspected separately through `ProviderDescriptor.hasTrait(ProviderTrait.AUTHORITATIVE_USERNAME)`; no feature switch grants or removes that guarantee.
+
+See [Provider traits and features](../features/index.mdx) for the contracts.
 
 ## Common services worth using
 
@@ -204,10 +215,10 @@ These are some of the most useful API entry points for addon plugins:
 - `IdenticaAPI.getProviderOperations()` for provider eligibility and runtime provider operations
 - `IdenticaAPI.getSessionService()` for finding, listing, refreshing, or closing sessions
 - `IdenticaAPI.getAccountService()` for account lookup and lifecycle operations
-- `IdenticaAPI.getVerificationService()` for verification enrollment, challenge, selection, and reset flow
-- `IdenticaAPI.getVerificationRegistry()` for verification method discovery
 - `IdenticaAPI.getReplicationSystem()` if you intentionally integrate with Identica's replicated caches or channels
 - `IdenticaAPI.getEventManager()` for registering or calling Identica events
+
+When `verification` is selected, resolve `VerificationService` for enrollment, challenge, selection, and reset flows, or `VerificationRegistry` for method discovery through `IdenticaAPI.getService(...)`. Both types belong to `me.whereareiam.identica.feature.verification`.
 
 ## Session lookup example
 

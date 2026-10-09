@@ -118,10 +118,11 @@ public class DefaultConflictService implements ConflictService {
 	}
 
 	private @Nullable Conflicts.ConflictRules resolveRules(ConflictContext context) {
-		Map<String, Conflicts.ConflictRules> rules = conflictsConfig.get().getRules();
-		if (rules.isEmpty()) return null;
+		Conflicts.ConflictRules rules = conflictsConfig.get().getRules().get(context.getKey());
+		if (rules != null) return rules;
 
-		return rules.get(context.getKey());
+		ConflictType<?> type = getType(context.getKey());
+		return type != null ? type.getDefaultRules() : null;
 	}
 
 	private @Nullable ConflictRule resolveCaseRule(

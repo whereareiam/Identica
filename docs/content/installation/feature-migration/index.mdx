@@ -1,0 +1,91 @@
+---
+title: Feature configuration migration
+description: Move an existing capability-based installation to optional runtime features.
+---
+
+This migration applies to installations with shared configuration under `providers/capabilities` and provider overrides under `providers[].capabilities`. The normal configuration reference describes the current layout.
+
+Stop the proxy before replacing runtime or provider artifacts and moving configuration. Keep the existing configuration values and file extensions when moving the following directories:
+
+| Previous directory | Current directory |
+| --- | --- |
+| `providers/capabilities/recognition/` | `features/recognition/` |
+| `providers/capabilities/restriction/` | `features/restriction/` |
+| `providers/capabilities/restriction/join/` | `features/restriction/join/` |
+| `providers/capabilities/authoritative-username/` | `identity/username/` |
+
+Moving the complete restriction directory includes its nested join documents. Merge with any existing destination files deliberately so customized values are retained. Verification documents belong under `features/verification/`. Sentinel policies, messages, and its cache namespace belong to the sentinel feature.
+
+Move any customized core sentinel fields as follows, retaining the values:
+
+| Previous document and field | Current document and field |
+| --- | --- |
+| `settings`: `sentinels` | `features/sentinel/settings`: `sentinels` |
+| `messages`: `engine.resumeSentineled` | `features/sentinel/messages`: `resumeSpam.denied` |
+| `replication`: `cache.sentinels` | `features/sentinel/settings`: `replication.state` |
+
+If these values are already configured in the sentinel feature documents, retain those values and remove the obsolete core fields. Select `sentinel` at startup for the protections to operate.
+
+In `providers/providers`, move `providers[].capabilities.recognition` to `providers[].features.recognition` and `providers[].capabilities.restriction.join` to `providers[].features.restriction.join`. Merge these into the existing `features` object, retaining `features.verification` and any other feature overrides. Remove the obsolete `capabilities` configuration subtree after moving its settings.
+
+For example, a join-restriction override becomes:
+
+```yaml
+providers:
+  - id: premium
+    features:
+      restriction:
+        join:
+          enabled: true
+          allow:
+            - linked
+            - recognized
+```
+
+Move customized join-restriction resume policies out of `engine`:
+
+| Previous field in `engine` | Current field in `features/restriction/join/settings` |
+| --- | --- |
+| `scenarios.authentication.allowProviderRestrictionResumeBypass` | `resumeBypass.authentication` |
+| `scenarios.registration.allowProviderRestrictionResumeBypass` | `resumeBypass.registration` |
+
+Both feature settings default to `false`. Preserve any customized authentication and registration values, then remove the old engine fields. Remove `scenarios.migration.allowProviderRestrictionResumeBypass` without adding a replacement: that flag was unused. Engine `allowResume` remains the control for whether a scenario can resume at all.
+
+Username conflict defaults belong in `identity/username/conflicts`. Move the desired `rules.username` configuration there, retaining the top-level `rules` map and the existing rule contents. The core `providers/conflicts` document remains an optional generic override: any `rules.username` entry left there takes precedence over the feature-owned rules. Remove that entry from the core document if the feature document should control username conflicts; retain unrelated conflict keys.
+
+For example, `identity/username/conflicts` can contain:
+
+```yaml
+rules:
+  username:
+    default:
+      resolvers:
+        - id: format_display
+          parameters:
+            format:
+              pattern: "{username}*"
+            target: joiner
+```
+
+The document field is `rules`, not `conflicts`. Premium declares the `AUTHORITATIVE_USERNAME` provider trait. Username handling follows that trait and has no feature enable switch.
+
+Username-only messages now belong to `identity/username/messages`:
+
+| Previous field in core `messages` | Current feature message field |
+| --- | --- |
+| `scenarios.authentication.errors.identity.replicationMissing` | `pipeline.identity.synchronizationFailed` |
+| `scenarios.registration.errors.identity.replicationMissing` | `pipeline.identity.synchronizationFailed` |
+| `scenarios.migration.errors.identity.replicationMissing` | `pipeline.identity.synchronizationFailed` |
+| `scenarios.authentication.conflictEntrypointRequired` | `pipeline.policy.entrypointRequired` |
+
+Choose one shared synchronization-failure message when the old scenario-specific values differ, retain any existing feature message customizations, and remove the obsolete core fields. See [Username messages](../../configuration/identity/username/index.mdx#messages) for the current shape.
+
+Verification defaults apply to every provider ID with an explicit `providers[].features.verification` node. Providers without that node do not participate through this configuration subtree. Review custom provider overrides with the same defaults as official providers: verification enabled, `KEEP_LOCKED`, and one enabled `totp` method with priority `100`.
+
+Configure each supported feature globally and under `providers[].features`. All implementations are compiled into Identica.
+
+## Provider API
+
+Providers declare identity guarantees through `traits(): Set<ProviderTrait>` and optional integrations through `supportedFeatures(): Set<String>`. Authoritative usernames use `ProviderTrait.AUTHORITATIVE_USERNAME`; remove any `username` feature declaration. Feature enablement belongs to operator settings and cannot grant traits or integration support.
+
+Verification provider overrides now inherit `defaults` in `features/verification/settings`, including when no override node exists. Use an explicit provider `enabled: false` where verification should be disabled.

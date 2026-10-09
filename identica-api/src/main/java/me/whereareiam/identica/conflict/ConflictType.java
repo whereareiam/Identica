@@ -3,6 +3,7 @@ package me.whereareiam.identica.conflict;
 import com.fasterxml.jackson.databind.JsonNode;
 import me.whereareiam.identica.conflict.resolver.ConflictResolver;
 import me.whereareiam.identica.model.conflict.ConflictContext;
+import me.whereareiam.identica.model.config.provider.Conflicts;
 import me.whereareiam.identica.type.ConflictHook;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -29,6 +30,17 @@ public interface ConflictType<S extends ConflictSubject> {
 	@NotNull
 	default ConflictHook getDefaultHook() {
 		return ConflictHook.NONE;
+	}
+
+	/**
+	 * Supplies rules owned by this conflict type when no central override exists.
+	 * A feature may return its current configuration so reloading takes effect
+	 * without adding feature-specific defaults to core configuration.
+	 *
+	 * @return fallback rules, or null when the type has no rules
+	 */
+	default @Nullable Conflicts.ConflictRules getDefaultRules() {
+		return null;
 	}
 
 	/**

@@ -1,0 +1,59 @@
+---
+title: Join Restriction
+description: Configuration for the optional join restriction feature.
+---
+
+Join restriction uses the built-in restriction framework. Both are compiled into Identica; operators configure their behavior globally and per provider.
+It controls whether a provider may temporarily restrict new joins through the admin restriction commands.
+
+Join restriction provider overrides live under `providers[].features.restriction.join`.
+
+Shared command and message documents live under `features/restriction/join/commands` and `features/restriction/join/messages`.
+
+## Settings
+
+Shared policy settings live under `features/restriction/join/settings`.
+
+### resumeBypass.authentication
+
+- Takes: `true` or `false`
+- Current default: `false`
+- Affects: whether an already-pending authentication flow may resume through an active provider join restriction
+
+### resumeBypass.registration
+
+- Takes: `true` or `false`
+- Current default: `false`
+- Affects: whether an already-pending registration flow may resume through an active provider join restriction
+
+These policies apply to resumed flows only. They do not allow new attempts through an active restriction or enable engine resume support. The corresponding engine scenario must permit resuming through `allowResume`.
+
+```yaml
+resumeBypass:
+  authentication: false
+  registration: false
+```
+
+## Provider Overrides
+
+### features.restriction.join.enabled
+
+<Badge type="warning">Advanced</Badge>
+
+- Takes: `true` or `false`
+- Current default: `false`
+- Affects: whether this provider exposes the typed join restriction runtime
+
+### features.restriction.join.allow
+
+<Badge type="warning">Advanced</Badge>
+
+- Takes: a list of signal ids
+- Current default: absent unless explicitly configured
+- Affects: which contributed join signals may allow the provider while join restriction is active
+
+The built-in `linked` signal allows linked accounts. The `recognized` signal is contributed when the `recognition` feature is also selected; recognition can run without join restriction. Listing `recognized` here does not enable recognition.
+
+## Shared defaults
+
+`features/restriction/join/settings.enabled` defaults to `false`, and `allow` defaults to an empty list. Provider fields override these values; an omitted provider subtree inherits them. The surrounding restriction feature must also be enabled. `resumeBypass.authentication` and `resumeBypass.registration` continue to control resumed-flow policy.

@@ -5,6 +5,11 @@ plugins {
 }
 
 tasks.withType<ShadowJar>().configureEach {
+    filesMatching("META-INF/services/**") {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
+    mergeServiceFiles()
+
     relocate("com.google.inject", "me.whereareiam.identica.library.guice")
     relocate("com.google.common", "me.whereareiam.identica.library.guava")
     relocate("org.bstats", "me.whereareiam.identica.library.bstats")

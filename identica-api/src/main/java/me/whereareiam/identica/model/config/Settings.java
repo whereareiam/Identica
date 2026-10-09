@@ -9,7 +9,6 @@ import me.whereareiam.configura.annotation.merge.MergeMap;
 import me.whereareiam.configura.type.merge.tree.map.MapPresence;
 import me.whereareiam.configura.type.merge.tree.map.MapUnknownEntries;
 import me.whereareiam.identica.model.Event;
-import me.whereareiam.identica.model.sentinel.SentinelPolicy;
 import me.whereareiam.identica.type.identity.UniqueIdMode;
 import me.whereareiam.identica.type.session.SessionConcurrencyPolicy;
 import org.jetbrains.annotations.NotNull;
@@ -30,7 +29,6 @@ public class Settings extends ConfigDocument {
 	private int level;
 	private @NotNull Identity identity = new Identity();
 	private @NotNull Sessions sessions = new Sessions();
-	private @NotNull Sentinels sentinels = new Sentinels();
 	private @NotNull Listeners listeners = new Listeners();
 
 	/**
@@ -90,19 +88,6 @@ public class Settings extends ConfigDocument {
 
 			return activeTtl.toMillis();
 		}
-	}
-
-	/**
-	 * Sentinel behavior settings.
-	 */
-	@Getter
-	@Setter
-	@ToString
-	public static class Sentinels {
-		/**
-		 * Rate limit applied when clients spam pipeline resume/advance requests.
-		 */
-		private @NotNull SentinelPolicy resumeSpam;
 	}
 
 	/**

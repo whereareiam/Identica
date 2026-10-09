@@ -9,5 +9,5 @@ dependencies {
 }
 
 toolkitPublish {
-    artifactId.set("sentinel")
+    artifactId.set("sentinel-api")
 }

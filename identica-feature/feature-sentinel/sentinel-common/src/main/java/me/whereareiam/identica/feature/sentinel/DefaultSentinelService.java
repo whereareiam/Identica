@@ -7,16 +7,16 @@ import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelSettings;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.replication.ReplicationType;
-import me.whereareiam.identica.model.sentinel.SentinelContext;
-import me.whereareiam.identica.model.sentinel.SentinelDecision;
-import me.whereareiam.identica.model.sentinel.SentinelKey;
-import me.whereareiam.identica.model.sentinel.SentinelPolicy;
+import me.whereareiam.identica.feature.sentinel.model.SentinelContext;
+import me.whereareiam.identica.feature.sentinel.model.SentinelDecision;
+import me.whereareiam.identica.feature.sentinel.type.SentinelKey;
+import me.whereareiam.identica.feature.sentinel.model.SentinelPolicy;
 import me.whereareiam.identica.replication.ReplicationSystem;
 import me.whereareiam.identica.replication.cache.ReplicatedCache;
-import me.whereareiam.identica.sentinel.SentinelDefinition;
-import me.whereareiam.identica.sentinel.SentinelService;
-import me.whereareiam.identica.type.sentinel.SentinelMode;
-import me.whereareiam.identica.type.sentinel.SentinelScope;
+import me.whereareiam.identica.feature.sentinel.SentinelDefinition;
+import me.whereareiam.identica.feature.sentinel.SentinelService;
+import me.whereareiam.identica.feature.sentinel.type.SentinelMode;
+import me.whereareiam.identica.feature.sentinel.type.SentinelScope;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Locale;
@@ -28,25 +28,29 @@ public class DefaultSentinelService implements SentinelService {
 	private static final String KEY_PREFIX = "rate:";
 
 	private final Registry<SentinelDefinition> registry;
+	private final me.whereareiam.identica.feature.FeatureRegistry features;
 	private final ReplicatedCache<SentinelEntry> cache;
 
 	@Inject
 	public DefaultSentinelService(
 			Registry<SentinelDefinition> registry,
+			me.whereareiam.identica.feature.FeatureRegistry features,
 			ReplicationSystem replicationSystem,
 			Provider<SentinelSettings> settingsProvider
 	) {
 		this.registry = registry;
+		this.features = features;
 		ReplicationType<SentinelEntry, SentinelEntry> type = ReplicationType.identity(SentinelEntry.class);
 		this.cache = replicationSystem.cache(resolveNamespace(settingsProvider)).replicated(type);
 	}
 
 	@Override
 	public @NotNull Optional<SentinelDecision> evaluate(@NotNull SentinelScope scope, @NotNull SentinelContext ctx) {
+        if (ctx.getProviderId() != null && !features.isEnabled(ctx.getProviderId(), "sentinel")) return Optional.empty();
         SentinelDecision best = null;
 		Set<SentinelDefinition> definitions = registry.values();
 		for (SentinelDefinition definition : definitions) {
-			if (definition == null || !supports(definition, scope)) continue;
+			if (definition == null || !supports(definition, scope) || !applies(definition, ctx)) continue;
 			SentinelMode mode = definition.modeFor(scope);
 
             SentinelPolicy policy = definition.policy(ctx);
@@ -90,6 +94,7 @@ public class DefaultSentinelService implements SentinelService {
 			return SentinelDecision.allowed(null);
 		}
 
+		if (!applies(definition, ctx)) return SentinelDecision.allowed(definition);
 		SentinelPolicy policy = definition.policy(ctx);
 		if (!isActive(policy)) {
 			return SentinelDecision.allowed(definition);
@@ -119,6 +124,11 @@ public class DefaultSentinelService implements SentinelService {
 		if (cacheKey == null) return;
 
 		cache.invalidate(cacheKey).join();
+	}
+
+	private boolean applies(SentinelDefinition definition, SentinelContext context) {
+		String provider = definition.providerId();
+		return provider == null || provider.equalsIgnoreCase(context.getProviderId());
 	}
 
 	private SentinelDecision checkAttempt(

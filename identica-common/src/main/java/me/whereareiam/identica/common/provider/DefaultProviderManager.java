@@ -11,9 +11,8 @@ import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
 import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.provider.resolver.ProviderResolver;
-import me.whereareiam.identica.type.provider.ProviderFeature;
 import me.whereareiam.identica.type.provider.ProviderState;
-import me.whereareiam.identica.type.provider.capability.ProviderCapability;
+import me.whereareiam.identica.type.provider.ProviderTrait;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -77,7 +76,7 @@ public class DefaultProviderManager implements ProviderManager {
 	}
 
 	@Override
-	public @NotNull List<InternalProvider> findProviders(ProviderCapability... capabilities) {
+	public @NotNull List<InternalProvider> findProvidersByTraits(ProviderTrait... traits) {
 		if (providers.isEmpty()) return List.of();
 
 		List<InternalProvider> matches = new ArrayList<>();
@@ -89,7 +88,7 @@ public class DefaultProviderManager implements ProviderManager {
 
 			String id = descriptor.getId();
 			if (id.isBlank()) continue;
-			if (!supportsAll(descriptor, capabilities)) continue;
+			if (!supportsAll(descriptor, traits)) continue;
 
 			matches.add(provider);
 		}
@@ -102,15 +101,15 @@ public class DefaultProviderManager implements ProviderManager {
 	}
 
 	@Override
-	public InternalProvider findProvider(ProviderCapability... capabilities) {
-		List<InternalProvider> matches = findProviders(capabilities);
+	public InternalProvider findProviderByTraits(ProviderTrait... traits) {
+		List<InternalProvider> matches = findProvidersByTraits(traits);
 		if (matches.isEmpty()) return null;
 
 		return matches.getFirst();
 	}
 
 	@Override
-	public @NotNull List<InternalProvider> findProvidersByFeatures(@NotNull ProviderFeature... features) {
+	public @NotNull List<InternalProvider> findProvidersByFeatures(@NotNull String... features) {
 		if (providers.isEmpty()) return List.of();
 
 		List<InternalProvider> matches = new ArrayList<>();
@@ -132,7 +131,7 @@ public class DefaultProviderManager implements ProviderManager {
 	}
 
 	@Override
-	public @Nullable InternalProvider findProviderByFeatures(@NotNull ProviderFeature... features) {
+	public @Nullable InternalProvider findProviderByFeatures(@NotNull String... features) {
 		List<InternalProvider> matches = findProvidersByFeatures(features);
 		if (matches.isEmpty()) return null;
 
@@ -184,24 +183,24 @@ public class DefaultProviderManager implements ProviderManager {
 				.collect(Collectors.toList());
 	}
 
-	private boolean supportsAll(ProviderDescriptor descriptor, ProviderCapability[] capabilities) {
-		if (capabilities == null) return true;
+	private boolean supportsAll(ProviderDescriptor descriptor, ProviderTrait[] traits) {
+		if (traits == null) return true;
 
-		for (ProviderCapability capability : capabilities) {
-			if (capability == null) continue;
-			if (!descriptor.hasCapability(capability))
+		for (ProviderTrait trait : traits) {
+			if (trait == null) continue;
+			if (!descriptor.hasTrait(trait))
 				return false;
 		}
 
 		return true;
 	}
 
-	private boolean supportsAll(ProviderDescriptor descriptor, ProviderFeature[] features) {
+	private boolean supportsAll(ProviderDescriptor descriptor, String[] features) {
 		if (features == null) return true;
 
-		for (ProviderFeature feature : features) {
+		for (String feature : features) {
 			if (feature == null) continue;
-			if (!descriptor.hasFeature(feature)) return false;
+			if (!descriptor.supportsFeature(feature)) return false;
 		}
 
 		return true;

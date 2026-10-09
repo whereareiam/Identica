@@ -17,8 +17,6 @@ import me.whereareiam.identica.provider.credential.config.provider.CredentialSet
 import me.whereareiam.identica.provider.credential.listener.CredentialAccountClearListener;
 import me.whereareiam.identica.provider.credential.migration.CredentialMigrationPrecheck;
 import me.whereareiam.identica.provider.credential.resolver.CredentialSubjectResolver;
-import me.whereareiam.identica.provider.credential.sentinel.BruteForceSentinelDefinition;
-import me.whereareiam.identica.provider.credential.sentinel.BruteForceSentinelLifecycle;
 import me.whereareiam.identica.provider.credential.util.PasswordRules;
 import me.whereareiam.identica.provider.migration.ProviderMigrationPrecheck;
 import me.whereareiam.identica.provider.subject.SubjectResolver;
@@ -44,9 +42,6 @@ public class CommonConfiguration extends AbstractModule {
 		bind(CredentialAccountClearListener.class).asEagerSingleton();
 		bind(AutoupgradeLifecycle.class).asEagerSingleton();
 		bind(PasswordRules.class).asEagerSingleton();
-
-		bind(BruteForceSentinelDefinition.class).asEagerSingleton();
-		bind(BruteForceSentinelLifecycle.class).asEagerSingleton();
 
 		Multibinder<Object> credentialCommandInstances = Multibinder.newSetBinder(
 				binder(),

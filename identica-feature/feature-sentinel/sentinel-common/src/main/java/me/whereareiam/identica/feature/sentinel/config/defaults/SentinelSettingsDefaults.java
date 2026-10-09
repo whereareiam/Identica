@@ -3,7 +3,7 @@ package me.whereareiam.identica.feature.sentinel.config.defaults;
 import com.google.inject.Singleton;
 import me.whereareiam.configura.merge.defaults.DefaultsProvider;
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelSettings;
-import me.whereareiam.identica.model.sentinel.SentinelPolicy;
+import me.whereareiam.identica.feature.sentinel.model.SentinelPolicy;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;

@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     implementation(projects.featureVerificationApi)
+
     compileOnly(libs.jdbi.core)
     compileOnly(libs.jdbi.sqlobject)
 

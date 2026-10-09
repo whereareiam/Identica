@@ -8,7 +8,6 @@ import me.whereareiam.identica.model.config.Commands;
 import me.whereareiam.identica.platform.bungeecord.mapper.CommandSourceMapper;
 import me.whereareiam.keystone.Actor;
 import org.incendo.cloud.CommandManager;
-import org.incendo.cloud.bungee.BungeeCommandManager;
 import org.incendo.cloud.execution.ExecutionCoordinator;
 
 @Singleton
@@ -22,7 +21,7 @@ public class BungeeCordCommandManagerProvider implements Provider<CommandManager
 	@Override
 	public CommandManager<Actor> get() {
 		if (manager != null) return manager;
-		manager = new BungeeCommandManager<>(
+		manager = new LifecycleBungeeCommandManager<>(
 				plugin,
 				ExecutionCoordinator.asyncCoordinator(),
 				mapper

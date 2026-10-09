@@ -68,14 +68,6 @@ public class MessagesDefaults implements DefaultsProvider<Messages> {
 				"",
 				"<dark_gray>discord.arcadeya.com"
 		));
-		engine.setResumeSentineled(List.of(
-				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
-				"",
-				"<white>Too many resume attempts.</white>",
-				"<white>Please try again in <green>{seconds}s</green>.</white>",
-				"",
-				"<dark_gray>discord.arcadeya.com"
-		));
 		engine.setJourney(buildJourneyMessages());
 		engine.setPrepare(buildPrepare());
 		messages.setEngine(engine);
@@ -141,16 +133,6 @@ public class MessagesDefaults implements DefaultsProvider<Messages> {
 				"",
 				"<white>Unable to establish your session.</white>",
 				"<white>Please contact a server administrator.</white>",
-				"",
-				"<dark_gray>discord.arcadeya.com"
-		));
-		authentication.setConflictEntrypointRequired(List.of(
-				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
-				"",
-				"<white>Username conflict detected.</white>",
-				"<white>Please join using the correct entrypoint:</white>",
-				"<white><gold>{incomingProvider}</gold>: <green>{incomingHost}</green></white>",
-				"<white><gold>{existingProvider}</gold>: <green>{existingHost}</green></white>",
 				"",
 				"<dark_gray>discord.arcadeya.com"
 		));
@@ -276,14 +258,6 @@ public class MessagesDefaults implements DefaultsProvider<Messages> {
 				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
 				"",
 				"<white>Unable to load provider profile.</white>",
-				"<white>Please contact a server administrator.</white>",
-				"",
-				"<dark_gray>discord.arcadeya.com"
-		));
-		identity.setReplicationMissing(List.of(
-				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
-				"",
-				"<white>Unable to synchronize username.</white>",
 				"<white>Please contact a server administrator.</white>",
 				"",
 				"<dark_gray>discord.arcadeya.com"

@@ -25,7 +25,7 @@ public class VelocityCommandManagerProvider implements Provider<CommandManager<A
 	@Override
 	public CommandManager<Actor> get() {
 		if (manager != null) return manager;
-		manager = new VelocityCommandManager<>(
+		manager = new LifecycleVelocityCommandManager<>(
 				plugin,
 				proxyServer,
 				ExecutionCoordinator.asyncCoordinator(),

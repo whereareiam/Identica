@@ -28,12 +28,16 @@ import me.whereareiam.keystone.Actor;
 import me.whereareiam.keystone.serializer.SerializerEngine;
 import org.incendo.cloud.Command;
 import org.incendo.cloud.CommandManager;
+import org.incendo.cloud.CloudCapability;
+import org.incendo.cloud.setting.ManagerSetting;
+import org.incendo.cloud.internal.CommandNode;
 import org.incendo.cloud.permission.Permission;
 import org.incendo.cloud.suggestion.SuggestionProvider;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Singleton
 public class DefaultCommandService implements CommandService {
@@ -46,6 +50,7 @@ public class DefaultCommandService implements CommandService {
 	private final ProviderIdSuggestions providerIdSuggestions;
 
 	private final Map<String, CommandDefinition> registeredDefinitions = new HashMap<>();
+	private final Map<String, AtomicReference<SuggestionProvider<Actor>>> suggestionProviders = new HashMap<>();
 	private IdenticaAnnotationParser<Actor> annotationParser;
 
 	@Inject
@@ -119,12 +124,69 @@ public class DefaultCommandService implements CommandService {
 	}
 
 	@Override
+	public void unregisterCommands(@NotNull Set<String> definitionIds) {
+		if (definitionIds.isEmpty()) return;
+
+		CommandManager<Actor> manager = commandManagerProvider.get();
+		List<Command<Actor>> commands = List.copyOf(manager.commands());
+		Set<CommandNode<Actor>> affectedRoots = new LinkedHashSet<>();
+		for (Command<Actor> command : commands) {
+			if (!ownsCommand(command, definitionIds)) continue;
+			affectedRoots.add(Objects.requireNonNull(
+					manager.commandTree().getNamedNode(command.rootComponent().name())
+			));
+		}
+
+		if (!affectedRoots.isEmpty()) {
+			if (!manager.hasCapability(CloudCapability.StandardCapabilities.ROOT_COMMAND_DELETION))
+				throw new IllegalStateException("The platform command manager does not support root command deletion");
+
+			List<Command<Actor>> retained = commands.stream()
+					.filter(command -> !ownsCommand(command, definitionIds))
+					.filter(command -> affectedRoots.contains(
+							manager.commandTree().getNamedNode(command.rootComponent().name())))
+					.toList();
+
+			// Cloud 2.0.0 deletes entire roots. Reinsert the existing command objects
+			// so handlers, definition IDs, permissions and aliases survive unchanged.
+			boolean unsafeRegistration = manager.settings().get(ManagerSetting.ALLOW_UNSAFE_REGISTRATION);
+			try {
+				manager.settings().set(ManagerSetting.ALLOW_UNSAFE_REGISTRATION, true);
+				for (CommandNode<Actor> root : affectedRoots)
+					manager.deleteRootCommand(Objects.requireNonNull(root.component()).name());
+				retained.forEach(manager::command);
+			} finally {
+				manager.settings().set(ManagerSetting.ALLOW_UNSAFE_REGISTRATION, unsafeRegistration);
+			}
+		}
+
+		definitionIds.forEach(registeredDefinitions::remove);
+	}
+
+	private boolean ownsCommand(@NotNull Command<Actor> command, @NotNull Set<String> definitionIds) {
+		return command.commandMeta().optional(CommandantKeys.DEFINITION_ID)
+				.map(definitionIds::contains).orElse(false);
+	}
+
+	@Override
 	@SuppressWarnings("unchecked")
 	public void registerSuggestionProvider(@NotNull String key, @NotNull Object suggestionProvider) {
-		commandManagerProvider.get().parserRegistry().registerSuggestionProvider(
-				key,
-				(SuggestionProvider<Actor>) suggestionProvider
+		SuggestionProvider<Actor> provider = (SuggestionProvider<Actor>) suggestionProvider;
+		String normalizedKey = key.toLowerCase(Locale.ENGLISH);
+		AtomicReference<SuggestionProvider<Actor>> delegate = suggestionProviders.computeIfAbsent(
+				normalizedKey, ignored -> new AtomicReference<>(provider)
 		);
+		delegate.set(provider);
+		commandManagerProvider.get().parserRegistry().registerSuggestionProvider(
+				key, (context, input) -> delegate.get().suggestionsFuture(context, input)
+		);
+	}
+
+	@Override
+	public void unregisterSuggestionProvider(@NotNull String key) {
+		AtomicReference<SuggestionProvider<Actor>> delegate = suggestionProviders.remove(key.toLowerCase(Locale.ENGLISH));
+		if (delegate != null)
+			delegate.set(SuggestionProvider.noSuggestions());
 	}
 
 	@Override

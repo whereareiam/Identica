@@ -5,6 +5,8 @@ description: Field-by-field explanation of Identica's sentinel feature settings.
 
 This page provides the settings for the built-in sentinel feature.
 
+Shared settings live under `features/sentinel/settings`. Messages live under `features/sentinel/messages`. The shared `enabled` switch defaults to true; provider-owned checks can override it through `providers[].features.sentinel.enabled`.
+
 ## Settings
 
 ### sentinels.resumeSpam.enabled
@@ -72,6 +74,8 @@ This namespace stores shared sentinel counters and lockout state.
 
 ## Messages
 
+The following fields belong to `features/sentinel/messages`.
+
 ### resumeSpam.denied
 
 - Takes: a list of lines
@@ -79,6 +83,10 @@ This namespace stores shared sentinel counters and lockout state.
 - Affects: the denial message shown while the resume-spam lockout is active
 
 The `{seconds}` placeholder is replaced with the remaining lockout duration.
+
+## Settings example
+
+The following example belongs to `features/sentinel/settings`:
 
 <Tabs items={["YAML", "JSON"]}>
   <Tab value="YAML">

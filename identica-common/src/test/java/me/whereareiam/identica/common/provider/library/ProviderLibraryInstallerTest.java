@@ -1,6 +1,6 @@
 package me.whereareiam.identica.common.provider.library;
 
-import me.whereareiam.identica.common.provider.classloader.SharedCapabilityClassLoaderFactory;
+import me.whereareiam.identica.common.provider.classloader.SharedLibraryClassLoaderFactory;
 import me.whereareiam.identica.common.provider.dependency.ProviderDependencyLoggingAdapter;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
 import me.whereareiam.identica.model.provider.dependency.ProviderLibraries;
@@ -20,17 +20,16 @@ import static org.mockito.Mockito.mock;
 
 class ProviderLibraryInstallerTest {
 	@Test
-	void installsSharedCapabilityApisIntoSharedLoaderAndProviderRuntimeIntoProviderLoader(@TempDir Path tempDir) {
-		SharedCapabilityClassLoaderFactory sharedCapabilityClassLoaderFactory = new SharedCapabilityClassLoaderFactory();
+	void installsSharedLibrariesIntoSharedLoaderAndProviderRuntimeIntoProviderLoader(@TempDir Path tempDir) {
+		SharedLibraryClassLoaderFactory sharedLibraryClassLoaderFactory = new SharedLibraryClassLoaderFactory(getClass().getClassLoader());
 		RecordingProviderLibraryInstaller installer = new RecordingProviderLibraryInstaller(
 				tempDir,
-				tempDir.resolve("capabilities"),
 				mock(ProviderDependencyLoggingAdapter.class),
-				sharedCapabilityClassLoaderFactory
+				sharedLibraryClassLoaderFactory
 		);
-		URLClassLoader providerClassLoader = new URLClassLoader(new java.net.URL[0], sharedCapabilityClassLoaderFactory.sharedClassLoader());
+		URLClassLoader providerClassLoader = new URLClassLoader(new java.net.URL[0], sharedLibraryClassLoaderFactory.sharedClassLoader());
 
-		installer.installSharedCapabilityApis(libraries(shared("recognition-api"), shared("external-api")));
+		installer.installSharedLibraries(libraries(shared("recognition-api"), shared("external-api")));
 		Call sharedCall = installer.lastCall();
 		installer.installProviderRuntime(
 				descriptor(),
@@ -39,9 +38,9 @@ class ProviderLibraryInstallerTest {
 		);
 		Call providerCall = installer.lastCall();
 
-		assertEquals(tempDir.resolve("capabilities"), sharedCall.basePath());
+		assertEquals(tempDir, sharedCall.basePath());
 		assertEquals(".libraries/shared", sharedCall.cacheNamespace());
-		assertSame(sharedCapabilityClassLoaderFactory.sharedClassLoader(), sharedCall.classLoader());
+		assertSame(sharedLibraryClassLoaderFactory.sharedClassLoader(), sharedCall.classLoader());
 		assertEquals(Set.of("recognition-api", "external-api"), artifactIds(sharedCall.libraries()));
 
 		assertEquals(tempDir, providerCall.basePath());
@@ -74,7 +73,7 @@ class ProviderLibraryInstallerTest {
 
 	private static @NotNull ProviderLibrary shared(@NotNull String artifactId) {
 		return ProviderLibrary.builder()
-				.groupId("me.whereareiam.identica.capability")
+				.groupId("example.provider.library")
 				.artifactId(artifactId)
 				.version("1.0.0")
 				.loader("shared")
@@ -83,7 +82,7 @@ class ProviderLibraryInstallerTest {
 
 	private static @NotNull ProviderLibrary local(@NotNull String artifactId) {
 		return ProviderLibrary.builder()
-				.groupId("me.whereareiam.identica.capability")
+				.groupId("example.provider.library")
 				.artifactId(artifactId)
 				.version("1.0.0")
 				.build();
@@ -94,11 +93,10 @@ class ProviderLibraryInstallerTest {
 
 		private RecordingProviderLibraryInstaller(
 				@NotNull Path providersPath,
-				@NotNull Path capabilitiesPath,
 				@NotNull ProviderDependencyLoggingAdapter loggingHelper,
-				@NotNull SharedCapabilityClassLoaderFactory sharedCapabilityClassLoaderFactory
+				@NotNull SharedLibraryClassLoaderFactory sharedLibraryClassLoaderFactory
 		) {
-			super(providersPath, capabilitiesPath, loggingHelper, sharedCapabilityClassLoaderFactory);
+			super(providersPath, loggingHelper, sharedLibraryClassLoaderFactory);
 		}
 
 		@Override

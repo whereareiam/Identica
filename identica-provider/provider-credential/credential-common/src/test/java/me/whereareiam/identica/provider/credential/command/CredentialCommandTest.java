@@ -1,6 +1,9 @@
 package me.whereareiam.identica.provider.credential.command;
 
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import me.whereareiam.identica.Serializer;
+import me.whereareiam.identica.feature.FeatureRegistry;
 import me.whereareiam.identica.feature.verification.VerificationService;
 import me.whereareiam.identica.feature.verification.config.VerificationMessages;
 import me.whereareiam.identica.feature.verification.model.resolution.VerificationResolutionResult;
@@ -93,9 +96,8 @@ class CredentialCommandTest {
 		CredentialCommand command = new CredentialCommand(
 				() -> passwordMessages,
 				Messages::new,
-				this::verificationMessages,
+				injector(true),
 				migrationService,
-				verificationService,
 				sessionService
 		);
 
@@ -125,15 +127,53 @@ class CredentialCommandTest {
 		CredentialCommand command = new CredentialCommand(
 				() -> new CredentialMessagesDefaults().supply(new CredentialMessages()),
 				Messages::new,
-				this::verificationMessages,
+				injector(true),
 				migrationService,
-				verificationService,
 				sessionService
 		);
 
 		command.confirm(identity, "420683");
 
 		verify(migrationService).confirm(any(MigrationConfirm.class));
+	}
+
+	@Test
+	void confirmsWhenCurrentProviderDisablesVerification() {
+		TestIdentity identity = new TestIdentity();
+		when(sessionService.findByUniqueId(identity.getUniqueId())).thenReturn(CompletableFuture.completedFuture(Optional.of(session(identity))));
+		when(migrationService.findPendingMigration(identity.getConnectionUniqueId())).thenReturn(Optional.of(pendingMigration()));
+		when(migrationService.confirm(any())).thenReturn(MigrationResult.builder().status(MigrationResultStatus.STARTED).build());
+		when(verificationService.findEnrollments(identity.getUniqueId())).thenReturn(List.of(mockEnrollment()));
+		verificationPolicy(false);
+		Injector injector = Guice.createInjector(binder -> {
+			binder.bind(VerificationService.class).toInstance(verificationService);
+			binder.bind(MigrationService.class).toInstance(migrationService);
+			binder.bind(SessionService.class).toInstance(sessionService);
+			binder.bind(Messages.class).toInstance(new Messages());
+			binder.bind(CredentialMessages.class).toInstance(new CredentialMessagesDefaults().supply(new CredentialMessages()));
+		});
+
+		injector.getInstance(CredentialCommand.class).confirm(identity, null);
+
+		verify(migrationService).confirm(any(MigrationConfirm.class));
+		verify(verificationService, never()).resolveVerification(any());
+		verify(verificationService).isEnabledForProvider("credential");
+	}
+
+	private void verificationPolicy(boolean enabled) {
+		when(verificationService.isEnabledForProvider(anyString())).thenReturn(enabled);
+	}
+
+	private Injector injector(boolean enabled) {
+		verificationPolicy(enabled);
+		return injector();
+	}
+
+	private Injector injector() {
+		return Guice.createInjector(binder -> {
+			binder.bind(VerificationService.class).toInstance(verificationService);
+			binder.bind(VerificationMessages.class).toInstance(verificationMessages());
+		});
 	}
 
 	private Session session(TestIdentity identity) {

@@ -1,6 +1,7 @@
 package me.whereareiam.identica.common.event;
 
 import me.whereareiam.identica.event.EventListener;
+import me.whereareiam.identica.event.lifecycle.IdenticaShutdownEvent;
 import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.event.base.SynchronousEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentEvent;
@@ -36,6 +37,32 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @DisplayName("Event Controller")
 class EventControllerTest {
+	@Test
+	void shutdownFinishesProvidersAndFeaturesBeforeInfrastructureCloses() {
+		EventController controller = new EventController();
+		java.util.List<String> order = new java.util.ArrayList<>();
+		Thread shutdownThread = Thread.currentThread();
+		controller.register(new EventListener() {
+			@IdenticEvent(EventOrder.HIGH)
+			public void database(IdenticaShutdownEvent event) {
+				assertEquals(shutdownThread, Thread.currentThread());
+				order.add("database");
+			}
+
+			@IdenticEvent(EventOrder.LOW)
+			public void providersAndFeatures(IdenticaShutdownEvent event) {
+				assertEquals(shutdownThread, Thread.currentThread());
+				order.add("providers");
+				order.add("features");
+			}
+		});
+
+		controller.call(new IdenticaShutdownEvent());
+		order.add("platform");
+
+		assertEquals(java.util.List.of("providers", "features", "database", "platform"), order);
+	}
+
 	@DisplayName("Interface-based routing listeners receive concrete routing intent events")
 	@Test
 	void routingIntentInterfaceListenerReceivesConcreteIntentEvent() {

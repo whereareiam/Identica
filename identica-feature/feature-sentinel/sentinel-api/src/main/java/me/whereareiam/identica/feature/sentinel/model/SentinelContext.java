@@ -14,6 +14,8 @@ import java.util.UUID;
 @ToString
 @Builder
 public class SentinelContext {
+	/** Provider selected for this attempt, or null before provider selection. */
+	private final @Nullable String providerId;
 	private final @Nullable UUID uniqueId;
 	private final @Nullable UUID connectionUniqueId;
 	private final @Nullable String username;

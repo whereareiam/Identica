@@ -31,7 +31,6 @@ public class AdminCommandDefinitions implements CommandDefinitions {
 		registerDelete(registry);
 		registerReservation(registry);
 		registerSessions(registry);
-		registerVerification(registry);
 	}
 
 	private void registerClear(Registry registry) {
@@ -169,14 +168,4 @@ public class AdminCommandDefinitions implements CommandDefinitions {
 				.build());
 	}
 
-	private void registerVerification(Registry registry) {
-		registry.register("admin-verification-reset", CommandDefinition.builder()
-				.enabled(true)
-				.aliases(List.of("admin 2fa reset"))
-				.permission("identica.admin.2fa.reset")
-				.description("Reset verification state for a player")
-				.usage("{command} {alias} <target> [provider]")
-				.arguments(Map.of("target", "Player/UUID", "provider", "Provider id"))
-				.build());
-	}
 }

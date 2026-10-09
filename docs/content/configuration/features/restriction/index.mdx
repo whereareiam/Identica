@@ -1,0 +1,13 @@
+---
+title: Restriction
+description: Shared configuration and extension points for the restriction feature.
+---
+
+The `restriction` feature provides the compiled framework for restriction types, signals, and active restrictions. Its global `enabled` default can be overridden under each provider's `features.restriction.enabled`.
+
+Shared restriction settings live under `features/restriction/settings`.
+Provider-specific restriction overrides live under `providers[].features.restriction`.
+
+## Restriction types
+
+[Join restriction](./join/index.mdx) is provided by the separate `restriction-join` feature. It requires `restriction` to be selected too. Selecting the framework alone does not install join commands or enforcement.

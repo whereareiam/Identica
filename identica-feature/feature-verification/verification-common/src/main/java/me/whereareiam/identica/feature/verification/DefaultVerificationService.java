@@ -32,7 +32,6 @@ import me.whereareiam.identica.feature.verification.type.status.VerificationSele
 import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.provider.ProviderManager;
-import me.whereareiam.identica.type.provider.capability.ProviderCapability;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -42,8 +41,6 @@ import java.util.UUID;
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class DefaultVerificationService implements VerificationService {
-	// TODO Migrate and use capbility api class
-	private static final ProviderCapability VERIFICATION_CAPABILITY = ProviderCapability.of("verification");
 	private final VerificationPersistenceService persistenceService;
 	private final VerificationEnrollmentStore enrollmentStore;
 	private final Provider<VerificationSettings> verificationProvider;
@@ -56,6 +53,12 @@ public class DefaultVerificationService implements VerificationService {
 	private final VerificationRequirementResolver verificationRequirementResolver;
 	private final VerificationChallengeLifecycle challengeLifecycle;
 	private final VerificationEnrollmentLifecycle enrollmentLifecycle;
+
+	@Override
+	public boolean isEnabledForProvider(@NotNull String providerId) {
+		var policy = policyResolver.resolveProviderPolicy(providerId);
+		return supportsVerification(providerId) && policy != null && policy.enabled();
+	}
 
 	@Override
 	public @NotNull VerificationResolutionResult resolveVerification(@NotNull VerificationResolutionRequest request) {
@@ -258,6 +261,6 @@ public class DefaultVerificationService implements VerificationService {
 				.anyMatch(provider -> provider != null
 						&& provider.getDescriptor() != null
 						&& providerId.equalsIgnoreCase(provider.getDescriptor().getId())
-						&& provider.getDescriptor().hasCapability(VERIFICATION_CAPABILITY));
+						&& provider.getDescriptor().supportsFeature("verification"));
 	}
 }

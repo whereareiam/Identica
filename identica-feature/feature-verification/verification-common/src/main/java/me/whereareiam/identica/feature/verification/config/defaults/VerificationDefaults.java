@@ -10,6 +10,7 @@ import java.time.Duration;
 public class VerificationDefaults implements DefaultsProvider<VerificationSettings> {
 	@Override
 	public VerificationSettings supply(VerificationSettings verification) {
+		verification.setDefaults(new VerificationProvidersDefaults().supply(new me.whereareiam.identica.feature.verification.model.config.VerificationProviders.Verification()));
 		verification.setChallengeTtl(Duration.ofMinutes(2));
 		verification.setEnrollmentTtl(Duration.ofMinutes(10));
 		verification.setAutoSelectCurrentProvider(true);

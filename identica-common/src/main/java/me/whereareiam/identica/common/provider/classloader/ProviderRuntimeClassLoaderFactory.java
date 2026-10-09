@@ -15,8 +15,8 @@ public class ProviderRuntimeClassLoaderFactory {
 	private final ClassLoader parentClassLoader;
 
 	@Inject
-	public ProviderRuntimeClassLoaderFactory(@NotNull SharedCapabilityClassLoaderFactory sharedCapabilityClassLoaderFactory) {
-		this.parentClassLoader = sharedCapabilityClassLoaderFactory.sharedClassLoader();
+	public ProviderRuntimeClassLoaderFactory(@NotNull SharedLibraryClassLoaderFactory sharedLibraryClassLoaderFactory) {
+		this.parentClassLoader = sharedLibraryClassLoaderFactory.sharedClassLoader();
 	}
 
 	public URLClassLoader create(Path jarPath) throws MalformedURLException {

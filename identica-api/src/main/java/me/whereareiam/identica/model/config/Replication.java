@@ -55,10 +55,6 @@ public class Replication extends ConfigDocument {
 		 * Cache namespace for provider attempts.
 		 */
 		private @NotNull String attempts;
-		/**
-		 * Cache namespace for sentinels.
-		 */
-		private @NotNull String sentinels;
 	}
 
 	@Getter

@@ -59,7 +59,6 @@ The three scenario sections share most fields:
 - `pipelineTtl`: how long a waiting pipeline can be resumed
 - `advanceLockTtl`: how long advance locking prevents duplicate submits
 - `allowResume`: whether waiting state is stored and resumable
-- `allowProviderRestrictionResumeBypass`: whether resumed flows may continue while a provider restriction is active
 - `journeyMode`: whether the preferred flow style is `SEAMLESS` or `INTERACTIVE`
 - `journeyPolicy`: whether that mode is only preferred or strictly required
 
@@ -91,16 +90,7 @@ When a flow is pending, this TTL becomes the expiry time for its saved pipeline 
 
 If this is `false`, waiting or reconnect-required state is cleared instead of saved.
 
-#### allowProviderRestrictionResumeBypass
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: `true` or `false`
-- Current default: `false`
-- Affects: whether resumed flows may continue while the provider they use is currently restricted
-
-This does not allow new attempts through the restriction.
-It only affects already-pending flows.
+Whether a resumed authentication or registration flow may bypass an active join restriction is controlled by [join restriction settings](../features/restriction/join/index.mdx#settings).
 
 #### journeyMode
 
@@ -204,7 +194,6 @@ scenarios:
     pipelineTtl: "5m"
     advanceLockTtl: "5s"
     allowResume: true
-    allowProviderRestrictionResumeBypass: false
     journeyMode: "SEAMLESS"
     journeyPolicy: "PREFER"
     pipelineConcurrencyPolicy: "DENY_NEW"
@@ -212,7 +201,6 @@ scenarios:
     pipelineTtl: "5m"
     advanceLockTtl: "5s"
     allowResume: true
-    allowProviderRestrictionResumeBypass: false
     journeyMode: "SEAMLESS"
     journeyPolicy: "PREFER"
     pipelineConcurrencyPolicy: "DENY_NEW"
@@ -221,7 +209,6 @@ scenarios:
     pipelineTtl: "5m"
     advanceLockTtl: "5s"
     allowResume: true
-    allowProviderRestrictionResumeBypass: false
     journeyMode: "INTERACTIVE"
     journeyPolicy: "PREFER"
 ```
@@ -234,7 +221,6 @@ scenarios:
       "pipelineTtl": "5m",
       "advanceLockTtl": "5s",
       "allowResume": true,
-      "allowProviderRestrictionResumeBypass": false,
       "journeyMode": "SEAMLESS",
       "journeyPolicy": "PREFER",
       "pipelineConcurrencyPolicy": "DENY_NEW"
@@ -243,7 +229,6 @@ scenarios:
       "pipelineTtl": "5m",
       "advanceLockTtl": "5s",
       "allowResume": true,
-      "allowProviderRestrictionResumeBypass": false,
       "journeyMode": "SEAMLESS",
       "journeyPolicy": "PREFER",
       "pipelineConcurrencyPolicy": "DENY_NEW",
@@ -253,7 +238,6 @@ scenarios:
       "pipelineTtl": "5m",
       "advanceLockTtl": "5s",
       "allowResume": true,
-      "allowProviderRestrictionResumeBypass": false,
       "journeyMode": "INTERACTIVE",
       "journeyPolicy": "PREFER"
     }

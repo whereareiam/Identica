@@ -1,6 +1,13 @@
 package me.whereareiam.identica.model.config.provider;
 
 import lombok.Getter;
+import lombok.AccessLevel;
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.JsonNode;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import lombok.Setter;
 import lombok.ToString;
 import me.whereareiam.configura.ConfigDocument;
@@ -87,9 +94,6 @@ public class Providers extends ConfigDocument {
 		@Merge(DeclaredObjectDefaults.class)
 		@ExtendableDocument
 		private @Nullable Session session;
-		@Merge(DeclaredObjectDefaults.class)
-		@ExtendableDocument
-		private @Nullable Capabilities capabilities;
 		/**
 		 * Feature-specific provider settings.
 		 */
@@ -114,17 +118,6 @@ public class Providers extends ConfigDocument {
 		}
 
 		/**
-		 * Capability-specific provider settings.
-		 */
-		@Getter
-		@Setter
-		@ToString
-		@ExtendableDocument
-		@PreserveUnknownFields
-		public static class Capabilities {
-		}
-
-		/**
 		 * Feature-specific provider settings.
 		 */
 		@Getter
@@ -133,6 +126,50 @@ public class Providers extends ConfigDocument {
 		@ExtendableDocument
 		@PreserveUnknownFields
 		public static class Features {
+			@Getter(AccessLevel.NONE)
+			@Setter(AccessLevel.NONE)
+			@JsonIgnore
+			private final Map<String, JsonNode> entries = new LinkedHashMap<>();
+
+			/**
+			 * Preserves feature-owned settings while core reads their enable switches.
+			 *
+			 * @param id feature settings key
+			 * @param settings opaque configuration owned by the feature
+			 */
+			@JsonAnySetter
+			public void put(@NotNull String id, @NotNull JsonNode settings) {
+				entries.put(id, settings);
+			}
+
+			/**
+			 * Returns feature-owned settings for document serialization.
+			 *
+			 * @return feature settings keyed by their configuration names
+			 */
+			@JsonAnyGetter
+			public @NotNull Map<String, JsonNode> entries() {
+				return java.util.Collections.unmodifiableMap(entries);
+			}
+
+			/**
+			 * Reads an explicit enable switch without interpreting feature policy.
+			 * Missing values inherit the feature's own defaults.
+			 *
+			 * @param path dot-separated feature configuration path
+			 * @return explicit switch, or null when the feature should inherit its defaults
+			 */
+			public @Nullable Boolean enabledOverride(@NotNull String path) {
+				String[] segments = path.split("\\.");
+				JsonNode node = entries.get(segments[0]);
+				for (int i = 0; node != null; i++) {
+					if (node.has("enabled") && !node.path("enabled").asBoolean(true)) return false;
+					if (i + 1 == segments.length)
+						return node.has("enabled") ? node.path("enabled").asBoolean(true) : null;
+					node = node.get(segments[i + 1]);
+				}
+				return null;
+			}
 		}
 	}
 }

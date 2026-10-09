@@ -1,14 +1,14 @@
 package me.whereareiam.identica.provider.credential.sentinel;
 
 import me.whereareiam.identica.event.EventManager;
-import me.whereareiam.identica.model.sentinel.SentinelContext;
-import me.whereareiam.identica.model.sentinel.SentinelDecision;
+import me.whereareiam.identica.feature.sentinel.model.SentinelContext;
+import me.whereareiam.identica.feature.sentinel.model.SentinelDecision;
 import me.whereareiam.identica.provider.credential.CredentialConstants;
 import me.whereareiam.identica.provider.credential.event.authentication.AuthenticationAttemptFailedEvent;
 import me.whereareiam.identica.provider.credential.event.authentication.AuthenticationAttemptSucceededEvent;
 import me.whereareiam.identica.provider.credential.model.CredentialAccount;
 import me.whereareiam.identica.provider.credential.model.authentication.AuthenticationAttemptContext;
-import me.whereareiam.identica.sentinel.SentinelService;
+import me.whereareiam.identica.feature.sentinel.SentinelService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

@@ -1,9 +1,11 @@
 package me.whereareiam.identica.provider.premium.pipeline.step.type.authentication;
 
 import com.google.inject.Inject;
+import com.google.inject.Injector;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import me.whereareiam.identica.database.provider.ProviderLinkPersistenceService;
+import me.whereareiam.identica.feature.FeatureRegistry;
 import me.whereareiam.identica.feature.verification.VerificationService;
 import me.whereareiam.identica.feature.verification.model.resolution.VerificationResolutionRequest;
 import me.whereareiam.identica.feature.verification.model.resolution.VerificationResolutionResult;
@@ -26,18 +28,22 @@ import java.util.concurrent.CompletableFuture;
 public class PremiumVerificationStep extends InteractiveStep {
 	private final Provider<PremiumMessages> messagesProvider;
 	private final ProviderLinkPersistenceService providerLinkPersistenceService;
-	private final VerificationService verificationService;
+
+	private final @NotNull FeatureRegistry features;
+	private final @NotNull Injector injector;
 
 	@Inject
 	public PremiumVerificationStep(
 			Provider<PremiumMessages> messagesProvider,
 			ProviderLinkPersistenceService providerLinkPersistenceService,
-			VerificationService verificationService
+			@NotNull FeatureRegistry features,
+			@NotNull Injector injector
 	) {
 		super("premium-authentication-verification");
+		this.features = features;
+		this.injector = injector;
 		this.messagesProvider = messagesProvider;
 		this.providerLinkPersistenceService = providerLinkPersistenceService;
-		this.verificationService = verificationService;
 	}
 
 	@Override
@@ -47,6 +53,9 @@ public class PremiumVerificationStep extends InteractiveStep {
 
 	@Override
 	public @NotNull CompletableFuture<StepResult> execute(@NotNull ScenarioContext context) {
+		if (!features.isEnabled("premium", "verification"))
+			return CompletableFuture.completedFuture(StepResult.complete(context));
+
 		ProviderContext provider = context.getProvider();
 		if (provider == null || provider.getProviderId() == null || provider.getProviderSubject() == null)
 			return CompletableFuture.completedFuture(StepResult.complete(context));
@@ -65,7 +74,7 @@ public class PremiumVerificationStep extends InteractiveStep {
 			return CompletableFuture.completedFuture(StepResult.complete(context));
 		}
 
-		VerificationResolutionResult result = verificationService.resolveVerification(VerificationResolutionRequest.builder()
+		VerificationResolutionResult result = injector.getInstance(VerificationService.class).resolveVerification(VerificationResolutionRequest.builder()
 				.uniqueId(uniqueId)
 				.providerId(provider.getProviderId())
 				.purpose("authentication")

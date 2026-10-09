@@ -4,9 +4,9 @@ description: Field-by-field explanation of Identica's provider configuration are
 ---
 
 The providers configuration controls which identity providers are enabled and how provider-specific behavior is applied.
-Use this file to enable providers, set priority and entrypoints, tune provider-specific session behavior, and apply capability-owned and feature-owned provider fields.
+Use this file to enable providers, set priority and entrypoints, tune provider-specific session behavior, and apply feature-owned provider fields.
 
-Capability-specific shared fields and provider-scoped capability overrides are documented under [Capabilities](./capabilities/index.md).
+Shared feature settings and provider-scoped feature overrides are documented under [Features](../features/index.mdx).
 Conflict configuration for provider-owned conflicts is documented under [Conflicts](./conflicts.mdx).
 
 ## behavior
@@ -46,7 +46,7 @@ behavior:
 ## providers
 
 - Takes: a list of provider entries
-- Affects: provider enablement, ordering, entrypoint routing, provider-specific session behavior, capability and feature-owned provider overrides
+- Affects: provider enablement, ordering, entrypoint routing, provider-specific session behavior, feature-owned provider overrides
 
 Provider ids should match installed provider descriptors, such as `premium` or `credential`.
 
@@ -133,31 +133,21 @@ Use `session` when one provider should behave differently from the global live-s
 
 If this is absent, Identica uses `settings.sessions.concurrencyPolicy`.
 
-### capabilities
-
-Use `capabilities` for provider-scoped fields owned by installed capabilities.
-Only providers that advertise a capability can use that capability's fields.
-
-- Takes: an object keyed by capability id
-- Current default: absent
-- Affects: provider-scoped overrides contributed by capabilities
-
-The shape inside `capabilities` is not global.
-Each installed capability defines its own nested fields.
-
-<Include src="./capabilities/_partials/provider-overrides.mdx" />
-
 ### features
 
-Use `features` for provider-scoped fields owned by installed features.
-Only installed features that extend provider configuration can use nested fields here.
+Use `features` for per-provider overrides of built-in behavior. Providers declare integration support through `supportedFeatures()`. Omitted settings inherit global defaults; explicit provider values override them.
 
-- Takes: an object keyed by feature id
-- Current default: absent
-- Affects: provider-scoped overrides contributed by features
+- Takes: an object containing feature-owned configuration subtrees
+- Current default: absent unless supplied by a feature
+- Affects: provider-scoped overrides for selected features
 
-The shape inside `features` is not global.
-Each installed feature defines its own nested fields.
+The supported subtrees include:
 
-The official verification feature contributes `verification` here.
-See [Verification settings](../features/verification/settings/index.mdx#provider-overrides).
+- `features.recognition`: [Recognition](../features/recognition/index.mdx#provider-overrides)
+- `features.restriction.join`: [Join restriction](../features/restriction/join/index.mdx#provider-overrides)
+- `features.verification`: [Verification](../features/verification/settings/index.mdx#provider-overrides)
+
+The `restriction-join` feature uses the nested `restriction.join` configuration path.
+Provider ability IDs such as `authoritative-username` are code declarations, not configuration subtrees.
+
+<Include src="../features/_partials/provider-overrides.mdx" />

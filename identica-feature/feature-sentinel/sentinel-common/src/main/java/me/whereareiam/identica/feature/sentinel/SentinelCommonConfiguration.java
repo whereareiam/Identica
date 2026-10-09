@@ -8,8 +8,8 @@ import me.whereareiam.identica.feature.sentinel.config.provider.SentinelSettings
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelMessages;
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelSettings;
 import me.whereareiam.identica.feature.sentinel.type.ResumeSpamSentinelDefinition;
-import me.whereareiam.identica.sentinel.SentinelDefinition;
-import me.whereareiam.identica.sentinel.SentinelService;
+import me.whereareiam.identica.feature.sentinel.SentinelDefinition;
+import me.whereareiam.identica.feature.sentinel.SentinelService;
 
 public class SentinelCommonConfiguration extends AbstractModule {
 	@Override
@@ -18,9 +18,9 @@ public class SentinelCommonConfiguration extends AbstractModule {
 		bind(SentinelSettings.class).toProvider(SentinelSettingsProvider.class);
 		bind(new TypeLiteral<Registry<SentinelDefinition>>() {})
 				.to(SentinelRegistry.class)
-				.asEagerSingleton();
-		bind(SentinelService.class).to(DefaultSentinelService.class).asEagerSingleton();
-		bind(ConnectionAttemptSentinelLifecycle.class).asEagerSingleton();
-		bind(ResumeSpamSentinelDefinition.class).asEagerSingleton();
+				.in(com.google.inject.Singleton.class);
+		bind(SentinelService.class).to(DefaultSentinelService.class).in(com.google.inject.Singleton.class);
+		bind(ConnectionAttemptSentinelLifecycle.class).in(com.google.inject.Singleton.class);
+		bind(ResumeSpamSentinelDefinition.class).in(com.google.inject.Singleton.class);
 	}
 }

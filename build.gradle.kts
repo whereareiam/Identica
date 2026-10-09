@@ -64,7 +64,7 @@ val validatePipelineStructure = tasks.register("validatePipelineStructure") {
             }
 
             val pipelineParticipantOutsidePipeline =
-                (path.contains("/identica-provider/") || path.contains("/identica-capability/")) &&
+                listOf("/identica-provider/", "/identica-feature/", "/identica-trait/").any(path::contains) &&
                         !path.contains("/pipeline/") &&
                         listOf(
                             "implements PipelineExtension",
@@ -74,7 +74,7 @@ val validatePipelineStructure = tasks.register("validatePipelineStructure") {
                         ).any(text::contains)
 
             if (pipelineParticipantOutsidePipeline) {
-                errors += "Pipeline-participating provider/capability class must live under pipeline/: $path"
+                errors += "Pipeline-participating provider/feature/trait class must live under pipeline/: $path"
             }
         }
 

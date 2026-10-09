@@ -69,6 +69,21 @@ public class VerificationChallengeStore {
 		return verified.consume(key(uniqueId, providerId, purpose)).join().isPresent();
 	}
 
+	public void clearAll() {
+		clearCache(records);
+		clearCache(active);
+		clearCache(verified);
+	}
+
+	private void clearCache(LocalCache<?> cache) {
+		while (true) {
+			var entries = cache.listKeys(1, 100).join().getEntries();
+			if (entries.isEmpty()) return;
+			for (String key : entries)
+				cache.invalidate(key).join();
+		}
+	}
+
 	private long ttlMs() {
 		return verificationProvider.get().challengeTtlMillis();
 	}

@@ -1,0 +1,18 @@
+---
+title: Building Identica
+description: Build the plugin with all built-in features and its provider artifacts.
+---
+
+Run from the repository root with Java 21:
+
+```shell
+./gradlew check pluginJars
+```
+
+`pluginJars` builds the Velocity and BungeeCord bootstrap jars, the platform bundle, and the official provider jars under `build/libs/`.
+
+Every plugin build includes all built-in feature implementations and the username identity subsystem. Operators configure feature use globally and per provider; they do not install feature jars or choose which implementations are compiled.
+
+The Gradle submodules remain separate for API boundaries, ownership, and testing. Their intermediate jars are build dependencies, not additional Minecraft plugins or operator-installable features.
+
+See [Provider traits and features](../features/index.mdx) and [Feature configuration](../../configuration/features/index.mdx).

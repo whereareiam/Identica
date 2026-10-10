@@ -12,8 +12,8 @@ import me.whereareiam.anvil.api.model.workspace.WorkspaceCache;
 import me.whereareiam.anvil.api.model.workspace.WorkspacePlan;
 import me.whereareiam.anvil.api.type.CacheIdentity;
 import me.whereareiam.anvil.api.type.Platforms;
-import me.whereareiam.identica.testing.fixture.Mojang;
 
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.Map;
 
@@ -30,7 +30,7 @@ public final class IdenticaNetwork {
 	/** Identica's data directory inside the proxy workspace. */
 	public static final String DATA = "plugins/identica";
 
-	public static AnvilScenario velocity(String name, Map<String, String> configuration) {
+	public static AnvilScenario velocity(String name, Map<String, String> configuration, URI sessionServer) {
 		WorkspacePlan.WorkspacePlanBuilder workspace = WorkspacePlan.builder()
 				.asset(artifact("identica", Path.of("plugins", "identica.jar")))
 				.asset(artifact("credential", Path.of(DATA, "providers", "credential.jar")))
@@ -54,7 +54,7 @@ public final class IdenticaNetwork {
 				.server(LOBBY)
 				.defaultServer(LOBBY)
 				.setting("advanced.login-ratelimit", "0")
-				.sessionServer(Mojang.service().sessionServer())
+				.sessionServer(sessionServer)
 				.build();
 
 		return AnvilScenario.builder().name(name).entrypoint(PROXY).server(auth).server(lobby).proxy(proxy).build();

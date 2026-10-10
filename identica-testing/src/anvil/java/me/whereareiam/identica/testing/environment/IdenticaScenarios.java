@@ -1,7 +1,9 @@
 package me.whereareiam.identica.testing.environment;
 
 import me.whereareiam.anvil.api.model.scenario.AnvilScenario;
+import me.whereareiam.anvil.environment.yggdrasil.YggdrasilMock;
 import me.whereareiam.anvil.integration.junit.AnvilScenarioFactory;
+import me.whereareiam.anvil.integration.junit.ScenarioResources;
 import me.whereareiam.configura.Config;
 import me.whereareiam.configura.Configura;
 import me.whereareiam.configura.type.Format;
@@ -16,7 +18,6 @@ import me.whereareiam.identica.model.config.Settings;
 import me.whereareiam.identica.model.config.provider.Providers;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptPolicy;
 import me.whereareiam.identica.provider.premium.config.PremiumSettings;
-import me.whereareiam.identica.testing.fixture.Mojang;
 import me.whereareiam.identica.type.routing.RoutingRetryMode;
 import org.jetbrains.annotations.NotNull;
 
@@ -43,20 +44,21 @@ public final class IdenticaScenarios implements AnvilScenarioFactory<Identica> {
 	private static final int DEBUG_LEVEL = 3;
 
 	@Override
-	public @NotNull AnvilScenario create(@NotNull Identica identica) {
+	public @NotNull AnvilScenario create(@NotNull Identica identica, @NotNull ScenarioResources resources) {
 		Set<Provider> enabled = EnumSet.noneOf(Provider.class);
 		enabled.addAll(Arrays.asList(identica.providers()));
+
+		// Each network has its own stand-in for Mojang; the test receives it to register premium accounts.
+		YggdrasilMock yggdrasil = resources.own(YggdrasilMock.start());
 
 		Map<String, String> configuration = new LinkedHashMap<>();
 		configuration.put("engine.yml", write(engine(identica)));
 		configuration.put("routing.yml", write(routing()));
 		configuration.put("settings.yml", write(settings()));
 		configuration.put("providers/providers.yml", write(providers(enabled, identica.entrypoints())));
-		configuration.put("providers/Premium/settings.yml", write(premium()));
+		configuration.put("providers/Premium/settings.yml", write(premium(yggdrasil)));
 
-		Mojang.service().reset();
-
-		return IdenticaNetwork.velocity(name(identica, enabled), configuration);
+		return IdenticaNetwork.velocity(name(identica, enabled), configuration, yggdrasil.sessionServer());
 	}
 
 	private static String name(Identica identica, Set<Provider> enabled) {
@@ -122,11 +124,11 @@ public final class IdenticaScenarios implements AnvilScenarioFactory<Identica> {
 	}
 
 	/**
-	 * Premium asks the local Mojang service, not Mojang, whether a username is premium, and does not cache the answer.
+	 * Premium asks the network's stand-in, not Mojang, whether a username is premium, and does not cache the answer.
 	 */
-	private static PremiumSettings premium() {
+	private static PremiumSettings premium(YggdrasilMock yggdrasil) {
 		PremiumSettings settings = new PremiumSettings();
-		settings.getLookup().setProfileEndpoint(Mojang.service().profileLookup() + "%s");
+		settings.getLookup().setProfileEndpoint(yggdrasil.profileLookup() + "%s");
 		settings.getLookup().setCacheTtl(Duration.ZERO);
 
 		return settings;

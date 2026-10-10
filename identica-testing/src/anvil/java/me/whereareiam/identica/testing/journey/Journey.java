@@ -71,7 +71,7 @@ public final class Journey {
 	}
 
 	/**
-	 * Creates a player that owns a premium account registered with the local Mojang service and has not connected
+	 * Creates a player that owns a premium account registered with the network's stand-in for Mojang and has not connected
 	 * yet. It authenticates when the proxy asks for it, as a premium client does.
 	 */
 	public static Journey premium(ScenarioContext anvil, SessionIdentity account) {

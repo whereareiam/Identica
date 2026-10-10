@@ -25,16 +25,20 @@ When a test fails, its network is kept under `identica-testing/build/anvil/<scen
 
 ## Premium accounts
 
-No test needs a real Minecraft account. Every network uses a local stand-in for Mojang: the Premium provider asks it whether a username belongs to a premium account, and the proxy asks it to verify a premium login instead of Mojang's session server.
+No test needs a real Minecraft account. Every network starts its own local stand-in for Mojang: the Premium provider asks it whether a username belongs to a premium account, and the proxy asks it to verify a premium login instead of Mojang's session server.
 
-A test registers the premium accounts that exist:
+A test takes the stand-in as a parameter and registers the premium accounts that exist:
 
 ```java
-SessionIdentity account = Mojang.service().register("Steve");
-Journey.premium(anvil, account).join().on(LOBBY);
+@Test
+@Identica(mode = JourneyMode.SEAMLESS)
+void joins(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+	SessionIdentity account = yggdrasil.register("Steve");
+	Journey.premium(anvil, account).join().on(LOBBY);
+}
 ```
 
-`Mojang.service().register("Alice")` alone makes `Alice` a premium username that an offline player can still try to join with, and `Mojang.service().available(false)` simulates an outage of Mojang's services. Each new network starts without accounts.
+`yggdrasil.register("Alice")` alone makes `Alice` a premium username that an offline player can still try to join with, and `yggdrasil.available(false)` simulates an outage of Mojang's services. The stand-in belongs to the test's network: it starts without accounts and stops with the network.
 
 ## Write a test
 

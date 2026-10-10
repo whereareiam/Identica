@@ -1,6 +1,8 @@
 package me.whereareiam.identica.testing.journey;
 
+import me.whereareiam.anvil.api.model.player.PlayerConnection;
 import me.whereareiam.anvil.api.model.player.PlayerIdentity;
+import me.whereareiam.anvil.api.model.player.PlayerLogin;
 import me.whereareiam.anvil.api.model.player.PlayerOptions;
 import me.whereareiam.anvil.api.model.player.SessionIdentity;
 import me.whereareiam.anvil.api.player.SimulatedPlayer;
@@ -78,8 +80,8 @@ public final class Journey {
 	public static Journey offline(ScenarioContext anvil, String name, String proxy) {
 		SimulatedPlayer player = anvil.players().create(PlayerOptions.builder()
 				.name(name + "@" + proxy)
-				.username(name)
-				.connectTo(proxy)
+				.login(PlayerLogin.offline(name))
+				.connection(PlayerConnection.to(proxy))
 				.build());
 		return new Journey(anvil, player, name, proxy);
 	}
@@ -91,8 +93,7 @@ public final class Journey {
 	public static Journey premium(ScenarioContext anvil, SessionIdentity account) {
 		SimulatedPlayer player = anvil.players().create(PlayerOptions.builder()
 				.name(account.getUsername())
-				.authentication(AuthenticationMode.ON_REQUEST)
-				.sessionIdentity(account)
+				.login(PlayerLogin.session(AuthenticationMode.ON_REQUEST, account))
 				.build());
 		return new Journey(anvil, player, account.getUsername(), anvil.definition().getEntrypoint());
 	}

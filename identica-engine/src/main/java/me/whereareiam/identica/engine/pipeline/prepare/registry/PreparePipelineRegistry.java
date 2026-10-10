@@ -5,6 +5,7 @@ import com.google.inject.Singleton;
 import me.whereareiam.identica.engine.pipeline.AbstractPipelineGroupRegistry;
 import me.whereareiam.identica.engine.pipeline.prepare.group.context.ContextGroup;
 import me.whereareiam.identica.engine.pipeline.prepare.group.context.phase.ResolveEntrypointPhase;
+import me.whereareiam.identica.engine.pipeline.prepare.group.context.phase.ResolveKnownAccountPhase;
 import me.whereareiam.identica.engine.pipeline.prepare.group.context.phase.ResolvePendingMigrationContextPhase;
 import me.whereareiam.identica.engine.pipeline.prepare.group.context.phase.RestorePrepareStatePhase;
 import me.whereareiam.identica.engine.pipeline.prepare.group.finalize.FinalizeGroup;
@@ -34,6 +35,7 @@ public class PreparePipelineRegistry extends AbstractPipelineGroupRegistry imple
 			RestorePrepareStatePhase restorePrepareStatePhase,
 			ResolveEntrypointPhase resolveEntrypointPhase,
 			ResolvePendingMigrationContextPhase resolvePendingMigrationContextPhase,
+			ResolveKnownAccountPhase resolveKnownAccountPhase,
 			EvaluateHandshakePhase evaluateHandshakePhase,
 			FinalizeHandshakePhase finalizeHandshakePhase,
 			ResolveProfilePhase resolveProfilePhase,
@@ -51,6 +53,7 @@ public class PreparePipelineRegistry extends AbstractPipelineGroupRegistry imple
 		registerPhase(contextGroup.id(), restorePrepareStatePhase, PhasePlacement.first());
 		registerPhase(contextGroup.id(), resolveEntrypointPhase, PhasePlacement.last());
 		registerPhase(contextGroup.id(), resolvePendingMigrationContextPhase, PhasePlacement.after(resolveEntrypointPhase.id()));
+		registerPhase(contextGroup.id(), resolveKnownAccountPhase, PhasePlacement.after(resolvePendingMigrationContextPhase.id()));
 
 		registerPhase(handshakeGroup.id(), evaluateHandshakePhase, PhasePlacement.first());
 		registerPhase(handshakeGroup.id(), finalizeHandshakePhase, PhasePlacement.last());

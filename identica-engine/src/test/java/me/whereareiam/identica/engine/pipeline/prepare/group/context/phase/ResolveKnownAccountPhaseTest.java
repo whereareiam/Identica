@@ -1,12 +1,19 @@
-package me.whereareiam.identica.engine.pipeline.prepare.runtime;
+package me.whereareiam.identica.engine.pipeline.prepare.group.context.phase;
 
 import me.whereareiam.identica.database.AccountPersistenceService;
 import me.whereareiam.identica.database.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
+import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.identity.Account;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
+import me.whereareiam.identica.model.pipeline.prepare.PrepareContextItem;
+import me.whereareiam.identica.model.pipeline.prepare.PrepareRequest;
+import me.whereareiam.identica.pipeline.state.PipelineState;
+import me.whereareiam.identica.pipeline.state.prepare.PrepareGroupState;
 import me.whereareiam.identica.provider.ProviderOperations;
 import me.whereareiam.identica.provider.subject.SubjectResolution;
+import me.whereareiam.identica.type.PrepareStage;
+import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,18 +25,17 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("Known Account Resolver")
-class KnownAccountResolverTest {
-	private static final ConnectionIdentity IDENTITY = new ConnectionIdentity("PlayerOne", "127.0.0.1");
-
+@DisplayName("Resolve Known Account Phase")
+class ResolveKnownAccountPhaseTest {
 	@Mock
 	private ProviderOperations providerOperations;
 	@Mock
@@ -37,11 +43,19 @@ class KnownAccountResolverTest {
 	@Mock
 	private AccountPersistenceService accountPersistenceService;
 
-	private KnownAccountResolver resolver;
+	private final Engine engine = new Engine();
+	private ResolveKnownAccountPhase phase;
 
 	@BeforeEach
 	void setUp() {
-		resolver = new KnownAccountResolver(providerOperations, providerLinkPersistenceService, accountPersistenceService);
+		engine.getScenarios().getAuthentication().setJourneyMode(JourneyMode.SEAMLESS);
+		engine.getScenarios().getRegistration().setJourneyMode(JourneyMode.INTERACTIVE);
+		phase = new ResolveKnownAccountPhase(
+				providerOperations,
+				providerLinkPersistenceService,
+				accountPersistenceService,
+				() -> engine
+		);
 	}
 
 	@DisplayName("Finds the account through the subject a provider resolves for the connection")
@@ -54,7 +68,10 @@ class KnownAccountResolverTest {
 		when(providerLinkPersistenceService.findByUniqueId(uniqueId)).thenReturn(List.of(link));
 		when(providerOperations.selectPreferredLink(List.of(link))).thenReturn(link);
 
-		assertSame(link, resolver.resolvePreferredLink(IDENTITY));
+		PrepareContextItem context = execute(PrepareStage.HANDSHAKE);
+
+		assertEquals(link.getProviderSubject(), context.getPreferredLink().getProviderSubject());
+		assertEquals(JourneyMode.SEAMLESS, context.getJourneyMode());
 		verify(accountPersistenceService, never()).findByUsername(any());
 	}
 
@@ -69,17 +86,45 @@ class KnownAccountResolverTest {
 		when(providerLinkPersistenceService.findByUniqueId(uniqueId)).thenReturn(List.of(link));
 		when(providerOperations.selectPreferredLink(List.of(link))).thenReturn(link);
 
-		assertSame(link, resolver.resolvePreferredLink(IDENTITY));
+		PrepareContextItem context = execute(PrepareStage.HANDSHAKE);
+
+		assertEquals("credential", context.getPreferredLink().getProviderId());
 	}
 
-	@DisplayName("Knows no account when several accounts use the username")
+	@DisplayName("Knows no account when several accounts use the username and heads to registration")
 	@Test
 	void resolvesNothingForAnAmbiguousUsername() {
 		when(providerOperations.discoverSubject(any())).thenReturn(null);
 		when(accountPersistenceService.findByUsername("PlayerOne"))
 				.thenReturn(List.of(account(UUID.randomUUID()), account(UUID.randomUUID())));
 
-		assertNull(resolver.resolvePreferredLink(IDENTITY));
+		PrepareContextItem context = execute(PrepareStage.HANDSHAKE);
+
+		assertNull(context.getPreferredLink());
+		assertEquals(JourneyMode.INTERACTIVE, context.getJourneyMode());
+	}
+
+	@DisplayName("Only runs during the handshake")
+	@Test
+	void skipsTheProfileStage() {
+		assertFalse(phase.supports(PipelineState.initial(), state(PrepareStage.PROFILE)));
+	}
+
+	private PrepareContextItem execute(PrepareStage stage) {
+		PipelineState pipelineState = PipelineState.initial();
+		phase.execute(pipelineState, state(stage)).toCompletableFuture().join();
+
+		return pipelineState.item(PrepareContextItem.class).orElseThrow();
+	}
+
+	private PrepareGroupState state(PrepareStage stage) {
+		PrepareGroupState state = new PrepareGroupState();
+		state.setRequest(PrepareRequest.builder()
+				.stage(stage)
+				.identity(new ConnectionIdentity("PlayerOne", "127.0.0.1"))
+				.build());
+
+		return state;
 	}
 
 	private SubjectResolution subject(String providerId, String providerSubject) {

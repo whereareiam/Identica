@@ -82,7 +82,20 @@ void registersWithCredential(ScenarioContext anvil) {
 }
 ```
 
-`@Identica` sets the journey mode and policy, the enabled providers, provider entrypoints, `autoSelectSingleProvider`, and whether players are routed. The network is one Velocity proxy, an `auth` server for authentication and registration steps, and a `lobby` that completed players reach. With `routing = false`, steps and completion have no target and players stay on the `lobby`, where the proxy sends them on join.
+`@Identica` sets the journey mode and policy, the enabled providers, provider entrypoints, `autoSelectSingleProvider`, and the routing targets. The network is one Velocity proxy, an `auth` server for authentication and registration steps, and a `lobby` that completed players reach. Players join `lobby`; `step` and `complete` name the servers they are routed to while a step waits and once they are done, `auth` and `lobby` unless the test changes them, and a blank target leaves them where they are:
+
+```java
+@Test
+@Identica(providers = Provider.CREDENTIAL, step = "", complete = "")
+void registersOnTheLobbyWithoutAnyRouting(ScenarioContext anvil) {
+	Journey.offline(anvil, "Alice").join()
+			.on(LOBBY)
+			.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
+			.register("Secret-123")
+			.sees(m -> m.credential().getCompletion().getRegistration().getBody())
+			.remainsOn(LOBBY);
+}
+```
 
 Each `Journey` step checks both sides: what the player's client receives, and what the proxy reports on its own console for connections, server changes, and disconnect reasons. A message expectation only considers messages received since the previous one, so a prompt repeated after a reconnect is not satisfied by its earlier occurrence.
 

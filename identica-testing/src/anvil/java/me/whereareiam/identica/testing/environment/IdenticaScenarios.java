@@ -25,7 +25,7 @@ public final class IdenticaScenarios implements AnvilScenarioFactory<Identica> {
 		// Each network has its own stand-in for Mojang; the test receives it to register premium accounts.
 		YggdrasilMock yggdrasil = resources.own(YggdrasilMock.start());
 		Map<String, String> configuration = IdenticaConfiguration.files(identica.mode(), identica.policy(), enabled,
-				identica.entrypoints(), identica.autoSelectSingleProvider(), identica.routing(), yggdrasil);
+				identica.entrypoints(), identica.autoSelectSingleProvider(), identica.step(), identica.complete(), yggdrasil);
 
 		return IdenticaNetwork.velocity(name(identica, enabled), Map.of(IdenticaNetwork.PROXY, configuration), yggdrasil.sessionServer());
 	}
@@ -35,6 +35,10 @@ public final class IdenticaScenarios implements AnvilScenarioFactory<Identica> {
 		return String.join("-", "identica", identica.mode().name(), identica.policy().name(), providers,
 				identica.entrypoints() ? "entrypoints" : "direct",
 				identica.autoSelectSingleProvider() ? "autoselect" : "choice",
-				identica.routing() ? "routed" : "unrouted").toLowerCase(Locale.ROOT);
+				"step", target(identica.step()), "complete", target(identica.complete())).toLowerCase(Locale.ROOT);
+	}
+
+	private static String target(String server) {
+		return server.isBlank() ? "none" : server;
 	}
 }

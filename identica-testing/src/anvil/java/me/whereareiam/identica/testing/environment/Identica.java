@@ -12,6 +12,7 @@ import java.lang.annotation.Target;
 /**
  * Starts a fresh Identica network around a test: a Velocity proxy with the packaged plugin and providers, an
  * {@code auth} server for authentication and registration steps, and a {@code lobby} that completed players reach.
+ * {@link #step()} and {@link #complete()} change where players are routed.
  *
  * <pre>{@code
  * @Test
@@ -50,8 +51,13 @@ public @interface Identica {
 	boolean autoSelectSingleProvider() default false;
 
 	/**
-	 * Whether players are sent to {@code auth} during steps and to {@code lobby} when they are done. Without
-	 * routing, steps and completion have no target and players stay on the server the proxy sends them to.
+	 * Server players are sent to while a step waits for them, or blank to leave them on the server they are on.
+	 * Players join {@code lobby}.
 	 */
-	boolean routing() default true;
+	String step() default IdenticaNetwork.AUTH;
+
+	/**
+	 * Server players are sent to once they are done, or blank to leave them on the server they are on.
+	 */
+	String complete() default IdenticaNetwork.LOBBY;
 }

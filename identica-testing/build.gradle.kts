@@ -24,6 +24,8 @@ dependencies {
 	anvilImplementation(libs.anvil.yggdrasil.mock)
 	anvilImplementation(libs.commandant)
 	anvilImplementation(libs.configura)
+	anvilImplementation(libs.testcontainers.postgresql)
+	anvilImplementation(libs.testcontainers.redis)
 
 	anvilRuntimeOnly(libs.anvil.protocol.mcprotocol)
 

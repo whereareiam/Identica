@@ -40,6 +40,29 @@ void joins(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 
 `yggdrasil.register("Alice")` alone makes `Alice` a premium username that an offline player can still try to join with, and `yggdrasil.available(false)` simulates an outage of Mojang's services. The stand-in belongs to the test's network: it starts without accounts and stops with the network.
 
+## Several proxies
+
+`@IdenticaCluster` starts two proxies, `proxy-a` and `proxy-b`, that share the `auth` and `lobby` servers and one PostgreSQL database, and that replicate through one Redis unless the test turns replication off. The database and Redis run in containers, so these tests need Docker and are skipped without it.
+
+A journey names the proxy it joins through. Several clients may use one username, each through its own proxy, and `Administrator` runs console commands on a chosen proxy:
+
+```java
+@Test
+@IdenticaCluster
+void disconnectsAPlayerWhoseAccountIsDeletedOnTheOtherProxy(ScenarioContext anvil) {
+	Journey alice = Accounts.credential(anvil, "Alice", "Secret-123", PROXY_B).rejoin()
+			.on(AUTH)
+			.login("Secret-123")
+			.on(LOBBY);
+
+	Administrator.at(anvil, PROXY_A).deletes("Alice");
+
+	alice.kickedWith(m -> m.identica().getCommands().getAdmin().getDelete().getDisconnect());
+}
+```
+
+`@IdenticaCluster(replication = false)` leaves Redis out, for behaviour that must hold when the proxies only share the database.
+
 ## Write a test
 
 A test declares its network with `@Identica` and describes a player with `Journey`:

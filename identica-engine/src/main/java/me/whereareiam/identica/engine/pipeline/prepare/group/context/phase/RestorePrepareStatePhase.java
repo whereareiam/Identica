@@ -50,7 +50,7 @@ public class RestorePrepareStatePhase implements PipelinePhase<PrepareGroupState
 		PrepareDecision previous = prepareStateStore.peek(connectionKey).orElse(null);
 		if (previous != null && previous.getHandshake() != null) {
 			PrepareContextItem context = pipelineState.item(PrepareContextItem.class).orElse(new PrepareContextItem());
-			context.applyHandshake(previous.getHandshake());
+			context.setHandshake(previous.getHandshake());
 			pipelineState.putItem(context, 0L);
 		}
 		return CompletableFuture.completedFuture(PhaseResult.pass(state));

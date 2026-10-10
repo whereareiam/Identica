@@ -20,6 +20,9 @@ import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
 @Singleton
@@ -94,8 +97,16 @@ public class HandshakeDecisionProcessor {
 		String ip = identity.getIp();
 		if (ip == null || ip.isBlank()) return;
 
-		handshakeStore.consumeInstruction(identity.getUsername(), ip)
-				.ifPresent(request.instructionTarget()::apply);
+		// A queued instruction targets this handshake from an earlier connection; the decision's attributes target it now.
+		Optional<HandshakeInstruction> queued = handshakeStore.consumeInstruction(identity.getUsername(), ip);
+		Map<String, String> attributes = prepared.getHandshake() != null ? prepared.getHandshake().getAttributes() : Map.of();
+		if (queued.isEmpty() && attributes.isEmpty()) return;
+
+		HandshakeInstruction instruction = queued.orElseGet(() -> new HandshakeInstruction(identity, System.currentTimeMillis()));
+		Map<String, String> merged = new HashMap<>(instruction.getAttributes() != null ? instruction.getAttributes() : Map.of());
+		merged.putAll(attributes);
+		instruction.setAttributes(merged);
+		request.instructionTarget().apply(instruction);
 	}
 
 	public record Request(

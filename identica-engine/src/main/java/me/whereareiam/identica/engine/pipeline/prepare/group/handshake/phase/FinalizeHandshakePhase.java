@@ -4,10 +4,10 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.identica.engine.pipeline.prepare.runtime.HandshakeRequestFactory;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.handshake.HandshakeDecisionEvent;
 import me.whereareiam.identica.model.auth.handshake.HandshakeDecision;
-import me.whereareiam.identica.model.auth.handshake.HandshakeRequest;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareContextItem;
@@ -25,6 +25,7 @@ import java.util.concurrent.CompletionStage;
 public class FinalizeHandshakePhase implements PipelinePhase<PrepareGroupState> {
 	private final EventManager eventManager;
 	private final Provider<Messages> messagesProvider;
+	private final HandshakeRequestFactory requestFactory;
 
 	@Override
 	public @NotNull String id() {
@@ -56,13 +57,10 @@ public class FinalizeHandshakePhase implements PipelinePhase<PrepareGroupState> 
 			return CompletableFuture.completedFuture(PhaseResult.pass(state));
 
 		PrepareContextItem context = pipelineState.item(PrepareContextItem.class).orElse(new PrepareContextItem());
-		HandshakeDecision resolvedHandshake = context.resolveHandshake();
+		HandshakeDecision resolvedHandshake = context.getHandshake();
 		HandshakeDecision decision = resolvedHandshake != null ? resolvedHandshake : HandshakeDecision.allow();
 		HandshakeDecisionEvent event = new HandshakeDecisionEvent(
-				new HandshakeRequest(
-						request.getIdentity(),
-						context.getProvider()
-				),
+				requestFactory.create(request.getIdentity(), context),
 				decision
 		);
 		eventManager.call(event);
@@ -78,7 +76,7 @@ public class FinalizeHandshakePhase implements PipelinePhase<PrepareGroupState> 
 							.getPrepare()
 							.getHandshakeDenied()));
 			}
-			context.applyHandshake(resolved);
+			context.setHandshake(resolved);
 			pipelineState.putItem(context, 0L);
 			pipelineState.putItem(PrepareDecisionItem.deny(
 					resolved.getMessage(),
@@ -89,7 +87,7 @@ public class FinalizeHandshakePhase implements PipelinePhase<PrepareGroupState> 
 			return CompletableFuture.completedFuture(PhaseResult.pass(state));
 		}
 
-		context.applyHandshake(resolved);
+		context.setHandshake(resolved);
 		pipelineState.putItem(context, 0L);
 		if (!request.getStage().includesProfile()) {
 			pipelineState.putItem(PrepareDecisionItem.allow(

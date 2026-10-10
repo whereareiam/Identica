@@ -1,5 +1,6 @@
 package me.whereareiam.identica.provider;
 
+import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.model.provider.ResolvedEntrypoint;
 import me.whereareiam.identica.pipeline.ScenarioContext;
@@ -138,4 +139,13 @@ public interface ProviderOperations {
 				? resolution
 				: null;
 	}
+
+	/**
+	 * Selects the provider link an account prefers: a primary link before the others, then the link whose provider
+	 * has the highest priority, then the link whose provider id sorts last.
+	 *
+	 * @param links provider links of one account
+	 * @return preferred link, or {@code null} when the account has no usable link
+	 */
+	@Nullable AccountProviderLink selectPreferredLink(@NotNull List<AccountProviderLink> links);
 }

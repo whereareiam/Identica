@@ -3,6 +3,8 @@ package me.whereareiam.identica.engine.pipeline.prepare.group.handshake.phase;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.identica.engine.pipeline.prepare.runtime.HandshakeRequestFactory;
+import me.whereareiam.identica.engine.pipeline.prepare.runtime.KnownAccountResolver;
 import me.whereareiam.identica.handshake.HandshakeStore;
 import me.whereareiam.identica.handshake.policy.HandshakePolicy;
 import me.whereareiam.identica.logging.Logger;
@@ -23,6 +25,8 @@ import java.util.concurrent.CompletionStage;
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class EvaluateHandshakePhase implements PipelinePhase<PrepareGroupState> {
 	private final HandshakeStore handshakeStore;
+	private final KnownAccountResolver knownAccountResolver;
+	private final HandshakeRequestFactory requestFactory;
 
 	@Override
 	public @NotNull String id() {
@@ -53,24 +57,22 @@ public class EvaluateHandshakePhase implements PipelinePhase<PrepareGroupState> 
 			return CompletableFuture.completedFuture(PhaseResult.pass(state));
 
 		PrepareContextItem context = pipelineState.item(PrepareContextItem.class).orElse(new PrepareContextItem());
-		if (context.resolveHandshake() != null) {
+		if (context.getHandshake() != null) {
 			Logger.debug("Prepare reusing handshake username=%s stage=%s",
 					state.getRequest().getUsername(),
 					state.getRequest().getStage());
 			return CompletableFuture.completedFuture(PhaseResult.pass(state));
 		}
 
-		HandshakeRequest request = new HandshakeRequest(
-				state.getRequest().getIdentity(),
-				context.getProvider()
-		);
+		context.setPreferredLink(knownAccountResolver.resolvePreferredLink(state.getRequest().getIdentity()));
+		HandshakeRequest request = requestFactory.create(state.getRequest().getIdentity(), context);
 		HandshakeDecision decision = HandshakeDecision.allow();
 		Iterable<HandshakePolicy> policies = handshakeStore.policies();
         for (HandshakePolicy policy : policies) {
 			decision = merge(decision, evaluatePolicy(policy, request));
         }
 
-		context.applyHandshake(decision);
+		context.setHandshake(decision);
 		pipelineState.putItem(context, 0L);
 		return CompletableFuture.completedFuture(PhaseResult.pass(state));
 	}
@@ -108,7 +110,9 @@ public class EvaluateHandshakePhase implements PipelinePhase<PrepareGroupState> 
 			@NotNull HandshakeDecision current,
 			@NotNull HandshakeDecision candidate
 	) {
+		if (current.getStatus() == HandshakeDecision.Status.DENY) return current;
 		if (candidate.getStatus() == HandshakeDecision.Status.DENY) return candidate;
-		return current;
+
+		return current.withAttributes(candidate.getAttributes());
 	}
 }

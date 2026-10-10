@@ -1,24 +1,15 @@
 package me.whereareiam.identica.provider.premium.policy;
 
-import me.whereareiam.identica.database.AccountPersistenceService;
-import me.whereareiam.identica.database.provider.ProviderLinkPersistenceService;
-import me.whereareiam.identica.handshake.HandshakeStore;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.auth.handshake.HandshakeDecision;
 import me.whereareiam.identica.model.auth.handshake.HandshakeRequest;
-import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
-import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.model.provider.ProviderContext;
-import me.whereareiam.identica.model.provider.ProviderDescriptor;
 import me.whereareiam.identica.provider.ProviderAttemptStore;
-import me.whereareiam.identica.provider.ProviderManager;
-import me.whereareiam.identica.provider.premium.profile.PremiumProfileSnapshot;
-import me.whereareiam.identica.provider.premium.profile.PremiumProfileStore;
+import me.whereareiam.identica.provider.premium.handshake.PremiumHandshakeAttributes;
 import me.whereareiam.identica.provider.premium.resolver.PremiumProfileLookup;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.provider.ProviderOrigin;
-import me.whereareiam.identica.type.provider.ProviderState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,172 +17,127 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Duration;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Premium Handshake Policy")
 class PremiumHandshakePolicyTest {
-	@Mock
-	private AccountPersistenceService accountPersistenceService;
+	private static final String USERNAME = "PlayerOne";
+	private static final String IP = "127.0.0.1";
+
 	@Mock
 	private PremiumProfileLookup profileLookup;
 	@Mock
-	private ProviderManager providerManager;
-	@Mock
-	private ProviderLinkPersistenceService providerLinkPersistenceService;
-	@Mock
-	private PremiumProfileStore profileStore;
-	@Mock
 	private ProviderAttemptStore attemptStore;
-	@Mock
-	private HandshakeStore handshakeStore;
 
 	private PremiumHandshakePolicy policy;
 
 	@BeforeEach
 	void setUp() {
-		policy = new PremiumHandshakePolicy(
-				accountPersistenceService,
-				profileLookup,
-				providerManager,
-				providerLinkPersistenceService,
-				profileStore,
-				attemptStore,
-				this::settings,
-				handshakeStore
-		);
+		policy = new PremiumHandshakePolicy(profileLookup, attemptStore);
 	}
 
-	@DisplayName("Prefers a primary link over provider priority during premium handshake decisions")
+	@DisplayName("Asks for a premium login when the account prefers premium")
 	@Test
-	void primaryLinkWinsOverProviderPriority() {
-		UUID uniqueId = UUID.randomUUID();
-		String username = "PlayerOne";
+	void premiumPreferredLinkForcesOnline() {
+		HandshakeDecision decision = evaluate(request(null, link("premium"), JourneyMode.SEAMLESS));
 
-		when(attemptStore.hasAttempt("premium", "verify", username, "127.0.0.1")).thenReturn(false);
-		when(profileStore.find(username)).thenReturn(new PremiumProfileSnapshot("premium-subject", System.currentTimeMillis()));
-		when(providerLinkPersistenceService.findBySubject("premium", "premium-subject"))
-				.thenReturn(Optional.of(link(uniqueId, "premium", false)));
-		when(providerLinkPersistenceService.findByUniqueId(uniqueId)).thenReturn(List.of(
-				link(uniqueId, "premium", false),
-				link(uniqueId, "credential", true)
-		));
-
-		HandshakeDecision decision = policy.evaluate(request(username)).toCompletableFuture().join();
-
-		assertEquals(HandshakeDecision.Status.ALLOW, decision.getStatus());
-		verify(handshakeStore, never()).putInstruction(any());
-		verify(profileLookup, never()).hasPremiumProfile(username);
+		assertEquals(Optional.of(true), forcesOnline(decision));
+		verify(profileLookup, never()).hasPremiumProfile(any());
 	}
 
-	@DisplayName("Falls back to provider priority when no primary link exists")
+	@DisplayName("Lets an account that prefers another provider join without a premium login")
 	@Test
-	void providerPriorityBreaksTiesWhenNoPrimaryLinkExists() {
-		UUID uniqueId = UUID.randomUUID();
-		String username = "PlayerOne";
-
-		when(attemptStore.hasAttempt("premium", "verify", username, "127.0.0.1")).thenReturn(false);
-		when(providerManager.getProviders()).thenReturn(List.of(
-				provider("premium", 100),
-				provider("credential", 50)
-		));
-		when(profileStore.find(username)).thenReturn(new PremiumProfileSnapshot("premium-subject", System.currentTimeMillis()));
-		when(providerLinkPersistenceService.findBySubject("premium", "premium-subject"))
-				.thenReturn(Optional.of(link(uniqueId, "premium", false)));
-		when(providerLinkPersistenceService.findByUniqueId(uniqueId)).thenReturn(List.of(
-				link(uniqueId, "premium", false),
-				link(uniqueId, "credential", false)
-		));
-
-		HandshakeDecision decision = policy.evaluate(request(username)).toCompletableFuture().join();
+	void otherPreferredLinkAllowsWithoutPremiumLogin() {
+		HandshakeDecision decision = evaluate(request(null, link("credential"), JourneyMode.SEAMLESS));
 
 		assertEquals(HandshakeDecision.Status.ALLOW, decision.getStatus());
-		verify(handshakeStore).putInstruction(any());
-		verify(profileLookup, never()).hasPremiumProfile(username);
+		assertEquals(Optional.empty(), forcesOnline(decision));
+		verify(profileLookup, never()).hasPremiumProfile(any());
 	}
 
 	@DisplayName("Forces premium when provider context is explicitly set to the premium provider")
 	@Test
 	void manualPremiumProviderContextForcesPremiumHandshake() {
-		String username = "PlayerOne";
+		HandshakeDecision decision = evaluate(request(manualPremium(), null, JourneyMode.SEAMLESS));
 
-		HandshakeDecision decision = policy.evaluate(request(username, ProviderContext.of(
-				"premium",
-				null,
-				username,
-				ProviderOrigin.MANUAL
-		))).toCompletableFuture().join();
-
-		assertEquals(HandshakeDecision.Status.ALLOW, decision.getStatus());
-		verify(handshakeStore).putInstruction(any());
-		verify(profileLookup, never()).hasPremiumProfile(username);
+		assertEquals(Optional.of(true), forcesOnline(decision));
+		verify(profileLookup, never()).hasPremiumProfile(any());
 	}
 
-	@DisplayName("Does not requeue premium handshake when a verify attempt already exists")
+	@DisplayName("Does not force premium again when a verify attempt already exists")
 	@Test
 	void existingVerifyAttemptSkipsManualPremiumRequeue() {
-		String username = "PlayerOne";
-		when(attemptStore.hasAttempt("premium", "verify", username, "127.0.0.1")).thenReturn(true);
+		when(attemptStore.hasAttempt("premium", "verify", USERNAME, IP)).thenReturn(true);
 
-		HandshakeDecision decision = policy.evaluate(request(username, ProviderContext.of(
-				"premium",
-				null,
-				username,
-				ProviderOrigin.MANUAL
-		))).toCompletableFuture().join();
+		HandshakeDecision decision = evaluate(request(manualPremium(), null, JourneyMode.SEAMLESS));
 
-		assertEquals(HandshakeDecision.Status.ALLOW, decision.getStatus());
-		verify(handshakeStore, never()).putInstruction(any());
-		verify(profileLookup, never()).hasPremiumProfile(username);
+		assertEquals(Optional.empty(), forcesOnline(decision));
+		verify(profileLookup, never()).hasPremiumProfile(any());
 	}
 
-	private HandshakeRequest request(String username) {
-		return request(username, null);
+	@DisplayName("Asks an unknown premium username for a premium login and marks a verify attempt")
+	@Test
+	void unknownPremiumUsernameForcesOnline() {
+		when(profileLookup.hasPremiumProfile(USERNAME)).thenReturn(CompletableFuture.completedFuture(true));
+
+		HandshakeDecision decision = evaluate(request(null, null, JourneyMode.SEAMLESS));
+
+		assertEquals(Optional.of(true), forcesOnline(decision));
+		verify(attemptStore).markAttempt("premium", "verify", USERNAME, IP);
 	}
 
-	private HandshakeRequest request(String username, ProviderContext provider) {
-		return new HandshakeRequest(new ConnectionIdentity(username, "127.0.0.1"), provider);
+	@DisplayName("Lets an unknown username without a premium profile join without a premium login")
+	@Test
+	void unknownUsernameWithoutPremiumProfileAllows() {
+		when(profileLookup.hasPremiumProfile(USERNAME)).thenReturn(CompletableFuture.completedFuture(false));
+
+		HandshakeDecision decision = evaluate(request(null, null, JourneyMode.SEAMLESS));
+
+		assertEquals(Optional.empty(), forcesOnline(decision));
+		verify(attemptStore, never()).markAttempt(anyString(), anyString(), anyString(), anyString());
 	}
 
-	private Engine settings() {
-		Engine.Authentication authentication = new Engine.Authentication();
-		authentication.setJourneyMode(JourneyMode.SEAMLESS);
+	@DisplayName("Leaves an unknown username of an interactive journey to the provider choice")
+	@Test
+	void interactiveJourneyLeavesTheChoiceToThePlayer() {
+		HandshakeDecision decision = evaluate(request(null, null, JourneyMode.INTERACTIVE));
 
-		Engine.Behavior behavior = new Engine.Behavior();
-		behavior.setHandshakeInstructionTtl(Duration.ofSeconds(30));
-
-		Engine.Scenarios scenarios = new Engine.Scenarios();
-		scenarios.setAuthentication(authentication);
-
-		Engine settings = new Engine();
-		settings.setBehavior(behavior);
-		settings.setScenarios(scenarios);
-		return settings;
+		assertEquals(Optional.empty(), forcesOnline(decision));
+		verify(profileLookup, never()).hasPremiumProfile(any());
 	}
 
-	private AccountProviderLink link(UUID uniqueId, String providerId, boolean primary) {
+	private HandshakeDecision evaluate(HandshakeRequest request) {
+		return policy.evaluate(request).toCompletableFuture().join();
+	}
+
+	private Optional<Boolean> forcesOnline(HandshakeDecision decision) {
+		return decision.getAttribute(PremiumHandshakeAttributes.FORCE_ONLINE);
+	}
+
+	private HandshakeRequest request(ProviderContext provider, AccountProviderLink preferredLink, JourneyMode journeyMode) {
+		return new HandshakeRequest(new ConnectionIdentity(USERNAME, IP), provider, preferredLink, journeyMode);
+	}
+
+	private ProviderContext manualPremium() {
+		return ProviderContext.of("premium", null, USERNAME, ProviderOrigin.MANUAL);
+	}
+
+	private AccountProviderLink link(String providerId) {
 		return AccountProviderLink.builder()
-				.uniqueId(uniqueId)
+				.uniqueId(UUID.randomUUID())
 				.providerId(providerId)
 				.providerSubject(providerId + "-subject")
-				.primaryLink(primary)
-				.build();
-	}
-
-	private InternalProvider provider(String providerId, int priority) {
-		ProviderDescriptor descriptor = new ProviderDescriptor();
-		descriptor.setId(providerId);
-		return InternalProvider.builder()
-				.descriptor(descriptor)
-				.priority(priority)
-				.state(ProviderState.ENABLED)
+				.primaryLink(true)
 				.build();
 	}
 }

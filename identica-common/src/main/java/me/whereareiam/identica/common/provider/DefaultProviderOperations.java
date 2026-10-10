@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.provider.ProviderEligibilityEvent;
 import me.whereareiam.identica.model.config.provider.Providers;
+import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.pipeline.journey.JourneyPlan;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.JourneyStep;
 import me.whereareiam.identica.model.provider.InternalProvider;
@@ -45,6 +46,21 @@ public class DefaultProviderOperations implements ProviderOperations {
 	private final MigrationJourneyRegistry migrationJourneyRegistry;
 	private final Provider<Providers> providersProvider;
 	private final EventManager eventManager;
+
+	@Override
+	public @Nullable AccountProviderLink selectPreferredLink(@NotNull List<AccountProviderLink> links) {
+		List<AccountProviderLink> candidates = links.stream()
+				.filter(link -> link != null && !isBlank(link.getProviderId()))
+				.toList();
+		List<AccountProviderLink> primaries = candidates.stream()
+				.filter(AccountProviderLink::isPrimaryLink)
+				.toList();
+
+		return (primaries.isEmpty() ? candidates : primaries).stream()
+				.max(Comparator.comparingInt(this::providerPriority)
+						.thenComparing(AccountProviderLink::getProviderId, String.CASE_INSENSITIVE_ORDER))
+				.orElse(null);
+	}
 
 	@Override
 	public @Nullable SubjectResolution discoverSubject(@NotNull SubjectResolveContext context) {
@@ -276,6 +292,16 @@ public class DefaultProviderOperations implements ProviderOperations {
 		}
 
 		return null;
+	}
+
+	private int providerPriority(@NotNull AccountProviderLink link) {
+		for (InternalProvider provider : providerManager.getProviders()) {
+			if (provider == null || provider.getDescriptor() == null) continue;
+			if (provider.getDescriptor().getId().equalsIgnoreCase(link.getProviderId()))
+				return provider.getPriority();
+		}
+
+		return 0;
 	}
 
 	private @NotNull List<InternalProvider> sortedEnabledProviders() {

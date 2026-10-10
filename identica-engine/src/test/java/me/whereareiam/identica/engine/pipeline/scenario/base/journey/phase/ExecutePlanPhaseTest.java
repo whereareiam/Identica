@@ -486,6 +486,13 @@ class ExecutePlanPhaseTest {
 			}
 
 			@Override
+			public me.whereareiam.identica.model.identity.provider.AccountProviderLink selectPreferredLink(
+					@NotNull List<me.whereareiam.identica.model.identity.provider.AccountProviderLink> links
+			) {
+				return null;
+			}
+
+			@Override
 			public SubjectResolution discoverSubject(@NotNull SubjectResolveContext context) {
 				return null;
 			}

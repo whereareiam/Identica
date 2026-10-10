@@ -6,8 +6,8 @@ import me.whereareiam.identica.model.auth.handshake.HandshakeInstruction;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Contributes platform-specific handshake instruction handling behind the core
- * handshake applier registry role.
+ * Contributes platform-specific handshake instruction handling behind the
+ * platform's handshake applier registry.
  *
  * @param <C> handshake context type
  */

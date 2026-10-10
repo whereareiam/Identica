@@ -26,7 +26,7 @@ When changing behavior:
 - `identica-adapter-*`
   Infrastructure adapters such as command handling, database persistence, and replication transport.
 - `identica-platform/*`
-  Velocity and BungeeCord/Waterfall platform wiring, APIs, listeners, adapters, and bootstraps.
+  The platform family. `type/platform-*` are the platforms themselves: Velocity and BungeeCord/Waterfall wiring, APIs, listeners, adapters, and bootstraps. `common` holds what every platform shares: `PlatformConfiguration`, which names the adapters a platform has to provide, the event-typed adapter contracts, and the decision processors behind them. `bundle` packages the platforms into one jar.
 - `identica-provider/*`
   Provider-specific behavior, including the official credential and premium providers.
 - `identica-feature/*`
@@ -50,7 +50,7 @@ When changing behavior:
 - For shared behavior or domain rules, start in `identica-common`.
 - For pipeline or orchestration behavior, start in `identica-engine`.
 - For persistence, replication, or command infrastructure, start in the relevant `identica-adapter-*` module.
-- For proxy-specific behavior, bootstrap flow, or listeners, start in `identica-platform/*`.
+- For proxy-specific behavior, bootstrap flow, or listeners, start in `identica-platform/type/*`. For what a platform has to provide, start in `identica-platform/common`.
 - For credential-specific or premium-specific behavior, start in `identica-provider/*`.
 - For shared behavior driven by provider identity guarantees, start in `identica-trait/*`. Trait declarations remain in `identica-api`.
 - For optional behavior, feature-specific APIs, settings, persistence, or pipeline contributions, start in `identica-feature/*`. Core owns the `IdenticaFeature` contract and startup lifecycle; providers declare identity traits and supported feature integrations.

@@ -4,8 +4,7 @@ import me.whereareiam.identica.handshake.HandshakeApplierRegistry;
 import me.whereareiam.identica.handshake.HandshakeContext;
 
 /**
- * Required platform adapter role for applying platform-specific handshake
- * instructions.
+ * Platform registry that applies platform-specific handshake instructions.
  *
  * @param <C> handshake context type
  */

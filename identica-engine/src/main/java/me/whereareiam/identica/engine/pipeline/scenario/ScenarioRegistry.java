@@ -9,6 +9,8 @@ import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.auth.request.AdvanceRequest;
 import me.whereareiam.identica.model.auth.request.ConnectionRequest;
 import me.whereareiam.identica.model.auth.request.ResumeRequest;
+import me.whereareiam.identica.model.provider.ProviderContext;
+import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.PipelineStateReference;
 import me.whereareiam.identica.pipeline.state.PipelineStateStore;
@@ -44,6 +46,12 @@ public class ScenarioRegistry {
 		ResumeRequest resumeRequest = buildResumeRequest(request);
 		if (resumeRequest != null) {
 			AbstractScenarioPipeline resumeRunner = resolveResumeRunner(resumeRequest);
+			if (resumeRunner != null && belongsToAnotherProvider(resumeRequest, request)) {
+				// The pending pipeline was started for another provider, so it is not this connection's to finish.
+				pipelineStateStore.clear(PipelineStateReference.from(resumeRequest));
+				resumeRunner = null;
+			}
+
 			if (resumeRunner != null) {
 				Logger.debug(
 						"Scenario select chose resume pipeline=%s connection=%s identity=%s key=%s",
@@ -159,6 +167,31 @@ public class ScenarioRegistry {
 				reference.getConnectionKey()
 		);
 		return pending ? runner : null;
+	}
+
+	private boolean belongsToAnotherProvider(@NotNull ResumeRequest resumeRequest, @NotNull ConnectionRequest request) {
+		ProviderContext connecting = request.getProvider();
+		if (connecting == null || isBlank(connecting.getProviderId())) return false;
+
+		PipelineState stored = pipelineStateStore.find(PipelineStateReference.from(resumeRequest)).orElse(null);
+		ScenarioContext scenario = stored != null ? stored.getScenario() : null;
+		ProviderContext pending = scenario != null ? scenario.getProvider() : null;
+		if (pending == null || isBlank(pending.getProviderId())) return false;
+		if (pending.getProviderId().equalsIgnoreCase(connecting.getProviderId())) return false;
+
+		Logger.debug(
+				"Scenario select discarded pending pipeline of another provider pipeline=%s pending=%s connecting=%s connection=%s key=%s",
+				stored.getPipelineType(),
+				pending.getProviderId(),
+				connecting.getProviderId(),
+				resumeRequest.getConnectionUniqueId(),
+				resumeRequest.getIdentity() != null ? resumeRequest.getIdentity().connectionKey() : null
+		);
+		return true;
+	}
+
+	private static boolean isBlank(@Nullable String value) {
+		return value == null || value.isBlank();
 	}
 
 	private @Nullable AbstractScenarioPipeline resolveAdvanceRunner(@NotNull AdvanceRequest request) {

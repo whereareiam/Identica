@@ -9,6 +9,7 @@ Typical interactive behavior includes things like entering a credential, choosin
 In the current setup described by these guides, `INTERACTIVE` can also produce a better first impression.
 If you leave the flow on `SEAMLESS`, a player who joins from an offline account while using a premium username may hit the higher-priority `premium` provider first and get an invalid-session-style kick from the server on that first join.
 That can scare users away before they understand what happened, even if a second rejoin would work.
+For clients on 1.19.1 or newer, Premium's experimental `CLIENT_PROFILE` detection method avoids that kick; see [Premium settings](../../providers/official/premium/configuration/settings/index.mdx#methods).
 
 With `INTERACTIVE`, the player can enter the enrollment step instead and choose the provider directly.
 If you want less manual selection in that flow, the generated `engine.scenarios.registration` settings also include `autoSelectSingleProvider`, which you can enable for scenarios where only one provider should be chosen automatically.

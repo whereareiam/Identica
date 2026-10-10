@@ -83,6 +83,14 @@ public class ConnectionIdentity {
 		identityReference.setConnectionUniqueId(connectionUniqueId);
 	}
 
+	public @Nullable UUID getClaimedUniqueId() {
+		return identityReference.getClaimedUniqueId();
+	}
+
+	public void setClaimedUniqueId(@Nullable UUID claimedUniqueId) {
+		identityReference.setClaimedUniqueId(claimedUniqueId);
+	}
+
 	public @Nullable UUID getObservedUniqueId() {
 		return identityReference.getObservedUniqueId();
 	}

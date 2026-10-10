@@ -61,6 +61,7 @@ public class VelocityLoginDecisionAdapter implements PlatformLoginDecisionAdapte
 		identity.setObservedUniqueId(player.getUniqueId());
 		if (prepared != null && prepared.getAccountUniqueId() != null && !prepared.getAccountUniqueId().equals(identity.getAccountUniqueId()))
 			identity.setAccountUniqueId(prepared.getAccountUniqueId());
+		if (prepared != null) identity.setClaimedUniqueId(prepared.getClaimedUniqueId());
 
 		applyOrigin(identity, player);
 		Logger.debug(

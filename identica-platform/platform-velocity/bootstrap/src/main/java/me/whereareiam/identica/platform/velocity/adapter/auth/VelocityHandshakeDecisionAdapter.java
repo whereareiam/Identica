@@ -50,6 +50,7 @@ public class VelocityHandshakeDecisionAdapter implements PlatformHandshakeDecisi
 		}
 
 		ConnectionIdentity identity = new ConnectionIdentity(event.getUsername(), resolvedIp);
+		identity.setClaimedUniqueId(event.getUniqueId());
 		applyOrigin(identity, event);
 		VelocityHandshakeContext context = new VelocityHandshakeContext(event);
 		return new Request(

@@ -78,7 +78,7 @@ class ResolvePendingMigrationAccountPhaseTest {
 		);
 
 		PipelineState state = PipelineState.initial();
-		state.putItem(new PrepareContextItem(ProviderContext.of(
+		state.putItem(new PrepareContextItem(null, ProviderContext.of(
 				"credential",
 				null,
 				"PlayerOne",

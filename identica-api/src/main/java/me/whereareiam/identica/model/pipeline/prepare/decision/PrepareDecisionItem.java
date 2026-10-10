@@ -32,6 +32,7 @@ public class PrepareDecisionItem implements PipelineStateItem {
 				.handshake(context != null ? context.getHandshake() : null)
 				.accountUniqueId(accountUniqueId)
 				.effectiveUsername(effectiveUsername)
+				.claimedUniqueId(context != null ? context.getClaimedUniqueId() : null)
 				.provider(context != null ? context.getProvider() : null)
 				.build();
 	}

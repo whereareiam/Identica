@@ -443,10 +443,14 @@ public abstract class AbstractScenarioPipeline {
 
 		ConnectionIdentity requestIdentity = request.getIdentityInfo();
 		if (requestIdentity != null) {
+			merged.setClaimedUniqueId(requestIdentity.getClaimedUniqueId() != null
+					? requestIdentity.getClaimedUniqueId()
+					: base.getIdentity().getClaimedUniqueId());
 			merged.setOrigin(requestIdentity.getOrigin());
 			return merged;
 		}
 
+		merged.setClaimedUniqueId(base.getIdentity().getClaimedUniqueId());
 		merged.setOrigin(base.getIdentity().getOrigin());
 
 		return merged;

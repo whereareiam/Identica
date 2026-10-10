@@ -292,6 +292,20 @@ public final class Journey {
 	}
 
 	/**
+	 * Expects the proxy to refuse the connection before accepting it, with the given message.
+	 */
+	public Journey refusedWith(Function<IdenticaMessages, ?> message) {
+		MessageText reason = text(message);
+		reported("[initial connection] ", "has disconnected");
+
+		String received = session.kicked(TIMEOUT);
+		assertFalse(session.state().connected(), name + " must not be connected");
+		assertEquals(DisconnectCause.SERVER, session.state().disconnectCause());
+		assertTrue(reason.in(received), name + " was refused with: " + received);
+		return this;
+	}
+
+	/**
 	 * Expects the proxy to disconnect the player for a reason. The proxy reports the disconnect and, on the
 	 * following console lines, the reason. The client receives the same reason, unless the proxy closed the
 	 * connection while the client was switching protocol state: such a client only sees the connection end, so

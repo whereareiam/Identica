@@ -48,6 +48,7 @@ public class BungeeCordLoginDecisionAdapter implements PlatformLoginDecisionAdap
 		PrepareDecision prepared = resolvePrepared(player, identity);
 		if (prepared != null && prepared.getAccountUniqueId() != null && !prepared.getAccountUniqueId().equals(identity.getAccountUniqueId()))
 			identity.setAccountUniqueId(prepared.getAccountUniqueId());
+		if (prepared != null) identity.setClaimedUniqueId(prepared.getClaimedUniqueId());
 
 		ProviderContext provider = prepared != null ? prepared.getProvider() : null;
 		if (provider != null && !provider.getProviderUsername().isBlank())

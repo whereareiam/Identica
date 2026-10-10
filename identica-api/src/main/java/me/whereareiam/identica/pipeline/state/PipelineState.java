@@ -1,5 +1,6 @@
 package me.whereareiam.identica.pipeline.state;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -91,6 +92,11 @@ public final class PipelineState {
 		this.updatedAt = System.currentTimeMillis();
 	}
 
+	/**
+	 * Returns the scenario context held in {@link #getItems() items}. It is a view of an item, not a field of its
+	 * own: written as one, the state could not be read back, because the context type is abstract.
+	 */
+	@JsonIgnore
 	public @Nullable ScenarioContext getScenario() {
 		ScenarioContext context = item(AuthContext.class).orElse(null);
 		if (context != null) return context;
@@ -110,6 +116,7 @@ public final class PipelineState {
 		return getScenario();
 	}
 
+	@JsonIgnore
 	public void setScenario(@Nullable ScenarioContext context) {
 		removeItem(AuthContext.class);
 		removeItem(RegistrationContext.class);

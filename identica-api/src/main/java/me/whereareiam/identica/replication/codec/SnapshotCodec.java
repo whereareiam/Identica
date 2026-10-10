@@ -2,6 +2,7 @@ package me.whereareiam.identica.replication.codec;
 
 import me.whereareiam.configura.Config;
 import me.whereareiam.configura.Configura;
+import me.whereareiam.configura.type.Format;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -30,7 +31,8 @@ public interface SnapshotCodec<S> {
 	S decode(byte @Nullable [] payload);
 
 	/**
-	 * JSON codec using Configura for the given type.
+	 * JSON codec using Configura for the given type. It is derived from the shared Configura instance
+	 * at the time of the call, so it serializes with the modules Identica registered there.
 	 *
 	 * @param type snapshot type
 	 * @param <S> snapshot type
@@ -38,7 +40,7 @@ public interface SnapshotCodec<S> {
 	 */
 	static <S> @NotNull SnapshotCodec<S> json(@NotNull Class<S> type) {
 		return new SnapshotCodec<>() {
-			private final Configura configura = Config.json();
+			private final Configura configura = Config.configured().toBuilder().format(Format.JSON).build();
 
 			@Override
 			public byte @NotNull [] encode(@Nullable S snapshot) {

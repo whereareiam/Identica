@@ -7,7 +7,6 @@ import lombok.ToString;
 import me.whereareiam.commandant.model.message.ExceptionMessages;
 import me.whereareiam.commandant.model.message.HelpMessages;
 import me.whereareiam.commandant.model.message.PaginationMessages;
-import me.whereareiam.configura.ConfigDocument;
 import me.whereareiam.identica.model.config.type.DateTimePattern;
 import org.jetbrains.annotations.NotNull;
 
@@ -20,7 +19,7 @@ import java.util.Map;
 @Getter
 @Setter
 @ToString
-public class Messages extends ConfigDocument {
+public class Messages {
 	private @NotNull String prefix;
 	private @NotNull Format format;
 	private @NotNull Commands commands;

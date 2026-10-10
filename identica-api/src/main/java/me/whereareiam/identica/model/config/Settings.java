@@ -3,11 +3,8 @@ package me.whereareiam.identica.model.config;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import me.whereareiam.configura.ConfigDocument;
 import me.whereareiam.configura.annotation.merge.Merge;
-import me.whereareiam.configura.annotation.merge.MergeMap;
-import me.whereareiam.configura.type.merge.tree.map.MapPresence;
-import me.whereareiam.configura.type.merge.tree.map.MapUnknownEntries;
+import me.whereareiam.configura.type.merge.UnknownEntries;
 import me.whereareiam.identica.model.Event;
 import me.whereareiam.identica.type.identity.UniqueIdMode;
 import me.whereareiam.identica.type.session.SessionConcurrencyPolicy;
@@ -22,7 +19,7 @@ import java.util.Map;
 @Getter
 @Setter
 @ToString
-public class Settings extends ConfigDocument {
+public class Settings {
 	/**
 	 * Verbosity level for logging.
 	 */
@@ -97,11 +94,7 @@ public class Settings extends ConfigDocument {
 	@Setter
 	@ToString
 	public static class Listeners {
-		@Merge
-		@MergeMap(
-				presence = MapPresence.DEFAULT_DOMAIN_ONLY,
-				unknownEntries = MapUnknownEntries.REJECT
-		)
+		@Merge(unknownEntries = UnknownEntries.REJECT)
 		private @NotNull Map<String, Event> events;
 	}
 }

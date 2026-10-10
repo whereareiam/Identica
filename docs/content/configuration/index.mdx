@@ -23,6 +23,18 @@ Because of that, this documentation describes:
   These flags show that a setting is intentionally configurable, but should be changed with more care than ordinary options. Unmarked settings are normal day-to-day configuration.
 </Callout>
 
+## What Identica writes back
+
+On every start and reload Identica completes each document with the settings it lacks and writes it back. Your values are kept; comments are not preserved.
+
+A list is taken as you wrote it, including an empty one: `[]` means "nothing", not "use the default". Remove the key to get the default list back.
+
+## Configuration version
+
+The settings document starts with `_version`. Identica uses it to upgrade the data directory when a new release changes the layout of a document, and it refuses to start on a directory written by a newer release. Do not edit or remove it, and keep it when you copy your configuration to another server.
+
+Before an upgrade changes a file, the file is copied to `.strata/backup/` in the data directory. Identica never reads these copies, so the `.strata` folder can be deleted at any time.
+
 ## Feature selection and settings
 
 Feature settings live under `features/<id>/`, with join restriction nested under `features/restriction/join/`. Provider-specific overrides belong to `providers[].features` and inherit shared defaults. All features are compiled into Identica. See [Features](./features/index.mdx) for configuration.

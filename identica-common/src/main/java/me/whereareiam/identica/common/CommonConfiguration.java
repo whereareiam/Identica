@@ -9,6 +9,7 @@ import me.whereareiam.configura.Configura;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.common.config.ConfigBindings;
+import me.whereareiam.identica.common.config.ConfigMigrations;
 import me.whereareiam.identica.common.config.IdenticaModule;
 import me.whereareiam.identica.common.config.resolver.FileSystemConfigurationTypeResolver;
 import me.whereareiam.identica.common.conflict.ConflictConfiguration;
@@ -29,16 +30,14 @@ import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.logging.BannerContributor;
 import me.whereareiam.identica.util.EventUtil;
 import me.whereareiam.keystone.serializer.SerializerEngine;
-import me.whereareiam.identica.type.PluginType;
-import me.whereareiam.strata.common.Strata;
+import me.whereareiam.strata.Strata;
+import me.whereareiam.strata.adapter.configura.StrataFeature;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 
 @RequiredArgsConstructor
 public class CommonConfiguration extends AbstractModule {
@@ -84,15 +83,21 @@ public class CommonConfiguration extends AbstractModule {
 		EventUtil.initialize(eventManager);
 	}
 
+	/**
+	 * Brings the data directory up to date before the shared Configura instance is installed, and
+	 * with it before any document is loaded. A failed migration fails the injector, so Identica does
+	 * not start on a directory it could not upgrade.
+	 */
 	@Inject
-	void initializeConfigura(Configura configura) {
+	void initializeConfigura(Configura configura, Strata strata) {
+		strata.migrate();
 		Config.setConfigured(configura);
 	}
 
 	@Provides
 	@Singleton
-	@NotNull Strata provideStrata() {
-		return new Strata(List.of(), Map.of("platform", PluginType.getExactType().name().toLowerCase(Locale.ROOT)));
+	@NotNull Strata provideStrata(Configura configura, @Named("dataPath") Path dataPath) {
+		return new Strata(List.of(ConfigMigrations.on(configura, dataPath)));
 	}
 
 	@Provides
@@ -109,6 +114,7 @@ public class CommonConfiguration extends AbstractModule {
 		return Config.builder()
 				.format(format)
 				.module(new IdenticaModule())
+				.feature(new StrataFeature())
 				.build();
 	}
 

@@ -14,18 +14,27 @@ dependencies {
     attache(libs.configura.feature.polymorphic)
     attache(libs.commandant)
     attache(libs.keystone)
-    attache(libs.strata.common)
+    attache(libs.strata)
+    attache(libs.strata.adapter.configura)
 
-    compileOnly(libs.strata.common)
+    compileOnly(libs.strata)
+    compileOnly(libs.strata.adapter.configura)
 
     testImplementation(libs.keystone)
     testImplementation(libs.commandant)
-    testImplementation(libs.strata.common)
+    testImplementation(libs.strata)
+    testImplementation(libs.strata.adapter.configura)
 }
 
 extensions.configure<AttacheExtension>("attache") {
-    library(libs.strata.common) {
+    library(libs.strata) {
         relocate("me{}whereareiam{}strata", "me.whereareiam.identica.library.strata")
+    }
+
+    library(libs.strata.adapter.configura) {
+        relocate("me{}whereareiam{}strata", "me.whereareiam.identica.library.strata")
+        relocate("com{}fasterxml{}jackson", "me.whereareiam.identica.library.jackson")
+        relocate("org{}yaml{}snakeyaml", "me.whereareiam.identica.library.snakeyaml")
     }
 
     library(libs.guice) {

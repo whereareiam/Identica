@@ -3,11 +3,8 @@ package me.whereareiam.identica.model.config;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import me.whereareiam.configura.ConfigDocument;
 import me.whereareiam.configura.annotation.merge.Merge;
-import me.whereareiam.configura.annotation.merge.MergeMap;
-import me.whereareiam.configura.type.merge.tree.map.MapPresence;
-import me.whereareiam.configura.type.merge.tree.map.MapUnknownEntries;
+import me.whereareiam.configura.type.merge.MissingEntries;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptPolicy;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -21,17 +18,13 @@ import java.util.Map;
 @Getter
 @Setter
 @ToString
-public class Routing extends ConfigDocument {
+public class Routing {
 	private @NotNull Defaults defaults = new Defaults();
 	/**
 	 * Scenario-specific routing targets keyed by scenario id.
 	 * Supported ids: authentication, registration, migration.
 	 */
-	@Merge
-	@MergeMap(
-			presence = MapPresence.DECLARED_ONLY,
-			unknownEntries = MapUnknownEntries.ALLOW
-	)
+	@Merge(missingEntries = MissingEntries.OMIT)
 	private @NotNull Map<String, Targets> scenarios = new HashMap<>();
 
 	/**

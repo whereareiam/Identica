@@ -3,7 +3,6 @@ package me.whereareiam.identica.feature.verification.config;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import me.whereareiam.configura.ConfigDocument;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -14,7 +13,7 @@ import java.util.List;
 @Getter
 @Setter
 @ToString
-public class VerificationMessages extends ConfigDocument {
+public class VerificationMessages {
 	private @NotNull Methods methods;
 	private @NotNull Commands commands;
 

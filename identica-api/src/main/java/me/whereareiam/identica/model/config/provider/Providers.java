@@ -10,15 +10,11 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.Setter;
 import lombok.ToString;
-import me.whereareiam.configura.ConfigDocument;
 import me.whereareiam.configura.annotation.PreserveUnknownFields;
 import me.whereareiam.configura.annotation.merge.Merge;
-import me.whereareiam.configura.annotation.merge.MergeList;
 import me.whereareiam.configura.feature.extension.api.annotation.ExtendableDocument;
-import me.whereareiam.configura.merge.strategy.DeclaredObjectDefaults;
-import me.whereareiam.configura.type.merge.tree.list.ListMode;
-import me.whereareiam.configura.type.merge.tree.list.ListPresence;
-import me.whereareiam.configura.type.merge.tree.list.ListUnknownEntries;
+import me.whereareiam.configura.type.merge.MissingEntries;
+import me.whereareiam.configura.type.merge.WhenAbsent;
 import me.whereareiam.identica.type.session.SessionConcurrencyPolicy;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -33,15 +29,9 @@ import java.util.List;
 @Getter
 @Setter
 @ToString
-public class Providers extends ConfigDocument {
+public class Providers {
 	private @NotNull Behavior behavior = new Behavior();
-	@Merge
-	@MergeList(
-			mode = ListMode.KEYED,
-			key = "id",
-			presence = ListPresence.DECLARED_ONLY,
-			unknownEntries = ListUnknownEntries.ALLOW
-	)
+	@Merge(key = "id", missingEntries = MissingEntries.OMIT)
 	private @NotNull List<ProviderEntry> providers = new ArrayList<>();
 
 	/**
@@ -91,13 +81,13 @@ public class Providers extends ConfigDocument {
 		/**
 		 * Provider-specific session settings.
 		 */
-		@Merge(DeclaredObjectDefaults.class)
+		@Merge(absent = WhenAbsent.LEAVE_ABSENT)
 		@ExtendableDocument
 		private @Nullable Session session;
 		/**
 		 * Feature-specific provider settings.
 		 */
-		@Merge(DeclaredObjectDefaults.class)
+		@Merge(absent = WhenAbsent.LEAVE_ABSENT)
 		@ExtendableDocument
 		private @Nullable Features features;
 		/**

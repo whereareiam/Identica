@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import me.whereareiam.configura.ConfigDocument;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -20,7 +19,7 @@ import java.util.Map;
 @Getter
 @Setter
 @ToString
-public class Conflicts extends ConfigDocument {
+public class Conflicts {
 	private @NotNull Map<String, ConflictRules> rules = new HashMap<>();
 
 	/**

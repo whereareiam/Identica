@@ -5,7 +5,7 @@ import lombok.Setter;
 import lombok.ToString;
 import me.whereareiam.configura.annotation.merge.Merge;
 import me.whereareiam.configura.feature.extension.api.annotation.ExtendableDocument;
-import me.whereareiam.configura.merge.strategy.DeclaredObjectDefaults;
+import me.whereareiam.configura.type.merge.WhenAbsent;
 import me.whereareiam.identica.model.config.provider.Providers;
 import me.whereareiam.identica.feature.recognition.type.RecognitionSignal;
 import org.jetbrains.annotations.NotNull;
@@ -21,7 +21,7 @@ import java.util.List;
 @Setter
 @ToString
 public class RecognitionFeatures extends Providers.ProviderEntry.Features {
-	@Merge(DeclaredObjectDefaults.class)
+	@Merge(absent = WhenAbsent.LEAVE_ABSENT)
 	@ExtendableDocument
 	private @Nullable Recognition recognition;
 

@@ -3,7 +3,6 @@ package me.whereareiam.identica.provider.credential.config;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import me.whereareiam.configura.ConfigDocument;
 
 import java.util.List;
 
@@ -13,7 +12,7 @@ import java.util.List;
 @Getter
 @Setter
 @ToString
-public class CredentialMessages extends ConfigDocument {
+public class CredentialMessages {
 	private Scenario scenario;
 	private Completion completion;
 	private Password password;

@@ -3,7 +3,6 @@ package me.whereareiam.identica.feature.sentinel.model.config;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import me.whereareiam.configura.ConfigDocument;
 import me.whereareiam.identica.feature.sentinel.model.SentinelPolicy;
 import org.jetbrains.annotations.NotNull;
 
@@ -13,7 +12,7 @@ import org.jetbrains.annotations.NotNull;
 @Getter
 @Setter
 @ToString
-public class SentinelSettings extends ConfigDocument {
+public class SentinelSettings {
 	private boolean enabled = true;
 
 	private @NotNull Sentinels sentinels = new Sentinels();

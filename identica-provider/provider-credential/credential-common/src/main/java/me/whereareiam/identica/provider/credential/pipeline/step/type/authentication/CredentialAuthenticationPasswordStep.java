@@ -7,7 +7,6 @@ import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.ScenarioContext;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.cryptography.CryptographyService;
@@ -22,7 +21,6 @@ public class CredentialAuthenticationPasswordStep extends AbstractCredentialPass
 			Provider<Engine> coreSettingsProvider,
 			CredentialAccountService credentialService,
 			CryptographyService cryptographyService,
-			PipelineStateStore pipelineStateStore,
 			EventManager eventManager
 	) {
 		super(
@@ -31,7 +29,6 @@ public class CredentialAuthenticationPasswordStep extends AbstractCredentialPass
 				coreSettingsProvider,
 				credentialService,
 				cryptographyService,
-				pipelineStateStore,
 				eventManager
 		);
 	}
@@ -39,11 +36,6 @@ public class CredentialAuthenticationPasswordStep extends AbstractCredentialPass
 	@Override
 	public int order() {
 		return 10;
-	}
-
-	@Override
-	protected long ttlMs() {
-		return authenticationTtlMs();
 	}
 
 	@Override

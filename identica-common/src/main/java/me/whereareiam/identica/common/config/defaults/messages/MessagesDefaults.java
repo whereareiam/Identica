@@ -203,17 +203,6 @@ public class MessagesDefaults implements DefaultsProvider<Messages> {
 				"",
 				"<dark_gray>discord.arcadeya.com"
 		));
-		Messages.Scenarios.Scenario.AdvanceBusy advanceBusy = new Messages.Scenarios.Scenario.AdvanceBusy();
-		advanceBusy.setChat("{prefix}<white>Please wait, processing your request.</white>");
-		advanceBusy.setKick(List.of(
-				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
-				"",
-				"<white>Your previous request is still processing.</white>",
-				"<white>Please try again in a moment.</white>",
-				"",
-				"<dark_gray>discord.arcadeya.com"
-		));
-		scenario.setAdvanceBusy(advanceBusy);
 		scenario.setNoCompletionPipeline(List.of(
 				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
 				"",

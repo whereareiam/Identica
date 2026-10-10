@@ -10,7 +10,6 @@ import me.whereareiam.identica.model.auth.handshake.HandshakeInstruction;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.ScenarioContext;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.provider.ProviderAttemptStore;
 import me.whereareiam.identica.provider.premium.PremiumConstants;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
@@ -30,13 +29,12 @@ public class OfflineCheckStep extends AbstractProfileVerificationStep {
 	@Inject
 	public OfflineCheckStep(
 			Provider<PremiumMessages> messagesProvider,
-			PipelineStateStore pipelineStateStore,
 			PremiumProfileStore profileStore,
 			ProviderAttemptStore attemptStore,
 			HandshakeStore handshakeStore,
 			Provider<Engine> engineProvider
 	) {
-		super("offline-check", messagesProvider, pipelineStateStore, profileStore, handshakeStore, engineProvider);
+		super("offline-check", messagesProvider, profileStore, handshakeStore, engineProvider);
 		this.attemptStore = attemptStore;
 	}
 

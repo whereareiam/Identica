@@ -10,8 +10,10 @@ import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.model.registration.RegistrationContext;
 import me.whereareiam.identica.pipeline.ScenarioContext;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
+import me.whereareiam.identica.pipeline.journey.step.StatefulStep;
+import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.provider.premium.PremiumConstants;
+import me.whereareiam.identica.provider.premium.PremiumVerifyAttemptItem;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
 import me.whereareiam.identica.provider.premium.pipeline.step.base.AbstractProfileVerificationStep;
 import me.whereareiam.identica.provider.premium.profile.PremiumProfileStore;
@@ -20,16 +22,15 @@ import org.jetbrains.annotations.NotNull;
 import java.util.concurrent.CompletableFuture;
 
 @Singleton
-public class FinalizeProfileStep extends AbstractProfileVerificationStep {
+public class FinalizeProfileStep extends AbstractProfileVerificationStep implements StatefulStep {
 	@Inject
 	public FinalizeProfileStep(
 			Provider<PremiumMessages> messagesProvider,
-			PipelineStateStore pipelineStateStore,
 			PremiumProfileStore profileStore,
 			HandshakeStore handshakeStore,
 			Provider<Engine> engineProvider
 	) {
-		super("finalize-profile", messagesProvider, pipelineStateStore, profileStore, handshakeStore, engineProvider);
+		super("finalize-profile", messagesProvider, profileStore, handshakeStore, engineProvider);
 	}
 
 	@Override
@@ -38,7 +39,7 @@ public class FinalizeProfileStep extends AbstractProfileVerificationStep {
 	}
 
 	@Override
-	public @NotNull CompletableFuture<StepResult> execute(@NotNull ScenarioContext context) {
+	public @NotNull CompletableFuture<StepResult> execute(@NotNull ScenarioContext context, @NotNull PipelineState state) {
         String username = context.getUsername();
 		String ip = context.getIp();
 		if (username == null || username.isBlank() || ip == null || ip.isBlank())
@@ -49,7 +50,7 @@ public class FinalizeProfileStep extends AbstractProfileVerificationStep {
 			return CompletableFuture.completedFuture(failed());
 		}
 
-		if (hasAttempt(context)) clearAttempt(context);
+		state.removeItem(PremiumVerifyAttemptItem.class);
 		ProviderContext existing = context.getProvider();
 		ProviderContext provider = ProviderContext.builder()
 				.providerId(PremiumConstants.PROVIDER_ID)

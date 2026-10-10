@@ -6,9 +6,6 @@ import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.journey.step.type.SeamlessStep;
-import me.whereareiam.identica.pipeline.state.PipelineStateReference;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
-import me.whereareiam.identica.provider.premium.PremiumVerifyAttemptItem;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
 import me.whereareiam.identica.provider.premium.profile.PremiumProfileSnapshot;
 import me.whereareiam.identica.provider.premium.profile.PremiumProfileStore;
@@ -19,7 +16,6 @@ import java.util.List;
 
 public abstract class AbstractProfileVerificationStep extends SeamlessStep {
 	protected final Provider<PremiumMessages> messagesProvider;
-	protected final PipelineStateStore pipelineStateStore;
 	protected final PremiumProfileStore profileStore;
 	protected final HandshakeStore handshakeStore;
 	protected final Provider<Engine> engineProvider;
@@ -27,14 +23,12 @@ public abstract class AbstractProfileVerificationStep extends SeamlessStep {
 	protected AbstractProfileVerificationStep(
 			String name,
 			Provider<PremiumMessages> messagesProvider,
-			PipelineStateStore pipelineStateStore,
 			PremiumProfileStore profileStore,
 			HandshakeStore handshakeStore,
 			Provider<Engine> engineProvider
 	) {
 		super(name);
 		this.messagesProvider = messagesProvider;
-		this.pipelineStateStore = pipelineStateStore;
 		this.profileStore = profileStore;
 		this.handshakeStore = handshakeStore;
 		this.engineProvider = engineProvider;
@@ -47,18 +41,6 @@ public abstract class AbstractProfileVerificationStep extends SeamlessStep {
 	protected @Nullable String readProfileId(@NotNull String username) {
 		PremiumProfileSnapshot snapshot = profileStore.find(username);
 		return snapshot != null ? snapshot.getProfileId() : null;
-	}
-
-	protected boolean hasAttempt(@NotNull ScenarioContext context) {
-		return pipelineStateStore.find(PipelineStateReference.from(context))
-				.flatMap(state -> state.item(PremiumVerifyAttemptItem.class))
-				.isPresent();
-	}
-
-	protected void clearAttempt(@NotNull ScenarioContext context) {
-		long ttlMillis = ttlMillis();
-		pipelineStateStore.update(PipelineStateReference.from(context), ttlMillis,
-				state -> state.withoutItem(PremiumVerifyAttemptItem.class));
 	}
 
 	protected void clearProfileItem(@NotNull String username) {

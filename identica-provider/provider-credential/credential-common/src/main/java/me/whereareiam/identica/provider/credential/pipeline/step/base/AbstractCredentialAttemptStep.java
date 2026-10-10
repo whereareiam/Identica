@@ -4,7 +4,6 @@ import com.google.inject.Provider;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.pipeline.ScenarioContext;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.provider.credential.event.authentication.AuthenticationAttemptDecision;
 import me.whereareiam.identica.provider.credential.event.authentication.AuthenticationAttemptFailedEvent;
 import me.whereareiam.identica.provider.credential.event.authentication.AuthenticationAttemptSucceededEvent;
@@ -18,10 +17,9 @@ public abstract class AbstractCredentialAttemptStep extends AbstractCredentialSt
 	protected AbstractCredentialAttemptStep(
 			@NotNull String name,
 			@NotNull Provider<Engine> coreSettingsProvider,
-			@NotNull PipelineStateStore pipelineStateStore,
 			@NotNull EventManager eventManager
 	) {
-		super(name, coreSettingsProvider, pipelineStateStore);
+		super(name, coreSettingsProvider);
 		this.eventManager = eventManager;
 	}
 

@@ -4,7 +4,7 @@ import com.google.inject.Provider;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.ScenarioContext;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
+import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.config.CredentialSettings;
@@ -33,10 +33,9 @@ public abstract class AbstractCredentialSetupStep extends AbstractCredentialStat
 			@NotNull Provider<Engine> coreSettingsProvider,
 			@NotNull CredentialAccountService credentialService,
 			@NotNull CryptographyService cryptographyService,
-			@NotNull PasswordRules passwordPolicy,
-			@NotNull PipelineStateStore pipelineStateStore
+			@NotNull PasswordRules passwordPolicy
 	) {
-		super(name, coreSettingsProvider, pipelineStateStore);
+		super(name, coreSettingsProvider);
 		this.messagesProvider = messagesProvider;
 		this.settingsProvider = settingsProvider;
 		this.credentialService = credentialService;
@@ -45,7 +44,7 @@ public abstract class AbstractCredentialSetupStep extends AbstractCredentialStat
 	}
 
 	@Override
-	public final @NotNull CompletableFuture<StepResult> execute(@NotNull ScenarioContext context) {
+	public final @NotNull CompletableFuture<StepResult> execute(@NotNull ScenarioContext context, @NotNull PipelineState state) {
 		String providerSubject = requireProviderSubject(context);
 
 		CredentialAccount existing = credentialService.find(providerSubject).orElse(null);
@@ -63,13 +62,13 @@ public abstract class AbstractCredentialSetupStep extends AbstractCredentialStat
 			return CompletableFuture.completedFuture(StepResult.denied(disabledMessage(messages)));
 
 		boolean requireRepeat = registrationSettings.isRequireRepeat();
-		CredentialRegisterStateItem pending = getRegisterState(context);
+		CredentialRegisterStateItem pending = getRegisterState(state);
 		long ttlMs = ttlMs();
 
 		if (requireRepeat && pending != null) return CompletableFuture.completedFuture(StepResult.proceed(context));
-		if (!requireRepeat && pending != null) clearRegisterState(context, ttlMs);
+		if (!requireRepeat && pending != null) clearRegisterState(state);
 
-		var input = consumeRegistrationAttempt(context, ttlMs);
+		var input = consumeRegistrationAttempt(state);
 		if (input == null) return CompletableFuture.completedFuture(StepResult.waiting(registerPrompt(messages)));
 		if (input.isConfirm()) return CompletableFuture.completedFuture(StepResult.waiting(noPendingMessage(messages)));
 
@@ -81,7 +80,7 @@ public abstract class AbstractCredentialSetupStep extends AbstractCredentialStat
 		if (candidate == null) return CompletableFuture.completedFuture(StepResult.failed(""));
 
 		if (requireRepeat) {
-			storeRegisterState(context, new CredentialRegisterStateItem(
+			storeRegisterState(state, new CredentialRegisterStateItem(
 					candidate.getPasswordHash(),
 					candidate.getHashingMethod()
 			), ttlMs);

@@ -8,7 +8,6 @@ import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.ScenarioContext;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
 import me.whereareiam.identica.provider.premium.pipeline.step.base.AbstractProfileVerificationStep;
 import me.whereareiam.identica.provider.premium.profile.PremiumProfileStore;
@@ -21,12 +20,11 @@ public class ProfilePresenceStep extends AbstractProfileVerificationStep {
 	@Inject
 	public ProfilePresenceStep(
 			Provider<PremiumMessages> messagesProvider,
-			PipelineStateStore pipelineStateStore,
 			PremiumProfileStore profileStore,
 			HandshakeStore handshakeStore,
 			Provider<Engine> engineProvider
 	) {
-		super("profile-presence", messagesProvider, pipelineStateStore, profileStore, handshakeStore, engineProvider);
+		super("profile-presence", messagesProvider, profileStore, handshakeStore, engineProvider);
 	}
 
 	@Override

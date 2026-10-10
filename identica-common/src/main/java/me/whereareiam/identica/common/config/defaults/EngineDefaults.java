@@ -29,7 +29,6 @@ public class EngineDefaults implements DefaultsProvider<Engine> {
 	private Engine.Authentication defaultAuthenticationScenario() {
 		Engine.Authentication scenario = new Engine.Authentication();
 		scenario.setPipelineTtl(Duration.ofMinutes(5));
-		scenario.setAdvanceLockTtl(Duration.ofSeconds(5));
 		scenario.setAllowResume(true);
 		scenario.setPipelineConcurrencyPolicy(PipelineConcurrencyPolicy.DENY_NEW);
 		scenario.setJourneyMode(JourneyMode.SEAMLESS);
@@ -40,7 +39,6 @@ public class EngineDefaults implements DefaultsProvider<Engine> {
 	private Engine.Registration defaultRegistrationScenario() {
 		Engine.Registration scenario = new Engine.Registration();
 		scenario.setPipelineTtl(Duration.ofMinutes(5));
-		scenario.setAdvanceLockTtl(Duration.ofSeconds(5));
 		scenario.setAllowResume(true);
 		scenario.setPipelineConcurrencyPolicy(PipelineConcurrencyPolicy.DENY_NEW);
 		scenario.setAutoSelectSingleProvider(false);
@@ -52,7 +50,6 @@ public class EngineDefaults implements DefaultsProvider<Engine> {
 	private Engine.Migration defaultMigrationScenario() {
 		Engine.Migration scenario = new Engine.Migration();
 		scenario.setPipelineTtl(Duration.ofMinutes(5));
-		scenario.setAdvanceLockTtl(Duration.ofSeconds(5));
 		scenario.setAllowResume(true);
 		scenario.setJourneyMode(JourneyMode.INTERACTIVE);
 		scenario.setJourneyPolicy(JourneyPolicy.PREFER);

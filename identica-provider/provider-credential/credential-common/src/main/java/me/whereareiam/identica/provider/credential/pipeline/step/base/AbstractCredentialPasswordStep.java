@@ -5,7 +5,7 @@ import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.ScenarioContext;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
+import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.cryptography.CryptographyService;
@@ -26,25 +26,23 @@ public abstract class AbstractCredentialPasswordStep extends AbstractCredentialA
 			@NotNull Provider<Engine> coreSettingsProvider,
 			@NotNull CredentialAccountService credentialService,
 			@NotNull CryptographyService cryptographyService,
-			@NotNull PipelineStateStore pipelineStateStore,
 			@NotNull EventManager eventManager
 	) {
-		super(name, coreSettingsProvider, pipelineStateStore, eventManager);
+		super(name, coreSettingsProvider, eventManager);
 		this.messagesProvider = messagesProvider;
 		this.credentialService = credentialService;
 		this.cryptographyService = cryptographyService;
 	}
 
 	@Override
-	public final @NotNull CompletableFuture<StepResult> execute(@NotNull ScenarioContext context) {
+	public final @NotNull CompletableFuture<StepResult> execute(@NotNull ScenarioContext context, @NotNull PipelineState state) {
 		String providerSubject = requireProviderSubject(context);
 
 		CredentialMessages messages = messagesProvider.get();
 		CredentialAccount credential = credentialService.find(providerSubject).orElse(null);
 		if (credential == null) return CompletableFuture.completedFuture(handleMissingCredential(context, messages));
 
-		long ttlMs = ttlMs();
-		var input = consumeAuthenticationAttempt(context, ttlMs);
+		var input = consumeAuthenticationAttempt(state);
 		if (input == null) return CompletableFuture.completedFuture(StepResult.waiting(promptMessage(messages)));
 
 		if (!cryptographyService.verify(credential, input.getPassword())) {
@@ -56,8 +54,6 @@ public abstract class AbstractCredentialPasswordStep extends AbstractCredentialA
 		clearBruteForce(credential, context);
 		return CompletableFuture.completedFuture(successResult(context));
 	}
-
-	protected abstract long ttlMs();
 
 	protected abstract @NotNull StepResult handleMissingCredential(
 			@NotNull ScenarioContext context,

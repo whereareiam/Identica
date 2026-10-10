@@ -57,7 +57,6 @@ behavior:
 The three scenario sections share most fields:
 
 - `pipelineTtl`: how long a waiting pipeline can be resumed
-- `advanceLockTtl`: how long advance locking prevents duplicate submits
 - `allowResume`: whether waiting state is stored and resumable
 - `journeyMode`: whether the preferred flow style is `SEAMLESS` or `INTERACTIVE`
 - `journeyPolicy`: whether that mode is only preferred or strictly required
@@ -71,14 +70,6 @@ The three scenario sections share most fields:
 - Affects: how long a waiting scenario pipeline can be resumed
 
 When a flow is pending, this TTL becomes the expiry time for its saved pipeline state.
-
-#### advanceLockTtl
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a positive duration
-- Current default: `"5s"`
-- Affects: how long an advance or resume lock is held to stop double-submits
 
 #### allowResume
 
@@ -195,14 +186,12 @@ Its generated defaults differ mainly in journey style: migration prefers `INTERA
 scenarios:
   authentication:
     pipelineTtl: "5m"
-    advanceLockTtl: "5s"
     allowResume: true
     journeyMode: "SEAMLESS"
     journeyPolicy: "PREFER"
     pipelineConcurrencyPolicy: "DENY_NEW"
   registration:
     pipelineTtl: "5m"
-    advanceLockTtl: "5s"
     allowResume: true
     journeyMode: "SEAMLESS"
     journeyPolicy: "PREFER"
@@ -210,7 +199,6 @@ scenarios:
     autoSelectSingleProvider: false
   migration:
     pipelineTtl: "5m"
-    advanceLockTtl: "5s"
     allowResume: true
     journeyMode: "INTERACTIVE"
     journeyPolicy: "PREFER"
@@ -222,7 +210,6 @@ scenarios:
   "scenarios": {
     "authentication": {
       "pipelineTtl": "5m",
-      "advanceLockTtl": "5s",
       "allowResume": true,
       "journeyMode": "SEAMLESS",
       "journeyPolicy": "PREFER",
@@ -230,7 +217,6 @@ scenarios:
     },
     "registration": {
       "pipelineTtl": "5m",
-      "advanceLockTtl": "5s",
       "allowResume": true,
       "journeyMode": "SEAMLESS",
       "journeyPolicy": "PREFER",
@@ -239,7 +225,6 @@ scenarios:
     },
     "migration": {
       "pipelineTtl": "5m",
-      "advanceLockTtl": "5s",
       "allowResume": true,
       "journeyMode": "INTERACTIVE",
       "journeyPolicy": "PREFER"

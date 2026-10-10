@@ -42,8 +42,7 @@ public class LoginCommand {
 		}
 
 		long ttlMs = resolveTtl(pipelineType);
-		storeAuthenticationAttempt(identity, new CredentialAuthenticationAttempt(password), ttlMs);
-		handleDecision(identity, pipelineType, advanceJourneyMode(identity));
+		handleDecision(identity, pipelineType, advance(identity, new CredentialAuthenticationAttempt(password), ttlMs));
 	}
 
 	private void handleDecision(
@@ -63,10 +62,15 @@ public class LoginCommand {
 		}
 	}
 
-	private ConnectionDecision advanceJourneyMode(@NotNull Identity identity) {
+	/**
+	 * Continues the pending journey with the password the player typed. The pipeline puts the attempt into the
+	 * state of the run it starts.
+	 */
+	private ConnectionDecision advance(@NotNull Identity identity, @NotNull CredentialAuthenticationAttempt attempt, long ttlMs) {
 		AdvanceRequest request = AdvanceRequest.builder()
 				.connectionUniqueId(identity.getConnectionUniqueId())
 				.identity(identity)
+				.input(state -> state.putItem(attempt, ttlMs))
 				.build();
 		return connectionCoordinator.advance(request).toCompletableFuture().join();
 	}
@@ -108,20 +112,6 @@ public class LoginCommand {
 				.accountUniqueId(identity.getAccountUniqueId())
 				.connectionKey(identity.connectionKey())
 				.build();
-	}
-
-	private void storeAuthenticationAttempt(
-			@NotNull Identity identity,
-			@NotNull CredentialAuthenticationAttempt attempt,
-			long ttlMs
-	) {
-		if (ttlMs <= 0) return;
-		PipelineStateReference reference = reference(identity);
-		PipelineState stored = pipelineStateStore.find(reference).orElse(null);
-		if (stored == null) return;
-
-		stored.putItem(attempt, ttlMs);
-		pipelineStateStore.save(reference, stored, ttlMs);
 	}
 
 	private void sendMessage(@NotNull Identity identity, String message) {

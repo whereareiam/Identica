@@ -6,7 +6,6 @@ import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.state.PipelineState;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.config.defaults.CredentialMessagesDefaults;
@@ -25,6 +24,7 @@ import java.time.Duration;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -35,8 +35,6 @@ class CredentialAuthenticationCredentialStepTest {
 	private CredentialAccountService accountService;
 	@Mock
 	private CryptographyService cryptographyService;
-	@Mock
-	private PipelineStateStore pipelineStateStore;
 	@Mock
 	private EventManager eventManager;
 
@@ -49,7 +47,6 @@ class CredentialAuthenticationCredentialStepTest {
 				this::settings,
 				accountService,
 				cryptographyService,
-				pipelineStateStore,
 				eventManager
 		);
 	}
@@ -71,13 +68,12 @@ class CredentialAuthenticationCredentialStepTest {
 				.build();
 
 		when(accountService.find("subject")).thenReturn(Optional.of(account));
-		when(pipelineStateStore.find(any(me.whereareiam.identica.pipeline.state.PipelineStateReference.class)))
-				.thenReturn(Optional.of(state));
 		when(cryptographyService.verify(account, "credential")).thenReturn(true);
 
-		StepResult result = step.execute(context).join();
+		StepResult result = step.execute(context, state).join();
 
 		assertEquals(StepResult.StepStatus.CONTINUE, result.getStatus());
+		assertTrue(state.item(CredentialAuthenticationAttempt.class).isEmpty(), "the step takes the attempt out of the run's state");
 	}
 
 	private CredentialMessages messages() {

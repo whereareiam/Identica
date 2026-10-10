@@ -33,10 +33,23 @@ import java.util.concurrent.CompletionStage;
 public class ScenarioPipeline {
 	private final ConnectionDecisionResolver decisionResolver;
 	private final ScenarioRegistry scenarioRegistry;
+	private final ConnectionRuns connectionRuns;
 	private final PipelineStateStore pipelineStateStore;
 	private final EventManager eventManager;
 
 	public @NotNull CompletionStage<ConnectionDecision> process(@Nullable ConnectionRequest request) {
+		return connectionRuns.submit(request != null ? request.getConnectionUniqueId() : null, () -> runProcess(request));
+	}
+
+	public @NotNull CompletionStage<ConnectionDecision> resume(@NotNull ResumeRequest request) {
+		return connectionRuns.submit(request.getConnectionUniqueId(), () -> runResume(request));
+	}
+
+	public @NotNull CompletionStage<ConnectionDecision> advance(@NotNull AdvanceRequest request) {
+		return connectionRuns.submit(request.getConnectionUniqueId(), () -> runAdvance(request));
+	}
+
+	private @NotNull CompletionStage<ConnectionDecision> runProcess(@Nullable ConnectionRequest request) {
 		if (request != null) {
 			ConnectionDecision entryDecision = resolveEntryDecision(new ConnectionProcessAttemptEvent(
 					request.getConnectionUniqueId(),
@@ -65,7 +78,7 @@ public class ScenarioPipeline {
 		);
 	}
 
-	public @NotNull CompletionStage<ConnectionDecision> resume(@NotNull ResumeRequest request) {
+	private @NotNull CompletionStage<ConnectionDecision> runResume(@NotNull ResumeRequest request) {
 		ConnectionDecision entryDecision = resolveEntryDecision(new ConnectionResumeAttemptEvent(
 				request.getConnectionUniqueId(),
 				request.getAccountUniqueId(),
@@ -83,7 +96,7 @@ public class ScenarioPipeline {
 		);
 	}
 
-	public @NotNull CompletionStage<ConnectionDecision> advance(@NotNull AdvanceRequest request) {
+	private @NotNull CompletionStage<ConnectionDecision> runAdvance(@NotNull AdvanceRequest request) {
 		ConnectionDecision entryDecision = resolveEntryDecision(new ConnectionAdvanceAttemptEvent(
 				request.getConnectionUniqueId(),
 				request.getAccountUniqueId(),
@@ -97,6 +110,7 @@ public class ScenarioPipeline {
 				.connectionUniqueId(request.getConnectionUniqueId())
 				.identity(request.getIdentity())
 				.intendedServer(request.getIntendedServer())
+				.input(request.getInput())
 				.build();
 
 		return execute(

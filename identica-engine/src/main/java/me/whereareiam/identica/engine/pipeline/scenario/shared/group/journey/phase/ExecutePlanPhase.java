@@ -30,8 +30,6 @@ import me.whereareiam.identica.model.routing.RoutingSignal;
 import me.whereareiam.identica.pipeline.PipelinePhase;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.state.PipelineState;
-import me.whereareiam.identica.pipeline.state.PipelineStateReference;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.pipeline.state.scenario.shared.JourneyState;
 import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.provider.ProviderOperations;
@@ -62,7 +60,6 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 	private final Provider<Messages> messagesProvider;
 	private final ProviderManager providerManager;
 	private final ProviderOperations providerOperations;
-	private final PipelineStateStore pipelineStateStore;
 	private final RoutingCoordinator routingCoordinator;
 
 	@Override
@@ -152,7 +149,7 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 			@Nullable JourneyStateItem pending,
 			@NotNull JourneyExecutionPlan plan
 	) {
-		Set<String> excludedProviders = new HashSet<>(loadExcludedProviders(context));
+		Set<String> excludedProviders = new HashSet<>(loadExcludedProviders(pipelineState));
 		PipelineResult interactionDenial = null;
 
 		restart:
@@ -321,16 +318,8 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 		context.setProvider(null);
 	}
 
-	private @NotNull Set<String> loadExcludedProviders(@NotNull ScenarioContext context) {
-		PipelineStateReference reference = PipelineStateReference.from(context);
-		if (reference.isEmpty())
-			return Set.of();
-
-		PipelineState stored = pipelineStateStore.find(reference).orElse(null);
-		if (stored == null)
-			return Set.of();
-
-		JourneyOverrideItem override = stored.item(JourneyOverrideItem.class).orElse(null);
+	private @NotNull Set<String> loadExcludedProviders(@NotNull PipelineState pipelineState) {
+		JourneyOverrideItem override = pipelineState.item(JourneyOverrideItem.class).orElse(null);
 		if (override == null || override.getExcludedProviders() == null || override.getExcludedProviders().isEmpty())
 			return Set.of();
 
@@ -349,10 +338,6 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 			@NotNull PipelineType pipelineType,
 			@NotNull Set<String> excludedProviders
 	) {
-		PipelineStateReference reference = PipelineStateReference.from(context);
-		if (reference.isEmpty())
-			return;
-
 		long ttlMs = scenarioSettings(pipelineType).pipelineTtlMillis();
 		if (ttlMs <= 0)
 			return;
@@ -380,7 +365,6 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 		);
 
 		pipelineState.putItem(updated, ttlMs);
-		pipelineStateStore.update(reference, ttlMs, state -> state.withItem(updated, ttlMs));
 	}
 
 	private @NotNull JourneyExecutionPlan removeExcludedProviders(
@@ -465,6 +449,7 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 			for (int index = startIndex; index < steps.size(); index++) {
 				JourneyStep journeyStep = steps.get(index);
 				StepResult stepResult = executeStep(
+						pipelineState,
 						context,
 						pipelineType,
 						journeyMode,
@@ -502,6 +487,7 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 	}
 
 	private @NotNull StepResult executeStep(
+			@NotNull PipelineState pipelineState,
 			@NotNull ScenarioContext context,
 			@NotNull PipelineType pipelineType,
 			@NotNull JourneyMode journeyMode,
@@ -549,7 +535,7 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 
 		StepResult result;
 		try {
-			result = journeyStep.getStep().execute(context).join();
+			result = journeyStep.getStep().execute(context, pipelineState).join();
 			if (result == null)
 				result = StepResult.failed(journeyStepNoStatusMessage());
 		} catch (Exception exception) {
@@ -639,23 +625,17 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 		boolean clearProvider = false;
 		String overrideProviderId = null;
 
-		PipelineStateReference reference = PipelineStateReference.from(context);
-		if (!reference.isEmpty()) {
-			PipelineState stored = pipelineStateStore.find(reference).orElse(null);
-			if (stored != null) {
-				JourneyOverrideItem override = stored.item(JourneyOverrideItem.class).orElse(null);
-				if (override != null) {
-					if (override.getJourneyMode() != null)
-						resolvedJourneyMode = override.getJourneyMode();
-					if (override.getStageId() != null && !override.getStageId().isBlank())
-						resolvedStageId = override.getStageId();
-					if (override.getStepIndex() >= 0)
-						resolvedStepIndex = override.getStepIndex();
+		JourneyOverrideItem override = pipelineState.item(JourneyOverrideItem.class).orElse(null);
+		if (override != null) {
+			if (override.getJourneyMode() != null)
+				resolvedJourneyMode = override.getJourneyMode();
+			if (override.getStageId() != null && !override.getStageId().isBlank())
+				resolvedStageId = override.getStageId();
+			if (override.getStepIndex() >= 0)
+				resolvedStepIndex = override.getStepIndex();
 
-					clearProvider = override.isClearProvider();
-					overrideProviderId = override.getProviderId();
-				}
-			}
+			clearProvider = override.isClearProvider();
+			overrideProviderId = override.getProviderId();
 		}
 
 		if (clearProvider) {

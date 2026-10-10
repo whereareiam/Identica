@@ -18,7 +18,11 @@ dependencies {
 	// Identica's configuration and message models and defaults, to build and read the proxy's files through them.
 	anvilImplementation(projects.identicaApi)
 	anvilImplementation(projects.identicaCommon)
+	anvilImplementation(projects.featureRecognitionCommon)
+	anvilImplementation(projects.featureSentinelApi)
+	anvilImplementation(projects.featureSentinelCommon)
 	anvilImplementation(projects.providerCredentialApi)
+	anvilImplementation(projects.providerCredentialCommon)
 	anvilImplementation(projects.providerPremiumApi)
 	anvilImplementation(projects.providerPremiumRuntime)
 	anvilImplementation(libs.anvil.yggdrasil.mock)

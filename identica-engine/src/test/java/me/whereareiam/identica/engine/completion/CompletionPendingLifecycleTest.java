@@ -4,21 +4,29 @@ import me.whereareiam.identica.engine.pipeline.completion.lifecycle.CompletionPe
 import me.whereareiam.identica.engine.pipeline.completion.runtime.CompletionPipeline;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.delivery.DeliveryCheckpointReachedEvent;
+import me.whereareiam.identica.event.identity.IdentityDetachedEvent;
+import me.whereareiam.identica.event.pipeline.attempt.PipelineAttemptFinishedEvent;
 import me.whereareiam.identica.event.routing.completion.CompletionRoutingReachedEvent;
 import me.whereareiam.identica.event.session.SessionOpenedEvent;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.config.Routing;
+import me.whereareiam.identica.model.delivery.DeliveryPayload;
 import me.whereareiam.identica.model.delivery.DeliveryRequest;
+import me.whereareiam.identica.model.delivery.DeliveryTarget;
+import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.completion.CompletionPendingState;
 import me.whereareiam.identica.model.routing.RoutingEndpoint;
 import me.whereareiam.identica.model.routing.RoutingIntent;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptPolicy;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptState;
+import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.service.DeliveryService;
 import me.whereareiam.identica.service.PlatformDeliveryAdapter;
 import me.whereareiam.identica.type.messaging.DeliveryCheckpoint;
+import me.whereareiam.identica.type.messaging.DeliverySemantics;
+import me.whereareiam.identica.type.messaging.DeliverySource;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.routing.reason.RoutingReason;
 import net.kyori.adventure.audience.Audience;
@@ -225,6 +233,166 @@ class CompletionPendingLifecycleTest {
 						&& accountUniqueId.equals(pendingState.getAccountUniqueId())
 		));
 		verify(deliveryService).acknowledge(deliveryId, "completion-dispatched");
+	}
+
+	@DisplayName("Finishing a pipeline without a completion target dispatches completion on the current server")
+	@Test
+	void pipelineFinishedWithoutCompletionTargetDispatchesOnCurrentServer() {
+		DeliveryService deliveryService = mock(DeliveryService.class);
+		CompletionPipeline completionPipeline = mock(CompletionPipeline.class);
+		IdentityService identityService = mock(IdentityService.class);
+		PlatformDeliveryAdapter platformDeliveryAdapter = mock(PlatformDeliveryAdapter.class);
+		EventManager eventManager = mock(EventManager.class);
+		Routing settings = new Routing();
+		CompletionPendingLifecycle lifecycle = new CompletionPendingLifecycle(
+				deliveryService,
+				completionPipeline,
+				identityService,
+				platformDeliveryAdapter,
+				() -> settings,
+				eventManager
+		);
+		UUID connectionUniqueId = UUID.randomUUID();
+		UUID accountUniqueId = UUID.randomUUID();
+		TestIdentity identity = new TestIdentity(connectionUniqueId, accountUniqueId, "PlayerOne");
+		DeliveryRequest request = completionRequest(connectionUniqueId, accountUniqueId, PipelineType.REGISTRATION, "");
+
+		when(identityService.findByConnectionUniqueId(connectionUniqueId)).thenReturn(Optional.of(identity));
+		lifecycle.onDeliveryCheckpointReached(new DeliveryCheckpointReachedEvent(
+				DeliveryCheckpoint.PLATFORM_READY_INITIAL,
+				identity,
+				"lobby"
+		));
+		when(deliveryService.dispatch(argThat(context ->
+				context.getCheckpoint() == DeliveryCheckpoint.PLATFORM_READY_INITIAL
+						&& context.getIdentity() == identity
+						&& "lobby".equals(context.getCurrentServer())
+		))).thenReturn(List.of(request));
+
+		lifecycle.onPipelineAttemptFinished(new PipelineAttemptFinishedEvent(
+				scenarioContext(connectionUniqueId),
+				PipelineType.REGISTRATION,
+				PipelineResult.complete()
+		));
+
+		verify(completionPipeline).complete(eq(identity), argThat((CompletionPendingState pendingState) ->
+				pendingState != null
+						&& pendingState.getPipelineType() == PipelineType.REGISTRATION
+						&& connectionUniqueId.equals(pendingState.getConnectionUniqueId())
+		));
+		verify(deliveryService).acknowledge(request.getId(), "completion-dispatched");
+	}
+
+	@DisplayName("Finishing a pipeline before the player reaches a server keeps completion queued")
+	@Test
+	void pipelineFinishedBeforePlatformReadyKeepsCompletionQueued() {
+		DeliveryService deliveryService = mock(DeliveryService.class);
+		CompletionPipeline completionPipeline = mock(CompletionPipeline.class);
+		IdentityService identityService = mock(IdentityService.class);
+		PlatformDeliveryAdapter platformDeliveryAdapter = mock(PlatformDeliveryAdapter.class);
+		EventManager eventManager = mock(EventManager.class);
+		Routing settings = new Routing();
+		CompletionPendingLifecycle lifecycle = new CompletionPendingLifecycle(
+				deliveryService,
+				completionPipeline,
+				identityService,
+				platformDeliveryAdapter,
+				() -> settings,
+				eventManager
+		);
+		UUID connectionUniqueId = UUID.randomUUID();
+		TestIdentity identity = new TestIdentity(connectionUniqueId, UUID.randomUUID(), "PlayerOne");
+
+		when(identityService.findByConnectionUniqueId(connectionUniqueId)).thenReturn(Optional.of(identity));
+		lifecycle.onDeliveryCheckpointReached(new DeliveryCheckpointReachedEvent(
+				DeliveryCheckpoint.PLATFORM_READY_INITIAL,
+				identity,
+				"lobby"
+		));
+		lifecycle.onIdentityDetached(new IdentityDetachedEvent(connectionUniqueId));
+		clearInvocations(deliveryService);
+
+		lifecycle.onPipelineAttemptFinished(new PipelineAttemptFinishedEvent(
+				scenarioContext(connectionUniqueId),
+				PipelineType.AUTHENTICATION,
+				PipelineResult.complete()
+		));
+
+		verify(deliveryService, never()).dispatch(any());
+		verify(completionPipeline, never()).complete(any(), any());
+	}
+
+	@DisplayName("Finishing a pipeline with a completion target leaves completion to routing")
+	@Test
+	void pipelineFinishedWithCompletionTargetWaitsForRouting() {
+		DeliveryService deliveryService = mock(DeliveryService.class);
+		CompletionPipeline completionPipeline = mock(CompletionPipeline.class);
+		IdentityService identityService = mock(IdentityService.class);
+		PlatformDeliveryAdapter platformDeliveryAdapter = mock(PlatformDeliveryAdapter.class);
+		EventManager eventManager = mock(EventManager.class);
+		Routing settings = new Routing();
+		settings.getDefaults().getComplete().setTarget("survival");
+		CompletionPendingLifecycle lifecycle = new CompletionPendingLifecycle(
+				deliveryService,
+				completionPipeline,
+				identityService,
+				platformDeliveryAdapter,
+				() -> settings,
+				eventManager
+		);
+		UUID connectionUniqueId = UUID.randomUUID();
+		TestIdentity identity = new TestIdentity(connectionUniqueId, UUID.randomUUID(), "PlayerOne");
+
+		when(identityService.findByConnectionUniqueId(connectionUniqueId)).thenReturn(Optional.of(identity));
+		lifecycle.onDeliveryCheckpointReached(new DeliveryCheckpointReachedEvent(
+				DeliveryCheckpoint.PLATFORM_READY_INITIAL,
+				identity,
+				"lobby"
+		));
+		clearInvocations(deliveryService);
+
+		lifecycle.onPipelineAttemptFinished(new PipelineAttemptFinishedEvent(
+				scenarioContext(connectionUniqueId),
+				PipelineType.REGISTRATION,
+				PipelineResult.complete()
+		));
+
+		verify(deliveryService, never()).dispatch(any());
+		verify(completionPipeline, never()).complete(any(), any());
+	}
+
+	private static DeliveryRequest completionRequest(
+			UUID connectionUniqueId,
+			UUID accountUniqueId,
+			PipelineType pipelineType,
+			String requiredServer
+	) {
+		return DeliveryRequest.builder()
+				.id(UUID.randomUUID())
+				.source(DeliverySource.COMPLETION)
+				.target(DeliveryTarget.builder()
+						.connectionUniqueId(connectionUniqueId)
+						.accountUniqueId(accountUniqueId)
+						.build())
+				.payload(DeliveryPayload.builder()
+						.completion(DeliveryPayload.CompletionPayload.builder()
+								.connectionUniqueId(connectionUniqueId)
+								.accountUniqueId(accountUniqueId)
+								.pipelineType(pipelineType)
+								.build())
+						.build())
+				.checkpoint(DeliveryCheckpoint.PLATFORM_READY_INITIAL)
+				.semantics(DeliverySemantics.ONCE)
+				.requiredServer(requiredServer)
+				.createdAt(System.currentTimeMillis())
+				.updatedAt(System.currentTimeMillis())
+				.build();
+	}
+
+	private static ScenarioContext scenarioContext(UUID connectionUniqueId) {
+		ScenarioContext context = mock(ScenarioContext.class);
+		when(context.getConnectionUniqueId()).thenReturn(connectionUniqueId);
+		return context;
 	}
 
 	private static final class TestIdentity extends Identity {

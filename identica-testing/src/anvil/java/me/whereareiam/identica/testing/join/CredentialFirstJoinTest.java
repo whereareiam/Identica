@@ -42,6 +42,17 @@ class CredentialFirstJoinTest {
 		registersWithoutChoosingTheProvider(anvil);
 	}
 
+	@Test
+	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL, routing = false)
+	void completesRegistrationOnTheCurrentServerWithoutRouting(ScenarioContext anvil) {
+		Journey.offline(anvil, "Alice").join()
+				.on(LOBBY)
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
+				.register(PASSWORD)
+				.sees(m -> m.credential().getCompletion().getRegistration().getBody())
+				.remainsOn(LOBBY);
+	}
+
 	private void registersWithoutChoosingTheProvider(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)

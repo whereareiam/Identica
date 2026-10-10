@@ -48,4 +48,10 @@ public @interface Identica {
 	 * Whether registration skips the provider choice when exactly one provider is eligible.
 	 */
 	boolean autoSelectSingleProvider() default false;
+
+	/**
+	 * Whether players are sent to {@code auth} during steps and to {@code lobby} when they are done. Without
+	 * routing, steps and completion have no target and players stay on the server the proxy sends them to.
+	 */
+	boolean routing() default true;
 }

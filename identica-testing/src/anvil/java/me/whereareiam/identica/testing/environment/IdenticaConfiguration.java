@@ -49,11 +49,12 @@ final class IdenticaConfiguration {
 			Set<Provider> enabled,
 			boolean entrypoints,
 			boolean autoSelectSingleProvider,
+			boolean routing,
 			YggdrasilMock yggdrasil
 	) {
 		Map<String, String> files = new LinkedHashMap<>();
 		files.put("engine.yml", write(engine(mode, policy, autoSelectSingleProvider)));
-		files.put("routing.yml", write(routing()));
+		files.put("routing.yml", write(routing(routing)));
 		files.put("settings.yml", write(settings()));
 		files.put("providers/providers.yml", write(providers(enabled, entrypoints)));
 		files.put("providers/Premium/settings.yml", write(premium(yggdrasil)));
@@ -74,10 +75,18 @@ final class IdenticaConfiguration {
 	}
 
 	/**
-	 * Players stay on the auth server during steps and reach the lobby when they are done.
+	 * Players stay on the auth server during steps and reach the lobby when they are done. Without routing, steps
+	 * and completion have no target.
 	 */
-	private static Routing routing() {
+	private static Routing routing(boolean routed) {
 		Routing routing = new RoutingDefaults().supply(new Routing());
+		routing.getScenarios().clear();
+		if (!routed) {
+			routing.getDefaults().getStep().setTarget("");
+			routing.getDefaults().getComplete().setTarget("");
+			return routing;
+		}
+
 		routing.getDefaults().getStep().setTarget(IdenticaNetwork.AUTH);
 
 		RoutingAttemptPolicy untilReached = new RoutingAttemptPolicy();
@@ -86,7 +95,6 @@ final class IdenticaConfiguration {
 		untilReached.setConsumeOnReached(true);
 		routing.getDefaults().getComplete().setTarget(IdenticaNetwork.LOBBY);
 		routing.getDefaults().getComplete().setAttempts(untilReached);
-		routing.getScenarios().clear();
 
 		return routing;
 	}

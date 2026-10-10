@@ -8,27 +8,34 @@ import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.event.delivery.DeliveryCheckpointReachedEvent;
+import me.whereareiam.identica.event.identity.IdentityDetachedEvent;
+import me.whereareiam.identica.event.pipeline.attempt.PipelineAttemptFinishedEvent;
 import me.whereareiam.identica.event.routing.completion.CompletionRoutingReachedEvent;
 import me.whereareiam.identica.event.session.SessionOpenedEvent;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.Identity;
+import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.config.Routing;
 import me.whereareiam.identica.model.delivery.DeliveryDispatchContext;
 import me.whereareiam.identica.model.delivery.DeliveryPayload;
 import me.whereareiam.identica.model.delivery.DeliveryRequest;
 import me.whereareiam.identica.model.delivery.DeliveryTarget;
+import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.completion.CompletionPendingState;
 import me.whereareiam.identica.service.DeliveryService;
 import me.whereareiam.identica.service.PlatformDeliveryAdapter;
 import me.whereareiam.identica.type.messaging.DeliveryCheckpoint;
 import me.whereareiam.identica.type.messaging.DeliverySemantics;
 import me.whereareiam.identica.type.messaging.DeliverySource;
+import me.whereareiam.identica.type.pipeline.PipelineStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Singleton
 public class CompletionPendingLifecycle implements EventListener {
@@ -37,6 +44,7 @@ public class CompletionPendingLifecycle implements EventListener {
 	private final IdentityService identityService;
 	private final PlatformDeliveryAdapter platformDeliveryAdapter;
 	private final Provider<Routing> routingProvider;
+	private final Map<UUID, String> readyServerByConnection = new ConcurrentHashMap<>();
 
 	@Inject
 	public CompletionPendingLifecycle(
@@ -59,7 +67,7 @@ public class CompletionPendingLifecycle implements EventListener {
 	public void onSessionOpened(@NotNull SessionOpenedEvent event) {
 		String completionTarget = resolveCompletionTarget(event.getPipelineType());
 		deliveryService.queue(DeliveryRequest.builder()
-				.id(java.util.UUID.randomUUID())
+				.id(UUID.randomUUID())
 				.source(DeliverySource.COMPLETION)
 				.target(DeliveryTarget.builder()
 						.connectionUniqueId(event.getConnectionUniqueId())
@@ -82,13 +90,49 @@ public class CompletionPendingLifecycle implements EventListener {
 
 	@IdenticEvent
 	public void onDeliveryCheckpointReached(@NotNull DeliveryCheckpointReachedEvent event) {
+		rememberReadyServer(event);
 		dispatchCompletion(event.getIdentity(), event.getCheckpoint(), event.getCurrentServer());
+	}
+
+	@IdenticEvent
+	public void onPipelineAttemptFinished(@NotNull PipelineAttemptFinishedEvent event) {
+		PipelineResult result = event.getResult();
+		if (result == null || result.getStatus() != PipelineStatus.COMPLETE) return;
+		if (!isBlank(resolveCompletionTarget(event.getPipelineType()))) return;
+
+		UUID connectionUniqueId = event.getContext() != null ? event.getContext().getConnectionUniqueId() : null;
+		if (connectionUniqueId == null) return;
+
+		// Without a completion target no routing will re-arm the ready checkpoint, so a player
+		// already on a server would otherwise never receive the completion.
+		String readyServer = readyServerByConnection.get(connectionUniqueId);
+		if (readyServer == null) return;
+
+		identityService.findByConnectionUniqueId(connectionUniqueId).ifPresent(identity -> {
+			Logger.debug("Completion dispatching on current server connection=%s pipeline=%s server=%s",
+					connectionUniqueId, event.getPipelineType(), readyServer);
+			dispatchCompletion(identity, DeliveryCheckpoint.PLATFORM_READY_INITIAL, readyServer);
+		});
+	}
+
+	@IdenticEvent
+	public void onIdentityDetached(@NotNull IdentityDetachedEvent event) {
+		readyServerByConnection.remove(event.getUniqueId());
 	}
 
 	@IdenticEvent
 	public void onCompletionRoutingReached(@NotNull CompletionRoutingReachedEvent event) {
 		identityService.findByConnectionUniqueId(event.getIntent().getConnectionUniqueId())
 				.ifPresent(identity -> platformDeliveryAdapter.armInitialReady(identity, event.getCurrentServer()));
+	}
+
+	private void rememberReadyServer(@NotNull DeliveryCheckpointReachedEvent event) {
+		if (event.getCheckpoint() != DeliveryCheckpoint.PLATFORM_READY_INITIAL) return;
+
+		UUID connectionUniqueId = event.getIdentity().getConnectionUniqueId();
+		if (connectionUniqueId == null || isBlank(event.getCurrentServer())) return;
+
+		readyServerByConnection.put(connectionUniqueId, event.getCurrentServer());
 	}
 
 	private void dispatchCompletion(

@@ -43,6 +43,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
@@ -329,6 +330,160 @@ class ExecutePlanPhaseTest {
 		assertEquals("", sequential.getMessage());
 		assertEquals(PipelineStatus.DENIED, lastProvider.getStatus());
 		assertEquals("", lastProvider.getMessage());
+	}
+
+	@DisplayName("A provider's denial ends the journey with that provider's message")
+	@Test
+	void providerDenialEndsTheJourneyWithItsMessage() {
+		PipelineResult result = providerFallbackResult(new ArrayList<>(), StepResult.denied("locked-out"));
+
+		assertEquals(PipelineStatus.DENIED, result.getStatus());
+		assertEquals("locked-out", result.getMessage());
+	}
+
+	@DisplayName("A provider's denial ends the journey in the same way when the denial has no text")
+	@Test
+	void providerDenialWithoutTextEndsTheJourney() {
+		PipelineResult empty = providerFallbackResult(new ArrayList<>(), StepResult.denied(""));
+		PipelineResult absent = providerFallbackResult(new ArrayList<>(), StepResult.denied(null));
+
+		assertEquals(PipelineStatus.DENIED, empty.getStatus());
+		assertEquals("", empty.getMessage());
+		assertEquals(PipelineStatus.DENIED, absent.getStatus());
+		assertNull(absent.getMessage());
+	}
+
+	@DisplayName("A provider's denial is not bypassed by a later provider")
+	@Test
+	void providerDenialDoesNotFallBackToTheNextProvider() {
+		List<String> executed = new ArrayList<>();
+		PipelineResult result = providerFallbackResult(executed, StepResult.denied("locked-out"), StepResult.complete(null));
+
+		assertEquals(PipelineStatus.DENIED, result.getStatus());
+		assertEquals("locked-out", result.getMessage());
+		assertEquals(List.of("credential"), executed);
+	}
+
+	@DisplayName("A provider that fails still falls back to the next provider")
+	@Test
+	void failedProviderFallsBackToTheNextProvider() {
+		List<String> executed = new ArrayList<>();
+		PipelineResult result = providerFallbackResult(executed, StepResult.failed(""), StepResult.complete(null));
+
+		assertEquals(PipelineStatus.COMPLETE, result.getStatus());
+		assertEquals(List.of("credential", "premium", "end"), executed);
+	}
+
+	@DisplayName("A strict seamless journey still tries the next provider after one needed input")
+	@Test
+	void strictSeamlessJourneyTriesTheNextProviderAfterRefusedInput() {
+		List<String> executed = new ArrayList<>();
+		PipelineResult result = providerFallbackResult(
+				executed, JourneyPolicy.STRICT, StepResult.waiting("prompt", StepWaitReason.INPUT), StepResult.complete(null));
+
+		assertEquals(PipelineStatus.COMPLETE, result.getStatus());
+		assertEquals(List.of("credential", "premium", "end"), executed);
+	}
+
+	private PipelineResult providerFallbackResult(@NotNull List<String> executed, @NotNull StepResult... providerResults) {
+		return providerFallbackResult(executed, JourneyPolicy.PREFER, providerResults);
+	}
+
+	/**
+	 * Runs a seamless authentication plan of one fallback block per provider, credential first and premium second,
+	 * followed by an end block, and records which blocks ran.
+	 */
+	private PipelineResult providerFallbackResult(
+			@NotNull List<String> executed,
+			@NotNull JourneyPolicy policy,
+			@NotNull StepResult... providerResults
+	) {
+		IdentityService identityService = mock(IdentityService.class);
+		when(identityService.findByConnectionUniqueId(any(UUID.class))).thenReturn(Optional.empty());
+
+		Engine settings = settings();
+		settings.getScenarios().getAuthentication().setJourneyMode(JourneyMode.SEAMLESS);
+		settings.getScenarios().getAuthentication().setJourneyPolicy(policy);
+		Messages messages = new Messages();
+		Messages.Engine engine = new Messages.Engine();
+		Messages.Engine.Journey journey = new Messages.Engine.Journey();
+		Messages.Engine.Journey.Step stepMessages = new Messages.Engine.Journey.Step();
+		stepMessages.setInteractionRequired(List.of("interaction-required"));
+		journey.setStep(stepMessages);
+		engine.setJourney(journey);
+		messages.setEngine(engine);
+
+		ExecutePlanPhase phase = new ExecutePlanPhase(
+				identityService,
+				mock(EventManager.class),
+				() -> settings,
+				() -> messages,
+				mock(ProviderManager.class),
+				providerOperations(),
+				mock(RoutingCoordinator.class)
+		);
+
+		UUID accountUniqueId = UUID.randomUUID();
+		AuthContext context = AuthContext.builder()
+				.connectionUniqueId(UUID.randomUUID())
+				.accountUniqueId(accountUniqueId)
+				.identity(new ConnectionIdentity(accountUniqueId, "PlayerOne", "127.0.0.1"))
+				.intendedServer("auth")
+				.build();
+		PipelineState pipelineState = PipelineState.initial();
+		pipelineState.setPipelineType(PipelineType.AUTHENTICATION);
+		pipelineState.setScenario(context);
+
+		JourneyStage providerStage = JourneyStage.builder()
+				.id(StageType.PROVIDER.id())
+				.type(StageType.PROVIDER)
+				.order(200)
+				.pipelineTypes(EnumSet.of(PipelineType.AUTHENTICATION))
+				.journeyModes(EnumSet.of(JourneyMode.SEAMLESS))
+				.allowFallback(true)
+				.build();
+		JourneyStage endStage = JourneyStage.builder()
+				.id(StageType.END.id())
+				.type(StageType.END)
+				.order(300)
+				.pipelineTypes(EnumSet.of(PipelineType.AUTHENTICATION))
+				.journeyModes(EnumSet.of(JourneyMode.SEAMLESS))
+				.allowFallback(true)
+				.build();
+
+		List<String> providerIds = List.of("credential", "premium");
+		List<JourneyExecutionBlock> blocks = new ArrayList<>();
+		for (int index = 0; index < providerResults.length; index++) {
+			String providerId = providerIds.get(index);
+			StepResult providerResult = providerResults[index];
+			Step providerStep = step(providerId, current -> {
+				executed.add(providerId);
+				return providerResult.getStatus() == StepResult.StepStatus.COMPLETE ? StepResult.complete(current) : providerResult;
+			});
+			blocks.add(new JourneyExecutionBlock(
+					"group-provider",
+					JourneyExecutionPolicy.FALLBACK,
+					providerId,
+					List.of(new JourneyExecutionStage(providerStage, List.of(journeyStep(StageType.PROVIDER, providerStep, 10))))
+			));
+		}
+		Step endStep = step("end", current -> {
+			executed.add("end");
+			return StepResult.proceed(current);
+		});
+		blocks.add(new JourneyExecutionBlock(
+				"group-end",
+				JourneyExecutionPolicy.SEQUENTIAL,
+				null,
+				List.of(new JourneyExecutionStage(endStage, List.of(journeyStep(StageType.END, endStep, 10))))
+		));
+
+		JourneyState state = new JourneyState();
+		state.setContext(context);
+		state.setJourneyMode(JourneyMode.SEAMLESS);
+		state.setExecutionPlan(new JourneyExecutionPlan(blocks));
+
+		return phase.execute(pipelineState, state).toCompletableFuture().join().getState().getResult();
 	}
 
 	private PipelineResult seamlessWaitingResult(@NotNull JourneyPolicy policy, @NotNull StepWaitReason reason) {

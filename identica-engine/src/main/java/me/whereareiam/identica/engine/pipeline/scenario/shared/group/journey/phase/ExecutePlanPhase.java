@@ -266,6 +266,12 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 				break;
 			}
 
+			// A provider that refuses the player ends the journey with its own reason; trying the next provider
+			// would bypass the refusal. Only refused input is a limit of the journey mode, which another provider
+			// may not hit.
+			if (status == PipelineStatus.DENIED && !interactionDenials.contains(blockResult))
+				return new FallbackOutcome(blockResult, null);
+
 			if (status == PipelineStatus.FAILED
 					|| status == PipelineStatus.DENIED
 					|| status == PipelineStatus.NO_PENDING) {

@@ -17,6 +17,8 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
  */
 class CredentialReturningJoinTest {
 	private static final String PASSWORD = "Secret-123";
+	/** Wrong passwords Credential's brute-force sentinel allows by default before it locks the account out. */
+	private static final int ALLOWED_ATTEMPTS = 5;
 
 	@Test
 	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
@@ -42,6 +44,20 @@ class CredentialReturningJoinTest {
 				.login(PASSWORD)
 				.on(LOBBY)
 				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	void locksTheAccountOutWithTheConfiguredMessageAfterTheLastAllowedWrongPassword(ScenarioContext anvil) {
+		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
+
+		Journey alice = Journey.offline(anvil, "Alice").join()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt());
+		for (int attempt = 1; attempt < ALLOWED_ATTEMPTS; attempt++)
+			alice.login("Wrong-456").sees(m -> m.credential().getScenario().getAuthentication().getStatus().getInvalid());
+
+		alice.login("Wrong-456").kickedWith(m -> m.credential().getScenario().getAuthentication().getBruteforce().getExceeded());
 	}
 
 	@Test

@@ -71,15 +71,16 @@ public class DefaultPipelineStateStore implements PipelineStateStore {
 		long now = System.currentTimeMillis();
 		PipelineStateRecord existing = resolvePrimaryRecord(aliases, now);
 		long expiresAt = now + ttlMs;
+		PipelineState saved = state.withoutInputItems();
 		PipelineStateRecord record = new PipelineStateRecord(
 				existing != null && !existing.id.isBlank() ? existing.id : UUID.randomUUID().toString(),
-				state,
+				saved,
 				aliases,
 				expiresAt
 		);
 
 		replaceAliases(record, existing, ttlMs);
-		EventUtil.callEvent(new PipelineStateSavedEvent(reference, state, expiresAt));
+		EventUtil.callEvent(new PipelineStateSavedEvent(reference, saved, expiresAt));
 	}
 
 	@Override

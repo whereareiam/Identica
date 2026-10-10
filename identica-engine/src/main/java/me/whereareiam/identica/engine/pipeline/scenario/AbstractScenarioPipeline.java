@@ -187,6 +187,8 @@ public abstract class AbstractScenarioPipeline {
 					}
 				})
 				.thenApply(ignored -> {
+					// Input such as a password belongs to this run, whether or not a step took it.
+					pipelineState.removeInputItems();
 					PipelineResult result = executionState.result;
 					if (result == null) result = failedNoCompletion();
 					result = result.withState(pipelineState);

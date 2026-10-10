@@ -30,7 +30,7 @@ public interface PipelineStateStore {
 	@NotNull PipelineState load(@NotNull PipelineStateReference reference);
 
 	/**
-	 * Saves a pipeline state snapshot with a time-to-live.
+	 * Saves a pipeline state snapshot with a time-to-live. {@link PipelineInputItem Input items} are never saved.
 	 *
 	 * @param reference state reference
 	 * @param state pipeline state

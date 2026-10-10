@@ -51,7 +51,20 @@ public final class PipelineState {
 		List<StateItem> next = new ArrayList<>(safeItems());
 		next.removeIf(record -> record != null && typeName.equals(record.type));
 		long expiresAt = ttlMs > 0 ? System.currentTimeMillis() + ttlMs : 0L;
-		next.add(new StateItem(typeName, encode(item), expiresAt));
+		next.add(new StateItem(typeName, encode(item), expiresAt, item instanceof PipelineInputItem));
+		return new PipelineState(pipelineType, cursor, next, System.currentTimeMillis());
+	}
+
+	/**
+	 * Returns the state without its {@link PipelineInputItem input items}, or this state when it holds none.
+	 *
+	 * @return state without input items
+	 */
+	public @NotNull PipelineState withoutInputItems() {
+		if (safeItems().stream().noneMatch(PipelineState::isInput)) return this;
+
+		List<StateItem> next = new ArrayList<>(safeItems());
+		next.removeIf(PipelineState::isInput);
 		return new PipelineState(pipelineType, cursor, next, System.currentTimeMillis());
 	}
 
@@ -143,8 +156,23 @@ public final class PipelineState {
 		this.updatedAt = updated.updatedAt;
 	}
 
+	/**
+	 * Removes the {@link PipelineInputItem input items}, such as a password, a run was given.
+	 */
+	public void removeInputItems() {
+		PipelineState updated = withoutInputItems();
+		if (updated == this) return;
+
+		this.items = updated.items;
+		this.updatedAt = updated.updatedAt;
+	}
+
 	private @NotNull List<StateItem> safeItems() {
 		return items;
+	}
+
+	private static boolean isInput(@Nullable StateItem record) {
+		return record != null && record.input;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -171,5 +199,15 @@ public final class PipelineState {
 		private String type;
 		private String payload;
 		private long expiresAt;
+		/**
+		 * Whether the item is a {@link PipelineInputItem}. It is never written: input items are removed before a
+		 * state is saved.
+		 */
+		@JsonIgnore
+		private boolean input;
+
+		public StateItem(String type, String payload, long expiresAt) {
+			this(type, payload, expiresAt, false);
+		}
 	}
 }

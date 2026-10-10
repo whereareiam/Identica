@@ -18,19 +18,41 @@ import java.nio.file.Path;
 import java.util.Map;
 
 /**
- * Builds the network Identica runs in: one Velocity proxy with the packaged plugin and providers, an auth
+ * Builds the network Identica runs in: Velocity proxies with the packaged plugin and providers, an auth
  * server where players stay during authentication and registration steps, and a lobby they reach afterwards.
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class IdenticaNetwork {
 	public static final String PROXY = "proxy";
+	/** The first proxy of a cluster, through which players join unless they choose another one. */
+	public static final String PROXY_A = "proxy-a";
+	public static final String PROXY_B = "proxy-b";
 	public static final String AUTH = "auth";
 	public static final String LOBBY = "lobby";
 
 	/** Identica's data directory inside the proxy workspace. */
 	public static final String DATA = "plugins/identica";
 
-	public static AnvilScenario velocity(String name, Map<String, String> configuration, URI sessionServer) {
+	/**
+	 * Builds a network of Velocity proxies that share the {@code auth} and {@code lobby} servers. Players join
+	 * through the first proxy unless they choose another one.
+	 *
+	 * @param name scenario name
+	 * @param proxies configuration files by path inside Identica's data directory, for each proxy name
+	 * @param sessionServer session server the proxies verify online players against
+	 */
+	public static AnvilScenario velocity(String name, Map<String, Map<String, String>> proxies, URI sessionServer) {
+		AnvilScenario.AnvilScenarioBuilder scenario = AnvilScenario.builder()
+				.name(name)
+				.entrypoint(proxies.keySet().iterator().next())
+				.server(backend(AUTH))
+				.server(backend(LOBBY));
+		proxies.forEach((proxy, configuration) -> scenario.proxy(proxy(proxy, configuration, sessionServer)));
+
+		return scenario.build();
+	}
+
+	private static MinecraftProxy proxy(String name, Map<String, String> configuration, URI sessionServer) {
 		WorkspacePlan.WorkspacePlanBuilder workspace = WorkspacePlan.builder()
 				.asset(artifact("identica", Path.of("plugins", "identica.jar")))
 				.asset(artifact("credential", Path.of(DATA, "providers", "credential.jar")))
@@ -43,10 +65,8 @@ public final class IdenticaNetwork {
 				.target(Path.of(DATA, file))
 				.build()));
 
-		MinecraftServer auth = backend(AUTH);
-		MinecraftServer lobby = backend(LOBBY);
-		MinecraftProxy proxy = MinecraftProxy.builder()
-				.name(PROXY)
+		return MinecraftProxy.builder()
+				.name(name)
 				.platform(Platforms.VELOCITY)
 				.distribution(Distribution.remote("3.5.1", "615"))
 				.workspace(workspace.build())
@@ -56,8 +76,6 @@ public final class IdenticaNetwork {
 				.setting("advanced.login-ratelimit", "0")
 				.sessionServer(sessionServer)
 				.build();
-
-		return AnvilScenario.builder().name(name).entrypoint(PROXY).server(auth).server(lobby).proxy(proxy).build();
 	}
 
 	private static MinecraftServer backend(String name) {

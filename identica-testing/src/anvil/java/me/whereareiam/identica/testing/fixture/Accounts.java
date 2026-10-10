@@ -31,7 +31,18 @@ public final class Accounts {
 	 * leaves the network. The returned journey continues with the same player.
 	 */
 	public static Journey credential(ScenarioContext anvil, String username, String password) {
-		Journey player = Journey.offline(anvil, username).join().on(IdenticaNetwork.AUTH);
+		return register(Journey.offline(anvil, username), password);
+	}
+
+	/**
+	 * Registers a Credential account through one proxy of a cluster and leaves the network.
+	 */
+	public static Journey credential(ScenarioContext anvil, String username, String password, String proxy) {
+		return register(Journey.offline(anvil, username, proxy), password);
+	}
+
+	private static Journey register(Journey client, String password) {
+		Journey player = client.join().on(IdenticaNetwork.AUTH);
 		int asked = player.seesAnyOf(
 				m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody(),
 				m -> m.credential().getScenario().getRegistration().getPrompt());

@@ -52,14 +52,14 @@ public final class Journey {
 	private int connections;
 	private String matched = "";
 
-	private Journey(ScenarioContext anvil, SimulatedPlayer player, String name) {
+	private Journey(ScenarioContext anvil, SimulatedPlayer player, String name, String proxy) {
 		this.name = name;
 		this.session = player.capability(Session.class);
 		this.messages = player.capability(Messages.class);
 		this.server = player.capability(Server.class);
-		this.proxy = anvil.processes().proxy(IdenticaNetwork.PROXY).console();
-		this.configured = new IdenticaMessages(anvil.processes().proxy(IdenticaNetwork.PROXY).workDirectory().resolve(IdenticaNetwork.DATA));
-		this.console = proxy.checkpoint();
+		this.proxy = anvil.processes().proxy(proxy).console();
+		this.configured = new IdenticaMessages(anvil.processes().proxy(proxy).workDirectory().resolve(IdenticaNetwork.DATA));
+		this.console = this.proxy.checkpoint();
 		this.read = messages.checkpoint();
 	}
 
@@ -67,7 +67,21 @@ public final class Journey {
 	 * Creates an offline player that has not connected yet.
 	 */
 	public static Journey offline(ScenarioContext anvil, String name) {
-		return new Journey(anvil, anvil.players().create(name), name);
+		String proxy = anvil.definition().getEntrypoint();
+		return new Journey(anvil, anvil.players().create(name), name, proxy);
+	}
+
+	/**
+	 * Creates an offline client that has not connected yet and joins through one proxy of a cluster. Several
+	 * clients may use one username, each through its own proxy.
+	 */
+	public static Journey offline(ScenarioContext anvil, String name, String proxy) {
+		SimulatedPlayer player = anvil.players().create(PlayerOptions.builder()
+				.name(name + "@" + proxy)
+				.username(name)
+				.connectTo(proxy)
+				.build());
+		return new Journey(anvil, player, name, proxy);
 	}
 
 	/**
@@ -80,7 +94,7 @@ public final class Journey {
 				.authentication(AuthenticationMode.ON_REQUEST)
 				.sessionIdentity(account)
 				.build());
-		return new Journey(anvil, player, account.getUsername());
+		return new Journey(anvil, player, account.getUsername(), anvil.definition().getEntrypoint());
 	}
 
 	/**

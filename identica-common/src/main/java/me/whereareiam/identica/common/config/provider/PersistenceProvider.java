@@ -13,6 +13,7 @@ import me.whereareiam.identica.config.ConfigProvider;
 import me.whereareiam.identica.model.config.persistence.Persistence;
 import me.whereareiam.identica.model.config.persistence.SqlitePersistence;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 @Singleton
@@ -37,11 +38,13 @@ public class PersistenceProvider extends ConfigProvider<Persistence> {
 		return resolvePersistenceClass(path);
 	}
 
+	/**
+	 * A new installation uses SQLite. An existing file must name a type Identica knows: one it cannot read stops
+	 * the startup instead of silently running on an empty SQLite database.
+	 */
 	private Class<? extends Persistence> resolvePersistenceClass(Path path) {
-		try {
-			return read(path, Persistence.class).getClass().asSubclass(Persistence.class);
-		} catch (RuntimeException ignored) {
-			return SqlitePersistence.class;
-		}
+		if (!Files.exists(Path.of(path + configura().extension()))) return SqlitePersistence.class;
+
+		return read(path, Persistence.class).getClass().asSubclass(Persistence.class);
 	}
 }

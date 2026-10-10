@@ -5,12 +5,13 @@ description: Field-by-field explanation of Identica's persistence configuration 
 
 The persistence configuration selects which database backend Identica uses and how the connection pool is configured.
 
-By default, Identica falls back to SQLite when the persistence type cannot be resolved from an existing config.
+Identica uses SQLite when the file does not exist yet or does not set `type`.
 
 ## type
 
 - Takes: `"SQLITE"`, `"H2"`, `"MYSQL"`, or `"POSTGRES"`
-- Current default behavior: SQLite is the fallback backend
+- Current default: `"SQLITE"`
+- Values are case-sensitive. Any other value stops the startup with an error that names `type`, the value and the accepted values, and the file is left as it is. Since a failed startup refuses every connection, Identica never runs on a database the file did not ask for.
 - Affects: which persistence backend class and JDBC URL strategy are used
 
 ## Backend-specific fields

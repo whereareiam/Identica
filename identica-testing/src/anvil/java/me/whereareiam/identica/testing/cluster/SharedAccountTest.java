@@ -42,6 +42,39 @@ class SharedAccountTest {
 	}
 
 	@Test
+	@IdenticaCluster(step = "", complete = "")
+	void completesOnTheServerThePlayerIsOnThroughEitherProxyWithoutRouting(ScenarioContext anvil) {
+		returnsThroughTheOtherProxyWithoutRouting(anvil);
+	}
+
+	@Test
+	@IdenticaCluster(replication = false, step = "", complete = "")
+	void completesOnTheServerThePlayerIsOnWhenTheProxiesOnlyShareTheDatabase(ScenarioContext anvil) {
+		returnsThroughTheOtherProxyWithoutRouting(anvil);
+	}
+
+	/**
+	 * Registers through one proxy and logs in through the other while both leave the player on the lobby.
+	 */
+	private static void returnsThroughTheOtherProxyWithoutRouting(ScenarioContext anvil) {
+		Journey.offline(anvil, "Alice", PROXY_A).join()
+				.on(LOBBY)
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
+				.register(PASSWORD)
+				.sees(m -> m.credential().getCompletion().getRegistration().getBody())
+				.remainsOn(LOBBY)
+				.leave();
+
+		Journey.offline(anvil, "Alice", PROXY_B).join()
+				.on(LOBBY)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody())
+				.doesNotSee(m -> m.credential().getCompletion().getRegistration().getBody())
+				.remainsOn(LOBBY);
+	}
+
+	@Test
 	@IdenticaCluster
 	void disconnectsAPlayerWhoseAccountIsDeletedOnTheOtherProxy(ScenarioContext anvil) {
 		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD, PROXY_B).rejoin()

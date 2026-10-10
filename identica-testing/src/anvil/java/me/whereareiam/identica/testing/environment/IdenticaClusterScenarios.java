@@ -42,15 +42,16 @@ public final class IdenticaClusterScenarios implements AnvilScenarioFactory<Iden
 		Map<String, Map<String, String>> proxies = new LinkedHashMap<>();
 		for (String proxy : List.of(IdenticaNetwork.PROXY_A, IdenticaNetwork.PROXY_B)) {
 			Map<String, String> configuration = IdenticaConfiguration.files(JourneyMode.INTERACTIVE, JourneyPolicy.PREFER,
-					EnumSet.of(Provider.CREDENTIAL), false, true, yggdrasil);
+					EnumSet.of(Provider.CREDENTIAL), false, true, cluster.step(), cluster.complete(), yggdrasil);
 			configuration.put("persistence.yml", IdenticaConfiguration.write(persistence(database)));
 			if (redis != null)
 				configuration.put("replication.yml", IdenticaConfiguration.write(replication(proxy, redis)));
 			proxies.put(proxy, configuration);
 		}
 
-		return IdenticaNetwork.velocity(redis == null ? "identica-cluster-database" : "identica-cluster-replicated",
-				proxies, yggdrasil.sessionServer());
+		String name = String.join("-", "identica-cluster", redis == null ? "database" : "replicated",
+				IdenticaScenarios.routing(cluster.step(), cluster.complete()));
+		return IdenticaNetwork.velocity(name, proxies, yggdrasil.sessionServer());
 	}
 
 	private static <C extends GenericContainer<?>> C started(C container) {

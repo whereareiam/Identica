@@ -25,6 +25,8 @@ If this target is blank and no scenario target resolves, Identica clears the cur
 
 This is usually the place to send players back into the normal network after authentication, registration, or migration is done.
 
+If this target is blank and no scenario target resolves, the player is not moved. A player who completes the scenario while already on a server receives the completion messages there; a player who completes it while joining receives them once connected to the first server.
+
 <Tabs items={["YAML", "JSON"]}>
   <Tab value="YAML">
 ```yaml

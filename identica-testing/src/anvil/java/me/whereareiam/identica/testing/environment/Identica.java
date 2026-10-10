@@ -1,6 +1,8 @@
 package me.whereareiam.identica.testing.environment;
 
 import me.whereareiam.anvil.integration.junit.AnvilEnvironment;
+import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

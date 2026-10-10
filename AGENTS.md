@@ -146,7 +146,7 @@ Do not replace these libraries with unrelated alternatives in the same area unle
 - add or update a journey when a change affects what a joining player experiences
 - declare the network with `@Identica`, describe the player with `Journey`, and keep player-facing texts in `Prompt`
 - a failed test keeps its network under `identica-testing/build/anvil/`; read the `anvil-console.log` files there, where Identica's debug logging is enabled
-- tests tagged `premium` need a locally stored Minecraft account and skip themselves without one; never add real account credentials to the repository or CI
+- premium accounts come from the local Mojang stand-in (`Mojang.service().register(...)`), which also verifies premium logins; never add real account credentials to the repository or CI
 
 See `docs/content/developer/testing/index.mdx`.
 

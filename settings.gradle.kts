@@ -4,12 +4,6 @@ enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 pluginManagement {
     includeBuild("build-logic")
 
-    // The live test module follows one Anvil version for its plugins and modules.
-    val anvilVersion = providers.gradleProperty("anvilVersion").get()
-    resolutionStrategy.eachPlugin {
-        if (requested.id.id.startsWith("me.whereareiam.anvil")) useVersion(anvilVersion)
-    }
-
     repositories {
         mavenLocal()
         gradlePluginPortal()

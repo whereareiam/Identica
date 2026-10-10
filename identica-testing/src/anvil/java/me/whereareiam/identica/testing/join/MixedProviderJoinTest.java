@@ -2,9 +2,9 @@ package me.whereareiam.identica.testing.join;
 
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.identica.testing.environment.Identica;
-import me.whereareiam.identica.testing.environment.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.testing.environment.Provider;
-import me.whereareiam.identica.testing.fixture.MojangProfiles;
+import me.whereareiam.identica.testing.fixture.Mojang;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.testing.journey.Prompt;
 import org.junit.jupiter.api.Test;
@@ -33,10 +33,10 @@ class MixedProviderJoinTest {
 	@Test
 	@Identica(mode = JourneyMode.SEAMLESS)
 	void refusesThePremiumUsernameOnceThenFallsBackToCredential(ScenarioContext anvil) {
-		MojangProfiles.premium("Alice");
+		Mojang.service().register("Alice");
 
 		Journey alice = Journey.offline(anvil, "Alice").attempt();
-		alice.refused();
+		alice.authenticationRequired();
 
 		alice.rejoin()
 				.on(AUTH)
@@ -49,7 +49,7 @@ class MixedProviderJoinTest {
 	@Test
 	@Identica(mode = JourneyMode.INTERACTIVE)
 	void offersBothProvidersForAPremiumUsernameInInteractiveMode(ScenarioContext anvil) {
-		MojangProfiles.premium("Alice");
+		Mojang.service().register("Alice");
 
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
@@ -73,7 +73,7 @@ class MixedProviderJoinTest {
 	@Test
 	@Identica(mode = JourneyMode.INTERACTIVE)
 	void sendsAnOfflinePlayerWhoChoosesPremiumBackToTheProviderChoice(ScenarioContext anvil) {
-		MojangProfiles.premium("Alice");
+		Mojang.service().register("Alice");
 
 		Journey alice = Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
@@ -81,7 +81,7 @@ class MixedProviderJoinTest {
 				.enroll(Provider.PREMIUM)
 				.kickedWith(Prompt.PREMIUM_REJOIN_TO_VERIFY);
 
-		alice.attemptAgain().refused();
+		alice.attemptAgain().authenticationRequired();
 
 		alice.rejoin()
 				.on(AUTH)
@@ -95,8 +95,8 @@ class MixedProviderJoinTest {
 	@Test
 	@Identica(mode = JourneyMode.SEAMLESS)
 	void treatsAPremiumUsernameAsOrdinaryWhileTheLookupIsUnavailable(ScenarioContext anvil) {
-		MojangProfiles.premium("Alice");
-		MojangProfiles.unavailable();
+		Mojang.service().register("Alice");
+		Mojang.service().available(false);
 
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)

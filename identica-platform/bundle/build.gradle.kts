@@ -1,3 +1,3 @@
 plugins {
-    id("bundle")
+    id("packaging-bundle-jar")
 }

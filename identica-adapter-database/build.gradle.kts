@@ -1,7 +1,7 @@
 import me.whereareiam.attache.plugin.gradle.extension.AttacheExtension
 
 plugins {
-    id("shared")
+    id("module-java")
     alias(libs.plugins.attache)
 }
 

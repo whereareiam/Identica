@@ -2,8 +2,8 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.gradle.jvm.tasks.Jar
 
 plugins {
-    id("shared")
-    id("relocations")
+    id("module-java")
+    id("packaging-relocations")
 }
 
 tasks.withType<ShadowJar>().configureEach {

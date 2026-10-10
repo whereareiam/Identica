@@ -1,5 +1,5 @@
 plugins {
-    id("platform")
+    id("packaging-platform-jar")
     alias(libs.plugins.attache)
 }
 

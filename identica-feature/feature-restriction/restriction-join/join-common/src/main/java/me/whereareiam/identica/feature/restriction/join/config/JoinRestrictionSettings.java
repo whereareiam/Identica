@@ -3,7 +3,6 @@ package me.whereareiam.identica.feature.restriction.join.config;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import me.whereareiam.configura.ConfigDocument;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -12,7 +11,7 @@ import org.jetbrains.annotations.NotNull;
 @Getter
 @Setter
 @ToString
-public class JoinRestrictionSettings extends ConfigDocument {
+public class JoinRestrictionSettings {
 	private boolean enabled;
 	private @NotNull java.util.List<String> allow = new java.util.ArrayList<>();
 

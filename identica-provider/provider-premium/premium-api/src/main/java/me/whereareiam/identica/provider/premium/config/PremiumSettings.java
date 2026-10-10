@@ -3,7 +3,6 @@ package me.whereareiam.identica.provider.premium.config;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import me.whereareiam.configura.ConfigDocument;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
@@ -14,7 +13,7 @@ import java.time.Duration;
 @Getter
 @Setter
 @ToString
-public class PremiumSettings extends ConfigDocument {
+public class PremiumSettings {
 	private @NotNull Lookup lookup = new Lookup();
 	private @NotNull Replication replication = new Replication();
 	/**

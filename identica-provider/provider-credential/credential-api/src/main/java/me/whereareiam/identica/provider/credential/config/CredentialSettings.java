@@ -3,14 +3,13 @@ package me.whereareiam.identica.provider.credential.config;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import me.whereareiam.configura.ConfigDocument;
 
 import java.time.Duration;
 
 @Getter
 @Setter
 @ToString
-public class CredentialSettings extends ConfigDocument {
+public class CredentialSettings {
 	private Scenario scenario;
 	private Replication replication;
 	private Cryptography cryptography;

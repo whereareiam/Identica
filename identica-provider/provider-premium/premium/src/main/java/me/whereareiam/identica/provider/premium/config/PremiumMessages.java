@@ -3,7 +3,6 @@ package me.whereareiam.identica.provider.premium.config;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import me.whereareiam.configura.ConfigDocument;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -11,7 +10,7 @@ import java.util.List;
 @Getter
 @Setter
 @ToString
-public class PremiumMessages extends ConfigDocument {
+public class PremiumMessages {
 	private @NotNull Verification verification;
 	private @NotNull Completion completion;
 	private @NotNull Commands commands;

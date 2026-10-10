@@ -3,7 +3,6 @@ package me.whereareiam.identica.feature.recognition.config;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import me.whereareiam.configura.ConfigDocument;
 import me.whereareiam.identica.feature.recognition.type.RecognitionSignal;
 import org.jetbrains.annotations.NotNull;
 
@@ -13,7 +12,7 @@ import java.util.List;
 @Getter
 @Setter
 @ToString
-public class RecognitionSettings extends ConfigDocument {
+public class RecognitionSettings {
 	private boolean enabled;
 	private @NotNull Duration validity;
 	private @NotNull Duration window;

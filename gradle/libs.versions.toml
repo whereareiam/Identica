@@ -12,11 +12,11 @@ lombok = "1.18.42"
 
 # general
 attache = "dev-58f53b4"
-configura = "1.0.0"
+configura = "2.0.0"
 commandant = "dev-642fe14"
 keystone = "dev-790a33e"
 dialectica = "1.0.2"
-strata = "1.0.0"
+strata = "2.0.0"
 
 guice = "7.0.0"
 annotations = "26.0.1"
@@ -76,7 +76,8 @@ configura-feature-polymorphic = { group = "me.whereareiam.configura.feature", na
 configura-feature-postprocess = { group = "me.whereareiam.configura.feature", name = "postprocess", version.ref = "configura" }
 commandant = { group = "me.whereareiam", name = "commandant", version.ref = "commandant" }
 keystone = { group = "me.whereareiam", name = "keystone", version.ref = "keystone" }
-strata-common = { group = "me.whereareiam", name = "strata-common", version.ref = "strata" }
+strata = { group = "me.whereareiam", name = "strata", version.ref = "strata" }
+strata-adapter-configura = { group = "me.whereareiam", name = "strata-adapter-configura", version.ref = "strata" }
 dialectica = { group = "me.whereareiam", name = "dialectica", version.ref = "dialectica" }
 jedis = { group = "redis.clients", name = "jedis", version.ref = "jedis" }
 bStats = { group = "org.bstats", name = "bstats-base", version.ref = "bStats" }

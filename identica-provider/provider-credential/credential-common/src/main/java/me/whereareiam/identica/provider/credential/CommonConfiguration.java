@@ -3,7 +3,7 @@ package me.whereareiam.identica.provider.credential;
 import com.google.inject.AbstractModule;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Names;
-import me.whereareiam.identica.model.config.Commands;
+import me.whereareiam.identica.model.config.CommandCatalog;
 import me.whereareiam.identica.provider.credential.account.AutoupgradeLifecycle;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.account.DefaultCredentialAccountService;
@@ -34,7 +34,7 @@ public class CommonConfiguration extends AbstractModule {
 		bind(CredentialCommands.class)
 				.annotatedWith(Names.named("credential"))
 				.toProvider(CredentialCommandsProvider.class);
-		bind(Commands.class)
+		bind(CommandCatalog.class)
 				.annotatedWith(Names.named("credential"))
 				.toProvider(CredentialCommandsProvider.class);
 

@@ -3,7 +3,6 @@ package me.whereareiam.identica.feature.restriction.config;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import me.whereareiam.configura.ConfigDocument;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
@@ -14,7 +13,7 @@ import java.time.Duration;
 @Getter
 @Setter
 @ToString
-public class RestrictionSettings extends ConfigDocument {
+public class RestrictionSettings {
 	private boolean enabled = true;
 
 	private @NotNull Duration toggleTtl;

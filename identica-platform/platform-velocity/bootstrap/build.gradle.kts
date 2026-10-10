@@ -25,5 +25,6 @@ dependencies {
 
     attache(libs.cloud.velocity)
 
-    testRuntimeOnly(libs.strata.common)
+    testRuntimeOnly(libs.strata)
+    testRuntimeOnly(libs.strata.adapter.configura)
 }

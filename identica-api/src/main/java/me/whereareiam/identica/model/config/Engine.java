@@ -3,7 +3,6 @@ package me.whereareiam.identica.model.config;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import me.whereareiam.configura.ConfigDocument;
 import me.whereareiam.identica.type.pipeline.PipelineConcurrencyPolicy;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
@@ -17,7 +16,7 @@ import java.time.Duration;
 @Getter
 @Setter
 @ToString
-public class Engine extends ConfigDocument {
+public class Engine {
 	private @NotNull Behavior behavior = new Behavior();
 	private @NotNull Scenarios scenarios = new Scenarios();
 

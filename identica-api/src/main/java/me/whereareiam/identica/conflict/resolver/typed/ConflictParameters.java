@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import me.whereareiam.configura.Config;
 import me.whereareiam.configura.Configura;
+import me.whereareiam.configura.type.Format;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,7 +33,7 @@ public final class ConflictParameters {
 			@NotNull Class<T> type
 	) {
 		JsonNode safe = node != null ? node : JsonNodeFactory.instance.objectNode();
-		Configura config = Config.yaml();
+		Configura config = Config.configured().toBuilder().format(Format.YAML).build();
 		return config.read(config.writeNodeBytes(safe), type);
 	}
 }

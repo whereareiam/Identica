@@ -21,7 +21,8 @@ dependencies {
     attache(libs.adventure.platform.bungeecord)
     attache(libs.cloud.bungee)
 
-    testRuntimeOnly(libs.strata.common)
+    testRuntimeOnly(libs.strata)
+    testRuntimeOnly(libs.strata.adapter.configura)
 }
 
 tasks.processResources {

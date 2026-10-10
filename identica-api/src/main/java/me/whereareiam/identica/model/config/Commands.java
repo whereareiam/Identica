@@ -3,23 +3,19 @@ package me.whereareiam.identica.model.config;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import me.whereareiam.configura.ConfigDocument;
-import me.whereareiam.identica.model.CommandDefinition;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
- * Configuration for command definitions and command-scoped behavior settings.
+ * Core's command document: the definitions of the core commands and the behavior settings they
+ * share.
  */
 @Getter
 @Setter
-@ToString
-public class Commands extends ConfigDocument {
+@ToString(callSuper = true)
+public class Commands extends CommandCatalog {
 	private @NotNull Behavior behavior;
-	private @NotNull Map<String, CommandDefinition> commands = new HashMap<>();
 
 	/**
 	 * Configuration for command-specific behavior.

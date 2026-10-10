@@ -5,7 +5,7 @@ import lombok.Setter;
 import lombok.ToString;
 import me.whereareiam.configura.annotation.merge.Merge;
 import me.whereareiam.configura.feature.extension.api.annotation.ExtendableDocument;
-import me.whereareiam.configura.merge.strategy.DeclaredObjectDefaults;
+import me.whereareiam.configura.type.merge.WhenAbsent;
 import me.whereareiam.identica.model.config.provider.Providers;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -20,7 +20,7 @@ import java.util.List;
 @Setter
 @ToString
 public class JoinRestrictionFeatures extends Providers.ProviderEntry.Features {
-	@Merge(DeclaredObjectDefaults.class)
+	@Merge(absent = WhenAbsent.LEAVE_ABSENT)
 	@ExtendableDocument
 	private @Nullable Restriction restriction;
 
@@ -29,7 +29,7 @@ public class JoinRestrictionFeatures extends Providers.ProviderEntry.Features {
 	@ToString
 	@ExtendableDocument
 	public static class Restriction {
-		@Merge(DeclaredObjectDefaults.class)
+		@Merge(absent = WhenAbsent.LEAVE_ABSENT)
 		@ExtendableDocument
 		private @Nullable Join join;
 

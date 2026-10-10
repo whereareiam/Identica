@@ -39,11 +39,13 @@ public class SessionCloseRequest {
 	 */
 	private @NotNull UUID uniqueId;
 	/**
-	 * Connection whose session is closed. When set, the account's session is only closed while it
-	 * belongs to this connection, so a connection never ends a newer session of the same account
-	 * held by another connection, and a disconnect reaches only this connection on the proxy that
-	 * holds it. When {@code null}, the account's session is closed whatever connection holds it and a
-	 * disconnect reaches every connection of the account. A missing server id means this proxy.
+	 * Connection whose session is closed. When set, only the session that belongs to this connection
+	 * is closed, so a connection never ends a session of the same account held by another connection,
+	 * and a disconnect reaches only this connection on the proxy that holds it. When {@code null},
+	 * every session of the account is closed; the request each {@code SessionClosedEvent} carries then
+	 * names the connection of the session it closed, so a disconnect reaches each of them. Only when
+	 * the account has no session does a disconnect go to its connection on every proxy by account.
+	 * A missing server id means this proxy.
 	 */
 	private @Nullable SessionConnection connection;
 	/**

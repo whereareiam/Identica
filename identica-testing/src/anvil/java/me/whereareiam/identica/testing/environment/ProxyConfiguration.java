@@ -58,10 +58,12 @@ public final class ProxyConfiguration {
 	private static final String SENTINEL = "features/sentinel/settings.yml";
 	private static final String RECOGNITION = "features/recognition/settings.yml";
 
+	private final String name;
 	private final Map<String, Object> documents = new LinkedHashMap<>();
 	private final Map<String, String> unreadable = new LinkedHashMap<>();
 
 	ProxyConfiguration(
+			String name,
 			JourneyMode mode,
 			JourneyPolicy policy,
 			Set<Provider> enabled,
@@ -71,11 +73,20 @@ public final class ProxyConfiguration {
 			String complete,
 			YggdrasilMock yggdrasil
 	) {
+		this.name = name;
 		documents.put(ENGINE, defaultEngine(mode, policy, autoSelectSingleProvider));
 		documents.put(ROUTING, defaultRouting(step, complete));
 		documents.put(SETTINGS, defaultSettings());
 		documents.put(PROVIDERS, defaultProviders(enabled, entrypoints));
 		documents.put(PREMIUM, defaultPremium(yggdrasil));
+	}
+
+	/**
+	 * Returns the name of the proxy these files are for, such as {@link IdenticaNetwork#PROXY_B}, for a
+	 * change that only one proxy of a cluster gets.
+	 */
+	public String name() {
+		return name;
 	}
 
 	public Engine engine() {

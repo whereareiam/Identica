@@ -45,8 +45,8 @@ class SessionsCommandTest {
 	void endAsksForDisconnect(String message) {
 		UUID uniqueId = UUID.randomUUID();
 		SessionService sessions = mock(SessionService.class);
-		when(sessions.findByUniqueId(uniqueId))
-				.thenReturn(CompletableFuture.completedFuture(Optional.of(Session.builder().uniqueId(uniqueId).build())));
+		when(sessions.findAllByUniqueId(uniqueId))
+				.thenReturn(CompletableFuture.completedFuture(List.of(Session.builder().uniqueId(uniqueId).build())));
 		when(sessions.close(any(SessionCloseRequest.class))).thenReturn(CompletableFuture.completedFuture(null));
 
 		new SessionsCommand(

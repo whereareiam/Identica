@@ -72,10 +72,9 @@ public class Replication {
 	@Setter
 	@ToString
 	public static class Sessions {
-		private @NotNull String user;
-		private @NotNull String session;
-		private @NotNull String subject;
-		private @NotNull String servers;
+		private @NotNull String records;
+		private @NotNull String accounts;
+		private @NotNull String subjects;
 	}
 
 	/**

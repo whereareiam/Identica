@@ -63,17 +63,17 @@ class ConfigDocumentsTest {
 		write("settings", """
 				level: 0
 				sessions:
-				  activeTtl: "1h"
+				  heartbeatTimeout: "1m"
 				""");
 
 		Settings settings = new SettingsProvider(dataPath, registry()).get();
 
 		assertEquals(0, settings.getLevel());
-		assertEquals(Duration.ofHours(1), settings.getSessions().getActiveTtl());
+		assertEquals(Duration.ofMinutes(1), settings.getSessions().getHeartbeatTimeout());
 		assertEquals(SessionConcurrencyPolicy.REPLACE_EXISTING, settings.getSessions().getConcurrencyPolicy());
 		assertEquals(Duration.ofMinutes(15), settings.getIdentity().getReservationTtl());
 		String written = read("settings");
-		assertTrue(written.startsWith("level: 0\nsessions:\n  activeTtl: \"1h\"\n  concurrencyPolicy: \"REPLACE_EXISTING\"\n"), written);
+		assertTrue(written.startsWith("level: 0\nsessions:\n  heartbeatTimeout: \"1m\"\n  concurrencyPolicy: \"REPLACE_EXISTING\"\n"), written);
 		assertTrue(written.contains("reservationTtl: \"15m\""), written);
 	}
 

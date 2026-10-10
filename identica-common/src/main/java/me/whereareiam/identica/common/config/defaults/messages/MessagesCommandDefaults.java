@@ -149,7 +149,7 @@ public class MessagesCommandDefaults {
 				" "
 		));
 		Messages.Commands.EntryFormat sessionListEntry = new Messages.Commands.EntryFormat();
-		sessionListEntry.setFormat("   <dark_gray>▪</dark_gray> <gray><click:run_command:/identica admin session info {uniqueId}>[{uniqueId}]</click></gray>\n     <white>Provider: <green>{eligibility} <gray>| <white>Username: <green>{username}");
+		sessionListEntry.setFormat("   <dark_gray>▪</dark_gray> <gray><click:run_command:/identica admin session info {uniqueId}>[{uniqueId}]</click></gray>\n     <white>Provider: <green>{eligibility} <gray>| <white>Username: <green>{username} <gray>| <white>Proxy: <green>{server}");
 		sessionListEntry.setEmptyFormat("  <dark_gray>▪</dark_gray> <gray><click:run_command:/identica admin session info {uniqueId}>[{uniqueId}]</click></gray>");
 		sessionList.setEntry(sessionListEntry);
 		sessionList.setEmpty("{prefix}<white>No active sessions.</white>");

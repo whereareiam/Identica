@@ -90,7 +90,8 @@ public class VerificationSelectionCommand extends ProtectedActionCommand<Void> {
 	) {
 		Identity identity = requireIdentity(sender, messagesProvider.get().getCommands().getPlayerOnly());
 		if (identity == null) return;
-		if (requireCurrentSession(identity) == null) return;
+		Session session = requireCurrentSession(identity);
+		if (session == null) return;
 		var accountUniqueId = requireAccountUniqueId(identity);
 		if (accountUniqueId == null) return;
 
@@ -108,9 +109,7 @@ public class VerificationSelectionCommand extends ProtectedActionCommand<Void> {
 		pipelineStateStore.save(reference, state, ttlMs);
 		verificationService.resolveVerification(VerificationResolutionRequest.builder()
 				.uniqueId(accountUniqueId)
-				.providerId(sessionService.findByUniqueId(accountUniqueId).join()
-						.map(Session::getProviderId)
-						.orElse(""))
+				.providerId(session.getProviderId() != null ? session.getProviderId() : "")
 				.purpose("disable-method")
 				.build());
 

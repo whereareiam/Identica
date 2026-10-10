@@ -149,42 +149,35 @@ Most setups should keep the defaults unless there is a namespace collision or yo
 
 #### sessions
 
-The `sessions` subsection splits session replication into separate namespaces.
+A session is stored once, as a record under its own id, and found by account or by provider subject through index entries that list session ids. The `sessions` subsection names the three namespaces.
 
-##### user
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a string
-- Current default: `"identica:sessions:user"`
-- Affects: the namespace used for session lookup by Identica account UUID
-
-##### session
+##### records
 
 <Badge type="warning">Advanced</Badge>
 
 - Takes: a string
-- Current default: `"identica:sessions:session"`
-- Affects: the namespace used for session lookup by session id
+- Current default: `"identica:sessions:records"`
+- Affects: the namespace of the session records, keyed by session id
 
-##### subject
+A record expires after `settings.sessions.heartbeatTimeout` unless the proxy holding the session's connection writes it again.
 
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a string
-- Current default: `"identica:sessions:subject"`
-- Affects: the namespace used for session lookup by provider subject
-
-##### servers
+##### accounts
 
 <Badge type="warning">Advanced</Badge>
 
 - Takes: a string
-- Current default: `"identica:sessions:servers"`
-- Affects: the namespace where each proxy announces that it is running
+- Current default: `"identica:sessions:accounts"`
+- Affects: the namespace of the index entries that list an account's session ids, keyed by Identica account UUID
 
-Every proxy refreshes its entry every 10 seconds, and the entry expires 30 seconds after the last refresh.
-When `REJECT_NEW` meets a session held by a proxy whose entry has expired, for example after that proxy crashed, Identica treats the session as gone instead of refusing the login.
+##### subjects
+
+<Badge type="warning">Advanced</Badge>
+
+- Takes: a string
+- Current default: `"identica:sessions:subjects"`
+- Affects: the namespace of the index entries that list a provider subject's session ids
+
+An index entry is only a pointer. Identica checks every id it lists against the records and drops the ids whose record is gone, so an outdated entry never shows a session that ended.
 
 ## Connection behavior
 

@@ -136,35 +136,38 @@ A session exists while a player is online.
 A session belongs to the connection that opened it.
 A login from that same connection continues its session; the policy decides what happens when the account logs in from another connection while it has a session, for example through a second proxy that shares Redis:
 
-- `ALLOW_MULTIPLE`: keep the new session and leave the earlier connection online
-- `REPLACE_EXISTING`: keep the new session and disconnect the earlier connection with `engine.concurrentLoginKick`, on whichever proxy holds it
-- `REJECT_NEW`: keep the earlier session and refuse the new login with `engine.concurrentLoginRefused`
+- `ALLOW_MULTIPLE`: keep a session for every connection, so the account is online through all of them
+- `REPLACE_EXISTING`: keep the new session and disconnect every other connection of the account with `engine.concurrentLoginKick`, on whichever proxy holds it
+- `REJECT_NEW`: keep the earlier sessions and refuse the new login with `engine.concurrentLoginRefused`
 
-A player leaving closes only the session of their own connection, never a newer session of the same account that another connection holds.
+A player leaving closes only the session of their own connection, never a session of the same account that another connection holds.
 
-`REJECT_NEW` does not keep refusing logins for a session nobody holds any more. The proxy that holds the earlier connection treats the session as gone once that connection is no longer online. Every other proxy treats it as gone once the proxy holding it stops announcing itself in Redis, about 30 seconds after it stopped or crashed (see `replication.cache.sessions.servers`).
+`REJECT_NEW` does not keep refusing logins for a session nobody holds any more. A session of a proxy that stopped or crashed without closing it disappears after `heartbeatTimeout`, and the proxy that holds a connection treats its session as gone as soon as that connection is no longer online.
 
 This is the default policy used when a session opens after authentication, registration, or migration.
 If one provider needs different behavior, set `providers.session.concurrencyPolicy` for that provider in the providers config.
 
-### activeTtl
+### heartbeatTimeout
 
 <Badge type="warning">Advanced</Badge>
 
-- Takes: a positive duration
-- Current default: `"12h"`
-- Affects: how long live-session cache entries survive between keepalive refreshes while a player is still online
+- Takes: a duration of at least `"3s"`
+- Current default: `"30s"`
+- Affects: how long a session stays stored after the proxy holding its connection last refreshed it
 
-Identica closes the logical session immediately on disconnect.
-This is not an offline remember-me duration.
-It only controls the backing cache survival time for active sessions.
+A session ends at once when its player disconnects.
+This setting only matters when a proxy stops without closing its sessions, for example when it crashes: the sessions it held disappear this long after it stopped. Until then other proxies still see them, list them in `/identica admin session list`, and `REJECT_NEW` still refuses a new login of those accounts.
+
+Each proxy writes every session it holds again every third of this time, every 10 seconds with the default. With Redis replication that is one read and one small write per online player per interval, which are three Redis commands, and every tenth interval the two index entries of the session are renewed as well. For 1000 online players that is about 360 Redis commands per second. A shorter timeout frees the accounts of a crashed proxy sooner and costs proportionally more commands; a longer one costs fewer.
+
+A value below `"3s"` is refused at startup. This is not an offline remember-me duration.
 
 <Tabs items={["YAML", "JSON"]}>
   <Tab value="YAML">
 ```yaml
 sessions:
   concurrencyPolicy: "REPLACE_EXISTING"
-  activeTtl: "12h"
+  heartbeatTimeout: "30s"
 ```
   </Tab>
   <Tab value="JSON">
@@ -172,7 +175,7 @@ sessions:
 {
   "sessions": {
     "concurrencyPolicy": "REPLACE_EXISTING",
-    "activeTtl": "12h"
+    "heartbeatTimeout": "30s"
   }
 }
 ```

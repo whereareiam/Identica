@@ -37,7 +37,7 @@ public class SettingsDefaults implements DefaultsProvider<Settings> {
 	private Settings.Sessions defaultSessions() {
 		Settings.Sessions sessions = new Settings.Sessions();
 		sessions.setConcurrencyPolicy(SessionConcurrencyPolicy.REPLACE_EXISTING);
-		sessions.setActiveTtl(Duration.ofHours(12));
+		sessions.setHeartbeatTimeout(Duration.ofSeconds(30));
 		return sessions;
 	}
 

@@ -66,24 +66,35 @@ public class Settings {
 	@ToString
 	public static class Sessions {
 		/**
+		 * Shortest accepted heartbeat timeout: below it a refresh every third of the timeout would be
+		 * more frequent than once a second.
+		 */
+		public static final Duration MINIMUM_HEARTBEAT_TIMEOUT = Duration.ofSeconds(3);
+
+		/**
 		 * Default policy for concurrent sessions.
 		 */
 		private @NotNull SessionConcurrencyPolicy concurrencyPolicy;
 		/**
-		 * Time-to-live used to keep live-session cache entries available while the player is online.
+		 * How long a session stays stored after the proxy holding its connection last refreshed it. The
+		 * proxy refreshes each session it holds every third of this time, so the sessions of a proxy
+		 * that stopped without closing them disappear this long after it stopped.
 		 */
-		private @NotNull Duration activeTtl;
+		private @NotNull Duration heartbeatTimeout;
+
 		/**
-		 * Returns active session TTL in milliseconds with validation.
+		 * Returns the heartbeat timeout in milliseconds with validation.
 		 *
-		 * @return active session TTL in milliseconds
+		 * @return heartbeat timeout in milliseconds
+		 * @throws IllegalStateException when the timeout is shorter than {@link #MINIMUM_HEARTBEAT_TIMEOUT}
 		 */
-		public long activeTtlMillis() {
-			if (activeTtl.isZero() || activeTtl.isNegative()) {
-				throw new IllegalStateException("settings.sessions.activeTtl must be positive");
+		public long heartbeatTimeoutMillis() {
+			if (heartbeatTimeout.compareTo(MINIMUM_HEARTBEAT_TIMEOUT) < 0) {
+				throw new IllegalStateException("settings.sessions.heartbeatTimeout must be at least "
+						+ MINIMUM_HEARTBEAT_TIMEOUT.toSeconds() + "s");
 			}
 
-			return activeTtl.toMillis();
+			return heartbeatTimeout.toMillis();
 		}
 	}
 

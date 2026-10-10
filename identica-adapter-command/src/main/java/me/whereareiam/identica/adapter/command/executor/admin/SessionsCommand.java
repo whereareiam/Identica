@@ -93,6 +93,9 @@ public class SessionsCommand {
 			placeholders.put("eligibility", provider);
 			placeholders.put("session", session.getSessionId());
 			placeholders.put("ip", session.getIp());
+			placeholders.put("server", session.getConnection() != null
+					? safe(session.getConnection().getServerId(), messages.getUnknown())
+					: messages.getUnknown());
 			return new EntryData(placeholders, isPresent(username) && isPresent(provider));
 		});
 		sender.sendMessage(Serializer.serialize(
@@ -123,13 +126,25 @@ public class SessionsCommand {
 		ResolvedTarget resolved = resolveTarget(sender, target, messages, "identica admin session info", statusMessages.getNotFound());
 		if (resolved == null) return;
 
-		Optional<Session> session = sessionService.findByUniqueId(resolved.uniqueId()).join();
-		if (session.isEmpty()) {
+		List<Session> sessions = sessionService.findAllByUniqueId(resolved.uniqueId()).join();
+		if (sessions.isEmpty()) {
 			sender.sendMessage(Serializer.serialize(sender, statusMessages.getNotFound(), Map.of("target", target)));
 			return;
 		}
 
-		Session resolvedSession = session.get();
+		for (Session session : sessions)
+			describe(sender, session, statusMessages, unknown);
+	}
+
+	/**
+	 * Sends the details of one session; an account online through several connections has one each.
+	 */
+	private void describe(
+			@NotNull Actor sender,
+			@NotNull Session resolvedSession,
+			@NotNull Messages.Commands.Admin.Sessions.Detail statusMessages,
+			String unknown
+	) {
 		SessionConnection connection = resolvedSession.getConnection();
 		Messages.Format.Temporal temporal = messagesProvider.get().getFormat().getTemporal();
 		DateTimeFormatter dateFormatter = resolveFormatter(temporal.getDate(), DATE_FORMATTER);
@@ -175,13 +190,13 @@ public class SessionsCommand {
 		ResolvedTarget resolved = resolveTarget(sender, target, messages, "identica admin session end", endMessages.getNotFound());
 		if (resolved == null) return;
 
-		Optional<Session> session = sessionService.findByUniqueId(resolved.uniqueId()).join();
-		if (session.isEmpty()) {
+		List<Session> sessions = sessionService.findAllByUniqueId(resolved.uniqueId()).join();
+		if (sessions.isEmpty()) {
 			sender.sendMessage(Serializer.serialize(sender, endMessages.getNotFound(), Map.of("target", target)));
 			return;
 		}
 
-		Session resolvedSession = session.get();
+		Session resolvedSession = sessions.getLast();
 		sessionService.close(SessionCloseRequest.builder()
 				.uniqueId(resolvedSession.getUniqueId())
 				.disconnect(true)
@@ -195,16 +210,13 @@ public class SessionsCommand {
 		)));
 	}
 
-	private List<Session> resolveSessions(List<UUID> ids) {
+	/**
+	 * Resolves listed session ids, leaving out the sessions that ended since the listing.
+	 */
+	private List<Session> resolveSessions(List<String> ids) {
 		List<Session> sessions = new ArrayList<>();
-		for (UUID id : ids) {
-			Optional<Session> session = sessionService.findByUniqueId(id).join();
-			if (session.isEmpty()) {
-				sessionService.close(id).join();
-				continue;
-			}
-			sessions.add(session.get());
-		}
+		for (String id : ids)
+			sessionService.findBySessionId(id).join().ifPresent(sessions::add);
 		return sessions;
 	}
 

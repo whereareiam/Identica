@@ -7,7 +7,9 @@ import me.whereareiam.identica.testing.environment.IdenticaNetwork;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -68,6 +70,27 @@ public final class Administrator {
 	}
 
 	/**
+	 * Asks for a player's sessions and expects the proxy to describe exactly one for each named proxy: the
+	 * sessions of the connections the account is online through.
+	 *
+	 * @param proxies proxies holding a connection of the account
+	 */
+	public Administrator findsSessionsOf(String username, String... proxies) {
+		runHeldBy("identica admin session info " + username,
+				configured.identica().getCommands().getAdmin().getSessions().getStatus().getBody(), proxies);
+		return this;
+	}
+
+	/**
+	 * Lists the sessions and expects exactly the ones held by the named proxies.
+	 */
+	public Administrator listsSessionsHeldBy(String... proxies) {
+		runHeldBy("identica admin session list",
+				configured.identica().getCommands().getAdmin().getSessions().getListing().getEntry().getFormat(), proxies);
+		return this;
+	}
+
+	/**
 	 * Clears an account's provider data and confirms it.
 	 */
 	public Administrator clears(String username) {
@@ -75,6 +98,49 @@ public final class Administrator {
 		run("identica admin clear " + username, clear.getConfirm());
 		run("identica admin clear confirm", clear.getSuccess());
 		return this;
+	}
+
+	/**
+	 * Sends a command until its answer shows a message once for each named proxy and for no other proxy of the
+	 * cluster. The message names the proxy holding a session through its {@code {server}} placeholder. The
+	 * command is repeated because a session ends a moment after its player's disconnect is reported.
+	 */
+	private void runHeldBy(String command, Object message, String... proxies) {
+		Set<String> holding = Set.of(proxies);
+		Instant deadline = Instant.now().plus(TIMEOUT);
+		while (true) {
+			long before = console.checkpoint();
+			console.sendCommand(command);
+			pause(500);
+
+			String answer = String.join("\n", console.read(before, 500).getLines().stream().map(line -> line.getText()).toList());
+			boolean exact = true;
+			for (String proxy : List.of(IdenticaNetwork.PROXY_A, IdenticaNetwork.PROXY_B))
+				exact &= heldBy(message, proxy).in(answer) == holding.contains(proxy);
+			if (exact) return;
+			if (Instant.now().isAfter(deadline))
+				fail("The proxy did not answer \"" + command + "\" with sessions held by exactly " + holding + "; console: " + answer);
+		}
+	}
+
+	/**
+	 * Returns a message as it reads for a session held by one proxy, line by line as a console prints it.
+	 */
+	private static MessageText heldBy(Object message, String proxy) {
+		List<String> lines = new ArrayList<>();
+		for (Object line : message instanceof List<?> list ? list : List.of(message))
+			lines.addAll(List.of(String.valueOf(line).replace("{server}", proxy).split("\n")));
+
+		return new MessageText(lines);
+	}
+
+	private static void pause(long millis) {
+		try {
+			Thread.sleep(millis);
+		} catch (InterruptedException interrupted) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException("Interrupted while waiting for the console", interrupted);
+		}
 	}
 
 	/**
@@ -92,12 +158,7 @@ public final class Administrator {
 			if (Instant.now().isAfter(deadline))
 				fail("The proxy did not answer \"" + command + "\" with " + expected + "; console: " + lines);
 
-			try {
-				Thread.sleep(100);
-			} catch (InterruptedException interrupted) {
-				Thread.currentThread().interrupt();
-				throw new IllegalStateException("Interrupted while waiting for the console", interrupted);
-			}
+			pause(100);
 		}
 	}
 }

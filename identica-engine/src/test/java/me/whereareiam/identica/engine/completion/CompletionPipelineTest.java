@@ -12,6 +12,7 @@ import me.whereareiam.identica.engine.pipeline.completion.runtime.CompletionPipe
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.model.Session;
+import me.whereareiam.identica.model.SessionConnection;
 import me.whereareiam.identica.model.pipeline.completion.CompletionContext;
 import me.whereareiam.identica.model.pipeline.completion.CompletionPendingState;
 import me.whereareiam.identica.model.provider.InternalProvider;
@@ -77,7 +78,8 @@ class CompletionPipelineTest {
 		CompletionStep step = mock(CompletionStep.class);
 
 		when(pendingStore.consume(connectionUniqueId)).thenReturn(Optional.of(pendingState));
-		when(sessionService.findByUniqueId(accountUniqueId)).thenReturn(CompletableFuture.completedFuture(Optional.of(session)));
+		when(sessionService.findByConnection(accountUniqueId, SessionConnection.of(connectionUniqueId)))
+				.thenReturn(CompletableFuture.completedFuture(Optional.of(session)));
 		when(providerManager.getProviders()).thenReturn(List.of(provider));
 		when(extensionRegistry.resolve("credential", PipelineType.MIGRATION)).thenReturn(List.of(step));
 		when(step.shouldExecute(org.mockito.ArgumentMatchers.any())).thenReturn(true);

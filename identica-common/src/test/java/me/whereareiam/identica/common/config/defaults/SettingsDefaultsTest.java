@@ -26,8 +26,21 @@ class SettingsDefaultsTest {
 		Settings settings = new SettingsDefaults().supply(new Settings());
 
 		assertNotNull(settings.getIdentity());
-		assertEquals(java.time.Duration.ofHours(12), settings.getSessions().getActiveTtl());
+		assertEquals(java.time.Duration.ofSeconds(30), settings.getSessions().getHeartbeatTimeout());
 		assertEquals(java.time.Duration.ofMinutes(15), settings.getIdentity().getReservationTtl());
+	}
+
+	@DisplayName("A heartbeat timeout below three seconds is refused, and three seconds is accepted")
+	@Test
+	void heartbeatTimeoutHasAMinimum() {
+		Settings.Sessions sessions = new SettingsDefaults().supply(new Settings()).getSessions();
+		assertEquals(30_000L, sessions.heartbeatTimeoutMillis());
+
+		sessions.setHeartbeatTimeout(java.time.Duration.ofSeconds(3));
+		assertEquals(3_000L, sessions.heartbeatTimeoutMillis());
+
+		sessions.setHeartbeatTimeout(java.time.Duration.ofMillis(2_999));
+		assertThrows(IllegalStateException.class, sessions::heartbeatTimeoutMillis);
 	}
 
 	@DisplayName("Listener defaults match the active platform listener set")

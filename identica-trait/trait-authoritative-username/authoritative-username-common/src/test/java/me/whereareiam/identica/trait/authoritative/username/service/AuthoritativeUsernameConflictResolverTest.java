@@ -43,7 +43,7 @@ class AuthoritativeUsernameConflictResolverTest {
 				.withEffect(UsernameConflictSchema.EFFECT_EXISTING_EFFECTIVE_USERNAME, "Existing_1")
 				.withEffect(UsernameConflictSchema.EFFECT_INCOMING_EFFECTIVE_USERNAME, "Incoming_1"));
 		when(sessionService.close(uniqueId)).thenReturn(java.util.concurrent.CompletableFuture.completedFuture(null));
-		when(sessionService.findByUniqueId(uniqueId)).thenReturn(java.util.concurrent.CompletableFuture.completedFuture(java.util.Optional.empty()));
+		when(sessionService.findAllByUniqueId(uniqueId)).thenReturn(java.util.concurrent.CompletableFuture.completedFuture(java.util.List.of()));
 
 		UsernameConflictResolver resolver = new UsernameConflictResolver(
 				conflictService,
@@ -61,7 +61,7 @@ class AuthoritativeUsernameConflictResolverTest {
 		assertEquals("denied", result.getDenialMessage());
 		assertEquals("Incoming_1", result.getEffectiveUsername());
 		verify(sessionService).close(uniqueId);
-		verify(sessionService).findByUniqueId(uniqueId);
+		verify(sessionService).findAllByUniqueId(uniqueId);
 	}
 
 	private AuthoritativeUsernameMessages messages() {

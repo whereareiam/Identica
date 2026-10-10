@@ -38,9 +38,9 @@ public final class RedisTestFixtures {
 		cache.setPipelineState("pipeline-state");
 
 		Replication.Sessions sessions = new Replication.Sessions();
-		sessions.setUser("sessions-user");
-		sessions.setSession("sessions-session");
-		sessions.setSubject("sessions-subject");
+		sessions.setRecords("sessions-records");
+		sessions.setAccounts("sessions-accounts");
+		sessions.setSubjects("sessions-subjects");
 		cache.setSessions(sessions);
 		replication.setCache(cache);
 

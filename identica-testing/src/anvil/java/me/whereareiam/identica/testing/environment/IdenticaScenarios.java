@@ -25,7 +25,7 @@ public final class IdenticaScenarios implements AnvilScenarioFactory<Identica> {
 
 		// Each network has its own stand-in for Mojang; the test receives it to register premium accounts.
 		YggdrasilMock yggdrasil = resources.own(YggdrasilMock.start());
-		ProxyConfiguration proxy = new ProxyConfiguration(identica.mode(), identica.policy(), enabled, identica.entrypoints(),
+		ProxyConfiguration proxy = new ProxyConfiguration(IdenticaNetwork.PROXY, identica.mode(), identica.policy(), enabled, identica.entrypoints(),
 				identica.autoSelectSingleProvider(), identica.step(), identica.complete(), yggdrasil);
 		for (Class<? extends Consumer<ProxyConfiguration>> change : identica.configure())
 			instantiate(change).accept(proxy);

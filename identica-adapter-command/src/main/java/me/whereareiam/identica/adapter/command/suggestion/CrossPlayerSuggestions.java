@@ -54,8 +54,8 @@ public class CrossPlayerSuggestions implements SuggestionProvider<Actor> {
 			return CompletableFuture.completedFuture(List.of());
 
 		List<CompletableFuture<Optional<Session>>> lookups = new ArrayList<>();
-		for (UUID uniqueId : page.entries()) {
-			CompletableFuture<Optional<Session>> future = sessionService.findByUniqueId(uniqueId)
+		for (String sessionId : page.entries()) {
+			CompletableFuture<Optional<Session>> future = sessionService.findBySessionId(sessionId)
 					.exceptionally(ignored -> Optional.empty());
 			lookups.add(future);
 		}

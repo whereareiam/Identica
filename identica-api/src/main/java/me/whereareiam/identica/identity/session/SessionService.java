@@ -2,6 +2,7 @@ package me.whereareiam.identica.identity.session;
 
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.SessionCloseRequest;
+import me.whereareiam.identica.model.SessionConnection;
 import me.whereareiam.identica.type.session.SessionConcurrencyPolicy;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -14,8 +15,10 @@ import java.util.concurrent.CompletableFuture;
 /**
  * Central service for session lifecycle and runtime session listings.
  *
- * <p>Sessions are ephemeral and stored in cache-backed storage with
- * cache-level key listings for global visibility.</p>
+ * <p>A session is stored once, under its own id, for as long as the proxy holding its connection keeps
+ * refreshing it; the sessions of a proxy that stopped disappear after
+ * {@code settings.sessions.heartbeatTimeout}. An account has one session per connection, so it has
+ * several while {@code ALLOW_MULTIPLE} lets it be online through several connections.</p>
  */
 @SuppressWarnings("unused")
 public interface SessionService {
@@ -28,19 +31,45 @@ public interface SessionService {
 	@NotNull CompletableFuture<Optional<Session>> findBySessionId(@Nullable String sessionId);
 
 	/**
-	 * Finds a session by identity id.
+	 * Finds every session of an account, one per connection it is online through.
 	 *
-	 * @param uniqueId identity id
-	 * @return optional session
+	 * @param uniqueId account id
+	 * @return the account's sessions, oldest first; empty when it has none
+	 */
+	@NotNull CompletableFuture<List<Session>> findAllByUniqueId(@Nullable UUID uniqueId);
+
+	/**
+	 * Finds the session an account opened last. Use it to learn whether an account is online or how it
+	 * logged in; a caller acting for one connection asks {@link #findByConnection(UUID, SessionConnection)}
+	 * and a caller acting on the whole account asks {@link #findAllByUniqueId(UUID)}.
+	 *
+	 * @param uniqueId account id
+	 * @return the account's newest session
 	 */
 	@NotNull CompletableFuture<Optional<Session>> findByUniqueId(@Nullable UUID uniqueId);
 
 	/**
-	 * Finds a session by provider subject.
+	 * Finds the session of an account that belongs to one connection.
+	 *
+	 * <pre>{@code
+	 * sessionService.findByConnection(accountUniqueId, SessionConnection.of(player.getUniqueId()));
+	 * }</pre>
+	 *
+	 * @param uniqueId account id
+	 * @param connection connection holding the session; a missing server id means this proxy
+	 * @return the connection's session
+	 */
+	@NotNull CompletableFuture<Optional<Session>> findByConnection(
+			@Nullable UUID uniqueId,
+			@NotNull SessionConnection connection
+	);
+
+	/**
+	 * Finds the session a provider subject opened last.
 	 *
 	 * @param providerId provider id
 	 * @param providerSubject provider subject
-	 * @return optional session
+	 * @return the subject's newest session
 	 */
 	@NotNull CompletableFuture<Optional<Session>> findByProviderSubject(
 			@Nullable String providerId,
@@ -51,12 +80,12 @@ public interface SessionService {
 	 * Opens a session and stores it in the session cache, under the concurrency policy configured for
 	 * the session's provider.
 	 *
-	 * <p>A session from the connection that holds the account's current session continues it. A session
-	 * from any other connection is a concurrent login: {@code REPLACE_EXISTING} closes the current session
-	 * and disconnects its connection on whichever proxy holds it, {@code REJECT_NEW} refuses the new session
-	 * while the current one is live, and {@code ALLOW_MULTIPLE} stores the new session and leaves the other
-	 * connection online. A current session counts as gone when its connection is no longer online on this
-	 * proxy, or when the proxy that holds it stopped announcing itself.</p>
+	 * <p>A session from a connection that already holds a session of the account continues it. A session
+	 * from any other connection is a concurrent login: {@code REPLACE_EXISTING} closes every other
+	 * connection's session and disconnects that connection on whichever proxy holds it, {@code REJECT_NEW}
+	 * refuses the new session while another one exists, and {@code ALLOW_MULTIPLE} keeps every connection's
+	 * session. A stored session whose connection is held by this proxy and is no longer online here counts
+	 * as gone and is removed.</p>
 	 *
 	 * <pre>{@code
 	 * Session stored = sessionService.open(session).join();
@@ -80,7 +109,7 @@ public interface SessionService {
 	);
 
 	/**
-	 * Closes the session of an account, whatever connection holds it.
+	 * Closes every session of an account, whatever connections hold them.
 	 *
 	 * @param uniqueId identity id
 	 * @return completion journey
@@ -100,7 +129,8 @@ public interface SessionService {
 	@NotNull CompletableFuture<Void> close(@NotNull SessionCloseRequest request);
 
 	/**
-	 * Lists active session ids for the given page.
+	 * Lists the ids of the stored sessions for the given page. Resolve an id with
+	 * {@link #findBySessionId(String)}; a session that ended since the listing is no longer found.
 	 *
 	 * @param page page number (1-based)
 	 * @param pageSize number of entries per page
@@ -111,11 +141,11 @@ public interface SessionService {
 	/**
 	 * Page result for session listings.
 	 *
-	 * @param entries listed unique ids
+	 * @param entries listed session ids
 	 * @param page current page
 	 * @param pageSize page size
 	 * @param total total entries
 	 */
-	record Page(@NotNull List<UUID> entries, int page, int pageSize, int total) {
+	record Page(@NotNull List<String> entries, int page, int pageSize, int total) {
 	}
 }

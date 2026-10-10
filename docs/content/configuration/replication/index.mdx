@@ -139,6 +139,8 @@ Most setups should keep the defaults unless there is a namespace collision or yo
 - Current default: `"identica:pipeline-state"`
 - Affects: the namespace used for shared pending pipeline state
 
+Passwords that players type are never written to this namespace. While a registration waits for the password to be repeated, it holds that password's hash.
+
 #### attempts
 
 <Badge type="warning">Advanced</Badge>

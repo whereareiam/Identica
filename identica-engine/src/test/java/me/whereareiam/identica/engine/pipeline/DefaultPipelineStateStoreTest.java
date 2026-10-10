@@ -1,11 +1,15 @@
 package me.whereareiam.identica.engine.pipeline;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import me.whereareiam.identica.common.replication.DefaultReplicationSystem;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.config.Replication;
 import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
 import me.whereareiam.identica.model.registration.RegistrationContext;
+import me.whereareiam.identica.pipeline.state.PipelineInputItem;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.PipelineStateReference;
 import me.whereareiam.identica.replication.ReplicationAdapter;
@@ -14,6 +18,7 @@ import me.whereareiam.identica.util.EventUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -187,6 +192,36 @@ class DefaultPipelineStateStoreTest {
 		assertTrue(found.isPresent());
 		assertEquals(PipelineType.REGISTRATION, found.get().getPipelineType());
 		assertEquals("Alice", found.get().getScenario().getIdentity().getUsername());
+	}
+
+	@DisplayName("Never writes input items to the replication adapter")
+	@Test
+	void saveLeavesInputItemsOut() {
+		EventUtil.initialize(mock(EventManager.class));
+		InMemoryAdapter shared = new InMemoryAdapter();
+		PipelineStateReference reference = PipelineStateReference.builder()
+				.connectionUniqueId(UUID.randomUUID())
+				.build();
+		PipelineState state = pendingState();
+		state.putItem(new TypedPassword("Secret-123"), 60_000L);
+
+		new DefaultPipelineStateStore(new DefaultReplicationSystem(shared), this::replication).save(reference, state, 60_000L);
+		Optional<PipelineState> found = new DefaultPipelineStateStore(new DefaultReplicationSystem(shared), this::replication)
+				.find(reference);
+
+		assertTrue(shared.values.values().stream()
+				.noneMatch(value -> new String(value, StandardCharsets.UTF_8).contains("Secret-123")));
+		assertTrue(found.isPresent());
+		assertTrue(found.get().item(JourneyStateItem.class).isPresent());
+		assertTrue(found.get().item(TypedPassword.class).isEmpty());
+		assertTrue(state.item(TypedPassword.class).isPresent(), "saving changes the state it was given");
+	}
+
+	@Getter
+	@NoArgsConstructor
+	@AllArgsConstructor
+	public static final class TypedPassword implements PipelineInputItem {
+		private String password;
 	}
 
 	private static final class InMemoryAdapter implements ReplicationAdapter {

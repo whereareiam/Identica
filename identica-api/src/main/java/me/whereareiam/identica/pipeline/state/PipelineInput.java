@@ -5,7 +5,8 @@ import org.jetbrains.annotations.NotNull;
 /**
  * A change that a command hands to the pipeline together with a resume or advance request, such as a password
  * or a provider choice. The pipeline applies it to the player's state at the start of the run it triggers, so
- * the run stays the only writer of that state.
+ * the run stays the only writer of that state. What the input puts there is saved with the state once the run
+ * ends, unless the item is a {@link PipelineInputItem}: those, such as a password, live only in the run.
  *
  * <pre>{@code
  * connectionCoordinator.advance(AdvanceRequest.builder()

@@ -61,7 +61,7 @@ void disconnectsAPlayerWhoseAccountIsDeletedOnTheOtherProxy(ScenarioContext anvi
 }
 ```
 
-`@IdenticaCluster(replication = false)` leaves Redis out, for behaviour that must hold when the proxies only share the database.
+`@IdenticaCluster(replication = false)` leaves Redis out, for behaviour that must hold when the proxies only share the database. `@IdenticaCluster` takes the same `step` and `complete` routing targets as `@Identica`.
 
 ## Write a test
 

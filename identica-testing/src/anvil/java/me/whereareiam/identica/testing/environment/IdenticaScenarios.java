@@ -35,10 +35,13 @@ public final class IdenticaScenarios implements AnvilScenarioFactory<Identica> {
 		return String.join("-", "identica", identica.mode().name(), identica.policy().name(), providers,
 				identica.entrypoints() ? "entrypoints" : "direct",
 				identica.autoSelectSingleProvider() ? "autoselect" : "choice",
-				"step", target(identica.step()), "complete", target(identica.complete())).toLowerCase(Locale.ROOT);
+				routing(identica.step(), identica.complete())).toLowerCase(Locale.ROOT);
 	}
 
-	private static String target(String server) {
-		return server.isBlank() ? "none" : server;
+	/**
+	 * Names the routing targets of a network, so networks routed differently do not share a workspace.
+	 */
+	static String routing(String step, String complete) {
+		return String.join("-", "step", step.isBlank() ? "none" : step, "complete", complete.isBlank() ? "none" : complete);
 	}
 }

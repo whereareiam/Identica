@@ -27,4 +27,15 @@ public @interface IdenticaCluster {
 	 * Whether the proxies replicate through Redis. Without it they only share the database.
 	 */
 	boolean replication() default true;
+
+	/**
+	 * Server players are sent to while a step waits for them, or blank to leave them on the server they are on.
+	 * Players join {@code lobby}.
+	 */
+	String step() default IdenticaNetwork.AUTH;
+
+	/**
+	 * Server players are sent to once they are done, or blank to leave them on the server they are on.
+	 */
+	String complete() default IdenticaNetwork.LOBBY;
 }

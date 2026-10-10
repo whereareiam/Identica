@@ -11,7 +11,11 @@ import java.util.UUID;
  * <p>
  * Sessions may be partially populated before storage. The session service
  * normalizes missing fields like {@code sessionId}, {@code createdAt},
- * {@code effectiveUsername} during storage.
+ * {@code effectiveUsername} and the server id of {@code connection} during storage.
+ * <p>
+ * A session belongs to the player connection that opened it. Another login of the same
+ * account from a different connection is a concurrent login, which the configured
+ * session concurrency policy decides.
  */
 @Getter
 @Setter
@@ -48,6 +52,12 @@ public class Session {
 	private @Nullable String effectiveUsername;
 
 	/**
+	 * Player connection the session belongs to, or {@code null} when the session was opened
+	 * without one.
+	 */
+	private @Nullable SessionConnection connection;
+
+	/**
 	 * Last known IP address for the session.
 	 */
 	private @Nullable String ip;
@@ -57,42 +67,30 @@ public class Session {
 	private long createdAt;
 
 	/**
-	 * Returns whether this session represents the same provider subject as another session.
+	 * Returns whether this session belongs to a connection.
 	 *
-	 * @param other another session
-	 * @return {@code true} if provider id and provider subject match (case-insensitive)
+	 * @param connection connection to compare with
+	 * @return {@code true} when this session's connection is the same connection on the same proxy
 	 */
-	public boolean matchesProviderSubject(@Nullable Session other) {
-		if (other == null)
-			return false;
-		return equalsIgnoreCaseNonBlank(providerId, other.providerId)
-				&& equalsIgnoreCaseNonBlank(providerSubject, other.providerSubject);
+	public boolean belongsTo(@Nullable SessionConnection connection) {
+		return this.connection != null && this.connection.sameAs(connection);
 	}
 
 	/**
-	 * Tries to reuse the session id from another session when both describe the same provider subject.
+	 * Continues another session when both belong to the same connection: the player who opened the
+	 * existing session logs in again on the connection it holds, so this session takes over its id.
+	 * A session of another connection is never adopted, since that is a concurrent login.
 	 *
 	 * @param existing existing session candidate
 	 * @return {@code true} when the session id was adopted
 	 */
 	public boolean adoptSessionIdFrom(@Nullable Session existing) {
 		if (hasText(sessionId)) return false;
-		if (existing == null || !matchesProviderSubject(existing)) return false;
+		if (existing == null || !existing.belongsTo(connection)) return false;
 		if (!hasText(existing.sessionId)) return false;
 
 		sessionId = existing.sessionId;
 		return true;
-	}
-
-	private static boolean equalsIgnoreCaseNonBlank(@Nullable String left, @Nullable String right) {
-		if (left == null || right == null) return false;
-
-		String normalizedLeft = left.trim();
-		String normalizedRight = right.trim();
-		if (normalizedLeft.isEmpty() || normalizedRight.isEmpty())
-			return false;
-
-		return normalizedLeft.equalsIgnoreCase(normalizedRight);
 	}
 
 	private static boolean hasText(@Nullable String value) {

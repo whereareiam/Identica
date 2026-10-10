@@ -229,3 +229,12 @@ public final class ExampleAddon {
     }
 }
 ```
+
+A session belongs to a connection: `session.getConnection()` returns the `SessionConnection` with the connection's unique id and the `replication.serverId` of the proxy that holds it. `SessionService.open(session)` continues the account's current session only when the new session names the same connection; any other connection is a concurrent login decided by the configured concurrency policy. To end only one connection's session, for example when that player leaves, set the connection on the close request; the account's session is then left alone when another connection holds it:
+
+```java
+sessionService.close(SessionCloseRequest.builder()
+        .uniqueId(accountUniqueId)
+        .connection(SessionConnection.of(player.getUniqueId()))
+        .build());
+```

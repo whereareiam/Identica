@@ -58,7 +58,7 @@ public abstract class AbstractOpenSessionPhase<C extends ScenarioContext, S exte
 		return sessionService.open(session)
 				.thenApply(openedSession -> {
 					if (openedSession == null) {
-						state.setResult(PipelineResult.denied(failedMessage(messagesProvider.get())));
+						state.setResult(PipelineResult.denied(concurrentLoginRefusedMessage(messagesProvider.get())));
 						return PhaseResult.pass(state);
 					}
 
@@ -72,6 +72,14 @@ public abstract class AbstractOpenSessionPhase<C extends ScenarioContext, S exte
 	}
 
 	protected abstract @NotNull PipelineType pipelineType();
+
+	/**
+	 * The session service refuses a session only when the account is already online through another connection
+	 * under {@code REJECT_NEW}. The denied status refuses the login; the message only explains it.
+	 */
+	private @NotNull String concurrentLoginRefusedMessage(@NotNull Messages messages) {
+		return String.join("\n", messages.getEngine().getConcurrentLoginRefused());
+	}
 
 	protected abstract @NotNull String failedMessage(@NotNull Messages messages);
 

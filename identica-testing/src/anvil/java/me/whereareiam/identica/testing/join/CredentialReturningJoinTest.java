@@ -2,15 +2,21 @@ package me.whereareiam.identica.testing.join;
 
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.identica.testing.environment.Identica;
+import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.fixture.Accounts;
+import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
+import me.whereareiam.identica.type.session.SessionConcurrencyPolicy;
 import org.junit.jupiter.api.Test;
+
+import java.util.function.Consumer;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
+import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY;
 
 /**
  * An offline player with a Credential account joins a network whose only provider is Credential.
@@ -75,6 +81,27 @@ class CredentialReturningJoinTest {
 	}
 
 	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = RejectNewSessions.class)
+	void closesTheSessionOnLeavingSoAReconnectLogsInWhileNewSessionsAreRejected(ScenarioContext anvil) {
+		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.on(LOBBY);
+		Administrator.at(anvil, PROXY).findsSessionOf("Alice");
+
+		alice.leave();
+		Administrator.at(anvil, PROXY).findsNoSessionOf("Alice");
+
+		alice.rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
+	}
+
+	@Test
 	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
 	void logsInToAnAccountAnAdministratorRegisteredInInteractiveMode(ScenarioContext anvil) {
 		logsInToAnAdministratorRegisteredAccount(anvil);
@@ -113,5 +140,16 @@ class CredentialReturningJoinTest {
 				.login(PASSWORD)
 				.on(LOBBY)
 				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
+	}
+
+	/**
+	 * Refuses a session while the account already has one, so a reconnect only logs in when leaving closed the
+	 * earlier session.
+	 */
+	private static final class RejectNewSessions implements Consumer<ProxyConfiguration> {
+		@Override
+		public void accept(ProxyConfiguration proxy) {
+			proxy.settings().getSessions().setConcurrencyPolicy(SessionConcurrencyPolicy.REJECT_NEW);
+		}
 	}
 }

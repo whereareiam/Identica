@@ -9,9 +9,13 @@ import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.event.identity.session.SessionClosedEvent;
 import me.whereareiam.identica.event.identity.session.SessionReplacedEvent;
 import me.whereareiam.identica.event.lifecycle.IdenticaShutdownEvent;
+import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.SessionCloseRequest;
+import me.whereareiam.identica.model.SessionConnection;
+import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.config.provider.Providers;
 import me.whereareiam.identica.model.config.Replication;
 import me.whereareiam.identica.model.config.Settings;
@@ -43,6 +47,9 @@ public class DefaultSessionService implements SessionService, EventListener {
 	private final Provider<Settings> settingsProvider;
 	private final Provider<Providers> providersProvider;
 	private final Provider<Replication> replicationProvider;
+	private final Provider<Messages> messagesProvider;
+	private final IdentityService identityService;
+	private final ServerPresence serverPresence;
 	private final EventManager eventManager;
 	private final Scheduler scheduler;
 	private final long sessionCacheTtlMs;
@@ -58,11 +65,17 @@ public class DefaultSessionService implements SessionService, EventListener {
 			EventManager eventManager,
 			Scheduler scheduler,
 			Provider<Replication> replicationProvider,
-			ReplicationSystem replicationSystem
+			Provider<Messages> messagesProvider,
+			ReplicationSystem replicationSystem,
+			IdentityService identityService,
+			ServerPresence serverPresence
 	) {
 		this.settingsProvider = settingsProvider;
 		this.providersProvider = providersProvider;
 		this.replicationProvider = replicationProvider;
+		this.messagesProvider = messagesProvider;
+		this.identityService = identityService;
+		this.serverPresence = serverPresence;
 		this.eventManager = eventManager;
 		this.scheduler = scheduler;
 
@@ -115,7 +128,7 @@ public class DefaultSessionService implements SessionService, EventListener {
 	) {
 		if (session == null)
 			return CompletableFuture.completedFuture(null);
-		return findByUniqueId(session.getUniqueId())
+		return getFreshByKey(userCache, keyUser(session.getUniqueId()))
 				.thenCompose(existingOptional -> openWithExisting(session, existingOptional.orElse(null), policy));
 	}
 
@@ -163,8 +176,12 @@ public class DefaultSessionService implements SessionService, EventListener {
 		return futures;
 	}
 
+	/**
+	 * Removes a session's keys, except where they already point to a newer session of the same account or
+	 * provider subject, which another connection stored in the meantime.
+	 */
 	private CompletableFuture<Void> invalidateKeys(Session session) {
-		CompletableFuture<Void> futures = userCache.invalidate(keyUser(session.getUniqueId()));
+		CompletableFuture<Void> futures = invalidateIfHeld(userCache, keyUser(session.getUniqueId()), session);
 
 		String sessionIdKey = keySession(session.getSessionId());
 		if (sessionIdKey != null) {
@@ -173,7 +190,42 @@ public class DefaultSessionService implements SessionService, EventListener {
 
 		String subjectKey = keySubject(session.getProviderId(), session.getProviderSubject());
 		if (subjectKey != null) {
-			futures = futures.thenCompose(ignored -> subjectCache.invalidate(subjectKey));
+			futures = futures.thenCompose(ignored -> invalidateIfHeld(subjectCache, subjectKey, session));
+		}
+
+		return futures;
+	}
+
+	private CompletableFuture<Void> invalidateIfHeld(
+			@NotNull ReplicatedCache<Session> cache,
+			@Nullable String key,
+			@NotNull Session session
+	) {
+		if (key == null) return CompletableFuture.completedFuture(null);
+
+		return cache.getFresh(key)
+				.thenCompose(current -> current.isPresent() && !sameSession(current.get(), session)
+						? CompletableFuture.completedFuture(null)
+						: cache.invalidate(key));
+	}
+
+	/**
+	 * Brings this proxy's local copies of a session's keys up to date with the shared store, which the proxy
+	 * that closed the session has already changed. Writes nothing to the shared store, so a close received
+	 * late never removes a session stored after it.
+	 */
+	private CompletableFuture<Void> refreshKeys(@NotNull UUID uniqueId, @Nullable Session session) {
+		CompletableFuture<Void> futures = userCache.getFresh(keyUser(uniqueId)).thenApply(ignored -> null);
+		if (session == null) return futures;
+
+		String sessionIdKey = keySession(session.getSessionId());
+		if (sessionIdKey != null) {
+			futures = futures.thenCompose(ignored -> sessionCache.getFresh(sessionIdKey)).thenApply(ignored -> null);
+		}
+
+		String subjectKey = keySubject(session.getProviderId(), session.getProviderSubject());
+		if (subjectKey != null) {
+			futures = futures.thenCompose(ignored -> subjectCache.getFresh(subjectKey)).thenApply(ignored -> null);
 		}
 
 		return futures;
@@ -181,14 +233,26 @@ public class DefaultSessionService implements SessionService, EventListener {
 
 	@IdenticEvent(EventOrder.LOWEST)
 	public void onSessionClosed(@NotNull SessionClosedEvent event) {
-		cancelKeepalive(event.getUniqueId());
+		UUID uniqueId = event.getUniqueId();
 		Session session = event.getSession();
+		if (session == null || keepsAliveHere(session))
+			cancelKeepalive(uniqueId);
+
+		if (!isLocalOrigin(event)) {
+			refreshKeys(uniqueId, session).join();
+			return;
+		}
+
 		if (session != null) {
 			invalidateKeys(session).join();
 			return;
 		}
 
-		userCache.invalidate(keyUser(event.getUniqueId())).join();
+		getFreshByKey(userCache, keyUser(uniqueId))
+				.thenCompose(current -> current.isEmpty()
+						? userCache.invalidate(keyUser(uniqueId))
+						: CompletableFuture.completedFuture(null))
+				.join();
 	}
 
 	@IdenticEvent
@@ -198,12 +262,16 @@ public class DefaultSessionService implements SessionService, EventListener {
 
 	private @NotNull CompletableFuture<Void> dispatchClose(@NotNull SessionCloseRequest request) {
 		UUID uniqueId = request.getUniqueId();
-		return findByUniqueId(uniqueId)
-				.thenAccept(existing -> eventManager.call(new SessionClosedEvent(
-						uniqueId,
-						existing.orElse(null),
-						request
-				)));
+		SessionConnection connection = request.getConnection();
+		return getFreshByKey(userCache, keyUser(uniqueId))
+				.thenAccept(existing -> {
+					if (connection != null && existing.map(session -> !session.belongsTo(connection)).orElse(true)) {
+						Logger.debug("Session of %s is not held by connection %s; left open", uniqueId, connection);
+						return;
+					}
+
+					eventManager.call(new SessionClosedEvent(uniqueId, existing.orElse(null), request));
+				});
 	}
 
 	private @NotNull SessionCloseRequest prepareCloseRequest(@NotNull SessionCloseRequest request) {
@@ -217,6 +285,7 @@ public class DefaultSessionService implements SessionService, EventListener {
 		return request.toBuilder()
 				.requestId(requestId)
 				.originServerId(originServerId)
+				.connection(withServerId(request.getConnection()))
 				.build();
 	}
 
@@ -244,41 +313,114 @@ public class DefaultSessionService implements SessionService, EventListener {
 			@Nullable Session existing,
 			@NotNull SessionConcurrencyPolicy policy
 	) {
+		incoming.setConnection(withServerId(incoming.getConnection()));
 		incoming.adoptSessionIdFrom(existing);
-		if (shouldRejectIncoming(existing, incoming, policy))
-			return CompletableFuture.completedFuture(null);
-
-		prepareSession(incoming);
-		return cleanupForOpen(existing, incoming, policy)
-				.thenCompose(ignored -> putAll(incoming))
-				.thenApply(ignored -> {
-					scheduleKeepalive(incoming);
-					return incoming;
-				})
-				;
-	}
-
-	private boolean shouldRejectIncoming(
-			@Nullable Session existing,
-			@NotNull Session incoming,
-			@NotNull SessionConcurrencyPolicy policy
-	) {
-		return existing != null && !sameSession(existing, incoming) && policy.rejectsNew();
-	}
-
-	private @NotNull CompletableFuture<Void> cleanupForOpen(
-			@Nullable Session existing,
-			@NotNull Session incoming,
-			@NotNull SessionConcurrencyPolicy policy
-	) {
 		if (existing == null || sameSession(existing, incoming))
-			return CompletableFuture.completedFuture(null);
+			return store(incoming, continuedFrom(existing, incoming));
 
-		if (policy.replacesExisting()) {
-			eventManager.call(new SessionReplacedEvent(existing, incoming));
+		boolean live = isLive(existing);
+		if (live && policy.rejectsNew()) {
+			Logger.debug("Refused a session of %s for %s: session %s of %s is live",
+					incoming.getUniqueId(), incoming.getConnection(), existing.getSessionId(), existing.getConnection());
+			return CompletableFuture.completedFuture(null);
 		}
 
-		return invalidateKeys(existing);
+		prepareSession(incoming);
+		boolean replace = live && policy.replacesExisting();
+		if (replace)
+			eventManager.call(new SessionReplacedEvent(existing, incoming));
+		closeConcurrent(existing, replace);
+		return store(incoming, CompletableFuture.completedFuture(null));
+	}
+
+	private @NotNull CompletableFuture<@Nullable Session> store(
+			@NotNull Session session,
+			@NotNull CompletableFuture<Void> cleanup
+	) {
+		prepareSession(session);
+		return cleanup
+				.thenCompose(ignored -> putAll(session))
+				.thenApply(ignored -> {
+					if (keepsAliveHere(session))
+						scheduleKeepalive(session);
+					return session;
+				});
+	}
+
+	/**
+	 * Removes the provider subject key of a continued session whose provider subject changed.
+	 */
+	private @NotNull CompletableFuture<Void> continuedFrom(@Nullable Session existing, @NotNull Session incoming) {
+		if (existing == null) return CompletableFuture.completedFuture(null);
+
+		String previousKey = keySubject(existing.getProviderId(), existing.getProviderSubject());
+		if (previousKey == null || previousKey.equals(keySubject(incoming.getProviderId(), incoming.getProviderSubject())))
+			return CompletableFuture.completedFuture(null);
+
+		return invalidateIfHeld(subjectCache, previousKey, existing);
+	}
+
+	/**
+	 * Closes the session of another connection that a new session supersedes. The close is replicated, so
+	 * every proxy refreshes its copies and, when replacing, the proxy holding that connection disconnects it.
+	 */
+	private void closeConcurrent(@NotNull Session existing, boolean disconnect) {
+		SessionConnection connection = existing.getConnection();
+		SessionCloseRequest request = prepareCloseRequest(SessionCloseRequest.builder()
+				.uniqueId(existing.getUniqueId())
+				.connection(connection)
+				.disconnect(disconnect && connection != null)
+				.disconnectMessage(disconnect ? concurrentLoginKick() : null)
+				.build());
+
+		eventManager.call(new SessionClosedEvent(existing.getUniqueId(), existing, request));
+	}
+
+	/**
+	 * Returns whether a session of another connection is still held. A session without a connection is
+	 * assumed held. A session held by this proxy is held while its connection is online here; a session held
+	 * by another proxy is held while that proxy keeps announcing itself.
+	 */
+	private boolean isLive(@NotNull Session session) {
+		SessionConnection connection = session.getConnection();
+		if (connection == null || !hasText(connection.getServerId())) return true;
+
+		if (isHeldHere(session))
+			return identityService.findByConnectionUniqueId(connection.getConnectionUniqueId()).isPresent();
+
+		return serverPresence.isRunning(connection.getServerId());
+	}
+
+	/**
+	 * Returns whether this proxy refreshes a session: the proxy holding its connection does, and a session
+	 * opened without a connection is refreshed where it was opened.
+	 */
+	private boolean keepsAliveHere(@NotNull Session session) {
+		return session.getConnection() == null || isHeldHere(session);
+	}
+
+	private boolean isHeldHere(@NotNull Session session) {
+		SessionConnection connection = session.getConnection();
+		return connection != null
+				&& hasText(connection.getServerId())
+				&& connection.getServerId().trim().equalsIgnoreCase(resolveServerId().trim());
+	}
+
+	private boolean isLocalOrigin(@NotNull SessionClosedEvent event) {
+		String origin = event.getReplicationOriginServerId();
+		return !hasText(origin) || origin.trim().equalsIgnoreCase(resolveServerId().trim());
+	}
+
+	private @Nullable SessionConnection withServerId(@Nullable SessionConnection connection) {
+		if (connection == null || hasText(connection.getServerId())) return connection;
+
+		return connection.toBuilder()
+				.serverId(resolveServerId())
+				.build();
+	}
+
+	private @NotNull String concurrentLoginKick() {
+		return String.join("\n", messagesProvider.get().getEngine().getConcurrentLoginKick());
 	}
 
 	private SessionConcurrencyPolicy resolveConcurrencyPolicy(@Nullable String providerId) {
@@ -355,10 +497,19 @@ public class DefaultSessionService implements SessionService, EventListener {
 		return cache.get(key);
 	}
 
+	private @NotNull CompletableFuture<Optional<Session>> getFreshByKey(
+			@NotNull ReplicatedCache<Session> cache,
+			@Nullable String key
+	) {
+		if (key == null)
+			return CompletableFuture.completedFuture(Optional.empty());
+		return cache.getFresh(key);
+	}
+
 	private void scheduleKeepalive(@NotNull Session session) {
 		UUID uniqueId = session.getUniqueId();
 
-        long intervalMs = keepaliveIntervalMs();
+		long intervalMs = keepaliveIntervalMs();
 		if (intervalMs <= 0)
 			return;
 
@@ -366,13 +517,18 @@ public class DefaultSessionService implements SessionService, EventListener {
 				.key(jobKey(uniqueId))
 				.delay(intervalMs)
 				.period(intervalMs)
-				.runnable(() -> refreshLiveSession(uniqueId))
+				.runnable(() -> refreshLiveSession(uniqueId, session.getSessionId()))
 				.build());
 	}
 
-	private void refreshLiveSession(@NotNull UUID uniqueId) {
-		findByUniqueId(uniqueId)
+	/**
+	 * Refreshes the session this keepalive was scheduled for, and stops once the account's session is gone
+	 * or belongs to another connection.
+	 */
+	private void refreshLiveSession(@NotNull UUID uniqueId, @Nullable String sessionId) {
+		getFreshByKey(userCache, keyUser(uniqueId))
 				.thenCompose(existing -> existing
+						.filter(session -> sessionId != null && sessionId.equals(session.getSessionId()))
 						.map(this::putAll)
 						.orElseGet(() -> {
 							cancelKeepalive(uniqueId);

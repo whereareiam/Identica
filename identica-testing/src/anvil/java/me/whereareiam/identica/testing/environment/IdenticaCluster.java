@@ -6,6 +6,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.function.Consumer;
 
 /**
  * Starts a fresh network of two Identica proxies around a test. Both proxies share one database, the
@@ -38,4 +39,10 @@ public @interface IdenticaCluster {
 	 * Server players are sent to once they are done, or blank to leave them on the server they are on.
 	 */
 	String complete() default IdenticaNetwork.LOBBY;
+
+	/**
+	 * Changes to both proxies' configuration files, applied in order to each proxy, as
+	 * {@link Identica#configure()} does for a single proxy. Each class needs a constructor without parameters.
+	 */
+	Class<? extends Consumer<ProxyConfiguration>>[] configure() default {};
 }

@@ -13,6 +13,7 @@ import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.SessionCloseRequest;
+import me.whereareiam.identica.model.SessionConnection;
 import me.whereareiam.identica.model.config.Commands;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.config.type.DateTimePattern;
@@ -129,6 +130,7 @@ public class SessionsCommand {
 		}
 
 		Session resolvedSession = session.get();
+		SessionConnection connection = resolvedSession.getConnection();
 		Messages.Format.Temporal temporal = messagesProvider.get().getFormat().getTemporal();
 		DateTimeFormatter dateFormatter = resolveFormatter(temporal.getDate(), DATE_FORMATTER);
 		DateTimeFormatter dateTimeFormatter = resolveFormatter(temporal.getDateTime(), TIME_FORMATTER);
@@ -154,6 +156,8 @@ public class SessionsCommand {
 								Map.entry("subject", safe(resolvedSession.getProviderSubject(), unknown)),
 								Map.entry("session", safe(resolvedSession.getSessionId(), unknown)),
 								Map.entry("ip", safe(resolvedSession.getIp(), unknown)),
+								Map.entry("server", connection != null ? safe(connection.getServerId(), unknown) : unknown),
+								Map.entry("connection", connection != null ? connection.getConnectionUniqueId().toString() : unknown),
 								Map.entry("created", createdDateTime),
 								Map.entry("createdDate", createdDate),
 								Map.entry("createdDateTime", createdDateTime)

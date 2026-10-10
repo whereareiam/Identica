@@ -5,6 +5,7 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.model.Session;
+import me.whereareiam.identica.model.SessionConnection;
 import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
@@ -18,6 +19,7 @@ import me.whereareiam.identica.type.pipeline.PipelineType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -73,6 +75,7 @@ public class BuildSessionPhase implements PipelinePhase<SessionState> {
 				.providerSubject(provider.getProviderSubject())
 				.originalUsername(authContext.getUsername())
 				.effectiveUsername(authContext.getUsername())
+				.connection(connection(authContext.getConnectionUniqueId()))
 				.ip(authContext.getIp())
 				.createdAt(System.currentTimeMillis())
 				.build();
@@ -80,6 +83,10 @@ public class BuildSessionPhase implements PipelinePhase<SessionState> {
 		state.setAuthContext(authContext);
 		state.setSession(session);
 		return CompletableFuture.completedFuture(PhaseResult.pass(state));
+	}
+
+	private @Nullable SessionConnection connection(@Nullable UUID connectionUniqueId) {
+		return connectionUniqueId != null ? SessionConnection.of(connectionUniqueId) : null;
 	}
 
 	private @Nullable ProviderContext resolveProvider(@Nullable AuthContext authContext) {

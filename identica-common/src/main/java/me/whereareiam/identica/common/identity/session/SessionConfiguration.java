@@ -6,6 +6,7 @@ import me.whereareiam.identica.identity.session.SessionService;
 public class SessionConfiguration extends AbstractModule {
 	@Override
 	protected void configure() {
+		bind(ServerPresence.class).asEagerSingleton();
 		bind(SessionService.class).to(DefaultSessionService.class).asEagerSingleton();
 	}
 }

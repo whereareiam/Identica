@@ -68,6 +68,14 @@ public class MessagesDefaults implements DefaultsProvider<Messages> {
 				"",
 				"<dark_gray>discord.arcadeya.com"
 		));
+		engine.setConcurrentLoginRefused(List.of(
+				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
+				"",
+				"<white>This account is already logged in.</white>",
+				"<white>Log out from the other location first.</white>",
+				"",
+				"<dark_gray>discord.arcadeya.com"
+		));
 		engine.setJourney(buildJourneyMessages());
 		engine.setPrepare(buildPrepare());
 		messages.setEngine(engine);

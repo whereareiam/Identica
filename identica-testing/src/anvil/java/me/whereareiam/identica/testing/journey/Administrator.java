@@ -52,6 +52,22 @@ public final class Administrator {
 	}
 
 	/**
+	 * Asks for a player's session and expects the proxy to describe one.
+	 */
+	public Administrator findsSessionOf(String username) {
+		run("identica admin session info " + username, configured.identica().getCommands().getAdmin().getSessions().getStatus().getBody());
+		return this;
+	}
+
+	/**
+	 * Asks for a player's session and expects the proxy to find none.
+	 */
+	public Administrator findsNoSessionOf(String username) {
+		run("identica admin session info " + username, configured.identica().getCommands().getAdmin().getSessions().getStatus().getNotFound());
+		return this;
+	}
+
+	/**
 	 * Clears an account's provider data and confirms it.
 	 */
 	public Administrator clears(String username) {

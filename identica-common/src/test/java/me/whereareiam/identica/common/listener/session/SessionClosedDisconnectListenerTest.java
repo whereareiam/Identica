@@ -5,7 +5,10 @@ import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.identity.session.SessionClosedEvent;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.Identity;
+import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.SessionCloseRequest;
+import me.whereareiam.identica.model.SessionConnection;
+import me.whereareiam.identica.model.config.Replication;
 import me.whereareiam.identica.replication.codec.SnapshotCodec;
 import me.whereareiam.keystone.model.SerializerContent;
 import me.whereareiam.keystone.serializer.SerializerEngine;
@@ -28,7 +31,9 @@ import static org.mockito.Mockito.*;
 @DisplayName("Session Closed Disconnect Listener")
 class SessionClosedDisconnectListenerTest {
 	private final UUID uniqueId = UUID.randomUUID();
+	private final UUID connectionUniqueId = UUID.randomUUID();
 	private final Identity identity = mock(Identity.class);
+	private final Identity connection = mock(Identity.class);
 	private SessionClosedDisconnectListener listener;
 
 	@BeforeAll
@@ -43,7 +48,10 @@ class SessionClosedDisconnectListenerTest {
 	void connectedPlayer() {
 		IdentityService identities = mock(IdentityService.class);
 		when(identities.findByAccountUniqueId(uniqueId)).thenReturn(Optional.of(identity));
-		listener = new SessionClosedDisconnectListener(identities, mock(EventManager.class));
+		when(identities.findByConnectionUniqueId(connectionUniqueId)).thenReturn(Optional.of(connection));
+		Replication replication = new Replication();
+		replication.setServerId("proxy-a");
+		listener = new SessionClosedDisconnectListener(identities, () -> replication, mock(EventManager.class));
 	}
 
 	@DisplayName("A close that asks for a disconnect disconnects with or without a message")
@@ -75,6 +83,54 @@ class SessionClosedDisconnectListenerTest {
 		listener.onSessionClosed(received);
 		verify(identity).disconnect(Component.text(""));
 		assertFalse(codec.decode(codec.encode(closed(false, "text"))).getRequest().isDisconnect());
+	}
+
+	@DisplayName("A close naming a connection disconnects only that connection, on the proxy that holds it")
+	@Test
+	void disconnectsOnlyTheNamedConnectionOnItsProxy() {
+		listener.onSessionClosed(closedConnection("proxy-a"));
+
+		verify(connection).disconnect(Component.text("Logged in from another location"));
+		verify(identity, never()).disconnect(any());
+	}
+
+	@DisplayName("A close naming a connection on another proxy disconnects nobody here")
+	@Test
+	void leavesPlayersOfThisProxyWhenTheConnectionIsElsewhere() {
+		listener.onSessionClosed(closedConnection("proxy-b"));
+
+		verify(connection, never()).disconnect(any());
+		verify(identity, never()).disconnect(any());
+	}
+
+	@DisplayName("The named connection reaches another proxy through replication")
+	@Test
+	void namedConnectionSurvivesReplication() {
+		SnapshotCodec<SessionClosedEvent> codec = SnapshotCodec.json(SessionClosedEvent.class);
+
+		SessionClosedEvent received = codec.decode(codec.encode(closedConnection("proxy-a")));
+
+		assertEquals("proxy-a", received.getRequest().getConnection().getServerId());
+		assertEquals(connectionUniqueId, received.getRequest().getConnection().getConnectionUniqueId());
+		assertEquals(connectionUniqueId, received.getSession().getConnection().getConnectionUniqueId());
+		listener.onSessionClosed(received);
+		verify(connection).disconnect(Component.text("Logged in from another location"));
+	}
+
+	private SessionClosedEvent closedConnection(String serverId) {
+		SessionConnection held = new SessionConnection(serverId, connectionUniqueId);
+		Session session = Session.builder()
+				.sessionId(UUID.randomUUID().toString())
+				.uniqueId(uniqueId)
+				.connection(held)
+				.build();
+		return new SessionClosedEvent(uniqueId, session, SessionCloseRequest.builder()
+				.requestId(UUID.randomUUID())
+				.uniqueId(uniqueId)
+				.connection(held)
+				.disconnect(true)
+				.disconnectMessage("Logged in from another location")
+				.build());
 	}
 
 	private SessionClosedEvent closed(boolean disconnect, String message) {

@@ -16,10 +16,14 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -46,11 +50,15 @@ public final class IdenticaClusterScenarios implements AnvilScenarioFactory<Iden
 			configuration.put("persistence.yml", persistence(database));
 			if (redis != null)
 				configuration.put("replication.yml", replication(proxy, redis));
+			for (Class<? extends Consumer<ProxyConfiguration>> change : cluster.configure())
+				IdenticaScenarios.instantiate(change).accept(configuration);
 			proxies.put(proxy, configuration.files());
 		}
 
 		String name = String.join("-", "identica-cluster", redis == null ? "database" : "replicated",
-				IdenticaScenarios.routing(cluster.step(), cluster.complete()));
+				IdenticaScenarios.routing(cluster.step(), cluster.complete()),
+				Arrays.stream(cluster.configure()).map(Class::getSimpleName).collect(Collectors.joining("+")))
+				.replaceAll("-+$", "").toLowerCase(Locale.ROOT);
 		return IdenticaNetwork.velocity(name, proxies, yggdrasil.sessionServer());
 	}
 

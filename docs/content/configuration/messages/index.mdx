@@ -26,6 +26,23 @@ A message set to an empty string, or a multi-line message set to an empty list, 
 
 Recovery codes are the exception, because they are shown once and cannot be read again: they are sent on their own when their message body is empty or does not contain `{entries}`.
 
+## engine
+
+The `engine` section holds messages of the login flow itself. Two of them belong to `settings.sessions.concurrencyPolicy`, which decides what happens when an account that is online logs in from another connection:
+
+#### concurrentLoginKick
+
+- Takes: a list of lines
+- Affects: the reason shown to the earlier connection when `REPLACE_EXISTING` disconnects it
+
+#### concurrentLoginRefused
+
+- Takes: a list of lines
+- Current default: a notice ending in `This account is already logged in.` and `Log out from the other location first.`
+- Affects: the reason shown to the new login when `REJECT_NEW` refuses it because the account is already online
+
+Emptying either message changes only the text. The earlier connection is still disconnected, and the new login is still refused, then with the scenario's general failure message.
+
 ## prefix
 
 - Takes: a string

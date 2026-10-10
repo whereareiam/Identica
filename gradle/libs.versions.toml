@@ -11,7 +11,7 @@ anvil = "dev-f29fb04"
 lombok = "1.18.42"
 
 # general
-attache = "dev-58f53b4"
+attache = "1.0.0"
 configura = "2.0.0"
 commandant = "dev-642fe14"
 keystone = "dev-790a33e"

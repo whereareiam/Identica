@@ -144,7 +144,7 @@ Do not replace these libraries with unrelated alternatives in the same area unle
 - run them with `./gradlew :identica-testing:anvilTest`; `test` and `pluginJars` do not start them
 - they need Java 21 for Gradle, network access on first use, and take about 20 seconds per test
 - add or update a journey when a change affects what a joining player experiences
-- declare the network with `@Identica`, describe the player with `Journey`, and keep player-facing texts in `Prompt`
+- declare the network with `@Identica`, describe the player with `Journey`, and name player-facing messages through Identica's message models (`.sees(m -> m.credential()...)`) instead of copying their text
 - a failed test keeps its network under `identica-testing/build/anvil/`; read the `anvil-console.log` files there, where Identica's debug logging is enabled
 - premium accounts come from the local Mojang stand-in (`Mojang.service().register(...)`), which also verifies premium logins; never add real account credentials to the repository or CI
 

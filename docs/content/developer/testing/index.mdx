@@ -46,12 +46,12 @@ A test declares its network with `@Identica` and describes a player with `Journe
 void registersWithCredential(ScenarioContext anvil) {
 	Journey.offline(anvil, "Alice").join()
 			.on(AUTH)
-			.sees(Prompt.PROVIDER_CHOICE, Prompt.CREDENTIAL_OFFERED)
+			.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
 			.enroll(Provider.CREDENTIAL)
-			.sees(Prompt.REGISTRATION_PASSWORD)
+			.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
 			.register("Secret-123")
 			.on(LOBBY)
-			.sees(Prompt.REGISTERED_WITH_CREDENTIAL);
+			.sees(m -> m.credential().getCompletion().getRegistration().getBody());
 }
 ```
 
@@ -59,4 +59,6 @@ void registersWithCredential(ScenarioContext anvil) {
 
 Each `Journey` step checks both sides: what the player's client receives, and what the proxy reports on its own console for connections, server changes, and disconnect reasons. A message expectation only considers messages received since the previous one, so a prompt repeated after a reconnect is not satisfied by its earlier occurrence.
 
-Use `Accounts` for players who already have an account, and add new player-facing texts to `Prompt` instead of repeating them in tests.
+Use `Accounts` for players who already have an account.
+
+A message expectation names the message through Identica's own configuration models: `m.identica()` is `Messages`, `m.credential()` is `CredentialMessages` and `m.premium()` is `PremiumMessages`. The models are read from the files the running proxy generated, so the expectation follows the configured text, and a renamed or removed message stops the tests from compiling. Formatting tags are ignored and placeholders match any text. Chain `.with(...)` and `.without(...)` after `.sees(...)` to check what else the same message contains. Do not copy message text into a test.

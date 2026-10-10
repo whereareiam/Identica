@@ -19,6 +19,7 @@ public class RoutingDefaults implements DefaultsProvider<Routing> {
 
 		Routing.Target complete = Routing.Target.complete();
 		complete.setTarget("survival");
+		complete.setForcedHosts(false);
 		complete.setAttempts(RoutingAttemptPolicy.defaultCompletion());
 
 		defaults.setStep(step);

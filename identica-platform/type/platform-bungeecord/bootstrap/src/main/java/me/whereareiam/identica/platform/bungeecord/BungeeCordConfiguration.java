@@ -21,6 +21,7 @@ import me.whereareiam.identica.platform.bungeecord.adapter.BungeeCordPlatformHan
 import me.whereareiam.identica.platform.bungeecord.adapter.auth.BungeeCordHandshakeDecisionAdapter;
 import me.whereareiam.identica.platform.bungeecord.adapter.auth.BungeeCordLoginDecisionAdapter;
 import me.whereareiam.identica.platform.bungeecord.adapter.auth.BungeeCordResumeDecisionAdapter;
+import me.whereareiam.identica.platform.bungeecord.adapter.routing.BungeeCordForcedHostAdapter;
 import me.whereareiam.identica.platform.bungeecord.api.handshake.BungeeCordHandshakeContext;
 import me.whereareiam.identica.platform.bungeecord.adapter.profile.BungeeCordProfilePrepareAdapter;
 import me.whereareiam.identica.platform.bungeecord.delivery.BungeeCordDeliveryCoordinator;
@@ -70,6 +71,11 @@ public class BungeeCordConfiguration extends PlatformConfiguration<BungeeCordHan
 	@Override
 	protected @NotNull Class<BungeeCordDeliveryCoordinator> delivery() {
 		return BungeeCordDeliveryCoordinator.class;
+	}
+
+	@Override
+	protected @NotNull Class<BungeeCordForcedHostAdapter> forcedHost() {
+		return BungeeCordForcedHostAdapter.class;
 	}
 
 	@Override

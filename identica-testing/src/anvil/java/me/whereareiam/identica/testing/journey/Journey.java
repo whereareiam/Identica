@@ -87,6 +87,19 @@ public final class Journey {
 	}
 
 	/**
+	 * Creates an offline player that has not connected yet and joins through a hostname, as a player who typed
+	 * that address does.
+	 */
+	public static Journey offlineThrough(ScenarioContext anvil, String name, String host) {
+		SimulatedPlayer player = anvil.players().create(PlayerOptions.builder()
+				.name(name)
+				.login(PlayerLogin.offline(name))
+				.connection(PlayerConnection.entrypoint().toBuilder().virtualHost(host).build())
+				.build());
+		return new Journey(anvil, player, name, anvil.definition().getEntrypoint());
+	}
+
+	/**
 	 * Creates a player that owns a premium account registered with the network's stand-in for Mojang and has not connected
 	 * yet. It authenticates when the proxy asks for it, as a premium client does.
 	 */

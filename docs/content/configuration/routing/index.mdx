@@ -35,6 +35,7 @@ defaults:
     target: "auth"
   complete:
     target: "survival"
+    forcedHosts: false
 ```
   </Tab>
   <Tab value="JSON">
@@ -45,13 +46,120 @@ defaults:
       "target": "auth"
     },
     "complete": {
-      "target": "survival"
+      "target": "survival",
+      "forcedHosts": false
     }
   }
 }
 ```
   </Tab>
 </Tabs>
+
+## forcedHosts
+
+- Takes: `true` or `false`
+- Current default: `false` on `defaults.complete`
+- Affects: whether a target sends players to the server the proxy forces for the hostname they joined through
+
+Forced hosts stay in the proxy's own configuration: `[forced-hosts]` in `velocity.toml`, or `forced_hosts` of a listener in BungeeCord's `config.yml`. Identica does not have a hostname list of its own.
+
+With `forcedHosts: true`, a target routes to the proxy's forced host for the player's hostname. `target` is the fallback for hostnames the proxy has no forced host for.
+
+<Tabs items={["Velocity", "BungeeCord"]}>
+  <Tab value="Velocity">
+```toml
+[forced-hosts]
+"survival.example.com" = ["survival"]
+"skyblock.example.com" = ["skyblock"]
+```
+  </Tab>
+  <Tab value="BungeeCord">
+```yaml
+listeners:
+  - forced_hosts:
+      survival.example.com: survival
+      skyblock.example.com: skyblock
+```
+  </Tab>
+</Tabs>
+
+<Tabs items={["YAML", "JSON"]}>
+  <Tab value="YAML">
+```yaml
+defaults:
+  step:
+    target: "auth"
+  complete:
+    target: "lobby"
+    forcedHosts: true
+```
+  </Tab>
+  <Tab value="JSON">
+```json
+{
+  "defaults": {
+    "step": {
+      "target": "auth"
+    },
+    "complete": {
+      "target": "lobby",
+      "forcedHosts": true
+    }
+  }
+}
+```
+  </Tab>
+</Tabs>
+
+| Player joins through | While a step waits | Once done |
+| --- | --- | --- |
+| `survival.example.com` | `auth` | `survival` |
+| `skyblock.example.com` | `auth` | `skyblock` |
+| `play.example.com` | `auth` | `lobby` |
+
+A blank `target` with `forcedHosts: true` only routes hostnames that have a forced host. Players who joined through another hostname are not moved.
+
+When Velocity lists several servers for a hostname, Identica routes to the first one. A forced host that names a server the proxy does not know is handled like any other missing target.
+
+A scenario target or override that leaves `forcedHosts` out uses the value of the less specific target, so a scenario can opt out of what `defaults` sets:
+
+<Tabs items={["YAML", "JSON"]}>
+  <Tab value="YAML">
+```yaml
+defaults:
+  complete:
+    target: "lobby"
+    forcedHosts: true
+scenarios:
+  registration:
+    complete:
+      target: "tutorial"
+      forcedHosts: false
+```
+  </Tab>
+  <Tab value="JSON">
+```json
+{
+  "defaults": {
+    "complete": {
+      "target": "lobby",
+      "forcedHosts": true
+    }
+  },
+  "scenarios": {
+    "registration": {
+      "complete": {
+        "target": "tutorial",
+        "forcedHosts": false
+      }
+    }
+  }
+}
+```
+  </Tab>
+</Tabs>
+
+`forcedHosts` also works on `step` targets. Players are then sent to the forced host's server while they are still logging in, so leave it off there unless that server is meant for unauthenticated players.
 
 ## scenarios
 

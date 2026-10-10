@@ -24,6 +24,7 @@ import me.whereareiam.identica.platform.velocity.adapter.VelocityPlatformHandsha
 import me.whereareiam.identica.platform.velocity.adapter.auth.VelocityHandshakeDecisionAdapter;
 import me.whereareiam.identica.platform.velocity.adapter.auth.VelocityLoginDecisionAdapter;
 import me.whereareiam.identica.platform.velocity.adapter.auth.VelocityResumeDecisionAdapter;
+import me.whereareiam.identica.platform.velocity.adapter.routing.VelocityForcedHostAdapter;
 import me.whereareiam.identica.platform.velocity.api.handshake.VelocityHandshakeContext;
 import me.whereareiam.identica.platform.velocity.adapter.profile.VelocityProfileRewriteAdapter;
 import me.whereareiam.identica.platform.velocity.delivery.VelocityDeliveryCoordinator;
@@ -73,6 +74,11 @@ public class VelocityConfiguration extends PlatformConfiguration<VelocityHandsha
 	@Override
 	protected @NotNull Class<VelocityDeliveryCoordinator> delivery() {
 		return VelocityDeliveryCoordinator.class;
+	}
+
+	@Override
+	protected @NotNull Class<VelocityForcedHostAdapter> forcedHost() {
+		return VelocityForcedHostAdapter.class;
 	}
 
 	@Override

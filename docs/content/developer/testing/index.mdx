@@ -128,6 +128,8 @@ void registersOnTheLobbyWithoutAnyRouting(ScenarioContext anvil) {
 }
 ```
 
+Every test proxy forces the hostname `IdenticaNetwork.LOBBY_HOST` to `lobby`. A player joins through it with `Journey.offlineThrough(anvil, "Alice", LOBBY_HOST)`; every other journey joins through a hostname without a forced host.
+
 Each `Journey` step checks both sides: what the player's client receives, and what the proxy reports on its own console for connections, server changes, and disconnect reasons. A message expectation only considers messages received since the previous one, so a prompt repeated after a reconnect is not satisfied by its earlier occurrence.
 
 Use `Accounts` for players who already have an account.

@@ -22,7 +22,7 @@ public final class ConfigInitializer {
 				.filter(key -> ConfigProvider.class.isAssignableFrom(key.getTypeLiteral().getRawType()))
 				.filter(key -> filter == null || filter.test(key.getTypeLiteral().getRawType()))
 				.map(key -> new ConfigBinding(key, key.getTypeLiteral().getRawType()))
-				.sorted(Comparator.comparing(binding -> binding.type().getSimpleName()))
+				.sorted(Comparator.comparing(ConfigBinding::type, ConfigLoadOrder.BY_TYPE))
 				.toList();
 
 		List<String> prepared = new ArrayList<>();

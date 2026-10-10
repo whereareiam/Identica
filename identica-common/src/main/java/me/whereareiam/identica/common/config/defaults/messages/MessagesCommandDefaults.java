@@ -169,6 +169,8 @@ public class MessagesCommandDefaults {
 				" ",
 				"   <white>Provider: <gray>{eligibility}</gray></white>",
 				"   <white>IP: <gray>{ip}</gray></white>",
+				"   <white>Proxy: <gray>{server}</gray></white>",
+				"   <white>Connection: <gray>{connection}</gray></white>",
 				" ",
 				"   <white>Created: <gray>{created}</gray></white>",
 				" ",

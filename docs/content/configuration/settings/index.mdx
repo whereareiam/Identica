@@ -133,11 +133,16 @@ A session exists while a player is online.
 - Current default: `"REPLACE_EXISTING"`
 - Affects: the default session-opening policy used by `SessionService.open(session)`
 
-The policies behave like this:
+A session belongs to the connection that opened it.
+A login from that same connection continues its session; the policy decides what happens when the account logs in from another connection while it has a session, for example through a second proxy that shares Redis:
 
-- `ALLOW_MULTIPLE`: do not reject a new session because another one already exists
-- `REPLACE_EXISTING`: remove the existing session and keep the new one
-- `REJECT_NEW`: keep the existing session and reject the new one
+- `ALLOW_MULTIPLE`: keep the new session and leave the earlier connection online
+- `REPLACE_EXISTING`: keep the new session and disconnect the earlier connection with `engine.concurrentLoginKick`, on whichever proxy holds it
+- `REJECT_NEW`: keep the earlier session and refuse the new login with `engine.concurrentLoginRefused`
+
+A player leaving closes only the session of their own connection, never a newer session of the same account that another connection holds.
+
+`REJECT_NEW` does not keep refusing logins for a session nobody holds any more. The proxy that holds the earlier connection treats the session as gone once that connection is no longer online. Every other proxy treats it as gone once the proxy holding it stops announcing itself in Redis, about 30 seconds after it stopped or crashed (see `replication.cache.sessions.servers`).
 
 This is the default policy used when a session opens after authentication, registration, or migration.
 If one provider needs different behavior, set `providers.session.concurrencyPolicy` for that provider in the providers config.

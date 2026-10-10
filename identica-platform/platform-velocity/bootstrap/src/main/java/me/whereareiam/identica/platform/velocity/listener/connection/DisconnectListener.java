@@ -10,6 +10,8 @@ import me.whereareiam.identica.identity.IdentityAttachment;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.listener.DynamicListener;
+import me.whereareiam.identica.model.SessionCloseRequest;
+import me.whereareiam.identica.model.SessionConnection;
 import me.whereareiam.identica.pipeline.prepare.PrepareStateStore;
 import me.whereareiam.identica.routing.RoutingCoordinator;
 import me.whereareiam.identica.type.routing.reason.RoutingClearReason;
@@ -30,7 +32,10 @@ public class DisconnectListener implements DynamicListener<DisconnectEvent> {
 
 		identityService.findAttachmentByConnectionUniqueId(player.getUniqueId())
 				.map(IdentityAttachment::getAccountUniqueId)
-				.ifPresent(uniqueId -> sessionService.close(uniqueId).join());
+				.ifPresent(uniqueId -> sessionService.close(SessionCloseRequest.builder()
+						.uniqueId(uniqueId)
+						.connection(SessionConnection.of(player.getUniqueId()))
+						.build()).join());
 		routingCoordinator.clear(player.getUniqueId(), RoutingClearReason.DISCONNECT);
 		identityService.detach(player.getUniqueId());
 		prepareStateStore.clear(player.getUniqueId());

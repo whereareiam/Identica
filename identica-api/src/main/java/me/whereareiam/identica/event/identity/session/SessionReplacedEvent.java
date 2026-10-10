@@ -9,7 +9,9 @@ import me.whereareiam.identica.model.Session;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Event fired when an existing session is replaced by a new one.
+ * Event fired on the proxy that opens a session replacing the session of another connection of the same
+ * account. The replaced session is then closed through a replicated {@link SessionClosedEvent} that
+ * disconnects its connection on the proxy that holds it.
  */
 @Getter
 @ToString

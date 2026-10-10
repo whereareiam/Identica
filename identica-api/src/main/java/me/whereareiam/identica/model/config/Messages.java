@@ -533,6 +533,11 @@ public class Messages {
 		 * Message shown when an existing session is kicked due to a new login.
 		 */
 		private @NotNull List<String> concurrentLoginKick;
+		/**
+		 * Message shown when a login is refused because the account is already online through another
+		 * connection and the session concurrency policy is {@code REJECT_NEW}.
+		 */
+		private @NotNull List<String> concurrentLoginRefused;
 		private @NotNull Journey journey;
 		private @NotNull Prepare prepare;
 

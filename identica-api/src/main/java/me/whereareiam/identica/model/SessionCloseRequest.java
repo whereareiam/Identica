@@ -39,6 +39,14 @@ public class SessionCloseRequest {
 	 */
 	private @NotNull UUID uniqueId;
 	/**
+	 * Connection whose session is closed. When set, the account's session is only closed while it
+	 * belongs to this connection, so a connection never ends a newer session of the same account
+	 * held by another connection, and a disconnect reaches only this connection on the proxy that
+	 * holds it. When {@code null}, the account's session is closed whatever connection holds it and a
+	 * disconnect reaches every connection of the account. A missing server id means this proxy.
+	 */
+	private @Nullable SessionConnection connection;
+	/**
 	 * Whether the player whose session is closed is also disconnected, on whichever instance holds
 	 * the connection. Left false for a close that follows the player leaving.
 	 */

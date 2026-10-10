@@ -71,7 +71,7 @@ public class OpenSessionPhase implements PipelinePhase<SessionState> {
 		return sessionService.open(session)
 				.thenApply(openedSession -> {
 					if (openedSession == null) {
-						state.setResult(PipelineResult.denied(authenticationFailedMessage()));
+						state.setResult(PipelineResult.denied(concurrentLoginRefusedMessage()));
 						return PhaseResult.pass(state);
 					}
 
@@ -103,6 +103,14 @@ public class OpenSessionPhase implements PipelinePhase<SessionState> {
 
 	private @NotNull String authenticationFailedMessage() {
 		return joinMessage(messagesProvider.get().getScenarios().getAuthentication().getAuthenticationFailed());
+	}
+
+	/**
+	 * The session service refuses a session only when the account is already online through another connection
+	 * under {@code REJECT_NEW}. The denied status refuses the login; the message only explains it.
+	 */
+	private @NotNull String concurrentLoginRefusedMessage() {
+		return joinMessage(messagesProvider.get().getEngine().getConcurrentLoginRefused());
 	}
 
 	private @NotNull String joinMessage(@NotNull List<String> lines) {

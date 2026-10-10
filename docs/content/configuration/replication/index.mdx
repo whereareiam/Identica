@@ -28,6 +28,7 @@ Each runtime in the same environment should have its own stable `serverId`.
 Do not leave a random generated value in place across restarts if you want predictable shared-state behavior.
 
 This value is especially important for replicated events, because Identica uses it to distinguish local-origin events from events coming from another runtime.
+A session also records the `serverId` of the proxy holding the player's connection, so a concurrent login through another proxy disconnects exactly that connection.
 
 ## redis
 
@@ -173,6 +174,17 @@ The `sessions` subsection splits session replication into separate namespaces.
 - Takes: a string
 - Current default: `"identica:sessions:subject"`
 - Affects: the namespace used for session lookup by provider subject
+
+##### servers
+
+<Badge type="warning">Advanced</Badge>
+
+- Takes: a string
+- Current default: `"identica:sessions:servers"`
+- Affects: the namespace where each proxy announces that it is running
+
+Every proxy refreshes its entry every 10 seconds, and the entry expires 30 seconds after the last refresh.
+When `REJECT_NEW` meets a session held by a proxy whose entry has expired, for example after that proxy crashed, Identica treats the session as gone instead of refusing the login.
 
 ## Connection behavior
 

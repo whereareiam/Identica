@@ -8,7 +8,9 @@ import me.whereareiam.identica.replication.codec.SnapshotCodecFactory;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -34,6 +36,12 @@ public final class ReplicationTestFixtures {
 		public Optional<byte[]> nextGet = Optional.empty();
 		public Optional<byte[]> nextConsume = Optional.empty();
 		public ReplicationPage nextListKeys;
+		/**
+		 * Keeps written values and answers reads from them, like a shared Redis, instead of answering
+		 * {@link #nextGet}.
+		 */
+		public boolean storing;
+		private final Map<String, byte[]> stored = new HashMap<>();
 
 		public int getCalls;
 		public int consumeCalls;
@@ -64,6 +72,7 @@ public final class ReplicationTestFixtures {
 			getCalls++;
 			lastNamespace = namespace;
 			lastKey = key;
+			if (storing) return CompletableFuture.completedFuture(Optional.ofNullable(stored.get(namespace + "|" + key)));
 			return CompletableFuture.completedFuture(nextGet);
 		}
 
@@ -90,6 +99,7 @@ public final class ReplicationTestFixtures {
 			lastKey = key;
 			lastValue = value;
 			lastTtlMs = ttlMs;
+			if (storing) stored.put(namespace + "|" + key, value);
 			return CompletableFuture.completedFuture(null);
 		}
 
@@ -101,6 +111,7 @@ public final class ReplicationTestFixtures {
 			invalidateCalls++;
 			lastNamespace = namespace;
 			lastKey = key;
+			if (storing) stored.remove(namespace + "|" + key);
 			return CompletableFuture.completedFuture(null);
 		}
 

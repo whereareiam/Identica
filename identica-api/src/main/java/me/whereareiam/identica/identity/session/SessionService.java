@@ -48,7 +48,15 @@ public interface SessionService {
 	);
 
 	/**
-	 * Opens a session and stores it in the session cache.
+	 * Opens a session and stores it in the session cache, under the concurrency policy configured for
+	 * the session's provider.
+	 *
+	 * <p>A session from the connection that holds the account's current session continues it. A session
+	 * from any other connection is a concurrent login: {@code REPLACE_EXISTING} closes the current session
+	 * and disconnects its connection on whichever proxy holds it, {@code REJECT_NEW} refuses the new session
+	 * while the current one is live, and {@code ALLOW_MULTIPLE} stores the new session and leaves the other
+	 * connection online. A current session counts as gone when its connection is no longer online on this
+	 * proxy, or when the proxy that holds it stopped announcing itself.</p>
 	 *
 	 * <pre>{@code
 	 * Session stored = sessionService.open(session).join();
@@ -72,7 +80,7 @@ public interface SessionService {
 	);
 
 	/**
-	 * Closes a session by identity id.
+	 * Closes the session of an account, whatever connection holds it.
 	 *
 	 * @param uniqueId identity id
 	 * @return completion journey
@@ -83,7 +91,8 @@ public interface SessionService {
 	 * Closes a session using an explicit replicated request.
 	 *
 	 * <p>Use this overload when the caller wants every instance to receive the
-	 * same disconnect message or request metadata.</p>
+	 * same disconnect message or request metadata, or to close only the session of one
+	 * connection through {@link SessionCloseRequest#getConnection()}.</p>
 	 *
 	 * @param request close request
 	 * @return completion journey

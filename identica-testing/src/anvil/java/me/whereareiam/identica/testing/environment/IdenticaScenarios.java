@@ -33,7 +33,7 @@ public final class IdenticaScenarios implements AnvilScenarioFactory<Identica> {
 		return IdenticaNetwork.velocity(name(identica, enabled), Map.of(IdenticaNetwork.PROXY, proxy.files()), yggdrasil.sessionServer());
 	}
 
-	private static Consumer<ProxyConfiguration> instantiate(Class<? extends Consumer<ProxyConfiguration>> change) {
+	static Consumer<ProxyConfiguration> instantiate(Class<? extends Consumer<ProxyConfiguration>> change) {
 		try {
 			var constructor = change.getDeclaredConstructor();
 			constructor.setAccessible(true);

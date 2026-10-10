@@ -3,6 +3,7 @@ package me.whereareiam.identica.engine.pipeline.scenario.shared.group.session.ph
 import com.google.inject.Provider;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.model.Session;
+import me.whereareiam.identica.model.SessionConnection;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
@@ -15,6 +16,7 @@ import me.whereareiam.identica.type.pipeline.PipelineStatus;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -65,6 +67,7 @@ public abstract class AbstractBuildSessionPhase<C extends ScenarioContext, S ext
 				.providerSubject(provider.getProviderSubject())
 				.originalUsername(originalUsername)
 				.effectiveUsername(currentUsername)
+				.connection(connection(context.getConnectionUniqueId()))
 				.ip(context.getIp())
 				.createdAt(System.currentTimeMillis())
 				.build();
@@ -81,6 +84,10 @@ public abstract class AbstractBuildSessionPhase<C extends ScenarioContext, S ext
 	protected abstract void storeSession(@NotNull S state, @NotNull Session session);
 
 	protected abstract @NotNull String sessionBuildMissingMessage(@NotNull Messages messages);
+
+	private @Nullable SessionConnection connection(@Nullable UUID connectionUniqueId) {
+		return connectionUniqueId != null ? SessionConnection.of(connectionUniqueId) : null;
+	}
 
 	private boolean isBlank(@Nullable String value) {
 		return value == null || value.isBlank();

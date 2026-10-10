@@ -5,7 +5,6 @@ import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.provider.ProviderAttemptStore;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
 import me.whereareiam.identica.provider.premium.pipeline.step.shared.OfflineCheckStep;
@@ -30,8 +29,6 @@ import static org.mockito.Mockito.when;
 @DisplayName("Offline-Check Step")
 class OfflineCheckStepTest {
 	@Mock
-	private PipelineStateStore pipelineStateStore;
-	@Mock
 	private PremiumProfileStore profileStore;
 	@Mock
 	private ProviderAttemptStore attemptStore;
@@ -44,7 +41,6 @@ class OfflineCheckStepTest {
 	void setUp() {
 		step = new OfflineCheckStep(
 				this::messages,
-				pipelineStateStore,
 				profileStore,
 				attemptStore,
 				handshakeStore,

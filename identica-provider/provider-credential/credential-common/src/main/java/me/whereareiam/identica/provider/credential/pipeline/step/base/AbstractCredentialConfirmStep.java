@@ -4,7 +4,7 @@ import com.google.inject.Provider;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.ScenarioContext;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
+import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.cryptography.CryptographyService;
@@ -24,34 +24,32 @@ public abstract class AbstractCredentialConfirmStep extends AbstractCredentialSt
 			@NotNull Provider<CredentialMessages> messagesProvider,
 			@NotNull Provider<Engine> coreSettingsProvider,
 			@NotNull CredentialAccountService credentialService,
-			@NotNull PipelineStateStore pipelineStateStore,
 			@NotNull CryptographyService cryptographyService
 	) {
-		super(name, coreSettingsProvider, pipelineStateStore);
+		super(name, coreSettingsProvider);
 		this.messagesProvider = messagesProvider;
 		this.credentialService = credentialService;
 		this.cryptographyService = cryptographyService;
 	}
 
 	@Override
-	public final @NotNull CompletableFuture<StepResult> execute(@NotNull ScenarioContext context) {
+	public final @NotNull CompletableFuture<StepResult> execute(@NotNull ScenarioContext context, @NotNull PipelineState state) {
 		String providerSubject = requireProviderSubject(context);
 
 		CredentialMessages messages = messagesProvider.get();
-		CredentialRegisterStateItem pending = getRegisterState(context);
+		CredentialRegisterStateItem pending = getRegisterState(state);
 		if (pending == null) return CompletableFuture.completedFuture(StepResult.waiting(registerPrompt(messages)));
 
-		long ttlMs = ttlMs();
-		var input = consumeRegistrationAttempt(context, ttlMs);
+		var input = consumeRegistrationAttempt(state);
 		if (input == null) return CompletableFuture.completedFuture(StepResult.waiting(confirmPrompt(messages)));
 
 		if (!input.isConfirm()) {
-			clearRegisterState(context, ttlMs);
+			clearRegisterState(state);
 			return CompletableFuture.completedFuture(StepResult.waiting(registerReset(messages)));
 		}
 
 		if (!matchesPending(input.getPassword(), pending)) {
-			clearRegisterState(context, ttlMs);
+			clearRegisterState(state);
 			return CompletableFuture.completedFuture(StepResult.waiting(registerReset(messages)));
 		}
 
@@ -61,13 +59,11 @@ public abstract class AbstractCredentialConfirmStep extends AbstractCredentialSt
 				pending.getHashingMethod(),
 				PasswordChangeReason.REGISTER
 		).isPresent();
-		clearRegisterState(context, ttlMs);
+		clearRegisterState(state);
 		if (!registered) return CompletableFuture.completedFuture(StepResult.failed(""));
 
 		return CompletableFuture.completedFuture(StepResult.complete(context));
 	}
-
-	protected abstract long ttlMs();
 
 	protected abstract @NotNull String registerPrompt(@NotNull CredentialMessages messages);
 

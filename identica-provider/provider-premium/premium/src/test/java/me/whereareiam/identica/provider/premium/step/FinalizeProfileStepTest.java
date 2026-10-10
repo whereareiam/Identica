@@ -8,7 +8,7 @@ import me.whereareiam.identica.model.migration.MigrationContext;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.model.registration.RegistrationContext;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
+import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
 import me.whereareiam.identica.provider.premium.pipeline.step.shared.FinalizeProfileStep;
 import me.whereareiam.identica.provider.premium.profile.PremiumProfileSnapshot;
@@ -28,8 +28,6 @@ import static org.mockito.Mockito.when;
 @DisplayName("Finalize-Profile Step")
 class FinalizeProfileStepTest {
 	@Mock
-	private PipelineStateStore pipelineStateStore;
-	@Mock
 	private PremiumProfileStore profileStore;
 	@Mock
 	private HandshakeStore handshakeStore;
@@ -40,7 +38,6 @@ class FinalizeProfileStepTest {
 	void setUp() {
 		step = new FinalizeProfileStep(
 				PremiumMessages::new,
-				pipelineStateStore,
 				profileStore,
 				handshakeStore,
 				Engine::new
@@ -55,10 +52,8 @@ class FinalizeProfileStepTest {
 				.build();
 		context.setProvider(ProviderContext.of("premium", null, "whereareiam", null));
 		when(profileStore.find("whereareiam")).thenReturn(new PremiumProfileSnapshot("premium-subject", System.currentTimeMillis()));
-		when(pipelineStateStore.find(org.mockito.ArgumentMatchers.any(me.whereareiam.identica.pipeline.state.PipelineStateReference.class)))
-				.thenReturn(java.util.Optional.empty());
 
-		StepResult result = step.execute(context).join();
+		StepResult result = step.execute(context, PipelineState.initial()).join();
 
 		assertEquals(StepResult.StepStatus.COMPLETE, result.getStatus());
 		assertNotNull(context.getProvider());
@@ -73,10 +68,8 @@ class FinalizeProfileStepTest {
 				.provider(ProviderContext.of("premium", null, "whereareiam", null))
 				.build();
 		when(profileStore.find("whereareiam")).thenReturn(new PremiumProfileSnapshot("premium-subject", System.currentTimeMillis()));
-		when(pipelineStateStore.find(org.mockito.ArgumentMatchers.any(me.whereareiam.identica.pipeline.state.PipelineStateReference.class)))
-				.thenReturn(java.util.Optional.empty());
 
-		StepResult result = step.execute(context).join();
+		StepResult result = step.execute(context, PipelineState.initial()).join();
 
 		assertEquals(StepResult.StepStatus.CONTINUE, result.getStatus());
 		assertNotNull(context.getProvider());
@@ -92,10 +85,8 @@ class FinalizeProfileStepTest {
 				.build();
 		context.setProvider(ProviderContext.of("premium", null, "whereareiam", null));
 		when(profileStore.find("whereareiam")).thenReturn(new PremiumProfileSnapshot("premium-subject", System.currentTimeMillis()));
-		when(pipelineStateStore.find(org.mockito.ArgumentMatchers.any(me.whereareiam.identica.pipeline.state.PipelineStateReference.class)))
-				.thenReturn(java.util.Optional.empty());
 
-		StepResult result = step.execute(context).join();
+		StepResult result = step.execute(context, PipelineState.initial()).join();
 
 		assertEquals(StepResult.StepStatus.CONTINUE, result.getStatus());
 		assertNotNull(context.getProvider());

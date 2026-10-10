@@ -88,10 +88,6 @@ public class Engine extends ConfigDocument {
 		 */
 		private @NotNull Duration pipelineTtl;
 		/**
-		 * Time-to-live for advance locks.
-		 */
-		private @NotNull Duration advanceLockTtl;
-		/**
 		 * Whether resume requests are allowed for this scenario.
 		 */
 		private boolean allowResume;
@@ -115,19 +111,6 @@ public class Engine extends ConfigDocument {
 			}
 
 			return pipelineTtl.toMillis();
-		}
-
-		/**
-		 * Returns advance-lock TTL in milliseconds with validation.
-		 *
-		 * @return advance-lock TTL in milliseconds
-		 */
-		public long advanceLockTtlMillis() {
-			if (advanceLockTtl.isZero() || advanceLockTtl.isNegative()) {
-				throw new IllegalStateException(pathPrefix() + ".advanceLockTtl must be positive");
-			}
-
-			return advanceLockTtl.toMillis();
 		}
 
 		/**

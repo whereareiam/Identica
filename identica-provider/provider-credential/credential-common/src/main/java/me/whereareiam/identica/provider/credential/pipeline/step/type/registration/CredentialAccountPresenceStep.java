@@ -7,7 +7,7 @@ import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.ScenarioContext;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
+import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.cryptography.CryptographyService;
@@ -30,10 +30,9 @@ public class CredentialAccountPresenceStep extends AbstractCredentialAttemptStep
 			Provider<Engine> coreSettingsProvider,
 			CredentialAccountService credentialService,
 			CryptographyService cryptographyService,
-			PipelineStateStore pipelineStateStore,
 			EventManager eventManager
 	) {
-		super("password-credential-presence", coreSettingsProvider, pipelineStateStore, eventManager);
+		super("password-credential-presence", coreSettingsProvider, eventManager);
 		this.messagesProvider = messagesProvider;
 		this.credentialService = credentialService;
 		this.cryptographyService = cryptographyService;
@@ -45,24 +44,23 @@ public class CredentialAccountPresenceStep extends AbstractCredentialAttemptStep
 	}
 
 	@Override
-	public @NotNull CompletableFuture<StepResult> execute(@NotNull ScenarioContext context) {
+	public @NotNull CompletableFuture<StepResult> execute(@NotNull ScenarioContext context, @NotNull PipelineState state) {
 		String providerSubject = requireProviderSubject(context);
 
 		CredentialAccount existing = credentialService.find(providerSubject).orElse(null);
 		if (existing == null)
 			return CompletableFuture.completedFuture(StepResult.proceed(context));
 
-		long ttlMs = registrationTtlMs();
-		return CompletableFuture.completedFuture(handleExisting(context, existing, ttlMs));
+		return CompletableFuture.completedFuture(handleExisting(context, state, existing));
 	}
 
 	private StepResult handleExisting(
 			@NotNull ScenarioContext context,
-			@NotNull CredentialAccount credential,
-			long ttlMs
+			@NotNull PipelineState state,
+			@NotNull CredentialAccount credential
 	) {
 		CredentialMessages messages = messagesProvider.get();
-		var input = consumeAuthenticationAttempt(context, ttlMs);
+		var input = consumeAuthenticationAttempt(state);
 		if (input == null)
 			return StepResult.waiting(joinAlreadyRegistered(messages));
 

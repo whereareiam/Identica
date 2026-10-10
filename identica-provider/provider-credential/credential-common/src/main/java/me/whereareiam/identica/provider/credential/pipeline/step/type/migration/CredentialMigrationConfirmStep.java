@@ -4,7 +4,6 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import me.whereareiam.identica.model.config.Engine;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.cryptography.CryptographyService;
@@ -18,7 +17,6 @@ public class CredentialMigrationConfirmStep extends AbstractCredentialConfirmSte
 			Provider<CredentialMessages> messagesProvider,
 			Provider<Engine> coreSettingsProvider,
 			CredentialAccountService credentialService,
-			PipelineStateStore pipelineStateStore,
 			CryptographyService cryptographyService
 	) {
 		super(
@@ -26,7 +24,6 @@ public class CredentialMigrationConfirmStep extends AbstractCredentialConfirmSte
 				messagesProvider,
 				coreSettingsProvider,
 				credentialService,
-				pipelineStateStore,
 				cryptographyService
 		);
 	}
@@ -34,11 +31,6 @@ public class CredentialMigrationConfirmStep extends AbstractCredentialConfirmSte
 	@Override
 	public int order() {
 		return 20;
-	}
-
-	@Override
-	protected long ttlMs() {
-		return migrationTtlMs();
 	}
 
 	@Override

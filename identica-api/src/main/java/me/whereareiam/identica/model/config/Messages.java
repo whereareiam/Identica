@@ -662,29 +662,11 @@ public class Messages extends ConfigDocument {
 			 */
 			private @NotNull List<String> pipelineExpired;
 			/**
-			 * Messages shown when an advance request is blocked by a pending lock.
-			 */
-			private @NotNull AdvanceBusy advanceBusy;
-			/**
 			 * Message shown when the pipeline finishes without a completion result.
 			 */
 			private @NotNull List<String> noCompletionPipeline;
 			private @NotNull ScenarioRouting routing;
 			private @NotNull Errors errors;
-
-			@Getter
-			@Setter
-			@ToString
-			public static class AdvanceBusy {
-				/**
-				 * Chat message shown when an advance request is blocked by a pending lock.
-				 */
-				private @NotNull String chat;
-				/**
-				 * Disconnect message shown when an advance request is blocked by a pending lock.
-				 */
-				private @NotNull List<String> kick;
-			}
 
 			@Getter
 			@Setter

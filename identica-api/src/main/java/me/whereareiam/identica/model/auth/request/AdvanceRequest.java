@@ -3,6 +3,7 @@ package me.whereareiam.identica.model.auth.request;
 import lombok.*;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.identity.IdentityReference;
+import me.whereareiam.identica.pipeline.state.PipelineInput;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -25,6 +26,10 @@ public class AdvanceRequest {
 	private final @NotNull IdentityReference identityReference = new IdentityReference();
 	private final @Nullable ConnectionIdentity identity;
 	private final @Nullable String intendedServer;
+	/**
+	 * Input from the command that sent this request, applied to the player's state at the start of the run.
+	 */
+	private final @Nullable PipelineInput input;
 
 	/**
 	 * Returns the connection identity for this advance request.
@@ -141,7 +146,7 @@ public class AdvanceRequest {
 		}
 
 		public @NotNull AdvanceRequest build() {
-			return new AdvanceRequest(identityReference, identity, intendedServer);
+			return new AdvanceRequest(identityReference, identity, intendedServer, input);
 		}
 	}
 }

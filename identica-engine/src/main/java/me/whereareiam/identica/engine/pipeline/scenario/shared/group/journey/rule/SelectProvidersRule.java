@@ -218,9 +218,10 @@ public class SelectProvidersRule implements JourneyRule {
 		PipelineState state = ctx.getPipelineState();
 		if (state != null) {
 			JourneyOverrideItem override = state.item(JourneyOverrideItem.class).orElse(null);
-			if (override != null && override.getExcludedProviders() != null && !override.getExcludedProviders().isEmpty()) {
-				return normalizeExcluded(override.getExcludedProviders());
-			}
+			if (override == null || override.getExcludedProviders() == null || override.getExcludedProviders().isEmpty())
+				return Set.of();
+
+			return normalizeExcluded(override.getExcludedProviders());
 		}
 
 		PipelineStateReference reference = PipelineStateReference.from(ctx.getContext());

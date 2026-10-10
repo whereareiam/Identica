@@ -11,13 +11,13 @@ import me.whereareiam.identica.model.auth.request.ConnectionRequest;
 import me.whereareiam.identica.model.auth.request.ResumeRequest;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
-import me.whereareiam.identica.model.pipeline.AdvanceMarkerItem;
 import me.whereareiam.identica.model.pipeline.GroupOutcome;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
 import me.whereareiam.identica.pipeline.PipelineGroup;
 import me.whereareiam.identica.pipeline.PipelineRegistry;
 import me.whereareiam.identica.pipeline.ScenarioContext;
+import me.whereareiam.identica.pipeline.state.PipelineInput;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.PipelineStateReference;
 import me.whereareiam.identica.pipeline.state.PipelineStateStore;
@@ -36,8 +36,6 @@ import java.util.concurrent.CompletionStage;
 
 @RequiredArgsConstructor
 public abstract class AbstractScenarioPipeline {
-	private static final long ADVANCE_LOCK_FALLBACK_MS = 5_000L;
-
 	private final PipelineRegistry registry;
 	private final Provider<Messages> messagesProvider;
 	private final Provider<Engine> engineProvider;
@@ -192,9 +190,6 @@ public abstract class AbstractScenarioPipeline {
 					PipelineResult result = executionState.result;
 					if (result == null) result = failedNoCompletion();
 					result = result.withState(pipelineState);
-					if (pendingMode == PendingMode.ADVANCE) {
-						pipelineState.removeItem(AdvanceMarkerItem.class);
-					}
 					persistState(pipelineState, result, pendingRequest);
 
 					return result;
@@ -344,6 +339,7 @@ public abstract class AbstractScenarioPipeline {
 		ScenarioContext merged = mergeContext(storedContext, resumeRequest);
 		stored.setScenario(merged);
 		stored.setPipelineType(pipelineType);
+		applyInput(stored, resumeRequest);
 
 		return new ResumeResolution(stored, null);
 	}
@@ -368,41 +364,21 @@ public abstract class AbstractScenarioPipeline {
 			return resumeUnavailable(request);
 		}
 
-		long now = System.currentTimeMillis();
-		AdvanceMarkerItem lockItem = stored.item(AdvanceMarkerItem.class).orElse(null);
-		if (lockItem != null && lockItem.getExpiresAt() > now) {
-			return new ResumeResolution(null, PipelineResult.waiting(resolveScenarioMessages(pipelineType).getAdvanceBusy().getChat()));
-		}
-
-		long lockTtlMs = resolveAdvanceLockTtlMillis();
-		AdvanceMarkerItem nextLock = new AdvanceMarkerItem(resolveLockOwner(advanceRequest), now + lockTtlMs);
-		stored.putItem(nextLock, lockTtlMs);
-
 		ScenarioContext merged = mergeContext(storedContext, advanceRequest);
 		stored.setScenario(merged);
 		stored.setPipelineType(pipelineType);
-
-		long ttlMs = resolveScenario(pipelineType).pipelineTtlMillis();
-		if (ttlMs > 0) {
-			pipelineStateStore.save(reference, stored, ttlMs);
-		}
+		applyInput(stored, advanceRequest);
 
 		return new ResumeResolution(stored, null);
 	}
 
-	private @Nullable UUID resolveLockOwner(@NotNull ResumeRequest request) {
-		UUID ownerId = request.getConnectionUniqueId();
-		if (ownerId != null) return ownerId;
-		return request.getAccountUniqueId();
-	}
-
-	private long resolveAdvanceLockTtlMillis() {
-		try {
-			long ttlMs = resolveScenario(pipelineType).advanceLockTtlMillis();
-			return ttlMs > 0 ? ttlMs : ADVANCE_LOCK_FALLBACK_MS;
-		} catch (Exception ignored) {
-			return ADVANCE_LOCK_FALLBACK_MS;
-		}
+	/**
+	 * Applies what a command handed over with its request. The run is the only writer of the state, so input
+	 * reaches the state here and nowhere else.
+	 */
+	private static void applyInput(@NotNull PipelineState state, @NotNull ResumeRequest request) {
+		PipelineInput input = request.getInput();
+		if (input != null) input.applyTo(state);
 	}
 
 	private @NotNull ResumeResolution resumeUnavailable(@Nullable ConnectionRequest request) {

@@ -6,7 +6,6 @@ import com.google.inject.Singleton;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.ScenarioContext;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.config.CredentialSettings;
@@ -26,8 +25,7 @@ public class CredentialMigrationRegistrationStep extends AbstractCredentialSetup
 			Provider<Engine> coreSettingsProvider,
 			CredentialAccountService credentialService,
 			CryptographyService cryptographyService,
-			PasswordRules passwordPolicy,
-			PipelineStateStore pipelineStateStore
+			PasswordRules passwordPolicy
 	) {
 		super(
 				"password-migration-registration",
@@ -36,8 +34,7 @@ public class CredentialMigrationRegistrationStep extends AbstractCredentialSetup
 				coreSettingsProvider,
 				credentialService,
 				cryptographyService,
-				passwordPolicy,
-				pipelineStateStore
+				passwordPolicy
 		);
 	}
 

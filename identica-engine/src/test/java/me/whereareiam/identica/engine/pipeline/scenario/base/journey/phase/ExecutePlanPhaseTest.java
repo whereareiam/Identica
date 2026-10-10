@@ -74,7 +74,6 @@ class ExecutePlanPhaseTest {
                 Messages::new,
 				providerManager,
 				providerOperations(),
-				pipelineStateStore,
 				routingCoordinator
 		);
 
@@ -175,7 +174,6 @@ class ExecutePlanPhaseTest {
 				Messages::new,
 				providerManager,
 				providerOperations(),
-				pipelineStateStore,
 				routingCoordinator
 		);
 
@@ -242,7 +240,6 @@ class ExecutePlanPhaseTest {
 				Messages::new,
 				providerManager,
 				providerOperations(),
-				pipelineStateStore,
 				routingCoordinator
 		);
 
@@ -354,7 +351,6 @@ class ExecutePlanPhaseTest {
 				() -> messages,
 				mock(ProviderManager.class),
 				providerOperations(),
-				pipelineStateStore,
 				mock(RoutingCoordinator.class)
 		);
 
@@ -421,7 +417,6 @@ class ExecutePlanPhaseTest {
 
 	private void configureScenario(@NotNull Engine.Scenario scenario) {
 		scenario.setPipelineTtl(Duration.ofSeconds(60));
-		scenario.setAdvanceLockTtl(Duration.ofSeconds(5));
 		scenario.setAllowResume(true);
 		scenario.setJourneyMode(JourneyMode.INTERACTIVE);
 		scenario.setJourneyPolicy(JourneyPolicy.PREFER);

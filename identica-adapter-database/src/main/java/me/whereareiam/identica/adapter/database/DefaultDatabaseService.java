@@ -104,8 +104,11 @@ public class DefaultDatabaseService implements DatabaseService, SchemaBootstrap,
 		return jdbi != null;
 	}
 
+	/**
+	 * A table that cannot be created stops the startup: Identica must not run on part of its schema.
+	 */
 	private SchemaManager newSchemaManager() {
 		return Dialectica.schema(jdbi)
-				.setFailOnError(false);
+				.setFailOnError(true);
 	}
 }

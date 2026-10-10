@@ -38,7 +38,7 @@ When changing behavior:
 - `identica-testing`
   Live player journeys against the packaged plugin on a real proxy, run through Anvil. Not part of the shipped plugin.
 - `build-logic/`
-  Shared Gradle conventions and task setup.
+  Shared Gradle conventions. `module-*` says what kind of module a project is: `module-java` (Java 21 toolchain, Lombok, common dependencies), `module-api` (a published `-api` module), `module-feature` (a module published in the feature group). `packaging-*` says what it produces: `packaging-publication`, `packaging-relocations`, `packaging-shaded-jar` (a loadable plugin or provider jar), `packaging-platform-jar` (a proxy's plugin jar) and `packaging-bundle-jar`. A published module that is not an API applies `module-java` and `packaging-publication`.
 - `docs/content/`
   User-facing and developer-facing documentation.
 - `dev/`
@@ -142,7 +142,7 @@ Do not replace these libraries with unrelated alternatives in the same area unle
 `identica-testing` starts the packaged plugin on a real Velocity proxy with Paper backends and drives simulated players through it.
 
 - run them with `./gradlew :identica-testing:anvilTest`; `test` and `pluginJars` do not start them
-- they need Java 21 for Gradle, network access on first use, and take about 20 seconds per test
+- they need an installed Java 21, network access on first use, and take about 20 seconds per test
 - add or update a journey when a change affects what a joining player experiences
 - declare the network with `@Identica`, describe the player with `Journey`, and keep player-facing texts in `Prompt`
 - a failed test keeps its network under `identica-testing/build/anvil/`; read the `anvil-console.log` files there, where Identica's debug logging is enabled

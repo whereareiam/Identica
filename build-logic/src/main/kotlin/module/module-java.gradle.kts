@@ -7,9 +7,11 @@ val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
 group = "me.whereareiam"
 
-tasks.withType<JavaCompile>().configureEach {
-    sourceCompatibility = JavaVersion.VERSION_21.toString()
-    targetCompatibility = JavaVersion.VERSION_21.toString()
+// Compilation and tests use Java 21 whichever Java runs Gradle.
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
 }
 
 dependencies {

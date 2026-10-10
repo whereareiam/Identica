@@ -1,5 +1,6 @@
 plugins {
-    id("api")
+    id("module-java")
+    id("packaging-publication")
 }
 
 dependencies {

@@ -1,5 +1,5 @@
 plugins {
-    id("feature")
+    id("module-feature")
 }
 
 toolkitPublish {

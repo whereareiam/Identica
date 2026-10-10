@@ -4,7 +4,7 @@ import me.whereareiam.identica.buildlogic.bundle.bundlePlatformId
 import me.whereareiam.identica.buildlogic.bundle.platformCollection
 
 plugins {
-    id("runtime")
+    id("packaging-shaded-jar")
 }
 
 val platformCollection = platformCollection()

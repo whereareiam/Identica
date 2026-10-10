@@ -1,5 +1,5 @@
 plugins {
-    id("shared")
+    id("module-java")
 }
 
 dependencies {

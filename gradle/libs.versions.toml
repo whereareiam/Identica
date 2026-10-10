@@ -15,7 +15,7 @@ attache = "dev-58f53b4"
 configura = "1.0.0"
 commandant = "dev-642fe14"
 keystone = "dev-790a33e"
-dialectica = "1.0.1"
+dialectica = "1.0.2"
 strata = "1.0.0"
 
 guice = "7.0.0"

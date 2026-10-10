@@ -146,6 +146,7 @@ Do not replace these libraries with unrelated alternatives in the same area unle
 - add or update a journey when a change affects what a joining player experiences
 - declare the network with `@Identica`, describe the player with `Journey`, and name player-facing messages through Identica's message models (`.sees(m -> m.credential()...)`) instead of copying their text
 - a failed test keeps its network under `identica-testing/build/anvil/`; read the `anvil-console.log` files there, where Identica's debug logging is enabled
+- change a test proxy's files through `@Identica(configure = ...)`, a `Consumer<ProxyConfiguration>` working on Identica's models; `omit` and `corrupt` cover new installations and unreadable files
 - `@IdenticaCluster` starts two proxies on a shared PostgreSQL and, unless turned off, one Redis; a journey names its proxy (`Journey.offline(anvil, "Alice", PROXY_B)`) and `Administrator` runs console commands on one; these tests need Docker and are skipped without it
 - premium accounts come from the network's own stand-in for Mojang, a `YggdrasilMock` test parameter (`yggdrasil.register(...)`), which also verifies premium logins; never add real account credentials to the repository or CI
 

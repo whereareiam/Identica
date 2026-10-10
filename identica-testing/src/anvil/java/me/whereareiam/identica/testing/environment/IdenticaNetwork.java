@@ -74,6 +74,10 @@ public final class IdenticaNetwork {
 				.server(LOBBY)
 				.defaultServer(LOBBY)
 				.setting("advanced.login-ratelimit", "0")
+				// Journeys type their answers at once. Velocity's command rate limit would drop such a command, or with
+				// its default forwarding hand it to the backend, before Identica sees it.
+				.setting("advanced.command-rate-limit", "0")
+				.setting("advanced.forward-commands-if-rate-limited", "false")
 				.sessionServer(sessionServer)
 				.build();
 	}

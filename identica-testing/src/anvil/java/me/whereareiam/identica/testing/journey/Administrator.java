@@ -44,6 +44,24 @@ public final class Administrator {
 	}
 
 	/**
+	 * Ends the session of an online player.
+	 */
+	public Administrator endsSessionOf(String username) {
+		run("identica admin session end " + username, configured.identica().getCommands().getAdmin().getSessions().getEnd().getEnded());
+		return this;
+	}
+
+	/**
+	 * Clears an account's provider data and confirms it.
+	 */
+	public Administrator clears(String username) {
+		Messages.Commands.Admin.Clear clear = configured.identica().getCommands().getAdmin().getClear();
+		run("identica admin clear " + username, clear.getConfirm());
+		run("identica admin clear confirm", clear.getSuccess());
+		return this;
+	}
+
+	/**
 	 * Sends a command and waits until the console shows the configured answer, whatever its placeholders hold.
 	 */
 	private void run(String command, Object answer) {

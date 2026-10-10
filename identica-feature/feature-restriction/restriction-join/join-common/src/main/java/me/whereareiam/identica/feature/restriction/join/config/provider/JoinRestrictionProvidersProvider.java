@@ -10,14 +10,14 @@ import me.whereareiam.configura.feature.extension.ExtensionFeature;
 import me.whereareiam.configura.feature.extension.api.ConfigDocumentRule;
 import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.Reloadable;
-import me.whereareiam.identica.config.ConfigProvider;
+import me.whereareiam.identica.config.ConfigExtensionProvider;
 import me.whereareiam.identica.model.config.provider.Providers;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.file.Path;
 
 @Singleton
-public class JoinRestrictionProvidersProvider extends ConfigProvider<Providers> {
+public class JoinRestrictionProvidersProvider extends ConfigExtensionProvider<Providers> {
 	@Inject
 	public JoinRestrictionProvidersProvider(
 			@Named("providersPath") Path providersPath,

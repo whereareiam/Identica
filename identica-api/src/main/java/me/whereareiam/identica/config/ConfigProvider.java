@@ -14,6 +14,10 @@ import java.nio.file.Path;
  * Loads and caches a configuration document, refreshing it when reloaded.
  * Installation migrations are separate from document loading.
  *
+ * <p>A provider owns its document: it knows the document's defaults and writes them. Identica loads and
+ * reloads every owner before any {@link ConfigExtensionProvider}, which is a view that adds to a document
+ * another provider owns.</p>
+ *
  * @param <T> configuration model type
  */
 public abstract class ConfigProvider<T> implements Provider<T>, Reloadable {

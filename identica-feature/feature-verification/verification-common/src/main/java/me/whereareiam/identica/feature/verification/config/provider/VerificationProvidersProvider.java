@@ -10,7 +10,7 @@ import me.whereareiam.configura.feature.extension.ExtensionFeature;
 import me.whereareiam.configura.feature.extension.api.ConfigDocumentRule;
 import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.Reloadable;
-import me.whereareiam.identica.config.ConfigProvider;
+import me.whereareiam.identica.config.ConfigExtensionProvider;
 import me.whereareiam.identica.feature.verification.model.config.VerificationProviders;
 import me.whereareiam.identica.model.config.provider.Providers;
 import org.jetbrains.annotations.NotNull;
@@ -18,7 +18,7 @@ import org.jetbrains.annotations.NotNull;
 import java.nio.file.Path;
 
 @Singleton
-public class VerificationProvidersProvider extends ConfigProvider<Providers> {
+public class VerificationProvidersProvider extends ConfigExtensionProvider<Providers> {
 	@Inject
 	public VerificationProvidersProvider(
 			@Named("providersPath") Path providersPath,

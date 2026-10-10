@@ -1,5 +1,6 @@
 package me.whereareiam.identica.platform.velocity.feature;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -15,9 +16,9 @@ import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.Reloadable;
 import me.whereareiam.identica.command.CommandService;
+import me.whereareiam.identica.common.CommonConfiguration;
 import me.whereareiam.identica.common.config.ConfigBindings;
 import me.whereareiam.identica.common.config.ConfigInitializer;
-import me.whereareiam.identica.common.config.IdenticaModule;
 import me.whereareiam.identica.common.feature.FeatureRuntime;
 import me.whereareiam.identica.common.registry.ReloadableRegistry;
 import me.whereareiam.identica.conflict.ConflictService;
@@ -49,6 +50,7 @@ import me.whereareiam.identica.replication.cache.base.ReplicationCacheBuilder;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -103,7 +105,7 @@ class BundledFeatureCompositionTest {
 	@BeforeEach
 	void configureRealDocumentsAndBoundaryRegistrations() {
 		previousConfiguration = Config.configured();
-		Config.setConfigured(Config.builder().format(Format.YAML).module(new IdenticaModule()).build());
+		Config.setConfigured(CommonConfiguration.configura(Format.YAML));
 		doAnswer(invocation -> {
 			assertTrue(listeners.add(invocation.getArgument(0)), "Listener registered twice");
 			return null;
@@ -219,6 +221,52 @@ class BundledFeatureCompositionTest {
 					() -> assertTrue(suggestionIds.isEmpty())
 			);
 		}
+	}
+
+	@Test
+	void freshInstallReceivesCoreProviderDefaults() throws Exception {
+		loadDocuments();
+
+		JsonNode providers = Config.configured().readNode(dataPath.resolve("providers/providers.yml")).get("providers");
+		assertEquals(2, providers.size());
+		assertProviderEntry(providers.get(0), "credential", 50, "credential.arcadeya.com");
+		assertProviderEntry(providers.get(1), "premium", 100, "premium.arcadeya.com");
+	}
+
+	@Test
+	void partialProviderEntryIsCompletedFromCoreDefaults() throws Exception {
+		Files.createDirectories(dataPath.resolve("providers"));
+		Files.writeString(dataPath.resolve("providers/providers.yml"), "providers:\n  - id: premium\n");
+
+		loadDocuments();
+
+		JsonNode providers = Config.configured().readNode(dataPath.resolve("providers/providers.yml")).get("providers");
+		assertEquals(1, providers.size());
+		assertProviderEntry(providers.get(0), "premium", 100, "premium.arcadeya.com");
+	}
+
+	/** Loads every bound document in startup order, where feature views of providers.yml precede the core document. */
+	private List<String> loadDocuments() throws Exception {
+		try (FeatureRuntime runtime = BuiltinFeatures.runtime(dataPath)) {
+			List<Module> modules = new ArrayList<>(runtime.modules());
+			modules.add(new UsernameConfiguration(dataPath.resolve("identity/username")));
+			modules.add(new CoreBoundaries());
+			modules.add(new ConfigBindings());
+			List<String> loaded = ConfigInitializer.initialize(Guice.createInjector(Stage.PRODUCTION, modules));
+			assertTrue(
+					loaded.indexOf("JoinRestrictionProvidersProvider") < loaded.indexOf("ProvidersProvider"),
+					"A feature view must load before the core document: " + loaded
+			);
+			return loaded;
+		}
+	}
+
+	private static void assertProviderEntry(JsonNode entry, String id, int priority, String entrypoint) {
+		assertEquals(id, entry.path("id").asText());
+		assertTrue(entry.path("enabled").asBoolean(), id + " must be enabled");
+		assertEquals(priority, entry.path("priority").asInt());
+		assertEquals(1, entry.path("entrypoints").size());
+		assertEquals(entrypoint, entry.path("entrypoints").get(0).asText());
 	}
 
 	private final class CoreBoundaries extends AbstractModule {

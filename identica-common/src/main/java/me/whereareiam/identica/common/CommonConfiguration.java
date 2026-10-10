@@ -10,6 +10,7 @@ import me.whereareiam.configura.type.Format;
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.common.config.ConfigBindings;
 import me.whereareiam.identica.common.config.IdenticaModule;
+import me.whereareiam.identica.common.config.defaults.provider.ProvidersDefaults;
 import me.whereareiam.identica.common.config.resolver.FileSystemConfigurationTypeResolver;
 import me.whereareiam.identica.common.conflict.ConflictConfiguration;
 import me.whereareiam.identica.common.connection.ConnectionStateConfiguration;
@@ -105,10 +106,22 @@ public class CommonConfiguration extends AbstractModule {
 	@Provides
 	@Singleton
 	Configura provideConfigura(@Named("dataPath") Path dataPath) {
-		Format format = new FileSystemConfigurationTypeResolver(dataPath).getConfigurationType();
+		return configura(new FileSystemConfigurationTypeResolver(dataPath).getConfigurationType());
+	}
+
+	/**
+	 * Builds the document configuration shared by the core and by everything loaded into it.
+	 * The providers document is rewritten by every feature view of it, in no fixed order,
+	 * so its defaults are registered here instead of on the core provider alone.
+	 *
+	 * @param format document format
+	 * @return shared document configuration
+	 */
+	public static @NotNull Configura configura(@NotNull Format format) {
 		return Config.builder()
 				.format(format)
 				.module(new IdenticaModule())
+				.defaults(ProvidersDefaults.class)
 				.build();
 	}
 

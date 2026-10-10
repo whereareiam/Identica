@@ -12,7 +12,7 @@ lombok = "1.18.42"
 
 # general
 attache = "1.0.0"
-configura = "2.0.0"
+configura = "2.0.1"
 commandant = "dev-642fe14"
 keystone = "dev-790a33e"
 dialectica = "1.0.2"

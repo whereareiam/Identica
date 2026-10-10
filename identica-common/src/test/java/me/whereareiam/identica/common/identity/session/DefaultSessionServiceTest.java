@@ -77,6 +77,7 @@ class DefaultSessionServiceTest {
 		first.close(SessionCloseRequest.builder()
 				.requestId(UUID.randomUUID())
 				.uniqueId(uniqueId)
+				.disconnect(true)
 				.disconnectMessage("remote close")
 				.build()).join();
 		adapter.emit(adapter.lastPublishPayload);
@@ -84,6 +85,7 @@ class DefaultSessionServiceTest {
 		assertEquals(1, adapter.publishCalls);
 		assertTrue(second.findByUniqueId(uniqueId).join().isEmpty());
 		assertEquals("remote close", secondCapture.event.getRequest().getDisconnectMessage());
+		assertTrue(secondCapture.event.getRequest().isDisconnect());
 	}
 
 	@DisplayName("A node ignores the session-close events that it published itself")

@@ -27,8 +27,9 @@ public class SessionClosedDisconnectListener implements EventListener {
 	@IdenticEvent
 	public void onSessionClosed(@NotNull SessionClosedEvent event) {
 		SessionCloseRequest request = event.getRequest();
-        String disconnectMessage = request.getDisconnectMessage();
-		if (disconnectMessage == null || disconnectMessage.isBlank()) return;
+		if (!request.isDisconnect()) return;
+
+		String disconnectMessage = request.getDisconnectMessage() != null ? request.getDisconnectMessage() : "";
 
 		identityService.findByAccountUniqueId(event.getUniqueId())
 				.ifPresent(identity -> identity.disconnect(Serializer.serialize(identity, disconnectMessage)));

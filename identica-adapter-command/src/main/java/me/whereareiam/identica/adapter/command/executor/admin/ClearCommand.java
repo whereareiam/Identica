@@ -71,6 +71,7 @@ public class ClearCommand extends ConfirmableAdminCommand<Account> {
 		try {
 			accountService().clear(AccountOperationRequest.builder()
 					.account(account)
+					.disconnect(true)
 					.disconnectMessage(String.join("\n", messages.getDisconnect()))
 					.reason("admin-clear")
 					.build());

@@ -102,11 +102,32 @@ class ConnectionDecisionApplierTest {
 		assertNotNull(target.reconnect.get());
 	}
 
+	@DisplayName("Denies and requires a reconnect without text in the decision or in the fallback message")
+	@Test
+	void denialsAreAppliedWithoutAnyText() {
+		ConnectionDecisionApplier applier = new ConnectionDecisionApplier(
+				() -> messages(List.of()),
+				mock(ConnectionDecisionDeliveryCoordinator.class),
+				mock(me.whereareiam.identica.service.PlatformDeliveryAdapter.class)
+		);
+		TestTarget target = new TestTarget();
+
+		applier.apply(ConnectionDecision.deny(""), new TestActor(), target);
+		applier.apply(ConnectionDecision.requireReconnect(null), new TestActor(), target);
+
+		assertNotNull(target.denied.get());
+		assertNotNull(target.reconnect.get());
+	}
+
 	private Messages messages() {
+		return messages(List.of("fallback"));
+	}
+
+	private Messages messages(List<String> authenticationFailed) {
 		Messages messages = new Messages();
 		Messages.Scenarios scenarios = new Messages.Scenarios();
 		Messages.Scenarios.Authentication authentication = new Messages.Scenarios.Authentication();
-		authentication.setAuthenticationFailed(List.of("fallback"));
+		authentication.setAuthenticationFailed(authenticationFailed);
 		scenarios.setAuthentication(authentication);
 		messages.setScenarios(scenarios);
 		return messages;

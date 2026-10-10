@@ -14,8 +14,10 @@ import java.util.UUID;
 /**
  * Request to close a session across the local instance and replicated peers.
  *
- * <p>The disconnect message is resolved by the caller before replication so
- * every instance uses the same message even when local configuration differs.</p>
+ * <p>Whether the player is disconnected is the caller's decision and is carried by
+ * {@link #isDisconnect()}, not by the message: a request that disconnects does so with or without
+ * text. The disconnect message is resolved by the caller before replication so every instance
+ * uses the same message even when local configuration differs.</p>
  */
 @Getter
 @Setter
@@ -37,7 +39,13 @@ public class SessionCloseRequest {
 	 */
 	private @NotNull UUID uniqueId;
 	/**
-	 * Optional already-resolved disconnect message.
+	 * Whether the player whose session is closed is also disconnected, on whichever instance holds
+	 * the connection. Left false for a close that follows the player leaving.
+	 */
+	private boolean disconnect;
+	/**
+	 * Optional already-resolved reason shown when {@link #isDisconnect()} disconnects the player.
+	 * Without it the player is disconnected with an empty reason.
 	 */
 	private @Nullable String disconnectMessage;
 }

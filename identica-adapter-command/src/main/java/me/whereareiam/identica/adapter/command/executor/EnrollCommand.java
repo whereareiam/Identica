@@ -111,9 +111,9 @@ public class EnrollCommand {
 		sender.sendMessage(Serializer.serialize(sender, message));
 	}
 
+	/** A denial disconnects whether or not it comes with a reason to show. */
 	private void disconnect(@NotNull Actor sender, String message) {
-		if (message == null || message.isBlank()) return;
-		Component component = Serializer.serialize(sender, message);
+		Component component = Serializer.serialize(sender, message == null ? "" : message);
 		if (sender instanceof Identity identity)
 			identity.disconnect(component);
 	}

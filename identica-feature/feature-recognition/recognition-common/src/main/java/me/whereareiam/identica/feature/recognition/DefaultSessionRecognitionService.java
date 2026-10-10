@@ -54,8 +54,12 @@ public class DefaultSessionRecognitionService implements SessionRecognitionServi
 		Optional<SessionRecognitionSnapshot> storedOptional = sessionRecognitionStore.find(providerId.trim(), providerSubject.trim());
 		if (storedOptional.isEmpty()) return false;
 
+		// Recognition is a comparison; with nothing to compare by, nobody is recognised.
+		Set<RecognitionSignal> signals = effectiveSignals(providerId);
+		if (signals.isEmpty()) return false;
+
 		SessionRecognitionSnapshot stored = storedOptional.get();
-		for (RecognitionSignal signal : effectiveSignals(providerId)) {
+		for (RecognitionSignal signal : signals) {
 			if (!matchesSignal(signal, stored, providerUsername, ip, origin))
 				return false;
 		}

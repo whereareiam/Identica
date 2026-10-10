@@ -317,6 +317,20 @@ class ExecutePlanPhaseTest {
 		assertEquals("interaction-required", result.getMessage());
 	}
 
+	@DisplayName("A strict seamless journey refuses input in the same way when the refusal has no text")
+	@Test
+	void strictSeamlessJourneyRefusesInputWithoutText() {
+		PipelineResult sequential = seamlessWaitingResult(
+				JourneyPolicy.STRICT, StepWaitReason.INPUT, JourneyExecutionPolicy.SEQUENTIAL, null, List.of());
+		PipelineResult lastProvider = seamlessWaitingResult(
+				JourneyPolicy.STRICT, StepWaitReason.INPUT, JourneyExecutionPolicy.FALLBACK, "credential", List.of());
+
+		assertEquals(PipelineStatus.DENIED, sequential.getStatus());
+		assertEquals("", sequential.getMessage());
+		assertEquals(PipelineStatus.DENIED, lastProvider.getStatus());
+		assertEquals("", lastProvider.getMessage());
+	}
+
 	private PipelineResult seamlessWaitingResult(@NotNull JourneyPolicy policy, @NotNull StepWaitReason reason) {
 		return seamlessWaitingResult(policy, reason, JourneyExecutionPolicy.SEQUENTIAL, null);
 	}
@@ -326,6 +340,16 @@ class ExecutePlanPhaseTest {
 			@NotNull StepWaitReason reason,
 			@NotNull JourneyExecutionPolicy blockPolicy,
 			@Nullable String providerId
+	) {
+		return seamlessWaitingResult(policy, reason, blockPolicy, providerId, List.of("interaction-required"));
+	}
+
+	private PipelineResult seamlessWaitingResult(
+			@NotNull JourneyPolicy policy,
+			@NotNull StepWaitReason reason,
+			@NotNull JourneyExecutionPolicy blockPolicy,
+			@Nullable String providerId,
+			@NotNull List<String> interactionRequired
 	) {
 		IdentityService identityService = mock(IdentityService.class);
 		PipelineStateStore pipelineStateStore = mock(PipelineStateStore.class);
@@ -339,7 +363,7 @@ class ExecutePlanPhaseTest {
 		Messages.Engine engine = new Messages.Engine();
 		Messages.Engine.Journey journey = new Messages.Engine.Journey();
 		Messages.Engine.Journey.Step stepMessages = new Messages.Engine.Journey.Step();
-		stepMessages.setInteractionRequired(List.of("interaction-required"));
+		stepMessages.setInteractionRequired(interactionRequired);
 		journey.setStep(stepMessages);
 		engine.setJourney(journey);
 		messages.setEngine(engine);

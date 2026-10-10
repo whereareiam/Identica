@@ -197,9 +197,9 @@ public class DefaultSentinelService implements SentinelService {
 		if (lockout == null || !lockout.isEnabled()) return null;
 
 		if (lockout.getMessageSupplier() != null) {
+			// The supplier only words the denial; a lockout without text still denies.
 			String message = lockout.getMessageSupplier().apply(ctx, remainingSeconds);
-			boolean deny = message != null && !message.isBlank();
-			return SentinelDecision.limited(definition, remainingSeconds, message == null ? "" : message, deny);
+			return SentinelDecision.limited(definition, remainingSeconds, message == null ? "" : message, true);
 		}
 
 		SentinelDecision decision = SentinelDecision.limited(definition, remainingSeconds, "", false);

@@ -71,6 +71,24 @@ class DefaultSessionRecognitionServiceTest {
 		));
 	}
 
+	@DisplayName("Recognises nobody when neither the provider nor the defaults name a signal")
+	@Test
+	void recognisesNobodyWithoutSignals() {
+		RecognitionSettings settings = settings(List.of(), List.of());
+		RecognitionProvidersProvider providersProvider = providersProvider(false);
+		SessionRecognitionStore store = store(snapshot("203.0.113.10", "localhost", 25565));
+
+		DefaultSessionRecognitionService service = service(settings, providersProvider, store);
+
+		assertFalse(service.matches(
+				"credential",
+				"subject-1",
+				"whereareiam",
+				"203.0.113.10",
+				new ConnectionIdentity.Origin("localhost", 25565)
+		));
+	}
+
 	private DefaultSessionRecognitionService service(
 			RecognitionSettings settings,
 			RecognitionProvidersProvider providersProvider,

@@ -25,7 +25,9 @@ import org.junit.jupiter.api.Test;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @DisplayName("Verification Result Renderer")
@@ -98,6 +100,68 @@ class VerificationResultRendererTest {
 		);
 
 		assertEquals("Verification method mail did not provide enrollment display", error.getMessage());
+	}
+
+	@Test
+	@DisplayName("Shows nothing and does not fail when the enrollment display has no text")
+	void emptiedEnrollmentDisplayShowsNothing() {
+		VerificationResultRenderer presenter = new VerificationResultRenderer(this::messages, registry());
+		TestActor actor = new TestActor();
+
+		assertDoesNotThrow(() -> presenter.presentEnrollmentResult(actor, VerificationEnrollmentResult.builder()
+				.status(VerificationEnrollmentStatus.STARTED)
+				.methodId("totp")
+				.display(VerificationProcessDisplay.builder().lines(List.of()).build())
+				.build()));
+
+		assertNull(actor.lastMessage());
+	}
+
+	@Test
+	@DisplayName("Shows recovery codes inside the body that names them")
+	void recoveryCodesAreShownInsideTheirBody() {
+		VerificationMessages messages = messages();
+		messages.getCommands().getConfirm().getRecoveryCodes().setBody(List.of("Your codes:", "{entries}"));
+		messages.getCommands().getConfirm().getRecoveryCodes().setLayout(VerificationMessages.Commands.Confirm.RecoveryCodes.Layout.SINGLE_COLUMN);
+		TestActor actor = new TestActor();
+
+		new VerificationResultRenderer(() -> messages, registry()).presentEnrollmentResult(actor, recoveryCodes());
+
+		assertEquals("Your codes:\nAAAA\nBBBB", actor.lastMessage());
+	}
+
+	@Test
+	@DisplayName("Shows recovery codes on their own when the body is empty")
+	void recoveryCodesAreShownWithoutBody() {
+		VerificationMessages messages = messages();
+		messages.getCommands().getConfirm().getRecoveryCodes().setBody(List.of());
+		messages.getCommands().getConfirm().getRecoveryCodes().setLayout(VerificationMessages.Commands.Confirm.RecoveryCodes.Layout.SINGLE_COLUMN);
+		TestActor actor = new TestActor();
+
+		new VerificationResultRenderer(() -> messages, registry()).presentEnrollmentResult(actor, recoveryCodes());
+
+		assertEquals("AAAA\nBBBB", actor.lastMessage());
+	}
+
+	@Test
+	@DisplayName("Shows recovery codes after a body that does not name them")
+	void recoveryCodesAreShownAfterBodyWithoutPlaceholder() {
+		VerificationMessages messages = messages();
+		messages.getCommands().getConfirm().getRecoveryCodes().setBody(List.of("Keep these safe"));
+		messages.getCommands().getConfirm().getRecoveryCodes().setLayout(VerificationMessages.Commands.Confirm.RecoveryCodes.Layout.SINGLE_COLUMN);
+		TestActor actor = new TestActor();
+
+		new VerificationResultRenderer(() -> messages, registry()).presentEnrollmentResult(actor, recoveryCodes());
+
+		assertEquals("AAAA\nBBBB", actor.lastMessage());
+	}
+
+	private static VerificationEnrollmentResult<?> recoveryCodes() {
+		return VerificationEnrollmentResult.builder()
+				.status(VerificationEnrollmentStatus.WAITING)
+				.methodId("totp")
+				.recoveryCodes(List.of("AAAA", "BBBB"))
+				.build();
 	}
 
 	private VerificationMessages messages() {

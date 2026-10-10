@@ -180,6 +180,7 @@ public class SessionsCommand {
 		Session resolvedSession = session.get();
 		sessionService.close(SessionCloseRequest.builder()
 				.uniqueId(resolvedSession.getUniqueId())
+				.disconnect(true)
 				.disconnectMessage(String.join("\n", endMessages.getDisconnect()))
 				.build()).join();
 

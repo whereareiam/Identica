@@ -124,8 +124,8 @@ public class LoginCommand {
 		identity.sendMessage(Serializer.serialize(content));
 	}
 
+	/** A denial disconnects whether or not it comes with a reason to show. */
 	private void disconnect(@NotNull Identity identity, String message) {
-		if (message == null || message.isBlank()) return;
-		identity.disconnect(Serializer.serialize(identity, message));
+		identity.disconnect(Serializer.serialize(identity, message == null ? "" : message));
 	}
 }

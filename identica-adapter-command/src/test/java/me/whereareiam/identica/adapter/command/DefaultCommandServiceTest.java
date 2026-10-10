@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -232,6 +233,31 @@ class DefaultCommandServiceTest {
 		provider.suggestionsFuture(new CommandContext<>(actor, manager), CommandInput.empty()).join()
 				.forEach(suggestion -> values.add(suggestion.suggestion()));
 		return values;
+	}
+
+	@Test
+	void enabledCommandWithoutAliasesIsSkippedAndTheOthersStillRegister() {
+		service.registerCommandInstances(
+				Map.of(
+						"feature", definition("", new String[0]),
+						"provider", definition("{command}", "login")
+				),
+				new FeatureCommand(),
+				new ProviderCommand()
+		);
+
+		assertNull(manager.commandTree().getNamedNode("verify"));
+		assertNotNull(parse("identica login"));
+		assertTrue(service.getRegisteredDefinitions().containsKey("feature"));
+	}
+
+	@Test
+	void commandWithOnlyBlankAliasesIsSkipped() {
+		int before = service.getCommandCount();
+
+		assertDoesNotThrow(() -> service.registerCommandInstance("feature", definition("", " "), new FeatureCommand()));
+
+		assertEquals(before, service.getCommandCount());
 	}
 
 	private static CommandDefinition definition(String usage, String... aliases) {

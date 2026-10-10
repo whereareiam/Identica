@@ -71,6 +71,7 @@ public class DeleteCommand extends ConfirmableAdminCommand<Account> {
 		try {
 			accountService().delete(AccountOperationRequest.builder()
 					.account(account)
+					.disconnect(true)
 					.disconnectMessage(String.join("\n", messages.getDisconnect()))
 					.reason("admin-delete")
 					.build());

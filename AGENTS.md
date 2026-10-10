@@ -35,6 +35,8 @@ When changing behavior:
   Shared mandatory behavior driven by provider traits, including authoritative usernames. These modules are compiled into Identica and are not feature toggles.
 - `identica-integration/*`
   External integrations such as bStats.
+- `identica-testing`
+  Live player journeys against the packaged plugin on a real proxy, run through Anvil. Not part of the shipped plugin.
 - `build-logic/`
   Shared Gradle conventions and task setup.
 - `docs/content/`
@@ -134,6 +136,19 @@ Do not replace these libraries with unrelated alternatives in the same area unle
 - Add or update automated tests when behavior changes.
 - Prefer extending the closest existing test suite instead of creating a parallel testing style.
 - Database and replication changes may need integration-style coverage in addition to unit tests.
+
+### Live Tests
+
+`identica-testing` starts the packaged plugin on a real Velocity proxy with Paper backends and drives simulated players through it.
+
+- run them with `./gradlew :identica-testing:anvilTest`; `test` and `pluginJars` do not start them
+- they need Java 21 for Gradle, network access on first use, and take about 20 seconds per test
+- add or update a journey when a change affects what a joining player experiences
+- declare the network with `@Identica`, describe the player with `Journey`, and keep player-facing texts in `Prompt`
+- a failed test keeps its network under `identica-testing/build/anvil/`; read the `anvil-console.log` files there, where Identica's debug logging is enabled
+- tests tagged `premium` need a locally stored Minecraft account and skip themselves without one; never add real account credentials to the repository or CI
+
+See `docs/content/developer/testing/index.mdx`.
 
 ---
 

@@ -142,7 +142,8 @@ Do not replace these libraries with unrelated alternatives in the same area unle
 `identica-testing` starts the packaged plugin on a real Velocity proxy with Paper backends and drives simulated players through it.
 
 - run them with `./gradlew :identica-testing:anvilTest`; `test` and `pluginJars` do not start them
-- they need an installed Java 21, network access on first use, and take about 20 seconds per test
+- they need an installed Java 21 and network access on first use; a test takes about 5 seconds and several run at once, each on its own network (`-Pidentica.journeys.parallelism=1` runs them one after another)
+- every test gets fresh proxies, while the `auth` and `lobby` servers start once and serve one test after another, so a journey must not depend on the state of a backend world
 - add or update a journey when a change affects what a joining player experiences
 - declare the network with `@Identica`, describe the player with `Journey`, and name player-facing messages through Identica's message models (`.sees(m -> m.credential()...)`) instead of copying their text
 - a failed test keeps its network under `identica-testing/build/anvil/`; read the `anvil-console.log` files there, where Identica's debug logging is enabled

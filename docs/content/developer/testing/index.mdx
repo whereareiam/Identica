@@ -13,7 +13,11 @@ Run from the repository root; a Java 21 must be installed on the machine:
 ./gradlew :identica-testing:anvilTest
 ```
 
-The task builds the plugin and provider jars, downloads the proxy and server distributions on first use, and starts a fresh network for every test. The first run takes several minutes; later runs reuse the downloads and Identica's own libraries. `./gradlew test` and `pluginJars` do not start these tests.
+The task builds the plugin and provider jars, downloads the proxy and server distributions on first use, and starts a fresh proxy for every test. The first run takes several minutes; later runs reuse the downloads and Identica's own libraries. `./gradlew test` and `pluginJars` do not start these tests.
+
+The `auth` and `lobby` servers are not part of what a test checks, so they start once and serve one test after another; only the proxies, with the plugin, their files and their database, are new in every test. A test that fails stops the servers it used, keeps their folders next to its own, and the next test starts new ones.
+
+Several tests run at once, each on its own network: one for every four processors of the machine, four at most. Set another number with `-Pidentica.journeys.parallelism=1`. The server and proxy processes run with a lowered priority and each assumes four processors, so the machine stays usable during a run.
 
 Run one class or one test with `--tests`:
 
@@ -131,5 +135,7 @@ void registersOnTheLobbyWithoutAnyRouting(ScenarioContext anvil) {
 Each `Journey` step checks both sides: what the player's client receives, and what the proxy reports on its own console for connections, server changes, and disconnect reasons. A message expectation only considers messages received since the previous one, so a prompt repeated after a reconnect is not satisfied by its earlier occurrence.
 
 Use `Accounts` for players who already have an account.
+
+The `auth` and `lobby` servers remember earlier tests: a player's position and inventory there belong to no test. Keep expectations on what the proxy and the player's client report, and do not rely on the state of a backend world.
 
 A message expectation names the message through Identica's own configuration models: `m.identica()` is `Messages`, `m.credential()` is `CredentialMessages`, `m.premium()` is `PremiumMessages` and `m.sentinel()` is `SentinelMessages`. The models are read from the files the running proxy generated, so the expectation follows the configured text, and a renamed or removed message stops the tests from compiling. Formatting tags are ignored and placeholders match any text. Chain `.with(...)` and `.without(...)` after `.sees(...)` to check what else the same message contains. Do not copy message text into a test.

@@ -11,7 +11,9 @@ import java.util.function.Consumer;
 /**
  * Starts a fresh network of two Identica proxies around a test. Both proxies share one database, the
  * {@code auth} and {@code lobby} servers, and, when replicating, one Redis. Credential is the only provider and
- * journeys are interactive. The database and Redis run in containers, so the test is skipped without Docker.
+ * journeys are interactive. The proxies, the database and Redis are new in every test; the two servers keep
+ * running and serve one test after another. The database and Redis run in containers, so the test is skipped
+ * without Docker.
  *
  * <pre>{@code
  * @Test

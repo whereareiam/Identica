@@ -13,6 +13,7 @@ import java.util.function.Consumer;
 /**
  * Starts a fresh Identica network around a test: a Velocity proxy with the packaged plugin and providers, an
  * {@code auth} server for authentication and registration steps, and a {@code lobby} that completed players reach.
+ * The proxy is new in every test; the two servers keep running and serve one test after another.
  * {@link #step()} and {@link #complete()} change where players are routed.
  *
  * <pre>{@code

@@ -83,7 +83,7 @@ class ResolvePendingMigrationAccountPhaseTest {
 				null,
 				"PlayerOne",
 				ProviderOrigin.MANUAL
-		), null, null), 0L);
+		), null, null, null), 0L);
 
 		PrepareGroupState groupState = new PrepareGroupState();
 		groupState.setRequest(PrepareRequest.builder()

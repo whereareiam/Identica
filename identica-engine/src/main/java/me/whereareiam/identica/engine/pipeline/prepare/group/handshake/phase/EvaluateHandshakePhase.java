@@ -3,8 +3,6 @@ package me.whereareiam.identica.engine.pipeline.prepare.group.handshake.phase;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.engine.pipeline.prepare.runtime.HandshakeRequestFactory;
-import me.whereareiam.identica.engine.pipeline.prepare.runtime.KnownAccountResolver;
 import me.whereareiam.identica.handshake.HandshakeStore;
 import me.whereareiam.identica.handshake.policy.HandshakePolicy;
 import me.whereareiam.identica.logging.Logger;
@@ -25,8 +23,6 @@ import java.util.concurrent.CompletionStage;
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class EvaluateHandshakePhase implements PipelinePhase<PrepareGroupState> {
 	private final HandshakeStore handshakeStore;
-	private final KnownAccountResolver knownAccountResolver;
-	private final HandshakeRequestFactory requestFactory;
 
 	@Override
 	public @NotNull String id() {
@@ -65,8 +61,12 @@ public class EvaluateHandshakePhase implements PipelinePhase<PrepareGroupState> 
 		}
 
 		context.setClaimedUniqueId(state.getRequest().getIdentity().getClaimedUniqueId());
-		context.setPreferredLink(knownAccountResolver.resolvePreferredLink(state.getRequest().getIdentity()));
-		HandshakeRequest request = requestFactory.create(state.getRequest().getIdentity(), context);
+		HandshakeRequest request = new HandshakeRequest(
+				state.getRequest().getIdentity(),
+				context.getProvider(),
+				context.getPreferredLink(),
+				context.getJourneyMode()
+		);
 		HandshakeDecision decision = HandshakeDecision.allow();
 		Iterable<HandshakePolicy> policies = handshakeStore.policies();
         for (HandshakePolicy policy : policies) {

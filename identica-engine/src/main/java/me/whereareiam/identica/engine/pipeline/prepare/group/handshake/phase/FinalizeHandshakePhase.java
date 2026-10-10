@@ -4,10 +4,10 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.engine.pipeline.prepare.runtime.HandshakeRequestFactory;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.handshake.HandshakeDecisionEvent;
 import me.whereareiam.identica.model.auth.handshake.HandshakeDecision;
+import me.whereareiam.identica.model.auth.handshake.HandshakeRequest;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareContextItem;
@@ -25,7 +25,6 @@ import java.util.concurrent.CompletionStage;
 public class FinalizeHandshakePhase implements PipelinePhase<PrepareGroupState> {
 	private final EventManager eventManager;
 	private final Provider<Messages> messagesProvider;
-	private final HandshakeRequestFactory requestFactory;
 
 	@Override
 	public @NotNull String id() {
@@ -60,7 +59,12 @@ public class FinalizeHandshakePhase implements PipelinePhase<PrepareGroupState> 
 		HandshakeDecision resolvedHandshake = context.getHandshake();
 		HandshakeDecision decision = resolvedHandshake != null ? resolvedHandshake : HandshakeDecision.allow();
 		HandshakeDecisionEvent event = new HandshakeDecisionEvent(
-				requestFactory.create(request.getIdentity(), context),
+				new HandshakeRequest(
+						request.getIdentity(),
+						context.getProvider(),
+						context.getPreferredLink(),
+						context.getJourneyMode()
+				),
 				decision
 		);
 		eventManager.call(event);

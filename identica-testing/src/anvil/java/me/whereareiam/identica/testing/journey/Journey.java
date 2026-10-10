@@ -1,13 +1,15 @@
 package me.whereareiam.identica.testing.journey;
 
-import me.whereareiam.anvil.api.model.player.AuthenticationAccount;
 import me.whereareiam.anvil.api.model.player.PlayerIdentity;
 import me.whereareiam.anvil.api.model.player.PlayerOptions;
+import me.whereareiam.anvil.api.model.player.SessionIdentity;
 import me.whereareiam.anvil.api.player.SimulatedPlayer;
 import me.whereareiam.anvil.api.process.ProcessConsole;
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.anvil.api.type.AuthenticationMode;
+import me.whereareiam.anvil.api.type.DisconnectCause;
 import me.whereareiam.anvil.capability.messages.Messages;
+import me.whereareiam.anvil.capability.messages.model.ReceivedMessage;
 import me.whereareiam.anvil.capability.server.Server;
 import me.whereareiam.anvil.capability.session.Session;
 import me.whereareiam.identica.testing.environment.IdenticaNetwork;
@@ -16,8 +18,9 @@ import me.whereareiam.identica.testing.environment.Provider;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
+import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -35,8 +38,6 @@ import static org.junit.jupiter.api.Assertions.fail;
 public final class Journey {
 	private static final Duration TIMEOUT = Duration.ofSeconds(20);
 	private static final Duration SETTLE = Duration.ofSeconds(3);
-	/** Velocity refuses a second login from one address within its default login rate limit of three seconds. */
-	private static final Duration LOGIN_RATE_LIMIT = Duration.ofMillis(3200);
 
 	private final String name;
 	private final Session session;
@@ -46,7 +47,6 @@ public final class Journey {
 
 	private int read;
 	private long console;
-	private Instant connectedAt = Instant.EPOCH;
 	private int connections;
 	private String matched = "";
 
@@ -57,6 +57,7 @@ public final class Journey {
 		this.server = player.capability(Server.class);
 		this.proxy = anvil.processes().proxy(IdenticaNetwork.PROXY).console();
 		this.console = proxy.checkpoint();
+		this.read = messages.checkpoint();
 	}
 
 	/**
@@ -67,24 +68,22 @@ public final class Journey {
 	}
 
 	/**
-	 * Creates a player that signs in with a stored premium account and has not connected yet. The player carries
-	 * the account's own username.
+	 * Creates a player that owns a premium account registered with the local Mojang service and has not connected
+	 * yet. It authenticates when the proxy asks for it, as a premium client does.
 	 */
-	public static Journey premium(ScenarioContext anvil, AuthenticationAccount account) {
-		String name = Objects.requireNonNull(account.getUsername(), "Stored account has no username");
+	public static Journey premium(ScenarioContext anvil, SessionIdentity account) {
 		SimulatedPlayer player = anvil.players().create(PlayerOptions.builder()
-				.name(name)
+				.name(account.getUsername())
 				.authentication(AuthenticationMode.ON_REQUEST)
-				.accountId(account.getAccountId())
+				.sessionIdentity(account)
 				.build());
-		return new Journey(anvil, player, name);
+		return new Journey(anvil, player, account.getUsername());
 	}
 
 	/**
 	 * Connects without expecting an outcome, for joins the proxy may refuse.
 	 */
 	public Journey attempt() {
-		paceLogin();
 		session.connect();
 		return this;
 	}
@@ -93,7 +92,6 @@ public final class Journey {
 	 * Reconnects without expecting an outcome, for joins the proxy may refuse.
 	 */
 	public Journey attemptAgain() {
-		paceLogin();
 		session.rejoin();
 		return this;
 	}
@@ -102,7 +100,6 @@ public final class Journey {
 	 * Connects and expects the proxy to accept the connection.
 	 */
 	public Journey join() {
-		paceLogin();
 		session.connect();
 		return accepted();
 	}
@@ -111,7 +108,6 @@ public final class Journey {
 	 * Reconnects after a disconnect or kick and expects the proxy to accept the connection.
 	 */
 	public Journey rejoin() {
-		paceLogin();
 		session.rejoin();
 		return accepted();
 	}
@@ -140,8 +136,7 @@ public final class Journey {
 	 * Expects the player to stay on a backend for a while, without the proxy connecting it anywhere else.
 	 */
 	public Journey remainsOn(String backend) {
-		sleep(SETTLE);
-		assertEquals(backend, server.identity().getRoute().getServer());
+		server.stayed(backend, SETTLE);
 		List<String> moves = proxy.read(console, 200).getLines().stream().map(line -> line.getText())
 				.filter(line -> line.contains("[server connection] " + name + " -> ") && line.contains("has connected"))
 				.toList();
@@ -156,22 +151,8 @@ public final class Journey {
 	public Journey sees(Prompt prompt, Prompt... together) {
 		List<Prompt> prompts = new ArrayList<>(List.of(prompt));
 		prompts.addAll(List.of(together));
-		Instant deadline = Instant.now().plus(TIMEOUT);
-		while (true) {
-			List<String> history = messages.history();
-			for (int index = read; index < history.size(); index++) {
-				String message = history.get(index);
-				if (prompts.stream().allMatch(expected -> message.contains(expected.getText()))) {
-					read = index + 1;
-					matched = message;
-					return this;
-				}
-			}
-
-			if (Instant.now().isAfter(deadline))
-				return fail(name + " did not receive " + prompts + "; new messages: " + unread());
-			sleep(Duration.ofMillis(100));
-		}
+		matched = receive(message -> prompts.stream().allMatch(expected -> message.contains(expected.getText())), prompts);
+		return this;
 	}
 
 	/**
@@ -186,20 +167,9 @@ public final class Journey {
 	 * Waits for the first of several alternative messages, arrived after the previous expectation, and returns it.
 	 */
 	public Prompt seesAnyOf(Prompt... alternatives) {
-		Instant deadline = Instant.now().plus(TIMEOUT);
-		while (true) {
-			List<String> history = messages.history();
-			for (int index = read; index < history.size(); index++)
-				for (Prompt alternative : alternatives)
-					if (history.get(index).contains(alternative.getText())) {
-						read = index + 1;
-						return alternative;
-					}
-
-			if (Instant.now().isAfter(deadline))
-				return fail(name + " did not receive any of " + List.of(alternatives) + "; new messages: " + unread());
-			sleep(Duration.ofMillis(100));
-		}
+		String message = receive(text -> Arrays.stream(alternatives).anyMatch(alternative -> text.contains(alternative.getText())),
+				List.of(alternatives));
+		return Arrays.stream(alternatives).filter(alternative -> message.contains(alternative.getText())).findFirst().orElseThrow();
 	}
 
 	/**
@@ -214,29 +184,25 @@ public final class Journey {
 	 * Expects that a message has not arrived since the previous expectation, after giving it time to.
 	 */
 	public Journey doesNotSee(Prompt prompt) {
-		sleep(SETTLE);
-		List<String> unread = unread();
-		assertFalse(unread.stream().anyMatch(line -> line.contains(prompt.getText())),
-				name + " must not receive " + prompt + "; new messages: " + unread);
+		messages.notReceived(message -> message.contains(prompt.getText()), read, SETTLE);
 		return this;
 	}
 
 	/**
-	 * Expects the proxy to drop the connection attempt before the player is in: the client ends up disconnected
-	 * and the proxy reports the closed initial connection without ever reporting the player as connected.
-	 *
-	 * @return the reason the client ended with
+	 * Expects the proxy to demand online authentication that this offline player cannot give: the client ends
+	 * disconnected for that cause, and the proxy reports the closed initial connection without ever reporting
+	 * the player as connected.
 	 */
-	public String refused() {
+	public Journey authenticationRequired() {
 		reported("[initial connection] ", "has disconnected");
-		Instant deadline = Instant.now().plus(TIMEOUT);
-		while (session.state().connected() && Instant.now().isBefore(deadline)) sleep(Duration.ofMillis(100));
+		session.kicked(TIMEOUT);
+		assertEquals(DisconnectCause.AUTHENTICATION_REQUIRED, session.state().disconnectCause());
 		assertFalse(session.state().connected(), name + " must not be connected");
 		List<String> accepted = proxy.read(0, 2000).getLines().stream().map(line -> line.getText())
 				.filter(line -> line.contains("[connected player] " + name + " (") && line.contains("has connected"))
 				.toList();
 		assertEquals(connections, accepted.size(), "The proxy must not accept " + name + "; console: " + accepted);
-		return String.valueOf(session.state().kickReason());
+		return this;
 	}
 
 	/**
@@ -276,23 +242,31 @@ public final class Journey {
 	}
 
 	/**
-	 * Expects the proxy to disconnect the player for a reason: the proxy reports the disconnect and, on the
-	 * following console lines, the reason, and the client ends up disconnected. The client's own view of the reason is not asserted,
-	 * because a client may see the connection close before it reads the disconnect message.
+	 * Expects the proxy to disconnect the player for a reason. The proxy reports the disconnect and, on the
+	 * following console lines, the reason; the client receives the same reason from the server.
 	 */
 	public Journey kickedWith(Prompt reason) {
 		reported("[connected player] " + name + " (", "has disconnected");
 		reported(reason.getText(), "");
-		Instant deadline = Instant.now().plus(TIMEOUT);
-		while (session.state().connected() && Instant.now().isBefore(deadline)) sleep(Duration.ofMillis(100));
+
+		String received = session.kicked(TIMEOUT);
+		assertTrue(received.contains(reason.getText()), name + " was disconnected with: " + received);
+		assertEquals(DisconnectCause.SERVER, session.state().disconnectCause());
 		assertFalse(session.state().connected(), name + " must be disconnected");
 		return this;
 	}
 
-	private void paceLogin() {
-		Duration wait = Duration.between(Instant.now(), connectedAt.plus(LOGIN_RATE_LIMIT));
-		if (!wait.isNegative()) sleep(wait);
-		connectedAt = Instant.now();
+	/**
+	 * Waits for a message after the previous expectation and moves this journey's position behind it.
+	 */
+	private String receive(Predicate<String> matcher, List<Prompt> expected) {
+		try {
+			ReceivedMessage message = messages.received(matcher, read, TIMEOUT);
+			read = message.getCheckpoint();
+			return message.getText();
+		} catch (IllegalStateException timeout) {
+			return fail(name + " did not receive " + expected + "; new messages: " + unread(), timeout);
+		}
 	}
 
 	private Journey accepted() {

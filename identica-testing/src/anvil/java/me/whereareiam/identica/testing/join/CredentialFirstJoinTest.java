@@ -2,8 +2,8 @@ package me.whereareiam.identica.testing.join;
 
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.identica.testing.environment.Identica;
-import me.whereareiam.identica.testing.environment.JourneyMode;
-import me.whereareiam.identica.testing.environment.JourneyPolicy;
+import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.testing.journey.Prompt;

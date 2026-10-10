@@ -12,10 +12,8 @@ import me.whereareiam.anvil.api.model.workspace.WorkspaceCache;
 import me.whereareiam.anvil.api.model.workspace.WorkspacePlan;
 import me.whereareiam.anvil.api.type.CacheIdentity;
 import me.whereareiam.anvil.api.type.Platforms;
+import me.whereareiam.identica.testing.fixture.Mojang;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
@@ -38,10 +36,9 @@ public final class IdenticaNetwork {
 				.asset(artifact("premium", Path.of(DATA, "providers", "premium.jar")))
 				.cache(libraries("identica-libraries", Path.of(DATA, ".libraries")))
 				.cache(libraries("identica-provider-libraries", Path.of(DATA, "providers", ".libraries")));
-		Path overlays = overlayDirectory(name);
 		configuration.forEach((file, content) -> workspace.asset(WorkspaceAsset.builder()
 				.group("identica-configuration")
-				.source(AssetSource.path(write(overlays.resolve(file), content)))
+				.source(AssetSource.text(content))
 				.target(Path.of(DATA, file))
 				.build()));
 
@@ -55,6 +52,8 @@ public final class IdenticaNetwork {
 				.server(AUTH)
 				.server(LOBBY)
 				.defaultServer(LOBBY)
+				.setting("advanced.login-ratelimit", "0")
+				.sessionServer(Mojang.service().sessionServer())
 				.build();
 
 		return AnvilScenario.builder().name(name).entrypoint(PROXY).server(auth).server(lobby).proxy(proxy).build();
@@ -79,18 +78,5 @@ public final class IdenticaNetwork {
 
 	private static WorkspaceAsset artifact(String name, Path target) {
 		return WorkspaceAsset.builder().group(name).source(AssetSource.artifact(name)).target(target).build();
-	}
-
-	private static Path overlayDirectory(String name) {
-		return Path.of("build", "identica-overlays", name).toAbsolutePath();
-	}
-
-	private static Path write(Path file, String content) {
-		try {
-			Files.createDirectories(file.getParent());
-			return Files.writeString(file, content);
-		} catch (IOException exception) {
-			throw new UncheckedIOException(exception);
-		}
 	}
 }

@@ -5,6 +5,7 @@ shadow = "9.3.0"
 buildconfig = "6.0.7"
 toolkit = "dev-8c0271b"
 freefair = "9.5.0"
+anvil = "dev-55f301e"
 
 # compile time processing
 lombok = "1.18.42"
@@ -117,6 +118,8 @@ junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.r
 junit-platform = { group = "org.junit.platform", name = "junit-platform-launcher", version.ref = "junit" }
 mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
 mockito-junit = { group = "org.mockito", name = "mockito-junit-jupiter", version.ref = "mockito" }
+anvil-protocol-mcprotocol = { group = "me.whereareiam.anvil", name = "protocol-mcprotocol", version.ref = "anvil" }
+anvil-yggdrasil-mock = { group = "me.whereareiam.anvil", name = "yggdrasil-mock", version.ref = "anvil" }
 testcontainers-junit = { group = "org.testcontainers", name = "testcontainers-junit-jupiter", version.ref = "testcontainers" }
 testcontainers-mariadb = { group = "org.testcontainers", name = "testcontainers-mariadb", version.ref = "testcontainers" }
 testcontainers-postgresql = { group = "org.testcontainers", name = "testcontainers-postgresql", version.ref = "testcontainers" }
@@ -142,3 +145,8 @@ buildconfig = { id = "com.github.gmazzo.buildconfig", version.ref = "buildconfig
 attache = { id = "me.whereareiam.attache", version.ref = "attache" }
 toolkit-versioning = { id = "me.whereareiam.toolkit.versioning", version.ref = "toolkit" }
 freefair-lombok = { id = "io.freefair.lombok", version.ref = "freefair" }
+anvil = { id = "me.whereareiam.anvil", version.ref = "anvil" }
+anvil-junit = { id = "me.whereareiam.anvil.junit", version.ref = "anvil" }
+anvil-capability-default = { id = "me.whereareiam.anvil.capability.default", version.ref = "anvil" }
+anvil-platform-paper = { id = "me.whereareiam.anvil.platform.paper", version.ref = "anvil" }
+anvil-platform-velocity = { id = "me.whereareiam.anvil.platform.velocity", version.ref = "anvil" }

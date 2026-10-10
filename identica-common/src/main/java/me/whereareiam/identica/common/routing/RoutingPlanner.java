@@ -14,6 +14,7 @@ import me.whereareiam.identica.model.routing.RoutingEndpoint;
 import me.whereareiam.identica.model.routing.RoutingIntent;
 import me.whereareiam.identica.model.routing.RoutingPlan;
 import me.whereareiam.identica.model.routing.RoutingSignal;
+import me.whereareiam.identica.platform.adapter.PlatformForcedHostAdapter;
 import me.whereareiam.identica.type.pipeline.PipelineStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.routing.reason.RoutingClearReason;
@@ -29,6 +30,7 @@ import java.util.UUID;
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class RoutingPlanner {
 	private final Provider<Routing> routingProvider;
+	private final PlatformForcedHostAdapter forcedHostAdapter;
 
 	public @NotNull RoutingPlan plan(@NotNull RoutingSignal signal) {
 		UUID connectionId = signal.connectionUniqueId();
@@ -63,15 +65,16 @@ public class RoutingPlanner {
 		}
 
 		Routing.Target target = resolveStepTarget(signal);
-		if (isBlank(target.getTarget())) {
+		String server = resolveServer(signal, target);
+		if (isBlank(server)) {
 			Logger.debug("Step routing clearing because target is missing connection=%s pipeline=%s stage=%s step=%s",
 					connectionId, signal.getPipelineType(), stageId(signal), stepName(signal));
 			return RoutingPlan.clear(connectionId, RoutingClearReason.NO_TARGET);
 		}
 
 		Logger.debug("Step routing planned connection=%s pipeline=%s stage=%s step=%s target=%s",
-				connectionId, signal.getPipelineType(), stageId(signal), stepName(signal), target.getTarget());
-		return RoutingPlan.replace(createIntent(signal, connectionId, target, RoutingReason.STEP));
+				connectionId, signal.getPipelineType(), stageId(signal), stepName(signal), server);
+		return RoutingPlan.replace(createIntent(signal, connectionId, server, target, RoutingReason.STEP));
 	}
 
 	private @NotNull RoutingPlan planPipeline(@NotNull RoutingSignal signal, @NotNull UUID connectionId) {
@@ -93,20 +96,22 @@ public class RoutingPlanner {
 		}
 
 		Routing.Target target = resolveCompletionTarget(signal);
-		if (isBlank(target.getTarget())) {
+		String server = resolveServer(signal, target);
+		if (isBlank(server)) {
 			Logger.debug("Completion routing clearing because target is missing connection=%s pipeline=%s",
 					connectionId, signal.getPipelineType());
 			return RoutingPlan.clear(connectionId, RoutingClearReason.NO_TARGET);
 		}
 
 		Logger.debug("Completion routing planned connection=%s pipeline=%s target=%s",
-				connectionId, signal.getPipelineType(), target.getTarget());
-		return RoutingPlan.replace(createIntent(signal, connectionId, target, RoutingReason.COMPLETION));
+				connectionId, signal.getPipelineType(), server);
+		return RoutingPlan.replace(createIntent(signal, connectionId, server, target, RoutingReason.COMPLETION));
 	}
 
 	private @NotNull RoutingIntent createIntent(
 			@NotNull RoutingSignal signal,
 			@NotNull UUID connectionId,
+			@NotNull String server,
 			@NotNull Routing.Target target,
 			@NotNull RoutingReason reason
 	) {
@@ -118,7 +123,7 @@ public class RoutingPlanner {
 		return new RoutingIntent(
 				UUID.randomUUID(),
 				connectionId,
-				new RoutingEndpoint(target.getTarget().trim()),
+				new RoutingEndpoint(server.trim()),
 				reason,
 				copyPolicy(target.getAttempts(), reason),
 				new RoutingAttemptState(),
@@ -128,6 +133,18 @@ public class RoutingPlanner {
 				stepName,
 				now
 		);
+	}
+
+	/**
+	 * A target that follows forced hosts routes to the proxy's forced host for the hostname the player joined
+	 * through, and to its own server name when the proxy has none for it.
+	 */
+	private @NotNull String resolveServer(@NotNull RoutingSignal signal, @NotNull Routing.Target target) {
+		if (!Boolean.TRUE.equals(target.getForcedHosts())) return target.getTarget();
+
+		return forcedHostAdapter.resolve(signal.getContext().getIdentity())
+				.filter(server -> !server.isBlank())
+				.orElse(target.getTarget());
 	}
 
 	private Routing.Target resolveCompletionTarget(@NotNull RoutingSignal signal) {
@@ -205,14 +222,17 @@ public class RoutingPlanner {
 	) {
 		Routing.Target merged = new Routing.Target();
 		String baseTarget = base != null ? base.getTarget() : "";
+		Boolean baseForcedHosts = base != null ? base.getForcedHosts() : null;
 		RoutingAttemptPolicy baseAttempts = base != null ? base.getAttempts() : null;
 		if (override == null) {
 			merged.setTarget(baseTarget);
+			merged.setForcedHosts(baseForcedHosts);
 			merged.setAttempts(baseAttempts);
 			return merged;
 		}
 
 		merged.setTarget(!isBlank(override.getTarget()) ? override.getTarget() : baseTarget);
+		merged.setForcedHosts(override.getForcedHosts() != null ? override.getForcedHosts() : baseForcedHosts);
 		merged.setAttempts(override.getAttempts() != null ? override.getAttempts() : baseAttempts);
 		return merged;
 	}

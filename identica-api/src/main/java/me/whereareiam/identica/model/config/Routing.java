@@ -46,6 +46,13 @@ public class Routing {
 	@ToString
 	public static class Target {
 		private @NotNull String target = "";
+		/**
+		 * Whether the proxy's forced host for the hostname the player joined
+		 * through replaces {@link #target}. The target stays the fallback for
+		 * hostnames without a forced host. {@code null} inherits the value of
+		 * the less specific target.
+		 */
+		private @Nullable Boolean forcedHosts;
 		private @Nullable RoutingAttemptPolicy attempts;
 
 		/**

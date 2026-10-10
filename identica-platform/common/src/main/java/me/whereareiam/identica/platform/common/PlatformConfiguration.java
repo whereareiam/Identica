@@ -10,6 +10,7 @@ import me.whereareiam.identica.platform.common.adapter.PlatformProfileAdapter;
 import me.whereareiam.identica.platform.common.adapter.PlatformResumeDecisionAdapter;
 import me.whereareiam.identica.handshake.HandshakeApplierRegistry;
 import me.whereareiam.identica.handshake.HandshakeContext;
+import me.whereareiam.identica.platform.adapter.PlatformForcedHostAdapter;
 import me.whereareiam.identica.platform.adapter.PlatformHandshakeApplierContributor;
 import me.whereareiam.identica.platform.adapter.PlatformHandshakeApplierRegistry;
 import me.whereareiam.identica.service.PlatformDeliveryAdapter;
@@ -32,6 +33,7 @@ public abstract class PlatformConfiguration<C extends HandshakeContext> extends 
 	@Override
 	protected final void configure() {
 		bind(PlatformDeliveryAdapter.class).to(delivery());
+		bind(PlatformForcedHostAdapter.class).to(forcedHost());
 		bindAdapter(PlatformHandshakeDecisionAdapter.class, handshakeDecision());
 		bindAdapter(PlatformLoginDecisionAdapter.class, loginDecision());
 		bindAdapter(PlatformResumeDecisionAdapter.class, resumeDecision());
@@ -45,6 +47,11 @@ public abstract class PlatformConfiguration<C extends HandshakeContext> extends 
 	 * Returns the adapter that coordinates when messages can reach a joining player.
 	 */
 	protected abstract @NotNull Class<? extends PlatformDeliveryAdapter> delivery();
+
+	/**
+	 * Returns the adapter that reads the forced hosts configured on the proxy.
+	 */
+	protected abstract @NotNull Class<? extends PlatformForcedHostAdapter> forcedHost();
 
 	/**
 	 * Returns the registry that applies handshake instructions to the platform's handshake context.

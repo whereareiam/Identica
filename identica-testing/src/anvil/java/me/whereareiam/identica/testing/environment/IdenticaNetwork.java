@@ -29,6 +29,8 @@ public final class IdenticaNetwork {
 	public static final String PROXY_B = "proxy-b";
 	public static final String AUTH = "auth";
 	public static final String LOBBY = "lobby";
+	/** Hostname every proxy forces to {@code lobby}; players join through another one unless they choose this one. */
+	public static final String LOBBY_HOST = "lobby.identica.test";
 
 	/** Identica's data directory inside the proxy workspace. */
 	public static final String DATA = "plugins/identica";
@@ -78,6 +80,7 @@ public final class IdenticaNetwork {
 				// its default forwarding hand it to the backend, before Identica sees it.
 				.setting("advanced.command-rate-limit", "0")
 				.setting("advanced.forward-commands-if-rate-limited", "false")
+				.setting("forced-hosts.\"" + LOBBY_HOST + "\"", "[\"" + LOBBY + "\"]")
 				.sessionServer(sessionServer)
 				.build();
 	}

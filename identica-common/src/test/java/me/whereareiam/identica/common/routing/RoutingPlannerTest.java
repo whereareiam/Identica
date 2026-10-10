@@ -9,6 +9,7 @@ import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.model.routing.RoutingPlan;
 import me.whereareiam.identica.model.routing.RoutingSignal;
 import me.whereareiam.identica.pipeline.ScenarioContext;
+import me.whereareiam.identica.platform.adapter.PlatformForcedHostAdapter;
 import me.whereareiam.identica.pipeline.journey.step.Step;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
@@ -24,6 +25,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -32,10 +35,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @DisplayName("Routing Planner")
 class RoutingPlannerTest {
+	private static final PlatformForcedHostAdapter NO_FORCED_HOSTS = connection -> Optional.empty();
+	private static final PlatformForcedHostAdapter FORCED_HOSTS = connection -> Optional.ofNullable(connection.getOrigin())
+			.map(origin -> Map.of("survival.example.com", "survival").get(origin.getHost()));
+
 	@DisplayName("A waiting step produces a step-based routing intent")
 	@Test
 	void waitingStepCreatesStepIntent() {
-		RoutingPlanner planner = new RoutingPlanner(this::settings);
+		RoutingPlanner planner = new RoutingPlanner(this::settings, NO_FORCED_HOSTS);
 		RoutingPlan plan = planner.plan(RoutingSignal.stepFinished(
 				context(UUID.randomUUID()),
 				PipelineType.AUTHENTICATION,
@@ -52,7 +59,7 @@ class RoutingPlannerTest {
 	@DisplayName("A completed pipeline produces a completion routing intent")
 	@Test
 	void completedPipelineCreatesCompletionIntent() {
-		RoutingPlanner planner = new RoutingPlanner(this::settings);
+		RoutingPlanner planner = new RoutingPlanner(this::settings, NO_FORCED_HOSTS);
 		RoutingPlan plan = planner.plan(RoutingSignal.pipelineFinished(
 				context(UUID.randomUUID()),
 				PipelineType.AUTHENTICATION,
@@ -70,7 +77,7 @@ class RoutingPlannerTest {
 		Routing settings = settings();
 		settings.getScenarios().clear();
 
-		RoutingPlanner planner = new RoutingPlanner(() -> settings);
+		RoutingPlanner planner = new RoutingPlanner(() -> settings, NO_FORCED_HOSTS);
 		RoutingPlan stepPlan = planner.plan(RoutingSignal.stepFinished(
 				context(UUID.randomUUID()),
 				PipelineType.REGISTRATION,
@@ -95,7 +102,7 @@ class RoutingPlannerTest {
 		settings.getDefaults().getComplete().getAttempts().setMode(RoutingRetryMode.UNTIL_REACHED);
 		settings.getScenarios().get("authentication").getComplete().setAttempts(null);
 
-		RoutingPlanner planner = new RoutingPlanner(() -> settings);
+		RoutingPlanner planner = new RoutingPlanner(() -> settings, NO_FORCED_HOSTS);
 		RoutingPlan plan = planner.plan(RoutingSignal.pipelineFinished(
 				context(UUID.randomUUID()),
 				PipelineType.AUTHENTICATION,
@@ -109,7 +116,7 @@ class RoutingPlannerTest {
 	@Test
 	void failedPipelineClearsIntent() {
 		UUID connectionId = UUID.randomUUID();
-		RoutingPlanner planner = new RoutingPlanner(this::settings);
+		RoutingPlanner planner = new RoutingPlanner(this::settings, NO_FORCED_HOSTS);
 		RoutingPlan plan = planner.plan(RoutingSignal.pipelineFinished(
 				context(connectionId),
 				PipelineType.AUTHENTICATION,
@@ -133,7 +140,7 @@ class RoutingPlannerTest {
 		targets.getOverrides().getStages().put(StageType.PROVIDER.id(), stageTarget);
 		targets.getOverrides().getSteps().put("credential", stepTarget);
 
-		RoutingPlanner planner = new RoutingPlanner(() -> settings);
+		RoutingPlanner planner = new RoutingPlanner(() -> settings, NO_FORCED_HOSTS);
 		RoutingPlan plan = planner.plan(RoutingSignal.stepFinished(
 				context(UUID.randomUUID()),
 				PipelineType.AUTHENTICATION,
@@ -152,7 +159,7 @@ class RoutingPlannerTest {
 		settings.getScenarios().get("authentication").getStep().setTarget("");
 		settings.getDefaults().getStep().setTarget("");
 
-		RoutingPlanner planner = new RoutingPlanner(() -> settings);
+		RoutingPlanner planner = new RoutingPlanner(() -> settings, NO_FORCED_HOSTS);
 		RoutingPlan plan = planner.plan(RoutingSignal.stepFinished(
 				context(UUID.randomUUID()),
 				PipelineType.AUTHENTICATION,
@@ -163,6 +170,110 @@ class RoutingPlannerTest {
 
 		assertEquals(RoutingPlanAction.CLEAR, plan.getAction());
 		assertEquals(RoutingClearReason.NO_TARGET, plan.getClearReason());
+	}
+
+	@DisplayName("A target that follows forced hosts routes to the proxy's forced host")
+	@Test
+	void forcedHostReplacesTarget() {
+		Routing settings = settings();
+		settings.getScenarios().get("authentication").getComplete().setForcedHosts(true);
+
+		RoutingPlanner planner = new RoutingPlanner(() -> settings, FORCED_HOSTS);
+		RoutingPlan plan = planner.plan(RoutingSignal.pipelineFinished(
+				context(UUID.randomUUID(), "survival.example.com"),
+				PipelineType.AUTHENTICATION,
+				PipelineResult.complete()
+		));
+
+		assertEquals(RoutingPlanAction.REPLACE, plan.getAction());
+		assertEquals("survival", plan.getIntent().getEndpoint().getServer());
+	}
+
+	@DisplayName("A hostname without a forced host falls back to the target")
+	@Test
+	void hostnameWithoutForcedHostUsesTarget() {
+		Routing settings = settings();
+		settings.getScenarios().get("authentication").getComplete().setForcedHosts(true);
+
+		RoutingPlanner planner = new RoutingPlanner(() -> settings, FORCED_HOSTS);
+		RoutingPlan otherHost = planner.plan(RoutingSignal.pipelineFinished(
+				context(UUID.randomUUID(), "play.example.com"),
+				PipelineType.AUTHENTICATION,
+				PipelineResult.complete()
+		));
+		RoutingPlan unknownHost = planner.plan(RoutingSignal.pipelineFinished(
+				context(UUID.randomUUID()),
+				PipelineType.AUTHENTICATION,
+				PipelineResult.complete()
+		));
+
+		assertEquals("lobby", otherHost.getIntent().getEndpoint().getServer());
+		assertEquals("lobby", unknownHost.getIntent().getEndpoint().getServer());
+	}
+
+	@DisplayName("Forced hosts are ignored unless the target follows them")
+	@Test
+	void forcedHostIgnoredWhenTargetDoesNotFollowIt() {
+		RoutingPlanner planner = new RoutingPlanner(this::settings, FORCED_HOSTS);
+		RoutingPlan plan = planner.plan(RoutingSignal.pipelineFinished(
+				context(UUID.randomUUID(), "survival.example.com"),
+				PipelineType.AUTHENTICATION,
+				PipelineResult.complete()
+		));
+
+		assertEquals("lobby", plan.getIntent().getEndpoint().getServer());
+	}
+
+	@DisplayName("A scenario target inherits and overrides whether defaults follow forced hosts")
+	@Test
+	void scenarioTargetInheritsAndOverridesForcedHosts() {
+		Routing settings = settings();
+		settings.getDefaults().getComplete().setForcedHosts(true);
+		Routing.Targets registration = new Routing.Targets();
+		registration.getComplete().setTarget("tutorial");
+		registration.getComplete().setForcedHosts(false);
+		settings.getScenarios().put("registration", registration);
+
+		RoutingPlanner planner = new RoutingPlanner(() -> settings, FORCED_HOSTS);
+		RoutingPlan inherited = planner.plan(RoutingSignal.pipelineFinished(
+				context(UUID.randomUUID(), "survival.example.com"),
+				PipelineType.AUTHENTICATION,
+				PipelineResult.complete()
+		));
+		RoutingPlan overridden = planner.plan(RoutingSignal.pipelineFinished(
+				context(UUID.randomUUID(), "survival.example.com"),
+				PipelineType.REGISTRATION,
+				PipelineResult.complete()
+		));
+
+		assertEquals("survival", inherited.getIntent().getEndpoint().getServer());
+		assertEquals("tutorial", overridden.getIntent().getEndpoint().getServer());
+	}
+
+	@DisplayName("A blank target that follows forced hosts only routes hostnames with a forced host")
+	@Test
+	void blankTargetFollowingForcedHostsRoutesOnlyForcedHostnames() {
+		Routing settings = settings();
+		Routing.Target complete = settings.getScenarios().get("authentication").getComplete();
+		complete.setTarget("");
+		complete.setForcedHosts(true);
+		settings.getDefaults().getComplete().setTarget("");
+
+		RoutingPlanner planner = new RoutingPlanner(() -> settings, FORCED_HOSTS);
+		RoutingPlan forced = planner.plan(RoutingSignal.pipelineFinished(
+				context(UUID.randomUUID(), "survival.example.com"),
+				PipelineType.AUTHENTICATION,
+				PipelineResult.complete()
+		));
+		RoutingPlan unforced = planner.plan(RoutingSignal.pipelineFinished(
+				context(UUID.randomUUID(), "play.example.com"),
+				PipelineType.AUTHENTICATION,
+				PipelineResult.complete()
+		));
+
+		assertEquals("survival", forced.getIntent().getEndpoint().getServer());
+		assertEquals(RoutingPlanAction.CLEAR, unforced.getAction());
+		assertEquals(RoutingClearReason.NO_TARGET, unforced.getClearReason());
 	}
 
 	private Routing settings() {
@@ -192,8 +303,14 @@ class RoutingPlannerTest {
 	}
 
 	private ScenarioContext context(UUID connectionId) {
+		return context(connectionId, null);
+	}
+
+	private ScenarioContext context(UUID connectionId, @Nullable String host) {
+		ConnectionIdentity identity = new ConnectionIdentity(connectionId, "PlayerOne", "127.0.0.1");
+		if (host != null) identity.setOrigin(new ConnectionIdentity.Origin(host, 25565));
+
 		return new ScenarioContext() {
-			private final ConnectionIdentity identity = new ConnectionIdentity(connectionId, "PlayerOne", "127.0.0.1");
 			private ProviderContext provider;
 			private ScenarioTransitionItem transition;
 

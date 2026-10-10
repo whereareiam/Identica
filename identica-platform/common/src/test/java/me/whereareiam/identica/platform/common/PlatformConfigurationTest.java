@@ -12,8 +12,10 @@ import me.whereareiam.identica.platform.common.adapter.PlatformResumeDecisionAda
 import me.whereareiam.identica.handshake.HandshakeApplier;
 import me.whereareiam.identica.handshake.HandshakeApplierRegistry;
 import me.whereareiam.identica.handshake.HandshakeContext;
+import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.model.auth.handshake.HandshakeInstruction;
+import me.whereareiam.identica.platform.adapter.PlatformForcedHostAdapter;
 import me.whereareiam.identica.platform.adapter.PlatformHandshakeApplierContributor;
 import me.whereareiam.identica.platform.adapter.PlatformHandshakeApplierRegistry;
 import me.whereareiam.identica.service.PlatformDeliveryAdapter;
@@ -23,6 +25,7 @@ import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -44,6 +47,7 @@ class PlatformConfigurationTest {
 		assertInstanceOf(TestResumeDecision.class, injector.getInstance(Key.get(new TypeLiteral<PlatformResumeDecisionAdapter<LoginEvent>>() {})));
 		assertInstanceOf(TestProfile.class, injector.getInstance(Key.get(new TypeLiteral<PlatformProfileAdapter<LoginEvent>>() {})));
 		assertInstanceOf(TestDelivery.class, injector.getInstance(PlatformDeliveryAdapter.class));
+		assertInstanceOf(TestForcedHost.class, injector.getInstance(PlatformForcedHostAdapter.class));
 	}
 
 	@DisplayName("The handshake applier registry answers as one instance under both of its contracts")
@@ -76,6 +80,11 @@ class PlatformConfigurationTest {
 		@Override
 		protected @NotNull Class<TestDelivery> delivery() {
 			return TestDelivery.class;
+		}
+
+		@Override
+		protected @NotNull Class<TestForcedHost> forcedHost() {
+			return TestForcedHost.class;
 		}
 
 		@Override
@@ -130,6 +139,13 @@ class PlatformConfigurationTest {
 
 		@Override
 		public void clear(@NotNull UUID connectionUniqueId) {
+		}
+	}
+
+	private static final class TestForcedHost implements PlatformForcedHostAdapter {
+		@Override
+		public @NotNull Optional<String> resolve(@NotNull ConnectionIdentity connection) {
+			return Optional.empty();
 		}
 	}
 

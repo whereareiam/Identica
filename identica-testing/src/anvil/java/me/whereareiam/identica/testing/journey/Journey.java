@@ -298,6 +298,30 @@ public final class Journey {
 		return this;
 	}
 
+	/**
+	 * Expects the proxy to refuse the login with one of the game's own messages, which the client translates
+	 * itself, so it arrives as its translation key.
+	 *
+	 * @param translationKey key of the game's message, such as {@code multiplayer.disconnect.authservers_down}
+	 */
+	public Journey refusedWith(String translationKey) {
+		String received = session.kicked(TIMEOUT);
+		assertFalse(session.state().connected(), name + " must not be connected");
+		assertEquals(DisconnectCause.SERVER, session.state().disconnectCause());
+		assertTrue(received.contains(translationKey), name + " was refused with: " + received);
+		return this;
+	}
+
+	/**
+	 * Expects the proxy to disconnect the player, whatever reason it gives or does not give.
+	 */
+	public Journey disconnected() {
+		session.disconnected(TIMEOUT);
+		reported("[connected player] " + name + " (", "has disconnected");
+		assertFalse(session.state().connected(), name + " must be disconnected");
+		return this;
+	}
+
 	private MessageText text(Function<IdenticaMessages, ?> message) {
 		return new MessageText(message.apply(configured));
 	}

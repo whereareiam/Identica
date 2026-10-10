@@ -8,6 +8,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.function.Consumer;
 
 /**
  * Starts a fresh Identica network around a test: a Velocity proxy with the packaged plugin and providers, an
@@ -60,4 +61,18 @@ public @interface Identica {
 	 * Server players are sent to once they are done, or blank to leave them on the server they are on.
 	 */
 	String complete() default IdenticaNetwork.LOBBY;
+
+	/**
+	 * Changes to the proxy's configuration files that the other attributes do not cover, applied in order. Each
+	 * class needs a constructor without parameters.
+	 *
+	 * <pre>{@code
+	 * static final class ShortRegistration implements Consumer<ProxyConfiguration> {
+	 *     public void accept(ProxyConfiguration proxy) {
+	 *         proxy.engine().getScenarios().getRegistration().setPipelineTtl(Duration.ofSeconds(5));
+	 *     }
+	 * }
+	 * }</pre>
+	 */
+	Class<? extends Consumer<ProxyConfiguration>>[] configure() default {};
 }

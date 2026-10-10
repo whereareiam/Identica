@@ -41,12 +41,12 @@ public final class IdenticaClusterScenarios implements AnvilScenarioFactory<Iden
 
 		Map<String, Map<String, String>> proxies = new LinkedHashMap<>();
 		for (String proxy : List.of(IdenticaNetwork.PROXY_A, IdenticaNetwork.PROXY_B)) {
-			Map<String, String> configuration = IdenticaConfiguration.files(JourneyMode.INTERACTIVE, JourneyPolicy.PREFER,
+			ProxyConfiguration configuration = new ProxyConfiguration(JourneyMode.INTERACTIVE, JourneyPolicy.PREFER,
 					EnumSet.of(Provider.CREDENTIAL), false, true, cluster.step(), cluster.complete(), yggdrasil);
-			configuration.put("persistence.yml", IdenticaConfiguration.write(persistence(database)));
+			configuration.put("persistence.yml", persistence(database));
 			if (redis != null)
-				configuration.put("replication.yml", IdenticaConfiguration.write(replication(proxy, redis)));
-			proxies.put(proxy, configuration);
+				configuration.put("replication.yml", replication(proxy, redis));
+			proxies.put(proxy, configuration.files());
 		}
 
 		String name = String.join("-", "identica-cluster", redis == null ? "database" : "replicated",

@@ -5,7 +5,7 @@ shadow = "9.3.0"
 buildconfig = "6.0.7"
 toolkit = "dev-e2f8ced"
 freefair = "9.5.0"
-anvil = "dev-55f301e"
+anvil = "dev-4d33943"
 
 # compile time processing
 lombok = "1.18.42"

@@ -2,10 +2,10 @@ package me.whereareiam.identica.testing.join;
 
 import me.whereareiam.anvil.api.model.player.SessionIdentity;
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
+import me.whereareiam.anvil.environment.yggdrasil.YggdrasilMock;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.testing.environment.Provider;
-import me.whereareiam.identica.testing.fixture.Mojang;
 import me.whereareiam.identica.testing.journey.Journey;
 import org.junit.jupiter.api.Test;
 
@@ -16,14 +16,14 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * The owner of a premium account joins. The account exists in the local Mojang service, which also verifies the
+ * The owner of a premium account joins. The account exists in the network's stand-in for Mojang, which also verifies the
  * login, so these tests need no real account.
  */
 class PremiumAccountJoinTest {
 	@Test
 	@Identica(mode = JourneyMode.SEAMLESS)
-	void joinsTheLobbyWithoutAnyPromptAndKeepsItsIdentityWhenReturning(ScenarioContext anvil) {
-		SessionIdentity account = Mojang.service().register("Steve");
+	void joinsTheLobbyWithoutAnyPromptAndKeepsItsIdentityWhenReturning(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+		SessionIdentity account = yggdrasil.register("Steve");
 
 		Journey player = Journey.premium(anvil, account).join()
 				.on(LOBBY)
@@ -37,8 +37,8 @@ class PremiumAccountJoinTest {
 
 	@Test
 	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.PREMIUM)
-	void joinsAndReturnsWhenPremiumIsTheOnlyProvider(ScenarioContext anvil) {
-		SessionIdentity account = Mojang.service().register("Steve");
+	void joinsAndReturnsWhenPremiumIsTheOnlyProvider(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+		SessionIdentity account = yggdrasil.register("Steve");
 
 		Journey.premium(anvil, account).join()
 				.on(LOBBY)
@@ -50,8 +50,8 @@ class PremiumAccountJoinTest {
 
 	@Test
 	@Identica(mode = JourneyMode.INTERACTIVE)
-	void returnsToTheLobbyInInteractiveModeAfterRegisteringWithPremium(ScenarioContext anvil) {
-		SessionIdentity account = Mojang.service().register("Steve");
+	void returnsToTheLobbyInInteractiveModeAfterRegisteringWithPremium(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+		SessionIdentity account = yggdrasil.register("Steve");
 
 		Journey player = Journey.premium(anvil, account).join()
 				.on(AUTH)
@@ -70,8 +70,8 @@ class PremiumAccountJoinTest {
 
 	@Test
 	@Identica(mode = JourneyMode.INTERACTIVE)
-	void choosesPremiumThenRejoinsToVerifyTheAccountInInteractiveMode(ScenarioContext anvil) {
-		SessionIdentity account = Mojang.service().register("Steve");
+	void choosesPremiumThenRejoinsToVerifyTheAccountInInteractiveMode(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+		SessionIdentity account = yggdrasil.register("Steve");
 
 		Journey player = Journey.premium(anvil, account).join()
 				.on(AUTH)

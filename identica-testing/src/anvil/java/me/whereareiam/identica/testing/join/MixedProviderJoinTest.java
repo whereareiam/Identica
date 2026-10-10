@@ -1,10 +1,10 @@
 package me.whereareiam.identica.testing.join;
 
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
+import me.whereareiam.anvil.environment.yggdrasil.YggdrasilMock;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.testing.environment.Provider;
-import me.whereareiam.identica.testing.fixture.Mojang;
 import me.whereareiam.identica.testing.journey.Journey;
 import org.junit.jupiter.api.Test;
 
@@ -31,8 +31,8 @@ class MixedProviderJoinTest {
 
 	@Test
 	@Identica(mode = JourneyMode.SEAMLESS)
-	void refusesThePremiumUsernameOnceThenFallsBackToCredential(ScenarioContext anvil) {
-		Mojang.service().register("Alice");
+	void refusesThePremiumUsernameOnceThenFallsBackToCredential(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+		yggdrasil.register("Alice");
 
 		Journey alice = Journey.offline(anvil, "Alice").attempt();
 		alice.authenticationRequired();
@@ -47,8 +47,8 @@ class MixedProviderJoinTest {
 
 	@Test
 	@Identica(mode = JourneyMode.INTERACTIVE)
-	void offersBothProvidersForAPremiumUsernameInInteractiveMode(ScenarioContext anvil) {
-		Mojang.service().register("Alice");
+	void offersBothProvidersForAPremiumUsernameInInteractiveMode(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+		yggdrasil.register("Alice");
 
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
@@ -74,8 +74,8 @@ class MixedProviderJoinTest {
 
 	@Test
 	@Identica(mode = JourneyMode.INTERACTIVE)
-	void sendsAnOfflinePlayerWhoChoosesPremiumBackToTheProviderChoice(ScenarioContext anvil) {
-		Mojang.service().register("Alice");
+	void sendsAnOfflinePlayerWhoChoosesPremiumBackToTheProviderChoice(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+		yggdrasil.register("Alice");
 
 		Journey alice = Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
@@ -98,9 +98,9 @@ class MixedProviderJoinTest {
 	 */
 	@Test
 	@Identica(mode = JourneyMode.SEAMLESS)
-	void treatsAPremiumUsernameAsOrdinaryWhileTheLookupIsUnavailable(ScenarioContext anvil) {
-		Mojang.service().register("Alice");
-		Mojang.service().available(false);
+	void treatsAPremiumUsernameAsOrdinaryWhileTheLookupIsUnavailable(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+		yggdrasil.register("Alice");
+		yggdrasil.available(false);
 
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)

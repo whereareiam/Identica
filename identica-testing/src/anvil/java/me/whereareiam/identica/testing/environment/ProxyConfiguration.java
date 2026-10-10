@@ -16,7 +16,13 @@ import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.config.Routing;
 import me.whereareiam.identica.model.config.Settings;
 import me.whereareiam.identica.model.config.provider.Providers;
+import me.whereareiam.identica.feature.recognition.config.RecognitionSettings;
+import me.whereareiam.identica.feature.recognition.config.defaults.RecognitionSettingsDefaults;
+import me.whereareiam.identica.feature.sentinel.config.defaults.SentinelSettingsDefaults;
+import me.whereareiam.identica.feature.sentinel.model.config.SentinelSettings;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptPolicy;
+import me.whereareiam.identica.provider.credential.config.CredentialSettings;
+import me.whereareiam.identica.provider.credential.config.defaults.CredentialSettingsDefaults;
 import me.whereareiam.identica.provider.premium.config.PremiumSettings;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
@@ -48,6 +54,9 @@ public final class ProxyConfiguration {
 	private static final String MESSAGES = "messages.yml";
 	private static final String PROVIDERS = "providers/providers.yml";
 	private static final String PREMIUM = "providers/Premium/settings.yml";
+	private static final String CREDENTIAL = "providers/Credential/settings.yml";
+	private static final String SENTINEL = "features/sentinel/settings.yml";
+	private static final String RECOGNITION = "features/recognition/settings.yml";
 
 	private final Map<String, Object> documents = new LinkedHashMap<>();
 	private final Map<String, String> unreadable = new LinkedHashMap<>();
@@ -91,6 +100,30 @@ public final class ProxyConfiguration {
 	 */
 	public Messages messages() {
 		return (Messages) documents.computeIfAbsent(MESSAGES, ignored -> new MessagesDefaults().supply(new Messages()));
+	}
+
+	/**
+	 * Returns the Credential provider's settings, starting from its defaults. The proxy only gets this file from
+	 * the test once a test asks for it.
+	 */
+	public CredentialSettings credential() {
+		return (CredentialSettings) documents.computeIfAbsent(CREDENTIAL, ignored -> new CredentialSettingsDefaults().supply(new CredentialSettings()));
+	}
+
+	/**
+	 * Returns the sentinel feature's shared settings, starting from their defaults. The proxy only gets this file
+	 * from the test once a test asks for it.
+	 */
+	public SentinelSettings sentinel() {
+		return (SentinelSettings) documents.computeIfAbsent(SENTINEL, ignored -> new SentinelSettingsDefaults().supply(new SentinelSettings()));
+	}
+
+	/**
+	 * Returns the recognition feature's shared settings, starting from their defaults. The proxy only gets this
+	 * file from the test once a test asks for it.
+	 */
+	public RecognitionSettings recognition() {
+		return (RecognitionSettings) documents.computeIfAbsent(RECOGNITION, ignored -> new RecognitionSettingsDefaults().supply(new RecognitionSettings()));
 	}
 
 	/**

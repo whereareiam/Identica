@@ -163,6 +163,17 @@ public final class Journey {
 	}
 
 	/**
+	 * Lets a duration the test configured pass, such as a lockout or a validity window, before the next step.
+	 * It never stands in for waiting until the proxy has acted; the other steps wait for that themselves.
+	 *
+	 * @param configured duration taken from the network's configuration
+	 */
+	public Journey waits(Duration configured) {
+		sleep(configured);
+		return this;
+	}
+
+	/**
 	 * Expects a message, arrived after the previous expectation, that contains every line of a configured message.
 	 *
 	 * <pre>{@code

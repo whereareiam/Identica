@@ -58,7 +58,17 @@ private static final class NoDisconnectMessages implements Consumer<ProxyConfigu
 }
 ```
 
-`proxy.omit(path)` leaves a file out, `proxy.corrupt(path, content)` writes one Identica cannot read, and `ProxyConfiguration.generated(anvil, path, type)` reads a file as the running proxy left it.
+`proxy.engine()`, `proxy.routing()`, `proxy.settings()`, `proxy.providers()`, `proxy.messages()`, `proxy.credential()` (the Credential provider's settings), `proxy.sentinel()` and `proxy.recognition()` (those features' shared settings) return the models a test changes. `proxy.put(path, model)` adds another file, `proxy.omit(path)` leaves a file out, `proxy.corrupt(path, content)` writes one Identica cannot read, and `ProxyConfiguration.generated(anvil, path, type)` reads a file as the running proxy left it.
+
+A journey about a lockout or a validity window configures a short duration and lets it pass with `.waits(duration)`; it never waits to give the proxy time to act, because every other step already waits for that:
+
+```java
+alice.waits(LOCKOUT)
+		.rejoin()
+		.on(AUTH)
+		.login("Secret-123")
+		.on(LOBBY);
+```
 
 ## Several proxies
 
@@ -121,4 +131,4 @@ Each `Journey` step checks both sides: what the player's client receives, and wh
 
 Use `Accounts` for players who already have an account.
 
-A message expectation names the message through Identica's own configuration models: `m.identica()` is `Messages`, `m.credential()` is `CredentialMessages` and `m.premium()` is `PremiumMessages`. The models are read from the files the running proxy generated, so the expectation follows the configured text, and a renamed or removed message stops the tests from compiling. Formatting tags are ignored and placeholders match any text. Chain `.with(...)` and `.without(...)` after `.sees(...)` to check what else the same message contains. Do not copy message text into a test.
+A message expectation names the message through Identica's own configuration models: `m.identica()` is `Messages`, `m.credential()` is `CredentialMessages`, `m.premium()` is `PremiumMessages` and `m.sentinel()` is `SentinelMessages`. The models are read from the files the running proxy generated, so the expectation follows the configured text, and a renamed or removed message stops the tests from compiling. Formatting tags are ignored and placeholders match any text. Chain `.with(...)` and `.without(...)` after `.sees(...)` to check what else the same message contains. Do not copy message text into a test.

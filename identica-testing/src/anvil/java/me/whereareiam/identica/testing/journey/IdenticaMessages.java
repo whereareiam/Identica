@@ -5,6 +5,7 @@ import me.whereareiam.configura.Config;
 import me.whereareiam.configura.Configura;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.identica.common.config.IdenticaModule;
+import me.whereareiam.identica.feature.sentinel.model.config.SentinelMessages;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
@@ -46,6 +47,13 @@ public final class IdenticaMessages {
 	 */
 	public PremiumMessages premium() {
 		return read("providers/Premium/messages.yml", PremiumMessages.class);
+	}
+
+	/**
+	 * Returns the sentinel feature's messages.
+	 */
+	public SentinelMessages sentinel() {
+		return read("features/sentinel/messages.yml", SentinelMessages.class);
 	}
 
 	private <T> T read(String file, Class<T> type) {

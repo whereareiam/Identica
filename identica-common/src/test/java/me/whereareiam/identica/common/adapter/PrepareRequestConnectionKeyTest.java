@@ -3,7 +3,10 @@ package me.whereareiam.identica.common.adapter;
 import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.handshake.HandshakeStore;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
+import me.whereareiam.identica.model.HandshakeAttributeKey;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
+import me.whereareiam.identica.model.auth.handshake.HandshakeDecision;
+import me.whereareiam.identica.model.auth.handshake.HandshakeInstruction;
 import me.whereareiam.identica.model.auth.request.AdvanceRequest;
 import me.whereareiam.identica.model.auth.request.ConnectionRequest;
 import me.whereareiam.identica.model.auth.request.ResumeRequest;
@@ -15,6 +18,8 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -80,6 +85,33 @@ class PrepareRequestConnectionKeyTest {
 		org.mockito.Mockito.verify(connectionCoordinator).prepare(captor.capture());
 		PrepareRequest captured = captor.getValue();
 		assertEquals(identity.connectionKey(), captured.getConnectionKey());
+	}
+
+	@DisplayName("Handshake preparation applies the decision's attributes together with a queued instruction")
+	@Test
+	void handshakeAppliesDecisionAttributesWithQueuedInstruction() {
+		ConnectionIdentity identity = identity("PlayerThree");
+		HandshakeDecision handshake = HandshakeDecision.allow().withAttribute(HandshakeAttributeKey.bool("test:now"), true);
+		ConnectionCoordinator connectionCoordinator = mock(ConnectionCoordinator.class);
+		when(connectionCoordinator.prepare(any())).thenReturn(CompletableFuture.completedFuture(PrepareDecision.builder()
+				.status(PrepareDecision.Status.ALLOW)
+				.handshake(handshake)
+				.build()));
+		HandshakeInstruction queued = HandshakeInstruction.create(identity, 60_000L);
+		queued.setAttribute(HandshakeAttributeKey.bool("test:queued"), true);
+		HandshakeStore handshakeStore = mock(HandshakeStore.class);
+		when(handshakeStore.consumeInstruction(any(), any())).thenReturn(Optional.of(queued));
+		List<HandshakeInstruction> applied = new ArrayList<>();
+
+		new HandshakeDecisionProcessor(connectionCoordinator, new NoopPrepareStateStore(), handshakeStore, Messages::new)
+				.process(new HandshakeDecisionProcessor.Request(identity, applied::add), message -> {
+				})
+				.toCompletableFuture()
+				.join();
+
+		assertEquals(1, applied.size());
+		assertEquals(Optional.of(true), applied.getFirst().getAttribute(HandshakeAttributeKey.bool("test:now")));
+		assertEquals(Optional.of(true), applied.getFirst().getAttribute(HandshakeAttributeKey.bool("test:queued")));
 	}
 
 	private @NotNull ConnectionIdentity identity(@NotNull String username) {

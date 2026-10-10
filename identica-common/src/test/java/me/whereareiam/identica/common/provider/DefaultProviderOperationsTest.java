@@ -8,6 +8,7 @@ import me.whereareiam.identica.model.pipeline.journey.JourneyPlan;
 import me.whereareiam.identica.model.pipeline.journey.stage.JourneyStage;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.JourneyStep;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
+import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
@@ -102,6 +103,41 @@ class DefaultProviderOperationsTest {
 
 		assertNotNull(resolved);
 		assertEquals("alpha", resolved.getProviderId());
+	}
+
+	@DisplayName("Prefers a primary link over a link of a higher-priority provider")
+	@Test
+	void selectsPrimaryLinkBeforeProviderPriority() {
+		UUID uniqueId = UUID.randomUUID();
+
+		AccountProviderLink preferred = operations(new Providers()).selectPreferredLink(List.of(
+				link(uniqueId, "premium", false),
+				link(uniqueId, "credential", true)
+		));
+
+		assertNotNull(preferred);
+		assertEquals("credential", preferred.getProviderId());
+	}
+
+	@DisplayName("Prefers the link of the higher-priority provider when no link is primary")
+	@Test
+	void selectsHighestPriorityLinkWithoutPrimaryLink() {
+		when(providerManager.getProviders()).thenReturn(List.of(provider("premium", 100), provider("credential", 50)));
+		UUID uniqueId = UUID.randomUUID();
+
+		AccountProviderLink preferred = operations(new Providers()).selectPreferredLink(List.of(
+				link(uniqueId, "credential", false),
+				link(uniqueId, "premium", false)
+		));
+
+		assertNotNull(preferred);
+		assertEquals("premium", preferred.getProviderId());
+	}
+
+	@DisplayName("Has no preferred link for an account without links")
+	@Test
+	void selectsNothingWithoutLinks() {
+		assertNull(operations(new Providers()).selectPreferredLink(List.of()));
 	}
 
 	@DisplayName("Uses the configured provider display name when present")
@@ -234,6 +270,26 @@ class DefaultProviderOperationsTest {
 		entry.setPriority(priority);
 		entry.setEntrypoints(entrypoints);
 		return entry;
+	}
+
+	private InternalProvider provider(String id, int priority) {
+		ProviderDescriptor descriptor = new ProviderDescriptor();
+		descriptor.setId(id);
+
+		return InternalProvider.builder()
+				.descriptor(descriptor)
+				.priority(priority)
+				.state(ProviderState.ENABLED)
+				.build();
+	}
+
+	private AccountProviderLink link(UUID uniqueId, String providerId, boolean primary) {
+		return AccountProviderLink.builder()
+				.uniqueId(uniqueId)
+				.providerId(providerId)
+				.providerSubject(providerId + "-subject")
+				.primaryLink(primary)
+				.build();
 	}
 
 	private InternalProvider enabledProvider() {

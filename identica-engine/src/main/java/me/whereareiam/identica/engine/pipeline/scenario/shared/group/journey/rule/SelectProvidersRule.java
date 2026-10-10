@@ -183,11 +183,11 @@ public class SelectProvidersRule implements JourneyRule {
 		if (pipelineType != PipelineType.AUTHENTICATION) return null;
 		if (context.getAccountUniqueId() == null) return null;
 
-		return providerLinkPersistenceService.findByUniqueId(context.getAccountUniqueId()).stream()
-				.filter(AccountProviderLink::isPrimaryLink)
-				.map(AccountProviderLink::getProviderId)
-				.findFirst()
-				.orElse(null);
+		AccountProviderLink preferred = providerOperations.selectPreferredLink(
+				providerLinkPersistenceService.findByUniqueId(context.getAccountUniqueId())
+		);
+
+		return preferred != null ? preferred.getProviderId() : null;
 	}
 
 	private @Nullable String resolvePendingProviderId(

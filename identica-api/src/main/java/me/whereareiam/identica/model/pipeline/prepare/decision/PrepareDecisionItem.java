@@ -29,7 +29,7 @@ public class PrepareDecisionItem implements PipelineStateItem {
 		return PrepareDecision.builder()
 				.status(status)
 				.denialMessage(denialMessage)
-				.handshake(context != null ? context.resolveHandshake() : null)
+				.handshake(context != null ? context.getHandshake() : null)
 				.accountUniqueId(accountUniqueId)
 				.effectiveUsername(effectiveUsername)
 				.provider(context != null ? context.getProvider() : null)

@@ -98,7 +98,7 @@ Whether a resumed authentication or registration flow may bypass an active join 
         This is best when your authentication path is intentionally automatic and you already know the provider order and available steps produce the behavior you want.
 
         Concrete example: with the premium provider enabled, a player who joins from an offline account while using a premium username may hit the higher-priority `premium` provider first.
-        In `SEAMLESS`, the premium handshake precheck can queue a force-online path before the player ever sees an enrollment or choice step.
+        In `SEAMLESS`, the premium handshake precheck can ask for a premium login before the player ever sees an enrollment or choice step.
         From the player's perspective, that can look like an invalid-session-style kick on the first join, which may make them think the server is premium-only.
     </Tab>
     <Tab value="INTERACTIVE">
@@ -108,7 +108,7 @@ Whether a resumed authentication or registration flow may bypass an active join 
 
         For most setups, `INTERACTIVE` is the easier and safer choice because the player can clearly see what Identica expects from them.
 
-        In practice, the premium handshake precheck is skipped when the preferred authentication journey mode is `INTERACTIVE`.
+        In practice, the premium handshake precheck is skipped for a username without an account when the registration scenario's journey mode is `INTERACTIVE`.
         That reduces the chance of the player being pushed into a silent premium-first path before they understand what the server expects.
     </Tab>
 </Tabs>

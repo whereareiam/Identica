@@ -18,7 +18,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
@@ -84,13 +83,9 @@ public class UsernameConflictResolver {
 		);
 		if (uniqueId == null) return;
 
-		sessionService.findByUniqueId(uniqueId)
-				.thenCompose(found -> {
-					if (found.isEmpty()) return CompletableFuture.completedFuture(null);
-
-					Session session = found.get();
-					session.setEffectiveUsername(effectiveUsername);
-					return sessionService.open(session).thenApply(ignored -> null);
-				}).join();
+		for (Session session : sessionService.findAllByUniqueId(uniqueId).join()) {
+			session.setEffectiveUsername(effectiveUsername);
+			sessionService.open(session).join();
+		}
 	}
 }

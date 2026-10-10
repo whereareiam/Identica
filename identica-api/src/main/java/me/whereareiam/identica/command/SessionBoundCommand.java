@@ -3,6 +3,7 @@ package me.whereareiam.identica.command;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.model.Session;
+import me.whereareiam.identica.model.SessionConnection;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -16,7 +17,10 @@ public abstract class SessionBoundCommand extends IdentityCommand {
 			return null;
 		}
 
-		Session session = sessionService().findByUniqueId(accountUniqueId).join().orElse(null);
+		Session session = sessionService()
+				.findByConnection(accountUniqueId, SessionConnection.of(identity.getUniqueId()))
+				.join()
+				.orElse(null);
 		if (session != null) return session;
 
 		sendMessageText(identity, currentSessionRequiredMessage());

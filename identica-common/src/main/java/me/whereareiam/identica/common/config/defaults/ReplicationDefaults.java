@@ -36,10 +36,9 @@ public class ReplicationDefaults implements DefaultsProvider<Replication> {
 		cache.setDelivery(delivery);
 
 		Replication.Sessions sessions = new Replication.Sessions();
-		sessions.setUser("identica:sessions:user");
-		sessions.setSession("identica:sessions:session");
-		sessions.setSubject("identica:sessions:subject");
-		sessions.setServers("identica:sessions:servers");
+		sessions.setRecords("identica:sessions:records");
+		sessions.setAccounts("identica:sessions:accounts");
+		sessions.setSubjects("identica:sessions:subjects");
 		cache.setSessions(sessions);
 
 		cache.setPipelineState("identica:pipeline-state");

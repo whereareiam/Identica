@@ -11,6 +11,7 @@ import me.whereareiam.identica.feature.verification.type.status.VerificationReso
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.model.Session;
+import me.whereareiam.identica.model.SessionConnection;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.migration.PendingMigration;
 import me.whereareiam.identica.model.migration.operation.MigrationConfirm;
@@ -86,6 +87,7 @@ class PremiumCommandTest {
 	@DisplayName("Requests the verification code instead of failing when step-up is required and no input was provided")
 	void confirmWithoutInputRequestsVerificationCodeWhenStepUpIsRequired() {
 		TestIdentity identity = new TestIdentity();
+		when(sessionService.findByConnection(eq(identity.getUniqueId()), any(SessionConnection.class))).thenReturn(CompletableFuture.completedFuture(Optional.of(session(identity))));
 		when(sessionService.findByUniqueId(identity.getUniqueId())).thenReturn(CompletableFuture.completedFuture(Optional.of(session(identity))));
 		when(migrationService.findPendingMigration(identity.getUniqueId())).thenReturn(Optional.of(pendingMigration()));
 		when(verificationService.findEnrollments(identity.getUniqueId())).thenReturn(List.of(mockEnrollment()));
@@ -114,6 +116,7 @@ class PremiumCommandTest {
 	@DisplayName("Continues the migration after a successful step-up confirmation code")
 	void confirmWithInputContinuesMigrationAfterSuccessfulStepUp() {
 		TestIdentity identity = new TestIdentity();
+		when(sessionService.findByConnection(eq(identity.getUniqueId()), any(SessionConnection.class))).thenReturn(CompletableFuture.completedFuture(Optional.of(session(identity))));
 		when(sessionService.findByUniqueId(identity.getUniqueId())).thenReturn(CompletableFuture.completedFuture(Optional.of(session(identity))));
 		when(migrationService.findPendingMigration(identity.getUniqueId())).thenReturn(Optional.of(pendingMigration()));
 		when(verificationService.findEnrollments(identity.getUniqueId())).thenReturn(List.of(mockEnrollment()));
@@ -140,6 +143,7 @@ class PremiumCommandTest {
 	@Test
 	void confirmsWhenCurrentProviderDisablesVerification() {
 		TestIdentity identity = new TestIdentity();
+		when(sessionService.findByConnection(eq(identity.getUniqueId()), any(SessionConnection.class))).thenReturn(CompletableFuture.completedFuture(Optional.of(session(identity))));
 		when(sessionService.findByUniqueId(identity.getUniqueId())).thenReturn(CompletableFuture.completedFuture(Optional.of(session(identity))));
 		when(migrationService.findPendingMigration(identity.getConnectionUniqueId())).thenReturn(Optional.of(pendingMigration()));
 		when(migrationService.confirm(any())).thenReturn(MigrationResult.builder().status(MigrationResultStatus.STARTED).build());

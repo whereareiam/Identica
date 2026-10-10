@@ -199,7 +199,7 @@ These are some of the most useful API entry points for addon plugins:
 
 - `IdenticaAPI.getProviderManager()` for listing and inspecting loaded providers
 - `IdenticaAPI.getProviderOperations()` for provider eligibility and runtime provider operations
-- `IdenticaAPI.getSessionService()` for finding, listing, refreshing, or closing sessions
+- `IdenticaAPI.getSessionService()` for finding, listing, opening, or closing sessions
 - `IdenticaAPI.getAccountService()` for account lookup and lifecycle operations
 - `IdenticaAPI.getReplicationSystem()` if you intentionally integrate with Identica's replicated caches or channels
 - `IdenticaAPI.getEventManager()` for registering or calling Identica events
@@ -230,7 +230,14 @@ public final class ExampleAddon {
 }
 ```
 
-A session belongs to a connection: `session.getConnection()` returns the `SessionConnection` with the connection's unique id and the `replication.serverId` of the proxy that holds it. `SessionService.open(session)` continues the account's current session only when the new session names the same connection; any other connection is a concurrent login decided by the configured concurrency policy. To end only one connection's session, for example when that player leaves, set the connection on the close request; the account's session is then left alone when another connection holds it:
+A session belongs to a connection: `session.getConnection()` returns the `SessionConnection` with the connection's unique id and the `replication.serverId` of the proxy that holds it. An account has one session per connection, so several under `ALLOW_MULTIPLE`:
+
+- `findAllByUniqueId(uniqueId)` returns every session of the account, oldest first
+- `findByUniqueId(uniqueId)` returns the newest one, enough to learn whether the account is online or how it logged in
+- `findByConnection(uniqueId, SessionConnection.of(player.getUniqueId()))` returns the session of one connection
+- `list(page, pageSize)` pages through session ids, which `findBySessionId` resolves
+
+`SessionService.open(session)` continues a stored session only when the new session names the same connection; any other connection is a concurrent login decided by the configured concurrency policy. `close(uniqueId)` ends every session of the account. To end only one connection's session, for example when that player leaves, set the connection on the close request; the sessions other connections hold are then left alone:
 
 ```java
 sessionService.close(SessionCloseRequest.builder()

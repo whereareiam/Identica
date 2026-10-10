@@ -5,6 +5,7 @@ import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.model.Session;
+import me.whereareiam.identica.model.SessionConnection;
 import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
 import me.whereareiam.identica.pipeline.PipelinePhase;
 import me.whereareiam.identica.pipeline.state.PipelineState;
@@ -43,7 +44,14 @@ public class ResolveCompletionSessionPhase implements PipelinePhase<CompletionPi
 		UUID accountUniqueId = state.getPendingState().getAccountUniqueId();
 		if (accountUniqueId == null) return CompletableFuture.completedFuture(PhaseResult.pass(state));
 
-		Session session = sessionService.findByUniqueId(accountUniqueId).join().orElse(null);
+		UUID connectionUniqueId = state.getPendingState().getConnectionUniqueId();
+		Session session = connectionUniqueId != null
+				? sessionService.findByConnection(accountUniqueId, SessionConnection.of(connectionUniqueId)).join().orElse(null)
+				: null;
+		// A completion without a connection of its own, or for a session opened without one, uses the
+		// account's newest session.
+		if (session == null)
+			session = sessionService.findByUniqueId(accountUniqueId).join().orElse(null);
 		state.setSession(session);
 		return CompletableFuture.completedFuture(PhaseResult.pass(state));
 	}

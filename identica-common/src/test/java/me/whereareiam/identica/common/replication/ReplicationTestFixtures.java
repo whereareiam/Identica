@@ -1,5 +1,6 @@
 package me.whereareiam.identica.common.replication;
 
+import me.whereareiam.identica.model.replication.ReplicationEnvelope;
 import me.whereareiam.identica.model.replication.ReplicationPage;
 import me.whereareiam.identica.model.replication.ReplicationType;
 import me.whereareiam.identica.replication.ReplicationAdapter;
@@ -7,6 +8,7 @@ import me.whereareiam.identica.replication.codec.SnapshotCodec;
 import me.whereareiam.identica.replication.codec.SnapshotCodecFactory;
 import org.jetbrains.annotations.NotNull;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -41,7 +43,10 @@ public final class ReplicationTestFixtures {
 		 * {@link #nextGet}.
 		 */
 		public boolean storing;
+		/** Hands every published payload to the subscribers at once, like a connected channel. */
+		public boolean delivering;
 		private final Map<String, byte[]> stored = new HashMap<>();
+		private final Map<String, Long> lifetimes = new HashMap<>();
 
 		public int getCalls;
 		public int consumeCalls;
@@ -99,7 +104,10 @@ public final class ReplicationTestFixtures {
 			lastKey = key;
 			lastValue = value;
 			lastTtlMs = ttlMs;
-			if (storing) stored.put(namespace + "|" + key, value);
+			if (storing) {
+				stored.put(namespace + "|" + key, value);
+				lifetimes.put(namespace + "|" + key, ttlMs);
+			}
 			return CompletableFuture.completedFuture(null);
 		}
 
@@ -125,6 +133,15 @@ public final class ReplicationTestFixtures {
 			if (nextListKeys != null) return CompletableFuture.completedFuture(nextListKeys);
 			int safePage = Math.max(1, page);
 			int safeSize = Math.max(1, pageSize);
+			if (storing) {
+				List<String> keys = stored.keySet().stream()
+						.filter(key -> key.startsWith(namespace + "|"))
+						.map(key -> key.substring(namespace.length() + 1))
+						.sorted()
+						.toList();
+				List<String> entries = keys.stream().skip((long) (safePage - 1) * safeSize).limit(safeSize).toList();
+				return CompletableFuture.completedFuture(new ReplicationPage(entries, safePage, safeSize, keys.size()));
+			}
 			return CompletableFuture.completedFuture(ReplicationPage.empty(safePage, safeSize));
 		}
 
@@ -133,12 +150,29 @@ public final class ReplicationTestFixtures {
 			publishCalls++;
 			lastPublishChannel = channel;
 			lastPublishPayload = payload;
+			if (delivering) emit(payload);
 			return CompletableFuture.completedFuture(null);
 		}
 
 		@Override
 		public void subscribe(@NotNull String channel, @NotNull Consumer<byte[]> handler) {
 			this.subscribers.add(handler);
+		}
+
+		/** The stored text of a key, or {@code null} when nothing is stored under it. */
+		public String read(String namespace, String key) {
+			byte[] value = stored.get(namespace + "|" + key);
+			return value == null ? null : new String(ReplicationEnvelope.decode(value).getPayload(), StandardCharsets.UTF_8);
+		}
+
+		/** The lifetime a key was last written with, in milliseconds. */
+		public long ttlOf(String namespace, String key) {
+			return lifetimes.get(namespace + "|" + key);
+		}
+
+		/** Removes a key behind the back of whoever wrote it, as its expiry does. */
+		public void drop(String namespace, String key) {
+			stored.remove(namespace + "|" + key);
 		}
 
 		public void emit(byte[] payload) {

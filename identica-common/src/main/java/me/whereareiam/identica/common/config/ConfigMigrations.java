@@ -53,6 +53,8 @@ public final class ConfigMigrations {
 				.baseline((files, latest) -> files.exists(versionFile) ? 0 : latest)
 				// Changes nothing: version 1 is the layout every installation had before migrations existed.
 				.migration(1, "initial-layout", files -> {})
+				.migration(SessionRecordsMigration.VERSION, SessionRecordsMigration.NAME,
+						new SessionRecordsMigration(configura.extension()))
 				.build();
 	}
 }

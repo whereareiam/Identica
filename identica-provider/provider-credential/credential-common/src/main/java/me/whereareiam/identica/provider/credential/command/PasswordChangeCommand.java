@@ -10,6 +10,7 @@ import me.whereareiam.identica.annotation.Definition;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.model.Session;
+import me.whereareiam.identica.model.SessionConnection;
 import me.whereareiam.identica.provider.credential.CredentialConstants;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
@@ -48,7 +49,7 @@ public class PasswordChangeCommand {
 			return;
 
 		CredentialMessages.ChangePassword messages = messagesProvider.get().getChangePassword();
-		Session session = sessionService.findByUniqueId(identity.getAccountUniqueId()).join().orElse(null);
+		Session session = sessionService.findByConnection(identity.getAccountUniqueId(), SessionConnection.of(identity.getUniqueId())).join().orElse(null);
 		if (session == null) {
 			sendMessage(identity, messages.getNotLoggedIn());
 			return;

@@ -83,17 +83,20 @@ public class ResolveProfilePhase implements PipelinePhase<PrepareGroupState> {
 			return CompletableFuture.completedFuture(PhaseResult.pass(state));
 		}
 
-		context.setProvider(ProviderContext.of(
+		ProviderContext provider = ProviderContext.of(
 				resolution.getProviderId(),
 				resolution.getProviderSubject(),
 				requestedUsername,
 				providerContextResolver.resolveSource(request.getIdentity(), resolution.getProviderId())
-		));
+		);
+		if (provider != null) provider.setSubjectVerified(resolution.isVerified());
+		context.setProvider(provider);
 		pipelineState.putItem(context, 0L);
-		Logger.debug("Prepare resolved provider username=%s provider=%s subject=%s",
+		Logger.debug("Prepare resolved provider username=%s provider=%s subject=%s verified=%s",
 				requestedUsername,
 				resolution.getProviderId(),
-				resolution.getProviderSubject());
+				resolution.getProviderSubject(),
+				resolution.isVerified());
 
 		return CompletableFuture.completedFuture(PhaseResult.pass(state));
 	}

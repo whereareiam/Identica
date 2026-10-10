@@ -24,6 +24,12 @@ public class ProviderContext {
 	 * Source of provider selection for this context.
 	 */
 	private @Nullable ProviderOrigin source;
+	/**
+	 * Whether the provider verified, for this connection, that the client owns {@link #providerSubject}.
+	 * It is carried over from {@code SubjectResolution#isVerified()} and is {@code false} for a provider
+	 * that was only selected.
+	 */
+	private boolean subjectVerified;
 
 	public static @Nullable ProviderContext of(
 			@Nullable String providerId,

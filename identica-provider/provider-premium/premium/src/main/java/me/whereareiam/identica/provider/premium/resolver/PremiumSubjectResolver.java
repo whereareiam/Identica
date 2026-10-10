@@ -22,26 +22,15 @@ public class PremiumSubjectResolver implements SubjectResolver {
 
 	@Override
 	public boolean supports(@NotNull SubjectResolveContext context) {
-		return readObservation(context) != null;
+		return resolve(context) != null;
 	}
 
+	/**
+	 * Resolves the premium profile of the connection. The UUID of an online login is verified by the session
+	 * service; a profile only known from a lookup of the username is not.
+	 */
 	@Override
 	public @Nullable SubjectResolution resolve(@NotNull SubjectResolveContext context) {
-		String subject = readObservation(context);
-		if (subject == null) return null;
-
-		return SubjectResolution.builder()
-				.providerId(PremiumConstants.PROVIDER_ID)
-				.providerSubject(subject)
-				.build();
-	}
-
-	@Override
-	public int priority() {
-		return 50;
-	}
-
-	private @Nullable String readObservation(@NotNull SubjectResolveContext context) {
 		String username = context.getUsername();
 		if (username == null || username.isBlank()) return null;
 
@@ -49,7 +38,7 @@ public class PremiumSubjectResolver implements SubjectResolver {
 		UUID observedUniqueId = context.getIdentity().getObservedUniqueId();
 		if (observedUniqueId != null) {
 			if (observedUniqueId.equals(offlineUuid)) return null;
-			return observedUniqueId.toString();
+			return resolution(observedUniqueId.toString(), true);
 		}
 
 		PremiumProfileSnapshot snapshot = profileStore.find(username);
@@ -58,6 +47,19 @@ public class PremiumSubjectResolver implements SubjectResolver {
 
 		if (offlineUuid != null && profileUniqueId.equalsIgnoreCase(offlineUuid.toString())) return null;
 
-		return profileUniqueId.trim();
+		return resolution(profileUniqueId.trim(), false);
+	}
+
+	@Override
+	public int priority() {
+		return 50;
+	}
+
+	private @NotNull SubjectResolution resolution(@NotNull String subject, boolean verified) {
+		return SubjectResolution.builder()
+				.providerId(PremiumConstants.PROVIDER_ID)
+				.providerSubject(subject)
+				.verified(verified)
+				.build();
 	}
 }

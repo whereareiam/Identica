@@ -5,6 +5,7 @@ import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.provider.ProviderAttemptStore;
 import me.whereareiam.identica.provider.migration.MigrationPrecheckContext;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
+import me.whereareiam.identica.provider.premium.policy.PremiumHandshakeInstructions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,9 +32,8 @@ class PremiumMigrationPrecheckTest {
 	@BeforeEach
 	void setUp() {
 		precheck = new PremiumMigrationPrecheck(
-				handshakeStore,
+				new PremiumHandshakeInstructions(handshakeStore, this::settings),
 				attemptStore,
-				this::settings,
 				this::messages
 		);
 	}

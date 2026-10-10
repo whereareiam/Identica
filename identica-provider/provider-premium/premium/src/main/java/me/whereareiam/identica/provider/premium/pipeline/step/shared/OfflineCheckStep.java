@@ -4,17 +4,15 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import me.whereareiam.identica.handshake.HandshakeStore;
-import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.logging.Logger;
-import me.whereareiam.identica.model.auth.handshake.HandshakeInstruction;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.provider.ProviderAttemptStore;
 import me.whereareiam.identica.provider.premium.PremiumConstants;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
-import me.whereareiam.identica.provider.premium.handshake.PremiumHandshakeAttributes;
 import me.whereareiam.identica.provider.premium.pipeline.step.base.AbstractProfileVerificationStep;
+import me.whereareiam.identica.provider.premium.policy.PremiumHandshakeInstructions;
 import me.whereareiam.identica.provider.premium.profile.PremiumProfileStore;
 import me.whereareiam.identica.util.UniqueIdGenerator;
 import org.jetbrains.annotations.NotNull;
@@ -25,6 +23,7 @@ import java.util.concurrent.CompletableFuture;
 @Singleton
 public class OfflineCheckStep extends AbstractProfileVerificationStep {
 	private final ProviderAttemptStore attemptStore;
+	private final PremiumHandshakeInstructions instructions;
 
 	@Inject
 	public OfflineCheckStep(
@@ -32,10 +31,12 @@ public class OfflineCheckStep extends AbstractProfileVerificationStep {
 			PremiumProfileStore profileStore,
 			ProviderAttemptStore attemptStore,
 			HandshakeStore handshakeStore,
-			Provider<Engine> engineProvider
+			Provider<Engine> engineProvider,
+			PremiumHandshakeInstructions instructions
 	) {
 		super("offline-check", messagesProvider, profileStore, handshakeStore, engineProvider);
 		this.attemptStore = attemptStore;
+		this.instructions = instructions;
 	}
 
 	@Override
@@ -97,21 +98,9 @@ public class OfflineCheckStep extends AbstractProfileVerificationStep {
 			String username,
 			String ip
 	) {
-		requestForceOnline(username, ip);
+		instructions.forceOnline(username, ip);
 
 		return StepResult.requireReconnect(joinLines(verification.getRejoin()));
-	}
-
-	private void requestForceOnline(String username, String ip) {
-		if (username == null || username.isBlank()) return;
-
-		long ttlMillis = ttlMillis();
-		HandshakeInstruction instruction = HandshakeInstruction.create(
-				new ConnectionIdentity(username, ip),
-				ttlMillis
-		);
-		instruction.setAttribute(PremiumHandshakeAttributes.FORCE_ONLINE, true);
-		handshakeStore.putInstruction(instruction);
 	}
 
 	private boolean hasHandshakeAttempt(@NotNull String username, @NotNull String ip) {

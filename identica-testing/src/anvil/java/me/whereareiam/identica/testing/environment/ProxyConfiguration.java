@@ -94,6 +94,10 @@ public final class ProxyConfiguration {
 		return (Providers) documents.get(PROVIDERS);
 	}
 
+	public PremiumSettings premium() {
+		return (PremiumSettings) documents.get(PREMIUM);
+	}
+
 	/**
 	 * Returns Identica's messages, starting from its defaults. The proxy only gets a messages file from the test
 	 * once a test asks for them.
@@ -237,8 +241,8 @@ public final class ProxyConfiguration {
 	 */
 	private static PremiumSettings defaultPremium(YggdrasilMock yggdrasil) {
 		PremiumSettings settings = new PremiumSettings();
-		settings.getLookup().setProfileEndpoint(yggdrasil.profileLookup() + "%s");
-		settings.getLookup().setCacheTtl(Duration.ZERO);
+		settings.getDetection().getLookup().setProfileEndpoint(yggdrasil.profileLookup() + "%s");
+		settings.getDetection().getLookup().setCacheTtl(Duration.ZERO);
 
 		return settings;
 	}

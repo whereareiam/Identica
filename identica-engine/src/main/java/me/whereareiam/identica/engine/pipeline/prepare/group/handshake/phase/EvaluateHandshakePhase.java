@@ -64,6 +64,7 @@ public class EvaluateHandshakePhase implements PipelinePhase<PrepareGroupState> 
 			return CompletableFuture.completedFuture(PhaseResult.pass(state));
 		}
 
+		context.setClaimedUniqueId(state.getRequest().getIdentity().getClaimedUniqueId());
 		context.setPreferredLink(knownAccountResolver.resolvePreferredLink(state.getRequest().getIdentity()));
 		HandshakeRequest request = requestFactory.create(state.getRequest().getIdentity(), context);
 		HandshakeDecision decision = HandshakeDecision.allow();

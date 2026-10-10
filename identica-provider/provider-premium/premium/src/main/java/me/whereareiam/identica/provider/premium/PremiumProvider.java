@@ -9,6 +9,7 @@ import me.whereareiam.identica.pipeline.extension.PipelineExtensionRegistry;
 import me.whereareiam.identica.provider.IdenticaProvider;
 import me.whereareiam.identica.provider.ProviderPlatformExtension;
 import me.whereareiam.identica.provider.premium.command.CommandRegistrar;
+import me.whereareiam.identica.provider.premium.resolver.PremiumDetector;
 import me.whereareiam.identica.provider.premium.completion.PremiumCompletionExtension;
 import me.whereareiam.identica.provider.premium.completion.PremiumCompletionStep;
 import me.whereareiam.identica.provider.premium.pipeline.PremiumPipelineExtension;
@@ -33,6 +34,7 @@ public class PremiumProvider extends IdenticaProvider {
 	private CommandRegistrar commandRegistrar;
 	private PipelineExtensionRegistry pipelineExtensionRegistry;
 	private CompletionExtensionRegistry completionExtensionRegistry;
+	private PremiumDetector detector;
 
 	// Steps
 	private ProfilePresenceStep profilePresenceStep;
@@ -68,6 +70,7 @@ public class PremiumProvider extends IdenticaProvider {
 
 	@Override
 	public void onEnable() {
+		detector.warnAboutUnreachableMethods();
 		commandRegistrar.registerCommands();
 		pipelineExtensionRegistry.register(new PremiumPipelineExtension(
 				descriptor.getId(),

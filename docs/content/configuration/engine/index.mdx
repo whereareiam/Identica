@@ -100,6 +100,7 @@ Whether a resumed authentication or registration flow may bypass an active join 
         Concrete example: with the premium provider enabled, a player who joins from an offline account while using a premium username may hit the higher-priority `premium` provider first.
         In `SEAMLESS`, the premium handshake precheck can ask for a premium login before the player ever sees an enrollment or choice step.
         From the player's perspective, that can look like an invalid-session-style kick on the first join, which may make them think the server is premium-only.
+        Premium's experimental `CLIENT_PROFILE` [detection method](../../providers/official/premium/configuration/settings/index.mdx#methods) avoids this for clients on 1.19.1 or newer by comparing the profile the client sends with the premium profile of its username first.
     </Tab>
     <Tab value="INTERACTIVE">
         `INTERACTIVE` means the authentication flow may prompt the player, wait for input, or otherwise require explicit interaction.

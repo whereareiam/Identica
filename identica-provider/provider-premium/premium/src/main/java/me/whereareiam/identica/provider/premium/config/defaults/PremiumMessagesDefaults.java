@@ -21,6 +21,16 @@ public class PremiumMessagesDefaults implements DefaultsProvider<PremiumMessages
 				"",
 				"<dark_gray>discord.arcadeya.com"
 		));
+		verification.setOwnedUsername(List.of(
+				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
+				"",
+				"<white>This username belongs to a premium account.",
+				"",
+				"<gray>Log in with that Minecraft account,",
+				"<gray>or join with a different username.",
+				"",
+				"<dark_gray>discord.arcadeya.com"
+		));
 		PremiumMessages.Verification.Authentication authenticationVerification = new PremiumMessages.Verification.Authentication();
 		authenticationVerification.setPrompt(List.of(
 				" ",

@@ -46,6 +46,10 @@ public class PremiumMessages {
 	@ToString
 	public static class Verification {
 		private @NotNull List<String> rejoin;
+		/**
+		 * Shown to a client that joins with the username of a premium account linked here but is not logged in to it.
+		 */
+		private @NotNull List<String> ownedUsername;
 		private @NotNull Authentication authentication;
 
 		@Getter

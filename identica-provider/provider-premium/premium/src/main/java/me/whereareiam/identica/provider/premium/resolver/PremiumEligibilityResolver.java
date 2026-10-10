@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class PremiumEligibilityResolver implements ProviderEligibilityResolver {
-	private final @NotNull PremiumProfileLookup profileLookup;
+	private final @NotNull PremiumDetector detector;
 	private final @NotNull Provider<PremiumSettings> settingsProvider;
 	private final @NotNull ProviderLinkPersistenceService providerLinkPersistenceService;
 
@@ -48,8 +48,9 @@ public class PremiumEligibilityResolver implements ProviderEligibilityResolver {
 			return true;
 		}
 
-		long timeoutMs = settingsProvider.get().getLookup().getTimeout().toMillis();
-		CompletableFuture<Boolean> future = profileLookup.hasPremiumProfile(username);
+		long timeoutMs = settingsProvider.get().getDetection().getLookup().getTimeout().toMillis();
+		CompletableFuture<Boolean> future = detector.detect(username, context.getIdentity().getClaimedUniqueId())
+				.thenApply(PremiumDetector.Detection::premium);
 		if (timeoutMs > 0)
 			future = future.completeOnTimeout(false, timeoutMs, TimeUnit.MILLISECONDS);
 

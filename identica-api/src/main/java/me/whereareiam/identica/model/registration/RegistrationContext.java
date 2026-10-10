@@ -35,6 +35,8 @@ public class RegistrationContext implements ScenarioContext, PipelineStateItem {
 	public @NotNull IdentityReference getIdentityReference() {
         if (identityReference.getConnectionUniqueId() == null)
             identityReference.setConnectionUniqueId(identity.getConnectionUniqueId());
+        if (identityReference.getClaimedUniqueId() == null)
+            identityReference.setClaimedUniqueId(identity.getClaimedUniqueId());
         if (identityReference.getObservedUniqueId() == null)
             identityReference.setObservedUniqueId(identity.getObservedUniqueId());
         if (identityReference.getAccountUniqueId() == null)

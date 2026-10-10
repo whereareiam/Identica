@@ -48,11 +48,14 @@ public class RestorePrepareStatePhase implements PipelinePhase<PrepareGroupState
 			return CompletableFuture.completedFuture(PhaseResult.pass(state));
 
 		PrepareDecision previous = prepareStateStore.peek(connectionKey).orElse(null);
-		if (previous != null && previous.getHandshake() != null) {
-			PrepareContextItem context = pipelineState.item(PrepareContextItem.class).orElse(new PrepareContextItem());
-			context.setHandshake(previous.getHandshake());
-			pipelineState.putItem(context, 0L);
-		}
+		if (previous == null || (previous.getHandshake() == null && previous.getClaimedUniqueId() == null))
+			return CompletableFuture.completedFuture(PhaseResult.pass(state));
+
+		PrepareContextItem context = pipelineState.item(PrepareContextItem.class).orElse(new PrepareContextItem());
+		if (previous.getHandshake() != null) context.setHandshake(previous.getHandshake());
+		if (context.getClaimedUniqueId() == null) context.setClaimedUniqueId(previous.getClaimedUniqueId());
+		pipelineState.putItem(context, 0L);
+
 		return CompletableFuture.completedFuture(PhaseResult.pass(state));
 	}
 }

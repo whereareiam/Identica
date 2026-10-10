@@ -33,6 +33,10 @@ import java.util.UUID;
 public class PrepareDecision {
 	private final @Nullable UUID accountUniqueId;
 	private final @Nullable String effectiveUsername;
+	/**
+	 * UUID the client claimed when it started logging in, if the platform exposed it.
+	 */
+	private final @Nullable UUID claimedUniqueId;
 
 	private final @Nullable HandshakeDecision handshake;
 	private final @Nullable ProviderContext provider;

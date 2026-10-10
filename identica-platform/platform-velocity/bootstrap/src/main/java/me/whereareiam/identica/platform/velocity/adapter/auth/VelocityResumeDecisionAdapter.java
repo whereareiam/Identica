@@ -50,6 +50,7 @@ public class VelocityResumeDecisionAdapter implements PlatformResumeDecisionAdap
 		identity.setObservedUniqueId(player.getUniqueId());
 		if (prepared != null && prepared.getAccountUniqueId() != null && !prepared.getAccountUniqueId().equals(identity.getAccountUniqueId()))
 			identity.setAccountUniqueId(prepared.getAccountUniqueId());
+		if (prepared != null) identity.setClaimedUniqueId(prepared.getClaimedUniqueId());
 		applyOrigin(identity, player);
 		Logger.debug(
 				"Velocity resume request player=%s username=%s ip=%s key=%s preparedUniqueId=%s preparedProvider=%s preparedSubject=%s preparedEffective=%s",

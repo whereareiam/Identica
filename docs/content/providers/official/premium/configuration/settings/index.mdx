@@ -3,13 +3,67 @@ title: Settings
 description: Field-by-field explanation of the Premium provider settings configuration.
 ---
 
-## lookup
+## detection
 
-`lookup` controls how the Premium provider checks whether a username currently has a premium Minecraft profile.
+`detection` decides which joining players Premium treats as the owner of the premium account of their username.
+A player treated as premium is asked for a premium login: in a `SEAMLESS` journey right at the handshake, in an `INTERACTIVE` journey when they choose Premium, which is only offered to them.
+Any other player continues with the next provider, such as Credential.
 
-The eligibility resolver uses this both for provider eligibility checks and for cached premium-profile lookups.
+Usernames already linked to an account follow that account instead. A username linked to Premium is always asked for a premium login, and a username linked to another provider is not.
 
-### profileEndpoint
+```yaml
+detection:
+  methods:
+    - CLIENT_PROFILE
+    - LOOKUP
+  recheckOnMismatch: false
+  lookup:
+    profileEndpoint: "https://api.mojang.com/users/profiles/minecraft/%s"
+    timeout: "3s"
+    cacheTtl: "5m"
+```
+
+### methods
+
+- Takes: a list of `CLIENT_PROFILE` and `LOOKUP`
+- Current default: `["LOOKUP"]`
+- Affects: how a player with an unlinked username is recognized as premium
+
+Premium tries the methods from top to bottom. A method either decides that the player is premium or not, or leaves the player to the next method.
+A player no method decides for is treated as not premium.
+
+- `LOOKUP` treats every username that has a premium profile as premium. It always decides, so methods listed after it are never tried, and Premium logs a warning on startup when that happens.
+- `CLIENT_PROFILE` <Badge type="warning">Experimental</Badge> compares the profile id the client sends when it starts logging in with the premium profile of its username. The official launcher sends the id of the account it is logged in to, while offline launchers send a different one. A match means premium, a different id means not premium. Clients older than 1.19.1 send no id and are left to the next method.
+
+| `methods` | Client 1.19.1 or newer | Older client |
+|---|---|---|
+| `["LOOKUP"]` | Premium username: asked for a premium login | Same |
+| `["CLIENT_PROFILE", "LOOKUP"]` | Asked for a premium login only when it sends the premium profile | Premium username: asked for a premium login |
+| `["CLIENT_PROFILE"]` | Asked for a premium login only when it sends the premium profile | Treated as not premium |
+
+With only `LOOKUP`, an offline player who uses a premium username is asked for a premium login on the first join. Their client cannot complete it and disconnects with an invalid-session message; the next join from the same IP continues with the next provider.
+With `CLIENT_PROFILE`, that player continues with the next provider on the first join, and in an `INTERACTIVE` journey Premium is not offered to them.
+
+`CLIENT_PROFILE` also protects usernames linked to Premium. A client that sends a different profile id than the linked one is refused with the `verification.ownedUsername` message from Premium's `messages.yml`, unless the username now belongs to the profile that client sent.
+
+The client sends its profile id itself, so `CLIENT_PROFILE` only decides whether to ask for a premium login. The premium login still verifies the account with Mojang.
+
+Velocity reports the profile id through its API. BungeeCord keeps it in its login request without exposing it, so Identica reads it from BungeeCord's connection class; on a BungeeCord build without it, every client is treated like a client older than 1.19.1.
+
+### recheckOnMismatch
+
+- Takes: `true` or `false`
+- Current template default: `false`
+- Affects: what `CLIENT_PROFILE` does when the client's profile id differs from the looked-up profile
+
+When enabled, a mismatch is looked up again without the cache before the player is treated as not premium.
+This covers a username that moved to another premium account within `lookup.cacheTtl`, at the cost of one more request for every offline player who uses a premium username.
+
+### lookup
+
+`lookup` controls how Premium looks up the premium profile of a username. Both detection methods and the provider choice of an `INTERACTIVE` journey use it.
+
+#### profileEndpoint
 
 <Badge type="warning">Advanced</Badge>
 
@@ -19,27 +73,30 @@ The eligibility resolver uses this both for provider eligibility checks and for 
 
 The runtime supports either `%s` or `{username}` as the placeholder.
 The username is URL-encoded before insertion.
+The endpoint answers with the profile as JSON, which has its id in an `id` field, or with `204` or `404` when the username has no profile.
 
-If this value is blank, premium-profile lookup returns `false` instead of calling any endpoint.
+If this value is blank, every username is treated as having no premium profile.
 
-### timeout
+#### timeout
 
 <Badge type="warning">Advanced</Badge>
 
 - Takes: a positive duration
 - Current template default: `"3s"`
-- Affects: the HTTP request timeout for premium profile lookups and the outer eligibility wait limit
+- Affects: the HTTP request timeout for profile lookups and the outer eligibility wait limit
 
 If this is zero or negative, the HTTP request builder stops applying an explicit request timeout.
 The eligibility resolver also only adds its completion timeout when this value is positive.
 
-### cacheTtl
+A lookup that fails or times out treats the username as having no premium profile, and its answer is not cached.
+
+#### cacheTtl
 
 - Takes: a non-negative duration
 - Current template default: `"5m"`
-- Affects: how long username-to-premium-profile results stay in the replicated profile lookup cache
+- Affects: how long lookup answers stay in the replicated profile cache
 
-If this is zero or negative, the lookup cache is skipped and every check goes straight to the configured endpoint.
+If this is zero or negative, the cache is skipped and every lookup goes straight to the configured endpoint.
 
 ## profileSnapshotTtl
 
@@ -55,13 +112,12 @@ If this is zero or negative, snapshot writes are skipped entirely.
 <Badge type="warning">Advanced</Badge>
 
 The Premium provider uses its own replication cache namespaces for two distinct purposes.
-Unlike the Credential provider's template-only lockout field, both of these are actively used by runtime code.
 
 ### profile
 
 - Takes: a string namespace
-- Current template default: `"premium-resolver"`
-- Affects: the replicated cache namespace for username-to-boolean premium profile lookup results
+- Current template default: `"premium-profile"`
+- Affects: the replicated cache namespace for profile lookup answers
 
 If this is blank, the premium profile lookup cache initialization fails.
 

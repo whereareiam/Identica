@@ -62,7 +62,7 @@ class AuthoritativeUsernameConflictPhasesTest {
 		);
 
 		PipelineState pipelineState = PipelineState.initial();
-		pipelineState.putItem(new PrepareContextItem(providerContext(), null, null), 0L);
+		pipelineState.putItem(new PrepareContextItem(null, providerContext(), null, null), 0L);
 		pipelineState.putItem(candidate(), 0L);
 
 		phase.execute(pipelineState, new PrepareGroupState()).toCompletableFuture().join();
@@ -83,7 +83,7 @@ class AuthoritativeUsernameConflictPhasesTest {
 				providerManager(false), persistence, resolver, this::messages
 		);
 		PipelineState pipelineState = PipelineState.initial();
-		pipelineState.putItem(new PrepareContextItem(providerContext(), null, null), 0L);
+		pipelineState.putItem(new PrepareContextItem(null, providerContext(), null, null), 0L);
 		PrepareAccountCandidateItem candidate = candidate();
 		candidate.getProfile().setProviderUsername("ProviderName");
 		pipelineState.putItem(candidate, 0L);

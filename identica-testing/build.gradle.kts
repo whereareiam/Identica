@@ -45,10 +45,21 @@ fun pluginJar(project: ProjectDependency): Configuration =
 	configurations.detachedConfiguration(dependencies.project(project.path, "shadowRuntimeElements"))
 		.apply { isTransitive = false }
 
+/**
+ * Journeys that run at once. Each one has its own network, so the default leaves four processors to every
+ * network; a machine with fewer than eight runs one journey after another.
+ */
+val journeyParallelism = providers.gradleProperty("identica.journeys.parallelism").map(String::toInt)
+	.orElse((Runtime.getRuntime().availableProcessors() / 4).coerceIn(1, 4))
+
 anvil {
 	acceptEula()
 	engine {
 		protocolLibrary("mcprotocol")
+		// A server sizes its thread pools from the processors it sees; all of them at once stall the machine.
+		processors.set(4)
+		// Lets the test processes yield to whatever else the machine is doing. Windows has no nice.
+		if (!System.getProperty("os.name").lowercase().contains("win")) processPriority.set("low")
 	}
 
 	artifact("identica", pluginJar(projects.identicaPlatform.bundle))
@@ -58,4 +69,12 @@ anvil {
 
 tasks.withType<Test>().configureEach {
 	useJUnitPlatform()
+}
+
+tasks.named<Test>("anvilTest") {
+	systemProperty("junit.jupiter.execution.parallel.enabled", "true")
+	systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
+	systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
+	systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism", journeyParallelism.get())
+	systemProperty("junit.jupiter.execution.parallel.config.fixed.max-pool-size", journeyParallelism.get())
 }

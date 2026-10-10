@@ -12,6 +12,7 @@ import me.whereareiam.anvil.api.model.workspace.WorkspaceCache;
 import me.whereareiam.anvil.api.model.workspace.WorkspacePlan;
 import me.whereareiam.anvil.api.type.CacheIdentity;
 import me.whereareiam.anvil.api.type.Platforms;
+import me.whereareiam.anvil.api.type.ProcessLifetime;
 
 import java.net.URI;
 import java.nio.file.Path;
@@ -85,12 +86,17 @@ public final class IdenticaNetwork {
 				.build();
 	}
 
+	/**
+	 * A backend only has to be there for players to stand on, so it keeps running for the test run and serves one
+	 * network after another instead of starting for every test.
+	 */
 	private static MinecraftServer backend(String name) {
 		return MinecraftServer.builder()
 				.name(name)
 				.platform(Platforms.PAPER)
 				.distribution(Distribution.remote("1.21.11", "132"))
 				.memoryMegabytes(768)
+				.lifetime(ProcessLifetime.ENGINE)
 				.build();
 	}
 

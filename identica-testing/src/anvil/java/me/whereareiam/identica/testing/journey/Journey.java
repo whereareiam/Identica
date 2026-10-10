@@ -20,6 +20,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -44,6 +45,7 @@ public final class Journey {
 	private final Messages messages;
 	private final Server server;
 	private final ProcessConsole proxy;
+	private final IdenticaMessages configured;
 
 	private int read;
 	private long console;
@@ -56,6 +58,7 @@ public final class Journey {
 		this.messages = player.capability(Messages.class);
 		this.server = player.capability(Server.class);
 		this.proxy = anvil.processes().proxy(IdenticaNetwork.PROXY).console();
+		this.configured = new IdenticaMessages(anvil.processes().proxy(IdenticaNetwork.PROXY).workDirectory().resolve(IdenticaNetwork.DATA));
 		this.console = proxy.checkpoint();
 		this.read = messages.checkpoint();
 	}
@@ -146,30 +149,51 @@ public final class Journey {
 	}
 
 	/**
-	 * Expects one message, arrived after the previous expectation, that contains every given prompt.
+	 * Expects a message, arrived after the previous expectation, that contains every line of a configured message.
+	 *
+	 * <pre>{@code
+	 * player.sees(messages -> messages.credential().getScenario().getRegistration().getPrompt());
+	 * }</pre>
+	 *
+	 * @param message selects the message, a line or a list of lines, from the proxy's configuration
 	 */
-	public Journey sees(Prompt prompt, Prompt... together) {
-		List<Prompt> prompts = new ArrayList<>(List.of(prompt));
-		prompts.addAll(List.of(together));
-		matched = receive(message -> prompts.stream().allMatch(expected -> message.contains(expected.getText())), prompts);
+	public Journey sees(Function<IdenticaMessages, ?> message) {
+		MessageText expected = text(message);
+		matched = receive(expected::in, List.of(expected));
 		return this;
 	}
 
 	/**
-	 * Expects the message matched by the previous {@link #sees} not to contain a prompt.
+	 * Expects the message matched by the previous {@link #sees} to contain another configured text as well.
 	 */
-	public Journey without(Prompt prompt) {
-		assertFalse(matched.contains(prompt.getText()), name + " must not be offered " + prompt + " in: " + matched);
+	public Journey with(Function<IdenticaMessages, ?> message) {
+		MessageText expected = text(message);
+		assertTrue(expected.in(matched), name + " must also read " + expected + " in: " + matched);
 		return this;
 	}
 
 	/**
-	 * Waits for the first of several alternative messages, arrived after the previous expectation, and returns it.
+	 * Expects the message matched by the previous {@link #sees} not to contain a configured text.
 	 */
-	public Prompt seesAnyOf(Prompt... alternatives) {
-		String message = receive(text -> Arrays.stream(alternatives).anyMatch(alternative -> text.contains(alternative.getText())),
-				List.of(alternatives));
-		return Arrays.stream(alternatives).filter(alternative -> message.contains(alternative.getText())).findFirst().orElseThrow();
+	public Journey without(Function<IdenticaMessages, ?> message) {
+		MessageText unexpected = text(message);
+		assertFalse(unexpected.in(matched), name + " must not read " + unexpected + " in: " + matched);
+		return this;
+	}
+
+	/**
+	 * Waits for the first of several alternative messages, arrived after the previous expectation.
+	 *
+	 * @return position of the alternative that arrived, starting at zero
+	 */
+	@SafeVarargs
+	public final int seesAnyOf(Function<IdenticaMessages, ?>... alternatives) {
+		List<MessageText> expected = Arrays.stream(alternatives).map(this::text).toList();
+		String message = receive(received -> expected.stream().anyMatch(alternative -> alternative.in(received)), expected);
+		for (int index = 0; index < expected.size(); index++)
+			if (expected.get(index).in(message)) return index;
+
+		throw new IllegalStateException("No alternative matches the received message: " + message);
 	}
 
 	/**
@@ -181,10 +205,11 @@ public final class Journey {
 	}
 
 	/**
-	 * Expects that a message has not arrived since the previous expectation, after giving it time to.
+	 * Expects that a configured message has not arrived since the previous expectation, after giving it time to.
 	 */
-	public Journey doesNotSee(Prompt prompt) {
-		messages.notReceived(message -> message.contains(prompt.getText()), read, SETTLE);
+	public Journey doesNotSee(Function<IdenticaMessages, ?> message) {
+		MessageText unexpected = text(message);
+		messages.notReceived(unexpected::in, read, SETTLE);
 		return this;
 	}
 
@@ -228,7 +253,7 @@ public final class Journey {
 	 */
 	public Journey register(String password) {
 		command("pass " + password);
-		sees(Prompt.REGISTRATION_CONFIRMATION);
+		sees(configured -> configured.credential().getScenario().getRegistration().getConfirmPrompt());
 		return command("passconfirm " + password);
 	}
 
@@ -243,23 +268,30 @@ public final class Journey {
 
 	/**
 	 * Expects the proxy to disconnect the player for a reason. The proxy reports the disconnect and, on the
-	 * following console lines, the reason; the client receives the same reason from the server.
+	 * following console lines, the reason. The client receives the same reason, unless the proxy closed the
+	 * connection while the client was switching protocol state: such a client only sees the connection end, so
+	 * the reason is compared whenever the client attributes the disconnect to the server.
 	 */
-	public Journey kickedWith(Prompt reason) {
+	public Journey kickedWith(Function<IdenticaMessages, ?> message) {
+		MessageText reason = text(message);
 		reported("[connected player] " + name + " (", "has disconnected");
-		reported(reason.getText(), "");
+		reported(reason.signature(), "");
 
 		String received = session.kicked(TIMEOUT);
-		assertTrue(received.contains(reason.getText()), name + " was disconnected with: " + received);
-		assertEquals(DisconnectCause.SERVER, session.state().disconnectCause());
 		assertFalse(session.state().connected(), name + " must be disconnected");
+		if (session.state().disconnectCause() == DisconnectCause.SERVER)
+			assertTrue(reason.in(received), name + " was disconnected with: " + received);
 		return this;
+	}
+
+	private MessageText text(Function<IdenticaMessages, ?> message) {
+		return new MessageText(message.apply(configured));
 	}
 
 	/**
 	 * Waits for a message after the previous expectation and moves this journey's position behind it.
 	 */
-	private String receive(Predicate<String> matcher, List<Prompt> expected) {
+	private String receive(Predicate<String> matcher, List<MessageText> expected) {
 		try {
 			ReceivedMessage message = messages.received(matcher, read, TIMEOUT);
 			read = message.getCheckpoint();

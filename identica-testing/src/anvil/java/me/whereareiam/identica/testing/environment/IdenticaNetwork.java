@@ -27,7 +27,8 @@ public final class IdenticaNetwork {
 	public static final String AUTH = "auth";
 	public static final String LOBBY = "lobby";
 
-	private static final String DATA = "plugins/identica";
+	/** Identica's data directory inside the proxy workspace. */
+	public static final String DATA = "plugins/identica";
 
 	public static AnvilScenario velocity(String name, Map<String, String> configuration) {
 		WorkspacePlan.WorkspacePlanBuilder workspace = WorkspacePlan.builder()

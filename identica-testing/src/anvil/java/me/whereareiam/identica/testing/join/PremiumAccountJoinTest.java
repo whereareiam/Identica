@@ -7,7 +7,6 @@ import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.fixture.Mojang;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.testing.journey.Prompt;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
@@ -28,7 +27,7 @@ class PremiumAccountJoinTest {
 
 		Journey player = Journey.premium(anvil, account).join()
 				.on(LOBBY)
-				.sees(Prompt.REGISTERED_WITH_PREMIUM);
+				.sees(m -> m.premium().getCompletion().getRegistration().getBody());
 		UUID registered = player.identity().getObservedUniqueId();
 		assertEquals(account.getUsername(), player.identity().getObservedUsername());
 
@@ -43,7 +42,7 @@ class PremiumAccountJoinTest {
 
 		Journey.premium(anvil, account).join()
 				.on(LOBBY)
-				.sees(Prompt.REGISTERED_WITH_PREMIUM)
+				.sees(m -> m.premium().getCompletion().getRegistration().getBody())
 				.leave()
 				.rejoin()
 				.on(LOBBY);
@@ -56,13 +55,14 @@ class PremiumAccountJoinTest {
 
 		Journey player = Journey.premium(anvil, account).join()
 				.on(AUTH)
-				.sees(Prompt.PROVIDER_CHOICE, Prompt.PREMIUM_OFFERED)
+				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
+				.with(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getDescriptions().get("premium"))
 				.enroll(Provider.PREMIUM)
-				.kickedWith(Prompt.PREMIUM_REJOIN_TO_VERIFY);
+				.kickedWith(m -> m.premium().getVerification().getRejoin());
 
 		player.rejoin()
 				.on(LOBBY)
-				.sees(Prompt.REGISTERED_WITH_PREMIUM)
+				.sees(m -> m.premium().getCompletion().getRegistration().getBody())
 				.leave()
 				.rejoin()
 				.on(LOBBY);
@@ -75,12 +75,14 @@ class PremiumAccountJoinTest {
 
 		Journey player = Journey.premium(anvil, account).join()
 				.on(AUTH)
-				.sees(Prompt.PROVIDER_CHOICE, Prompt.PREMIUM_OFFERED, Prompt.CREDENTIAL_OFFERED)
+				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
+				.with(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getDescriptions().get("premium"))
+				.with(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getDescriptions().get("credential"))
 				.enroll(Provider.PREMIUM)
-				.kickedWith(Prompt.PREMIUM_REJOIN_TO_VERIFY);
+				.kickedWith(m -> m.premium().getVerification().getRejoin());
 
 		player.rejoin()
 				.on(LOBBY)
-				.sees(Prompt.REGISTERED_WITH_PREMIUM);
+				.sees(m -> m.premium().getCompletion().getRegistration().getBody());
 	}
 }

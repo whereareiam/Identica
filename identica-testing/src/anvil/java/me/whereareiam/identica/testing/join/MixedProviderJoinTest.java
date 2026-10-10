@@ -6,7 +6,6 @@ import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.fixture.Mojang;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.testing.journey.Prompt;
 import org.junit.jupiter.api.Test;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
@@ -24,10 +23,10 @@ class MixedProviderJoinTest {
 	void registersWithCredentialWhenTheUsernameIsNotPremium(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
-				.sees(Prompt.REGISTRATION_PASSWORD)
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
 				.register(PASSWORD)
 				.on(LOBBY)
-				.sees(Prompt.REGISTERED_WITH_CREDENTIAL);
+				.sees(m -> m.credential().getCompletion().getRegistration().getBody());
 	}
 
 	@Test
@@ -40,10 +39,10 @@ class MixedProviderJoinTest {
 
 		alice.rejoin()
 				.on(AUTH)
-				.sees(Prompt.REGISTRATION_PASSWORD)
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
 				.register(PASSWORD)
 				.on(LOBBY)
-				.sees(Prompt.REGISTERED_WITH_CREDENTIAL);
+				.sees(m -> m.credential().getCompletion().getRegistration().getBody());
 	}
 
 	@Test
@@ -53,12 +52,14 @@ class MixedProviderJoinTest {
 
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
-				.sees(Prompt.PROVIDER_CHOICE, Prompt.PREMIUM_OFFERED, Prompt.CREDENTIAL_OFFERED)
+				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
+				.with(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getDescriptions().get("premium"))
+				.with(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getDescriptions().get("credential"))
 				.enroll(Provider.CREDENTIAL)
-				.sees(Prompt.REGISTRATION_PASSWORD)
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
 				.register(PASSWORD)
 				.on(LOBBY)
-				.sees(Prompt.REGISTERED_WITH_CREDENTIAL);
+				.sees(m -> m.credential().getCompletion().getRegistration().getBody());
 	}
 
 	@Test
@@ -66,8 +67,9 @@ class MixedProviderJoinTest {
 	void offersOnlyCredentialWhenTheUsernameIsNotPremium(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
-				.sees(Prompt.PROVIDER_CHOICE, Prompt.CREDENTIAL_OFFERED)
-				.without(Prompt.PREMIUM_OFFERED);
+				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
+				.with(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getDescriptions().get("credential"))
+				.without(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getDescriptions().get("premium"));
 	}
 
 	@Test
@@ -77,15 +79,17 @@ class MixedProviderJoinTest {
 
 		Journey alice = Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
-				.sees(Prompt.PROVIDER_CHOICE, Prompt.PREMIUM_OFFERED)
+				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
+				.with(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getDescriptions().get("premium"))
 				.enroll(Provider.PREMIUM)
-				.kickedWith(Prompt.PREMIUM_REJOIN_TO_VERIFY);
+				.kickedWith(m -> m.premium().getVerification().getRejoin());
 
 		alice.attemptAgain().authenticationRequired();
 
 		alice.rejoin()
 				.on(AUTH)
-				.sees(Prompt.PROVIDER_CHOICE, Prompt.CREDENTIAL_OFFERED);
+				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
+				.with(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getDescriptions().get("credential"));
 	}
 
 	/**
@@ -100,6 +104,6 @@ class MixedProviderJoinTest {
 
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
-				.sees(Prompt.REGISTRATION_PASSWORD);
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt());
 	}
 }

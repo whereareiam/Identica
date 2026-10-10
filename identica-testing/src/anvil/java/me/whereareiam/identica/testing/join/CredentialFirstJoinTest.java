@@ -6,7 +6,6 @@ import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.testing.journey.Prompt;
 import org.junit.jupiter.api.Test;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
@@ -34,7 +33,7 @@ class CredentialFirstJoinTest {
 	@Identica(mode = JourneyMode.SEAMLESS, policy = JourneyPolicy.STRICT, providers = Provider.CREDENTIAL)
 	void refusesAPlayerWhoWouldHaveToTypeInStrictSeamlessMode(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").attempt()
-				.kickedWith(Prompt.INTERACTION_REQUIRED);
+				.kickedWith(m -> m.identica().getEngine().getJourney().getStep().getInteractionRequired());
 	}
 
 	@Test
@@ -46,20 +45,21 @@ class CredentialFirstJoinTest {
 	private void registersWithoutChoosingTheProvider(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
-				.sees(Prompt.REGISTRATION_PASSWORD)
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
 				.register(PASSWORD)
 				.on(LOBBY)
-				.sees(Prompt.REGISTERED_WITH_CREDENTIAL);
+				.sees(m -> m.credential().getCompletion().getRegistration().getBody());
 	}
 
 	private void registersAfterChoosingTheProvider(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
-				.sees(Prompt.PROVIDER_CHOICE, Prompt.CREDENTIAL_OFFERED)
+				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
+				.with(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getDescriptions().get("credential"))
 				.enroll(Provider.CREDENTIAL)
-				.sees(Prompt.REGISTRATION_PASSWORD)
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
 				.register(PASSWORD)
 				.on(LOBBY)
-				.sees(Prompt.REGISTERED_WITH_CREDENTIAL);
+				.sees(m -> m.credential().getCompletion().getRegistration().getBody());
 	}
 }

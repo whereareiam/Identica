@@ -7,7 +7,6 @@ import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.identica.testing.environment.IdenticaNetwork;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.testing.journey.Prompt;
 
 import java.time.Duration;
 
@@ -33,12 +32,15 @@ public final class Accounts {
 	 */
 	public static Journey credential(ScenarioContext anvil, String username, String password) {
 		Journey player = Journey.offline(anvil, username).join().on(IdenticaNetwork.AUTH);
-		if (player.seesAnyOf(Prompt.PROVIDER_CHOICE, Prompt.REGISTRATION_PASSWORD) == Prompt.PROVIDER_CHOICE)
-			player.enroll(Provider.CREDENTIAL).sees(Prompt.REGISTRATION_PASSWORD);
+		int asked = player.seesAnyOf(
+				m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody(),
+				m -> m.credential().getScenario().getRegistration().getPrompt());
+		if (asked == 0)
+			player.enroll(Provider.CREDENTIAL).sees(m -> m.credential().getScenario().getRegistration().getPrompt());
 
 		return player.register(password)
 				.on(IdenticaNetwork.LOBBY)
-				.sees(Prompt.REGISTERED_WITH_CREDENTIAL)
+				.sees(m -> m.credential().getCompletion().getRegistration().getBody())
 				.leave();
 	}
 }

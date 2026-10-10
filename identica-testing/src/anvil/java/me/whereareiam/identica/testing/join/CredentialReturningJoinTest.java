@@ -7,7 +7,6 @@ import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.testing.journey.Prompt;
 import org.junit.jupiter.api.Test;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
@@ -36,13 +35,13 @@ class CredentialReturningJoinTest {
 	void refusesAWrongPasswordAndAcceptsTheRightOne(ScenarioContext anvil) {
 		Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)
-				.sees(Prompt.LOGIN)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
 				.login("Wrong-456")
-				.sees(Prompt.INVALID_PASSWORD)
+				.sees(m -> m.credential().getScenario().getAuthentication().getStatus().getInvalid())
 				.remainsOn(AUTH)
 				.login(PASSWORD)
 				.on(LOBBY)
-				.sees(Prompt.AUTHENTICATED_WITH_PASSWORD);
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
 	}
 
 	@Test
@@ -50,13 +49,13 @@ class CredentialReturningJoinTest {
 	void asksForThePasswordAgainAfterAReconnect(ScenarioContext anvil) {
 		Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)
-				.sees(Prompt.LOGIN)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
 				.login(PASSWORD)
 				.on(LOBBY)
 				.leave()
 				.rejoin()
 				.on(AUTH)
-				.sees(Prompt.LOGIN);
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt());
 	}
 
 	@Test
@@ -77,7 +76,7 @@ class CredentialReturningJoinTest {
 		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
 
 		Journey.offline(anvil, "Alice").attempt()
-				.kickedWith(Prompt.INTERACTION_REQUIRED);
+				.kickedWith(m -> m.identica().getEngine().getJourney().getStep().getInteractionRequired());
 	}
 
 	private void logsInToAnAdministratorRegisteredAccount(ScenarioContext anvil) {
@@ -85,18 +84,18 @@ class CredentialReturningJoinTest {
 
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
-				.sees(Prompt.LOGIN)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
 				.login(PASSWORD)
 				.on(LOBBY)
-				.sees(Prompt.AUTHENTICATED_WITH_PASSWORD);
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
 	}
 
 	private void logsIn(ScenarioContext anvil) {
 		Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)
-				.sees(Prompt.LOGIN)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
 				.login(PASSWORD)
 				.on(LOBBY)
-				.sees(Prompt.AUTHENTICATED_WITH_PASSWORD);
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
 	}
 }

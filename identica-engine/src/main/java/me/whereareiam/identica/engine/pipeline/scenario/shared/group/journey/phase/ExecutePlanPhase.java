@@ -150,6 +150,9 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 			@NotNull JourneyExecutionPlan plan
 	) {
 		Set<String> excludedProviders = new HashSet<>(loadExcludedProviders(pipelineState));
+		// Denials issued because a step needed input, kept by identity: their text is configurable
+		// and may be empty or equal to another denial's, so it cannot tell them apart.
+		Set<PipelineResult> interactionDenials = Collections.newSetFromMap(new IdentityHashMap<>());
 		PipelineResult interactionDenial = null;
 
 		restart:
@@ -171,10 +174,11 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 							journeyMode,
 							pending,
 							pendingProviderId,
-							region.blocks()
+							region.blocks(),
+							interactionDenials
 					);
 					if (fallbackResult != null && fallbackResult.result != null) {
-						if (isInteractionDenial(fallbackResult.result))
+						if (interactionDenials.contains(fallbackResult.result))
 							interactionDenial = fallbackResult.result;
 
 						String failedProviderId = normalizeProviderId(fallbackResult.failedProviderId);
@@ -209,7 +213,8 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 						journeyMode,
 						pending,
 						pendingProviderId,
-						block
+						block,
+						interactionDenials
 				);
 				if (blockResult != null)
 					return blockResult;
@@ -228,7 +233,8 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 			@NotNull JourneyMode journeyMode,
 			@Nullable JourneyStateItem pending,
 			@Nullable String pendingProviderId,
-			@NotNull List<JourneyExecutionBlock> blocks
+			@NotNull List<JourneyExecutionBlock> blocks,
+			@NotNull Set<PipelineResult> interactionDenials
 	) {
 		boolean anySuccess = false;
 
@@ -243,7 +249,8 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 					journeyMode,
 					pending,
 					pendingProviderId,
-					block
+					block,
+					interactionDenials
 			);
 			if (blockResult == null) {
 				anySuccess = true;
@@ -282,7 +289,8 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 			@NotNull JourneyMode journeyMode,
 			@Nullable JourneyStateItem pending,
 			@Nullable String pendingProviderId,
-			@NotNull JourneyExecutionBlock block
+			@NotNull JourneyExecutionBlock block,
+			@NotNull Set<PipelineResult> interactionDenials
 	) {
 		String effectiveProviderId = resolveEffectiveProviderId(block, context);
 		String blockProviderId = block.providerId();
@@ -304,7 +312,8 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 				pendingProviderId,
 				block.stages(),
 				effectiveProviderId,
-				provider
+				provider,
+				interactionDenials
 		);
 	}
 
@@ -414,7 +423,8 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 			@Nullable String pendingProviderId,
 			@NotNull List<JourneyExecutionStage> stages,
 			@Nullable String providerId,
-			@Nullable InternalProvider provider
+			@Nullable InternalProvider provider,
+			@NotNull Set<PipelineResult> interactionDenials
 	) {
 		int startStageIndex = 0;
 		if (pending != null
@@ -471,8 +481,11 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 					break;
 				}
 
-				if (status == PipelineStatus.WAITING && requiresForbiddenInteraction(stepResult, pipelineType, journeyMode))
-					return PipelineResult.denied(journeyInteractionRequiredMessage());
+				if (status == PipelineStatus.WAITING && requiresForbiddenInteraction(stepResult, pipelineType, journeyMode)) {
+					PipelineResult denial = PipelineResult.denied(journeyInteractionRequiredMessage());
+					interactionDenials.add(denial);
+					return denial;
+				}
 
 				if (status == PipelineStatus.WAITING || status == PipelineStatus.REQUIRE_RECONNECT)
 					persistPending(pipelineState, context, journeyMode, stage.getId(), index);
@@ -662,11 +675,6 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 		if (stepResult.getWaitReason() != StepWaitReason.INPUT) return false;
 
 		return scenarioSettings(pipelineType).getJourneyPolicy() == JourneyPolicy.STRICT;
-	}
-
-	private boolean isInteractionDenial(@NotNull PipelineResult result) {
-		return result.getStatus() == PipelineStatus.DENIED
-				&& journeyInteractionRequiredMessage().equals(result.getMessage());
 	}
 
 	private boolean hasProviderBlock(@NotNull JourneyExecutionPlan plan) {

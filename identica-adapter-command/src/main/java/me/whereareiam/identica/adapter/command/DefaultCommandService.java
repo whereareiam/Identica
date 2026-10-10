@@ -21,6 +21,7 @@ import me.whereareiam.identica.adapter.command.serializer.ScopedSerializerEngine
 import me.whereareiam.identica.adapter.command.suggestion.CrossPlayerSuggestions;
 import me.whereareiam.identica.adapter.command.suggestion.ProviderIdSuggestions;
 import me.whereareiam.identica.command.CommandService;
+import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.CommandDefinition;
 import me.whereareiam.identica.model.config.Commands;
 import me.whereareiam.identica.model.config.Messages;
@@ -252,11 +253,17 @@ public class DefaultCommandService implements CommandService {
 			@NotNull CommandManager<Actor> commandManager
 	) {
 		CommandDefinitionAdapter adapter = new CommandDefinitionAdapter();
-		List<String> rootAliases = resolveRootAliases(lookupDefinition("main"));
+		List<String> rootAliases = aliases(lookupDefinition("main"));
 
 		for (Command<Actor> command : parsed) {
 			String defId = command.commandMeta().optional(CommandantKeys.DEFINITION_ID).orElse(null);
 			CommandDefinition definition = defId != null ? lookupDefinition(defId) : null;
+			if (definition != null && definition.isEnabled() && aliases(definition).isEmpty()) {
+				// Commandant refuses a command without an alias; one emptied command must not stop the start.
+				Logger.warn("Command '%s' is enabled but has no aliases and is not registered; give it an alias or disable it", defId);
+				continue;
+			}
+
 			boolean sharedRootCommand = definition != null
 					&& ("main".equals(defId) || isSubcommand(definition));
 
@@ -271,7 +278,7 @@ public class DefaultCommandService implements CommandService {
 		return usage != null && usage.contains("{command}");
 	}
 
-	private @NotNull List<String> resolveRootAliases(@Nullable CommandDefinition definition) {
+	private @NotNull List<String> aliases(@Nullable CommandDefinition definition) {
 		if (definition == null || definition.getAliases() == null || definition.getAliases().isEmpty())
 			return List.of();
 

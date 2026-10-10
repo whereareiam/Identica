@@ -18,7 +18,12 @@ public class AccountOperationRequest {
 	 */
 	private final @NotNull Account account;
 	/**
-	 * Message sent to the active session when it is closed.
+	 * Whether a player connected with the account is disconnected when its session is closed.
+	 * The decision does not depend on {@link #getDisconnectMessage()} having text.
+	 */
+	private final boolean disconnect;
+	/**
+	 * Reason shown to a player who is disconnected; empty for a disconnect without one.
 	 */
 	@Builder.Default
 	private final @NotNull String disconnectMessage = "";

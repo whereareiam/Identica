@@ -66,13 +66,14 @@ public class DefaultAccountService implements AccountService {
 			@NotNull AccountLifecycleEvent event
 	) {
 		Account account = request.getAccount();
-		closeSession(account, request.getDisconnectMessage());
+		closeSession(account, request.isDisconnect(), request.getDisconnectMessage());
 		eventManager.call(event);
 	}
 
-	private void closeSession(@NotNull Account account, @NotNull String disconnectMessage) {
+	private void closeSession(@NotNull Account account, boolean disconnect, @NotNull String disconnectMessage) {
 		sessionService.close(SessionCloseRequest.builder()
 				.uniqueId(account.getUniqueId())
+				.disconnect(disconnect)
 				.disconnectMessage(disconnectMessage)
 				.build()).join();
 	}

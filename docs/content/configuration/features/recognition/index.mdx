@@ -55,6 +55,8 @@ Once this duration expires, the player simply goes through the normal provider f
 - Current default: `["USERNAME", "IP", "VIRTUAL_HOST"]`
 - Affects: the signal set used when a provider does not override its own recognition signals
 
+Recognition compares a returning connection by these signals. With an empty list, and no signals on the provider either, there is nothing to compare by and nobody is recognised.
+
 ### eligibility.untrustedIps.enabled
 
 <Badge type="warning">Warning</Badge>

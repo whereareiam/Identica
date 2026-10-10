@@ -24,7 +24,9 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -62,6 +64,7 @@ class DefaultAccountServiceTest {
 
 		service.clear(AccountOperationRequest.builder()
 				.account(account)
+				.disconnect(true)
 				.disconnectMessage("line one\nline two")
 				.build());
 
@@ -69,6 +72,7 @@ class DefaultAccountServiceTest {
 		verify(sessionService).close(requestCaptor.capture());
 		assertEquals(account.getUniqueId(), requestCaptor.getValue().getUniqueId());
 		assertEquals("line one\nline two", requestCaptor.getValue().getDisconnectMessage());
+		assertTrue(requestCaptor.getValue().isDisconnect());
 		verify(reservationPersistenceService).reserve(
 				org.mockito.ArgumentMatchers.eq("username:player"),
 				org.mockito.ArgumentMatchers.eq(account.getUniqueId()),
@@ -80,6 +84,23 @@ class DefaultAccountServiceTest {
 		verify(eventManager).call(eventCaptor.capture());
 		assertInstanceOf(AccountClearEvent.class, eventCaptor.getValue());
 		assertEquals(account.getUniqueId(), eventCaptor.getValue().getIdentity().getAccountUniqueId());
+	}
+
+	@DisplayName("The disconnect decision is passed on without a message, and its absence with one")
+	@Test
+	void disconnectDecisionIsIndependentOfMessage() {
+		Account account = account();
+		when(sessionService.close(org.mockito.ArgumentMatchers.any(SessionCloseRequest.class)))
+				.thenReturn(CompletableFuture.completedFuture(null));
+
+		service.delete(AccountOperationRequest.builder().account(account).disconnect(true).build());
+		service.delete(AccountOperationRequest.builder().account(account).disconnectMessage("text").build());
+
+		ArgumentCaptor<SessionCloseRequest> requestCaptor = ArgumentCaptor.forClass(SessionCloseRequest.class);
+		verify(sessionService, org.mockito.Mockito.times(2)).close(requestCaptor.capture());
+		assertTrue(requestCaptor.getAllValues().get(0).isDisconnect());
+		assertEquals("", requestCaptor.getAllValues().get(0).getDisconnectMessage());
+		assertFalse(requestCaptor.getAllValues().get(1).isDisconnect());
 	}
 
 	@DisplayName("Deleting an account closes its session and publishes a delete event")

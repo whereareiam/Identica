@@ -107,9 +107,17 @@ public class VerificationResultRenderer {
 	private void sendRecoveryCodes(@NotNull Actor sender, @Nullable List<String> recoveryCodes) {
 		VerificationMessages.Commands.Confirm.RecoveryCodes messages = verificationMessages().getConfirm().getRecoveryCodes();
 		List<String> entries = buildRecoveryCodeLines(messages, recoveryCodes);
-		sendLines(sender, messages.getBody(), Map.of(
-				"entries", String.join("\n", entries)
-		));
+		// The codes are shown this once and cannot be read again, so they do not depend on the body
+		// having text or naming them: without their placeholder they are sent on their own.
+		String codes = String.join("\n", entries);
+		String token = placeholderFormat().format("entries");
+		if (messages.getBody().stream().anyMatch(line -> line != null && line.contains(token))) {
+			sendLines(sender, messages.getBody(), Map.of("entries", codes));
+			return;
+		}
+
+		sendLines(sender, messages.getBody(), Map.of());
+		sendMessage(sender, codes, Map.of());
 	}
 
 	private List<String> buildRecoveryCodeLines(
@@ -167,17 +175,15 @@ public class VerificationResultRenderer {
 		Map<String, String> placeholders = enrollmentPlaceholders(result);
 		VerificationProcessDisplay display = result.getDisplay();
 		if (display != null) {
+			// A display whose text was emptied shows nothing; the enrollment itself is unaffected.
 			List<String> lines = display.getLines();
 			if (lines != null && !lines.isEmpty()) {
 				sendLines(sender, lines, placeholders);
 				return;
 			}
 
-			String message = display.getMessage();
-			if (message != null && !message.isBlank()) {
-				sendMessage(sender, message, placeholders);
-				return;
-			}
+			sendMessage(sender, display.getMessage(), placeholders);
+			return;
 		}
 
 		String methodId = Objects.toString(result.getMethodId(), "");

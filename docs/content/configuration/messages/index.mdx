@@ -20,6 +20,12 @@ Those placeholders always use curly-brace format such as `{prefix}`, `{username}
 
 The exact available placeholders depend on the specific message field and the code path that renders it.
 
+## Emptying a message
+
+A message set to an empty string, or a multi-line message set to an empty list, is not shown. That silences the text and changes nothing else: a player who is denied, locked out or disconnected is still denied, locked out or disconnected, with no reason shown.
+
+Recovery codes are the exception, because they are shown once and cannot be read again: they are sent on their own when their message body is empty or does not contain `{entries}`.
+
 ## prefix
 
 - Takes: a string

@@ -62,8 +62,8 @@ class CredentialBruteForceTest {
 	}
 
 	/**
-	 * Uses up every attempt. The proxy disconnects the player on the last one; which reason it gives belongs to a
-	 * journey of its own.
+	 * Uses up every attempt. The proxy disconnects the player on the last one; the reason it gives is checked by
+	 * {@code CredentialReturningJoinTest#locksTheAccountOutWithTheConfiguredMessageAfterTheLastAllowedWrongPassword}.
 	 */
 	private static Journey lockedOut(ScenarioContext anvil) {
 		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);

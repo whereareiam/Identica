@@ -96,6 +96,16 @@ class PremiumHandshakePolicyTest {
 		verify(attemptStore).markAttempt("premium", "verify", USERNAME, IP);
 	}
 
+	@DisplayName("Keeps asking a premium account for a premium login while its pending migration selected another provider")
+	@Test
+	void pendingMigrationAwayFromPremiumStillForcesOnline() {
+		ProviderContext credential = ProviderContext.of("credential", null, USERNAME, ProviderOrigin.MANUAL);
+
+		HandshakeDecision decision = evaluate(request(credential, link("premium"), JourneyMode.SEAMLESS));
+
+		assertEquals(Optional.of(true), forcesOnline(decision));
+	}
+
 	@DisplayName("Lets an unknown username without a premium profile join without a premium login")
 	@Test
 	void unknownUsernameWithoutPremiumProfileAllows() {

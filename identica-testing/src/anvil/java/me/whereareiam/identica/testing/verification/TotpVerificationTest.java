@@ -66,6 +66,34 @@ class TotpVerificationTest {
 
 	@Test
 	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	void refusesAnAuthenticatorCodeThatWasAlreadyUsedAndAcceptsTheNextOne(ScenarioContext anvil) {
+		Enrolled alice = enrolled(anvil);
+
+		alice.journey().leave()
+				.rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.sees(m -> m.credential().getScenario().getAuthentication().getVerification().getPrompt())
+				.command("2fa confirm " + alice.app().code())
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody())
+				.leave()
+				.rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.sees(m -> m.credential().getScenario().getAuthentication().getVerification().getPrompt())
+				.command("2fa confirm " + alice.app().usedCode())
+				.sees(m -> m.verification().getCommands().getConfirm().getInvalidCode())
+				.remainsOn(AUTH)
+				.command("2fa confirm " + alice.app().code())
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
 	void acceptsARecoveryCodeInsteadOfTheAuthenticatorCodeOnlyOnce(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 		String recoveryCode = alice.recoveryCodes().getFirst();

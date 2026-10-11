@@ -142,7 +142,7 @@ The `auth` and `lobby` servers remember earlier tests: a player's position and i
 
 A message expectation names the message through Identica's own configuration models: `m.identica()` is `Messages`, `m.credential()` is `CredentialMessages`, `m.premium()` is `PremiumMessages`, `m.sentinel()` is `SentinelMessages`, `m.verification()` is `VerificationMessages` and `m.joinRestriction()` is `JoinRestrictionMessages`. The models are read from the files the running proxy generated, so the expectation follows the configured text, and a renamed or removed message stops the tests from compiling. Formatting tags are ignored and placeholders match any text. Chain `.with(...)` and `.without(...)` after `.sees(...)` to check what else the same message contains. Do not copy message text into a test.
 
-A player reads what a message hands out, such as a secret or a list of codes, with `.reads(placeholder)` after the `.sees(...)` that matched it. `Authenticator` stands in for an authenticator app, computing the codes for a secret the player read:
+A player reads what a message hands out, such as a secret or a list of codes, with `.reads(placeholder)` after the `.sees(...)` that matched it. `Authenticator` stands in for an authenticator app, computing the codes for a secret the player read. Identica accepts each code once, so `code()` never returns a code it returned before: it returns the next window's code, which Identica accepts as clock drift, and waits only when that one was used too. `usedCode()` returns the code typed last, to type it again:
 
 ```java
 Authenticator app = Authenticator.of(alice.command("2fa enroll totp")

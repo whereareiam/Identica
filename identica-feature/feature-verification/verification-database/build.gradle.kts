@@ -8,6 +8,9 @@ dependencies {
     compileOnly(libs.jdbi.core)
     compileOnly(libs.jdbi.sqlobject)
 
-    testImplementation(libs.jdbi.core)
-    testImplementation(libs.jdbi.sqlobject)
+    testImplementation(libs.bundles.database)
+    testImplementation(libs.dialectica)
+    testImplementation(libs.testcontainers.junit)
+    testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.testcontainers.mariadb)
 }

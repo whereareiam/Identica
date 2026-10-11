@@ -5,6 +5,7 @@ import me.whereareiam.identica.feature.verification.config.defaults.Verification
 import me.whereareiam.identica.feature.verification.database.VerificationPersistenceService;
 import me.whereareiam.identica.feature.verification.model.config.VerificationSettings;
 import me.whereareiam.identica.feature.verification.type.VerificationMethodCapability;
+import me.whereareiam.identica.feature.verification.type.totp.TotpCodeVerifier;
 import me.whereareiam.identica.feature.verification.type.totp.TotpVerificationMethod;
 import me.whereareiam.identica.feature.verification.type.totp.process.TotpChallengeProcess;
 import me.whereareiam.identica.feature.verification.type.totp.process.TotpEnrollmentProcess;
@@ -27,9 +28,10 @@ class DefaultVerificationServiceTest {
 		VerificationMessages messages = messages();
 		VerificationPersistenceService persistenceService = mock(VerificationPersistenceService.class);
 		TotpSetupStep setupStep = new TotpSetupStep(() -> verification, () -> messages);
-		TotpConfirmCodeStep confirmCodeStep = new TotpConfirmCodeStep(() -> verification);
+		TotpCodeVerifier codeVerifier = new TotpCodeVerifier(() -> verification, persistenceService);
+		TotpConfirmCodeStep confirmCodeStep = new TotpConfirmCodeStep(() -> verification, codeVerifier);
 		TotpConfirmSavedStep confirmSavedStep = new TotpConfirmSavedStep();
-		TotpChallengeVerificationStep challengeStep = new TotpChallengeVerificationStep(() -> verification, persistenceService);
+		TotpChallengeVerificationStep challengeStep = new TotpChallengeVerificationStep(codeVerifier, persistenceService);
 		TotpVerificationMethod method = new TotpVerificationMethod(
 				() -> verification,
 				new TotpEnrollmentProcess(setupStep, confirmCodeStep, confirmSavedStep),
@@ -48,9 +50,10 @@ class DefaultVerificationServiceTest {
 		VerificationMessages messages = messages();
 		VerificationPersistenceService persistenceService = mock(VerificationPersistenceService.class);
 		TotpSetupStep setupStep = new TotpSetupStep(() -> verification, () -> messages);
-		TotpConfirmCodeStep confirmCodeStep = new TotpConfirmCodeStep(() -> verification);
+		TotpCodeVerifier codeVerifier = new TotpCodeVerifier(() -> verification, persistenceService);
+		TotpConfirmCodeStep confirmCodeStep = new TotpConfirmCodeStep(() -> verification, codeVerifier);
 		TotpConfirmSavedStep confirmSavedStep = new TotpConfirmSavedStep();
-		TotpChallengeVerificationStep challengeStep = new TotpChallengeVerificationStep(() -> verification, persistenceService);
+		TotpChallengeVerificationStep challengeStep = new TotpChallengeVerificationStep(codeVerifier, persistenceService);
 		TotpVerificationMethod method = new TotpVerificationMethod(
 				() -> verification,
 				new TotpEnrollmentProcess(setupStep, confirmCodeStep, confirmSavedStep),

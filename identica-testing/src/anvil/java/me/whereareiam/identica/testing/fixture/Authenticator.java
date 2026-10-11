@@ -22,6 +22,8 @@ public final class Authenticator {
 	private final byte[] key;
 	private final int digits;
 	private final Duration period;
+	/** The window of the code {@link #code()} returned last; Identica accepts each code once. */
+	private long usedWindow = Long.MIN_VALUE;
 
 	private Authenticator(byte[] key, int digits, Duration period) {
 		this.key = key;
@@ -39,10 +41,27 @@ public final class Authenticator {
 	}
 
 	/**
-	 * Returns the code the app shows now.
+	 * Returns a code the player has not typed before. Identica accepts each code once (RFC 6238, section 5.2),
+	 * so after typing the code the app shows now a player waits for the next one. Identica also accepts the next
+	 * window's code, tolerating a phone whose clock runs ahead, so this returns that code instead of waiting, and
+	 * only waits when it was typed too.
 	 */
-	public String code() {
-		return code(window(Instant.now()));
+	public synchronized String code() {
+		long window = Math.max(window(Instant.now()), usedWindow + 1);
+		while (window(Instant.now()) < window - 1)
+			pause(Duration.ofMillis(200));
+
+		usedWindow = window;
+		return code(window);
+	}
+
+	/**
+	 * Returns the code {@link #code()} returned last, as someone who saw the player type it would type it again.
+	 */
+	public synchronized String usedCode() {
+		if (usedWindow == Long.MIN_VALUE) throw new IllegalStateException("No code was typed yet");
+
+		return code(usedWindow);
 	}
 
 	/**
@@ -63,6 +82,15 @@ public final class Authenticator {
 		} while (nearby.contains(wrong));
 
 		return wrong;
+	}
+
+	private static void pause(Duration duration) {
+		try {
+			Thread.sleep(duration);
+		} catch (InterruptedException interrupted) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException("Interrupted while waiting for the next code", interrupted);
+		}
 	}
 
 	private long window(Instant instant) {

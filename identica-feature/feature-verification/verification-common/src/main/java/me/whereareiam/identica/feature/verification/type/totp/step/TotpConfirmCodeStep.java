@@ -11,7 +11,7 @@ import me.whereareiam.identica.feature.verification.model.process.VerificationPr
 import me.whereareiam.identica.feature.verification.process.VerificationProcessStep;
 import me.whereareiam.identica.feature.verification.type.process.VerificationProcessStatus;
 import me.whereareiam.identica.feature.verification.type.totp.RecoveryCodeGenerator;
-import me.whereareiam.identica.feature.verification.type.totp.TotpCodec;
+import me.whereareiam.identica.feature.verification.type.totp.TotpCodeVerifier;
 import me.whereareiam.identica.feature.verification.type.totp.state.TotpEnrollmentState;
 import org.jetbrains.annotations.NotNull;
 
@@ -20,10 +20,12 @@ import java.util.List;
 @Singleton
 public class TotpConfirmCodeStep implements VerificationProcessStep<CodeVerificationInteraction, TotpEnrollmentState> {
 	private final Provider<VerificationSettings> verificationProvider;
+	private final TotpCodeVerifier codeVerifier;
 
 	@Inject
-	public TotpConfirmCodeStep(Provider<VerificationSettings> verificationProvider) {
+	public TotpConfirmCodeStep(Provider<VerificationSettings> verificationProvider, TotpCodeVerifier codeVerifier) {
 		this.verificationProvider = verificationProvider;
+		this.codeVerifier = codeVerifier;
 	}
 
 	@Override
@@ -57,7 +59,7 @@ public class TotpConfirmCodeStep implements VerificationProcessStep<CodeVerifica
 		if (state == null)
 			return VerificationProcessResult.waiting(null, VerificationProcessTransition.stay());
 
-		if (!verify(state.getSecret(), interaction.getCode()))
+		if (!codeVerifier.accept(context.getSubjectUniqueId(), context.getMethodId(), state.getSecret(), interaction.getCode()))
 			return VerificationProcessResult.<TotpEnrollmentState>builder()
 					.status(VerificationProcessStatus.INVALID)
 					.state(state)
@@ -68,18 +70,6 @@ public class TotpConfirmCodeStep implements VerificationProcessStep<CodeVerifica
 		state.setVerified(true);
 		state.setRecoveryCodes(recoveryCodes);
 		return VerificationProcessResult.waiting(state, VerificationProcessTransition.advance());
-	}
-
-	private boolean verify(@NotNull String secret, @NotNull String code) {
-		VerificationSettings.Totp totp = verificationProvider.get().getTotp();
-		return TotpCodec.verify(
-				secret,
-				code,
-				totp.getDigits(),
-				totp.periodSeconds(),
-				totp.getAllowedPastWindows(),
-				totp.getAllowedFutureWindows()
-		);
 	}
 
 	private @NotNull List<String> recoveryCodes() {

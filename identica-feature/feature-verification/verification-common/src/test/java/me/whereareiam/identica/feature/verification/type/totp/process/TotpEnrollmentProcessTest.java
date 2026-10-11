@@ -2,6 +2,7 @@ package me.whereareiam.identica.feature.verification.type.totp.process;
 
 import me.whereareiam.identica.feature.verification.config.VerificationMessages;
 import me.whereareiam.identica.feature.verification.config.defaults.VerificationDefaults;
+import me.whereareiam.identica.feature.verification.database.VerificationPersistenceService;
 import me.whereareiam.identica.feature.verification.model.config.VerificationSettings;
 import me.whereareiam.identica.feature.verification.model.enrollment.VerificationEnrollmentContext;
 import me.whereareiam.identica.feature.verification.model.enrollment.VerificationEnrollmentResult;
@@ -10,6 +11,7 @@ import me.whereareiam.identica.feature.verification.model.interaction.SavedVerif
 import me.whereareiam.identica.feature.verification.model.process.VerificationProcessContext;
 import me.whereareiam.identica.feature.verification.model.process.VerificationProcessResult;
 import me.whereareiam.identica.feature.verification.model.process.VerificationProcessTransition;
+import me.whereareiam.identica.feature.verification.type.totp.TotpCodeVerifier;
 import me.whereareiam.identica.feature.verification.type.totp.TotpCodec;
 import me.whereareiam.identica.feature.verification.type.totp.state.TotpEnrollmentState;
 import me.whereareiam.identica.feature.verification.type.totp.step.TotpConfirmCodeStep;
@@ -21,6 +23,10 @@ import org.junit.jupiter.api.Test;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class TotpEnrollmentProcessTest {
 	@Test
@@ -161,9 +167,15 @@ class TotpEnrollmentProcessTest {
 	private @NotNull TotpEnrollmentProcess process(@NotNull VerificationSettings verification) {
 		return new TotpEnrollmentProcess(
 				new TotpSetupStep(() -> verification, this::messages),
-				new TotpConfirmCodeStep(() -> verification),
+				new TotpConfirmCodeStep(() -> verification, codeVerifier(verification)),
 				new TotpConfirmSavedStep()
 		);
+	}
+
+	private static @NotNull TotpCodeVerifier codeVerifier(@NotNull VerificationSettings verification) {
+		VerificationPersistenceService persistenceService = mock(VerificationPersistenceService.class);
+		when(persistenceService.acceptTimeStep(any(), any(), anyLong())).thenReturn(true);
+		return new TotpCodeVerifier(() -> verification, persistenceService);
 	}
 
 	private @NotNull VerificationEnrollmentContext<TotpEnrollmentState> context(
@@ -198,7 +210,7 @@ class TotpEnrollmentProcessTest {
 		private final @NotNull String targetStepId;
 
 		private RedirectingConfirmCodeStep(@NotNull VerificationSettings verification, @NotNull String targetStepId) {
-			super(() -> verification);
+			super(() -> verification, codeVerifier(verification));
 			this.targetStepId = targetStepId;
 		}
 

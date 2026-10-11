@@ -6,6 +6,7 @@ import com.google.inject.Singleton;
 import me.whereareiam.identica.feature.verification.database.repository.VerificationEnrollmentRepository;
 import me.whereareiam.identica.feature.verification.database.repository.VerificationRecoveryCodeRepository;
 import me.whereareiam.identica.feature.verification.database.repository.VerificationSelectionRepository;
+import me.whereareiam.identica.feature.verification.database.repository.VerificationTimeStepRepository;
 import org.jdbi.v3.core.Jdbi;
 
 public class VerificationDatabaseConfiguration extends AbstractModule {
@@ -30,5 +31,11 @@ public class VerificationDatabaseConfiguration extends AbstractModule {
 	@Singleton
 	public VerificationRecoveryCodeRepository provideVerificationRecoveryCodeRepository(Jdbi jdbi) {
 		return jdbi.onDemand(VerificationRecoveryCodeRepository.class);
+	}
+
+	@Provides
+	@Singleton
+	public VerificationTimeStepRepository provideVerificationTimeStepRepository(Jdbi jdbi) {
+		return jdbi.onDemand(VerificationTimeStepRepository.class);
 	}
 }

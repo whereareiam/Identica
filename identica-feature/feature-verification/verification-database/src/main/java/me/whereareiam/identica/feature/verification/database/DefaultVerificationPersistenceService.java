@@ -11,10 +11,12 @@ import me.whereareiam.identica.feature.verification.database.mapper.Verification
 import me.whereareiam.identica.feature.verification.database.repository.VerificationEnrollmentRepository;
 import me.whereareiam.identica.feature.verification.database.repository.VerificationRecoveryCodeRepository;
 import me.whereareiam.identica.feature.verification.database.repository.VerificationSelectionRepository;
+import me.whereareiam.identica.feature.verification.database.repository.VerificationTimeStepRepository;
 import me.whereareiam.identica.feature.verification.model.VerificationRecoveryCode;
 import me.whereareiam.identica.feature.verification.model.enrollment.VerificationEnrollment;
 import me.whereareiam.identica.feature.verification.model.selection.VerificationSelection;
 import me.whereareiam.identica.type.event.EventOrder;
+import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -27,16 +29,19 @@ public class DefaultVerificationPersistenceService implements VerificationPersis
 	private final VerificationEnrollmentRepository enrollmentRepository;
 	private final VerificationSelectionRepository selectionRepository;
 	private final VerificationRecoveryCodeRepository recoveryCodeRepository;
+	private final VerificationTimeStepRepository timeStepRepository;
 
 	@Inject
 	public DefaultVerificationPersistenceService(
 			VerificationEnrollmentRepository enrollmentRepository,
 			VerificationSelectionRepository selectionRepository,
-			VerificationRecoveryCodeRepository recoveryCodeRepository
+			VerificationRecoveryCodeRepository recoveryCodeRepository,
+			VerificationTimeStepRepository timeStepRepository
 	) {
 		this.enrollmentRepository = enrollmentRepository;
 		this.selectionRepository = selectionRepository;
 		this.recoveryCodeRepository = recoveryCodeRepository;
+		this.timeStepRepository = timeStepRepository;
 	}
 
 	@Override
@@ -89,6 +94,7 @@ public class DefaultVerificationPersistenceService implements VerificationPersis
 	public void deleteEnrollment(@NotNull UUID uniqueId, @NotNull String methodId) {
 		if (methodId.isBlank()) return;
 		recoveryCodeRepository.deleteByMethod(uniqueId, methodId);
+		timeStepRepository.delete(uniqueId, methodId);
 		enrollmentRepository.delete(uniqueId, methodId);
 	}
 
@@ -173,8 +179,24 @@ public class DefaultVerificationPersistenceService implements VerificationPersis
 	}
 
 	@Override
+	public boolean acceptTimeStep(@NotNull UUID uniqueId, @NotNull String methodId, long timeStep) {
+		if (methodId.isBlank()) return false;
+		if (timeStepRepository.advance(uniqueId, methodId, timeStep) > 0) return true;
+
+		try {
+			timeStepRepository.insert(uniqueId, methodId, timeStep);
+			return true;
+		} catch (UnableToExecuteStatementException e) {
+			// The row exists: this step or a newer one was accepted, possibly at the same moment by another proxy.
+			if (timeStepRepository.find(uniqueId, methodId).isPresent()) return false;
+			throw e;
+		}
+	}
+
+	@Override
 	public void deleteAll(@NotNull UUID uniqueId) {
 		recoveryCodeRepository.deleteAll(uniqueId);
+		timeStepRepository.deleteAll(uniqueId);
 		selectionRepository.deleteAll(uniqueId);
 		enrollmentRepository.deleteAll(uniqueId);
 	}

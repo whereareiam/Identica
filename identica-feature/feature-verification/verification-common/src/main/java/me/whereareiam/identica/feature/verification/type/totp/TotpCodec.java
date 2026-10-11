@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Locale;
+import java.util.OptionalLong;
 
 public final class TotpCodec {
 	private static final char[] BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".toCharArray();
@@ -18,7 +19,12 @@ public final class TotpCodec {
 		return encodeBase32(raw);
 	}
 
-	public static boolean verify(
+	/**
+	 * Finds the time step whose code matches the input within the allowed clock drift.
+	 *
+	 * @return the newest matching time step, or empty when the input matches no step in the window
+	 */
+	public static OptionalLong matchingStep(
 			String secret,
 			String input,
 			int digits,
@@ -27,23 +33,28 @@ public final class TotpCodec {
 			int allowedFutureWindows
 	) {
 		String normalizedInput = input == null ? "" : input.trim();
-		if (!normalizedInput.matches("\\d{" + digits + "}")) return false;
+		if (!normalizedInput.matches("\\d{" + digits + "}")) return OptionalLong.empty();
 
 		byte[] key = decodeBase32(secret);
-		long counter = System.currentTimeMillis() / 1000L / periodSeconds;
-		for (long offset = -allowedPastWindows; offset <= allowedFutureWindows; offset++) {
+		long counter = currentStep(periodSeconds);
+		for (long offset = allowedFutureWindows; offset >= -allowedPastWindows; offset--) {
 			String candidate = generateCode(key, counter + offset, digits);
-			if (candidate.equals(normalizedInput)) return true;
+			if (candidate.equals(normalizedInput)) return OptionalLong.of(counter + offset);
 		}
 
-		return false;
+		return OptionalLong.empty();
+	}
+
+	public static long currentStep(long periodSeconds) {
+		return System.currentTimeMillis() / 1000L / periodSeconds;
 	}
 
 	public static String currentCode(String secret, int digits, long periodSeconds) {
-		byte[] key = decodeBase32(secret);
-		long counter = System.currentTimeMillis() / 1000L / periodSeconds;
+		return code(secret, digits, currentStep(periodSeconds));
+	}
 
-		return generateCode(key, counter, digits);
+	public static String code(String secret, int digits, long step) {
+		return generateCode(decodeBase32(secret), step, digits);
 	}
 
 	public static String buildOtpAuthUri(

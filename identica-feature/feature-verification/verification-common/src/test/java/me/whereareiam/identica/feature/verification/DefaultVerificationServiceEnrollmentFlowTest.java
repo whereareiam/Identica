@@ -18,6 +18,7 @@ import me.whereareiam.identica.feature.verification.model.interaction.CodeVerifi
 import me.whereareiam.identica.feature.verification.model.interaction.SavedVerificationInteraction;
 import me.whereareiam.identica.feature.verification.resolution.VerificationRequirementResolver;
 import me.whereareiam.identica.feature.verification.type.totp.TotpCodec;
+import me.whereareiam.identica.feature.verification.type.totp.TotpCodeVerifier;
 import me.whereareiam.identica.feature.verification.type.totp.TotpVerificationMethod;
 import me.whereareiam.identica.feature.verification.type.totp.process.TotpChallengeProcess;
 import me.whereareiam.identica.feature.verification.type.totp.process.TotpEnrollmentProcess;
@@ -40,6 +41,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -107,6 +109,7 @@ class DefaultVerificationServiceEnrollmentFlowTest {
 			);
 
 		when(persistenceService.findEnrollment(uniqueId, "totp")).thenReturn(Optional.empty());
+		when(persistenceService.acceptTimeStep(eq(uniqueId), eq("totp"), anyLong())).thenReturn(true);
 		doAnswer(invocation -> {
 			pending.set(invocation.getArgument(1));
 			return null;
@@ -171,9 +174,10 @@ class DefaultVerificationServiceEnrollmentFlowTest {
 			@NotNull VerificationPersistenceService persistenceService
 	) {
 		TotpSetupStep setupStep = new TotpSetupStep(() -> verification, () -> commandsMessages);
-		TotpConfirmCodeStep confirmCodeStep = new TotpConfirmCodeStep(() -> verification);
+		TotpCodeVerifier codeVerifier = new TotpCodeVerifier(() -> verification, persistenceService);
+		TotpConfirmCodeStep confirmCodeStep = new TotpConfirmCodeStep(() -> verification, codeVerifier);
 		TotpConfirmSavedStep confirmSavedStep = new TotpConfirmSavedStep();
-		TotpChallengeVerificationStep challengeStep = new TotpChallengeVerificationStep(() -> verification, persistenceService);
+		TotpChallengeVerificationStep challengeStep = new TotpChallengeVerificationStep(codeVerifier, persistenceService);
 		return new TotpVerificationMethod(
 				() -> verification,
 				new TotpEnrollmentProcess(setupStep, confirmCodeStep, confirmSavedStep),

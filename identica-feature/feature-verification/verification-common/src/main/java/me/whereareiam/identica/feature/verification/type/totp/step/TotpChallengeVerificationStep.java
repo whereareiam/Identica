@@ -1,12 +1,10 @@
 package me.whereareiam.identica.feature.verification.type.totp.step;
 
 import com.google.inject.Inject;
-import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.feature.verification.VerificationInteraction;
 import me.whereareiam.identica.feature.verification.database.VerificationPersistenceService;
-import me.whereareiam.identica.feature.verification.model.config.VerificationSettings;
 import me.whereareiam.identica.feature.verification.model.interaction.CodeVerificationInteraction;
 import me.whereareiam.identica.feature.verification.model.interaction.RecoveryCodeVerificationInteraction;
 import me.whereareiam.identica.feature.verification.model.process.VerificationProcessContext;
@@ -14,7 +12,7 @@ import me.whereareiam.identica.feature.verification.model.process.VerificationPr
 import me.whereareiam.identica.feature.verification.process.VerificationProcessStep;
 import me.whereareiam.identica.feature.verification.type.process.VerificationProcessStatus;
 import me.whereareiam.identica.feature.verification.type.totp.RecoveryCodeGenerator;
-import me.whereareiam.identica.feature.verification.type.totp.TotpCodec;
+import me.whereareiam.identica.feature.verification.type.totp.TotpCodeVerifier;
 import me.whereareiam.identica.feature.verification.type.totp.state.TotpChallengeState;
 import me.whereareiam.identica.logging.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -22,7 +20,7 @@ import org.jetbrains.annotations.NotNull;
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class TotpChallengeVerificationStep implements VerificationProcessStep<VerificationInteraction, TotpChallengeState> {
-	private final Provider<VerificationSettings> verificationProvider;
+	private final TotpCodeVerifier codeVerifier;
 	private final VerificationPersistenceService persistenceService;
 
 	@Override
@@ -81,7 +79,7 @@ public class TotpChallengeVerificationStep implements VerificationProcessStep<Ve
 		}
 
 		String secret = context.getEnrollments().isEmpty() ? "" : context.getEnrollments().getFirst().getCredential();
-		if (!secret.isBlank() && verify(secret, code)) {
+		if (!secret.isBlank() && codeVerifier.accept(context.getSubjectUniqueId(), context.getMethodId(), secret, code)) {
 			Logger.debug(
 					"TOTP challenge verified uniqueId=%s provider=%s purpose=%s attempts=%s",
 					context.getSubjectUniqueId(),
@@ -125,17 +123,5 @@ public class TotpChallengeVerificationStep implements VerificationProcessStep<Ve
 				.status(VerificationProcessStatus.INVALID)
 				.state(state)
 				.build();
-	}
-
-	private boolean verify(@NotNull String secret, @NotNull String code) {
-		VerificationSettings.Totp totp = verificationProvider.get().getTotp();
-		return TotpCodec.verify(
-				secret,
-				code,
-				totp.getDigits(),
-				totp.periodSeconds(),
-				totp.getAllowedPastWindows(),
-				totp.getAllowedFutureWindows()
-		);
 	}
 }

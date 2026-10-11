@@ -5,6 +5,7 @@ import me.whereareiam.configura.Configura;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.Reloadable;
+import me.whereareiam.identica.common.config.provider.CommandsProvider;
 import me.whereareiam.identica.common.config.provider.EngineProvider;
 import me.whereareiam.identica.common.config.provider.ReplicationProvider;
 import me.whereareiam.identica.common.config.provider.SettingsProvider;
@@ -61,7 +62,7 @@ class ConfigMigrationsTest {
 		MigrationReport report = start();
 
 		assertTrue(report.isEmpty());
-		assertTrue(read("settings").startsWith("_version: 2\nlevel: 2\n"), read("settings"));
+		assertTrue(read("settings").startsWith("_version: 3\nlevel: 2\n"), read("settings"));
 		assertFalse(read("engine").contains("_version"));
 	}
 
@@ -73,8 +74,8 @@ class ConfigMigrationsTest {
 
 		MigrationReport report = migrate();
 
-		assertEquals(List.of(1, 2), versions(report));
-		assertEquals("_version: 2\nlevel: 3\nsessions:\n  concurrencyPolicy: \"REJECT_NEW\"\n", read("settings"));
+		assertEquals(List.of(1, 2, 3), versions(report));
+		assertEquals("_version: 3\nlevel: 3\nsessions:\n  concurrencyPolicy: \"REJECT_NEW\"\n", read("settings"));
 		assertEquals(EXISTING_ENGINE, read("engine"));
 		assertEquals(EXISTING_SETTINGS, Files.readString(dataPath.resolve(".strata/backup/identica.config/v1/settings.yml")));
 	}
@@ -87,7 +88,7 @@ class ConfigMigrationsTest {
 		start();
 
 		String settings = read("settings");
-		assertTrue(settings.startsWith("_version: 2\nlevel: 3\n"), settings);
+		assertTrue(settings.startsWith("_version: 3\nlevel: 3\n"), settings);
 		assertTrue(settings.contains("concurrencyPolicy: \"REJECT_NEW\""), settings);
 		assertTrue(settings.contains("identity:"), settings);
 	}
@@ -109,11 +110,11 @@ class ConfigMigrationsTest {
 	@DisplayName("A version written by a newer build refuses the start and changes nothing")
 	@Test
 	void newerVersionRefusesStart() throws IOException {
-		write("settings", "_version: 3\nlevel: 1\n");
+		write("settings", "_version: 4\nlevel: 1\n");
 
 		assertThrows(MigrationVersionException.class, this::migrate);
 
-		assertEquals("_version: 3\nlevel: 1\n", read("settings"));
+		assertEquals("_version: 4\nlevel: 1\n", read("settings"));
 	}
 
 	@DisplayName("A version in a document the migrations do not use survives being rewritten")
@@ -183,6 +184,63 @@ class ConfigMigrationsTest {
 		migrate();
 
 		assertEquals("enabled: false\n", read("replication"));
+	}
+
+	@DisplayName("The reservation commands of an existing installation take a username and keep the rest of their usage")
+	@Test
+	void reservationCommandsTakeAUsername() throws IOException {
+		write("settings", EXISTING_SETTINGS);
+		write("commands", """
+				commands:
+				  admin-reservation-set:
+				    usage: "{command} {alias} <key> <uniqueId>"
+				    arguments:
+				      key: "Reservation key"
+				      uniqueId: "UUID"
+				  admin-reservation-info:
+				    usage: "/reserved {alias} <key>"
+				    arguments:
+				      key: "Who"
+				  admin-reservation-delete:
+				    usage: "{command} {alias} <key>"
+				  help:
+				    usage: "{alias} [key]"
+				""");
+
+		migrate();
+
+		assertEquals("""
+				commands:
+				  admin-reservation-set:
+				    usage: "{command} {alias} <username> <uniqueId>"
+				    arguments:
+				      uniqueId: "UUID"
+				      username: "Reservation key"
+				  admin-reservation-info:
+				    usage: "/reserved {alias} <username>"
+				    arguments:
+				      username: "Who"
+				  admin-reservation-delete:
+				    usage: "{command} {alias} <username>"
+				  help:
+				    usage: "{alias} [key]"
+				""", read("commands"));
+	}
+
+	@DisplayName("The commands of an existing installation start after the reservation commands are migrated")
+	@Test
+	void migratedCommandsLoad() throws IOException {
+		write("settings", EXISTING_SETTINGS);
+		write("commands", """
+				commands:
+				  admin-reservation-set:
+				    usage: "{command} {alias} <key> <uniqueId>"
+				""");
+
+		migrate();
+
+		assertEquals("{command} {alias} <username> <uniqueId>", new CommandsProvider(dataPath, registry()).get()
+				.getCommands().get("admin-reservation-set").getUsage());
 	}
 
 	/** Runs the migrations and then loads documents, in the order the plugin does. */

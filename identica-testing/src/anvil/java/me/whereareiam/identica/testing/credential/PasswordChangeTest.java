@@ -3,11 +3,14 @@ package me.whereareiam.identica.testing.credential;
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
+import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Test;
+
+import java.util.function.Consumer;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
@@ -16,7 +19,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY;
 /**
  * A player with a Credential account manages it on a network whose only provider is Credential: they change their
  * password with {@code /changepassword} once logged in, or an administrator sets a new one from the console.
- * Password rules are Credential's defaults.
+ * Password rules are Credential's defaults; unless a test says otherwise, the new password has to be repeated.
  */
 class PasswordChangeTest {
 	private static final String PASSWORD = "Secret-123";
@@ -65,6 +68,39 @@ class PasswordChangeTest {
 
 	@Test
 	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	void offersTheRepeatArgumentInTheSyntaxWhileTheRepetitionIsRequired(ScenarioContext anvil) {
+		loggedIn(anvil)
+				.command("changepassword " + PASSWORD)
+				.sees(m -> m.identica().getCommands().getExceptions().getInvalidSyntax())
+				.with(m -> m.identica().getCommands().getHelp().getArgumentFormat().getOptionalArgument());
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = WithoutRepeat.class)
+	void leavesTheRepeatArgumentOutOfTheSyntaxWhenTheRepetitionIsNotRequired(ScenarioContext anvil) {
+		loggedIn(anvil)
+				.command("changepassword " + PASSWORD)
+				.sees(m -> m.identica().getCommands().getExceptions().getInvalidSyntax())
+				.without(m -> m.identica().getCommands().getHelp().getArgumentFormat().getOptionalArgument());
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = WithoutRepeat.class)
+	void changesThePasswordWithoutARepetitionWhenItIsNotRequired(ScenarioContext anvil) {
+		loggedIn(anvil)
+				.command("changepassword " + PASSWORD + " " + NEW_PASSWORD)
+				.sees(m -> m.credential().getChangePassword().getSuccess())
+				.leave()
+				.rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(NEW_PASSWORD)
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
 	void refusesANewPasswordThePasswordRulesReject(ScenarioContext anvil) {
 		loggedIn(anvil)
 				.command("changepassword " + PASSWORD + " Ab1 Ab1")
@@ -102,5 +138,12 @@ class PasswordChangeTest {
 				.login(PASSWORD)
 				.on(LOBBY)
 				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
+	}
+
+	private static final class WithoutRepeat implements Consumer<ProxyConfiguration> {
+		@Override
+		public void accept(ProxyConfiguration proxy) {
+			proxy.credential().getScenario().getChangePassword().setRequireRepeat(false);
+		}
 	}
 }

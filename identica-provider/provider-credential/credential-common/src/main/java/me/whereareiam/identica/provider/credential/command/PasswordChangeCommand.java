@@ -30,6 +30,9 @@ import java.util.UUID;
 
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class PasswordChangeCommand {
+	static final String DEFINITION = "change-password";
+	static final String REPEAT_ARGUMENT = "repeat";
+
 	private final Provider<CredentialMessages> messagesProvider;
 	private final Provider<CredentialSettings> settingsProvider;
 	private final SessionService sessionService;
@@ -37,13 +40,13 @@ public class PasswordChangeCommand {
 	private final CryptographyService cryptographyService;
 	private final PasswordRules passwordPolicy;
 
-	@Definition("change-password")
+	@Definition(DEFINITION)
 	@Command("changepassword <current> <new> [repeat]")
 	public void changePassword(
 			@NotNull Actor sender,
 			@Argument(value = "current", parser = "password") String current,
 			@Argument(value = "new", parser = "password") String next,
-			@Argument(value = "repeat", parser = "password") @Nullable String repeat
+			@Argument(value = REPEAT_ARGUMENT, parser = "password") @Nullable String repeat
 	) {
 		if (!(sender instanceof Identity identity))
 			return;

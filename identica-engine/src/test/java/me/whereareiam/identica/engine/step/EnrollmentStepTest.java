@@ -8,6 +8,7 @@ import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.InternalProvider;
+import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
 import me.whereareiam.identica.model.registration.RegistrationContext;
 import me.whereareiam.identica.provider.ProviderOperations;
@@ -145,6 +146,66 @@ class EnrollmentStepTest {
 		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
 		assertNull(context.getProvider());
 		verify(eventManager).call(any());
+	}
+
+	@DisplayName("Skips the choice for a player who joined through an offered provider's hostname")
+	@Test
+	void usesTheProviderOfTheHostname() {
+		RegistrationContext context = context();
+		context.setProvider(ProviderContext.builder()
+				.providerId("credential")
+				.providerUsername("PlayerOne")
+				.source(ProviderOrigin.ENTRYPOINT)
+				.build());
+
+		StepResult result = withBothProviders(context);
+
+		assertEquals(StepResult.StepStatus.COMPLETE, result.getStatus());
+		assertEquals("credential", context.getProvider().getProviderId());
+		assertEquals(ProviderOrigin.ENTRYPOINT, context.getProvider().getSource());
+	}
+
+	@DisplayName("Offers the choice when the hostname's provider is not one of the choices")
+	@Test
+	void offersTheChoiceWhenTheHostnameProviderIsNotOffered() {
+		RegistrationContext context = context();
+		context.setProvider(ProviderContext.builder()
+				.providerId("token")
+				.providerUsername("PlayerOne")
+				.source(ProviderOrigin.ENTRYPOINT)
+				.build());
+
+		assertEquals(StepResult.StepStatus.WAITING, withBothProviders(context).getStatus());
+	}
+
+	@DisplayName("Offers the choice for a provider that was not selected through its hostname")
+	@Test
+	void offersTheChoiceForAProviderSelectedOtherwise() {
+		RegistrationContext context = context();
+		context.setProvider(ProviderContext.builder()
+				.providerId("credential")
+				.providerUsername("PlayerOne")
+				.source(ProviderOrigin.AUTO)
+				.build());
+
+		assertEquals(StepResult.StepStatus.WAITING, withBothProviders(context).getStatus());
+	}
+
+	private StepResult withBothProviders(RegistrationContext context) {
+		Engine settings = settings(false);
+		EnrollmentStep step = new EnrollmentStep(
+				providerOperations,
+				() -> settings,
+				this::messages,
+				eventManager
+		);
+		when(providerOperations.eligibleProviders(any(), eq(PipelineType.REGISTRATION), eq(JourneyMode.INTERACTIVE)))
+				.thenReturn(List.of(
+						provider("premium", "Premium"),
+						provider("credential", "Credential")
+				));
+
+		return step.execute(context).join();
 	}
 
 	private Engine settings(boolean autoSelectSingleProvider) {

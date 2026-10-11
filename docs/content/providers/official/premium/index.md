@@ -14,3 +14,5 @@ Premium supports recognition, verification, restrictions, and sentinel checks. C
 Premium asks every player who joins with the name of a Premium account to sign in with that premium account, so an offline client cannot take the name. A pending migration does not change that.
 
 The owner moves the account to Credential with `/credential` and `/credential confirm` while signed in. Identica then disconnects the player. On the next join the player signs in with the premium account once more, and that login lets them choose the password they use from then on. Premium follows the general rule for [moving an account between providers](../../index.md#moving-an-account-between-providers).
+
+Premium protects premium usernames whatever hostname a player joins through. In a seamless journey a username that belongs to a premium account must complete the premium login, and an account that uses Premium always must. Joining through Premium's own [entrypoint](../../../configuration/providers/index.mdx#entrypoints) demands the premium login from every client.

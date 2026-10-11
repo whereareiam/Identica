@@ -61,7 +61,7 @@ defaults:
 - Current default: `false` on `defaults.complete`
 - Affects: whether a target sends players to the server the proxy forces for the hostname they joined through
 
-Forced hosts stay in the proxy's own configuration: `[forced-hosts]` in `velocity.toml`, or `forced_hosts` of a listener in BungeeCord's `config.yml`. Identica does not have a hostname list of its own.
+Forced hosts stay in the proxy's own configuration: `[forced-hosts]` in `velocity.toml`, or `forced_hosts` of a listener in BungeeCord's `config.yml`. Identica has no hostname list of its own for routing. Provider [entrypoints](../providers/index.mdx#entrypoints) are hostnames too, but they only pick a provider and never route.
 
 With `forcedHosts: true`, a target routes to the proxy's forced host for the player's hostname. `target` is the fallback for hostnames the proxy has no forced host for.
 

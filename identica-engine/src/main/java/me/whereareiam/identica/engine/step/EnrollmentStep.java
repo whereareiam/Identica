@@ -21,6 +21,7 @@ import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.provider.ProviderOrigin;
 import me.whereareiam.keystone.model.SerializerOptions;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -72,6 +73,11 @@ public class EnrollmentStep extends InteractiveStep {
 		if (entries.isEmpty())
 			return CompletableFuture.completedFuture(StepResult.failed(joinLines(enrollment.getEmpty())));
 
+		// A player who joined through a provider's hostname has chosen that provider, as long as it is one of the
+		// choices; otherwise the player chooses among the providers offered.
+		if (isOffered(entries, hostnameProviderId(context)))
+			return CompletableFuture.completedFuture(StepResult.complete(context));
+
 		if (shouldAutoSelectSingleProvider() && entries.size() == 1) {
 			applyProviderSelection(context, entries.getFirst().getProviderId());
 			return CompletableFuture.completedFuture(StepResult.complete(context));
@@ -79,6 +85,23 @@ public class EnrollmentStep extends InteractiveStep {
 
 		String message = buildMessage(enrollment, entries);
 		return CompletableFuture.completedFuture(StepResult.waiting(message));
+	}
+
+	private @Nullable String hostnameProviderId(@NotNull ScenarioContext context) {
+		ProviderContext provider = context.getProvider();
+		if (provider == null || provider.getSource() != ProviderOrigin.ENTRYPOINT) return null;
+
+		String providerId = provider.getProviderId();
+		return providerId == null || providerId.isBlank() ? null : providerId;
+	}
+
+	private boolean isOffered(@NotNull List<EnrollmentEntry> entries, @Nullable String providerId) {
+		if (providerId == null) return false;
+
+		for (EnrollmentEntry entry : entries)
+			if (entry.getProviderId().equalsIgnoreCase(providerId)) return true;
+
+		return false;
 	}
 
 	private boolean shouldAutoSelectSingleProvider() {

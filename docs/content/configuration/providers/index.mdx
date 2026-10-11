@@ -46,7 +46,7 @@ behavior:
 ## providers
 
 - Takes: a list of provider entries
-- Affects: provider enablement, ordering, entrypoint routing, provider-specific session behavior, feature-owned provider overrides
+- Affects: provider enablement, ordering, provider selection by hostname, provider-specific session behavior, feature-owned provider overrides
 
 Provider ids should match installed provider descriptors, such as `premium` or `credential`.
 
@@ -114,10 +114,28 @@ Higher values win before lower values.
 ### entrypoints
 
 - Takes: a list of hostnames, optionally with `:port`
-- Affects: hostname-based provider selection before normal fallback ordering
+- Current default: one example hostname per provider, which you replace with your own
+- Affects: which provider a player picks by typing a hostname
 
-Entries must use the format `host` or `host:port`.
-Leave the list empty if hostname-based provider selection is not part of your setup.
+Entries use the format `host` or `host:port`. A player picks the provider by joining through the hostname the client announces, for example `credential.example.com`; an entry with a port only matches that port. When several providers list the same hostname, the one with the higher `priority` picks it.
+Leave the list empty if players should not pick a provider by hostname.
+
+A hostname chooses among the providers the player may use. What it decides:
+
+| Player | Interactive journey | Seamless journey |
+|---|---|---|
+| New player | The provider choice is skipped and the hostname's provider is used, if it is one of the providers the choice would offer. Otherwise the player chooses as usual. | The hostname's provider is tried first, then the others by `priority`. |
+| Player with an account | Signs in with the hostname's provider if the account already uses it, otherwise with the account's own provider. | Same as interactive. |
+
+What a hostname never does:
+
+- It never lifts another provider's protection of a username. A provider refuses or challenges a connection before any provider is chosen, whatever hostname the player used. With Premium, a username that belongs to a premium account must still complete the premium login in a seamless journey, and an account that uses Premium must always complete it. Joining through the Credential hostname does not let an offline client register a premium player's name. The owner of the premium account, who completes the premium login, may register with Credential through that hostname.
+- It never moves an existing account to a provider it does not use. A player changes providers with the provider's migration command, such as `/premium` or `/credential`.
+- It never routes the player to a server. Entrypoints only pick a provider. The proxy's own forced hosts decide where a player lands, and routing's [`forcedHosts`](../routing/index.mdx#forcedhosts) sends players to the forced host's server once they are done. One hostname can be both an entrypoint and a forced host.
+
+A provider can also demand its own login from everyone who joins through its hostname. Premium does: through its hostname, an offline client cannot join at all.
+
+Username conflicts between providers can additionally require a hostname; see [Username authority](../identity/username/index.mdx).
 
 ### session
 

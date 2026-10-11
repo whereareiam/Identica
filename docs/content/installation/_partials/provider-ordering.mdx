@@ -2,14 +2,14 @@ Open the generated `providers/providers` config and keep the generated structure
 In most cases, the defaults are already close to what you want.
 
 For typical mixed setups, it makes sense for `premium` to have a higher priority than `credential`.
-In practice, that means if Identica has to choose between those providers for the same player or entrypoint situation, `premium` wins before `credential`.
-That is the behavior most users expect.
+In practice, that means when Identica chooses between those providers for a player, `premium` wins before `credential`.
+That is the behavior most users expect. A player who joins through a provider's hostname picks that provider instead, among the providers they may use; see [entrypoints](../../configuration/providers/index.mdx#entrypoints).
 
 For the first pass, the important decisions are:
 
 - which providers stay enabled
 - which provider gets higher priority
-- whether entrypoint hostnames should map directly to a provider
+- whether players pick a provider by joining through its own hostname (`entrypoints`)
 
 A practical starting point looks like this:
 

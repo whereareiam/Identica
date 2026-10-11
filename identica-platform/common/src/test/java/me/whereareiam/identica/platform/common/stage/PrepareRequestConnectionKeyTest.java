@@ -1,4 +1,4 @@
-package me.whereareiam.identica.platform.common.decision;
+package me.whereareiam.identica.platform.common.stage;
 
 import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.handshake.HandshakeStore;
@@ -14,6 +14,9 @@ import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareRequest;
 import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
 import me.whereareiam.identica.pipeline.prepare.PrepareStateStore;
+import me.whereareiam.identica.platform.common.stage.profile.ProfileRewriteProcessor;
+import me.whereareiam.identica.platform.common.stage.login.PreparedRefusal;
+import me.whereareiam.identica.platform.common.stage.handshake.HandshakeDecisionProcessor;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,6 +26,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentCaptor.forClass;
@@ -38,7 +42,11 @@ class PrepareRequestConnectionKeyTest {
 	void profileRewritePassesConnectionKeyIntoPrepareRequest() {
 		ConnectionCoordinator connectionCoordinator = mock(ConnectionCoordinator.class);
 		when(connectionCoordinator.prepare(any())).thenReturn(CompletableFuture.completedFuture(PrepareDecision.allow()));
-		ProfileRewriteProcessor processor = new ProfileRewriteProcessor(connectionCoordinator, new NoopPrepareStateStore());
+		ProfileRewriteProcessor processor = new ProfileRewriteProcessor(
+				connectionCoordinator,
+				new NoopPrepareStateStore(),
+				new PreparedRefusal(new NoopPrepareStateStore(), Messages::new)
+		);
 		ConnectionIdentity identity = identity("PlayerOne");
 
 		processor.process(new ProfileRewriteProcessor.Request(
@@ -68,7 +76,7 @@ class PrepareRequestConnectionKeyTest {
 				connectionCoordinator,
 				new NoopPrepareStateStore(),
 				handshakeStore,
-				Messages::new
+				new PreparedRefusal(new NoopPrepareStateStore(), Messages::new)
 		);
 		ConnectionIdentity identity = identity("PlayerTwo");
 
@@ -103,7 +111,12 @@ class PrepareRequestConnectionKeyTest {
 		when(handshakeStore.consumeInstruction(any(), any())).thenReturn(Optional.of(queued));
 		List<HandshakeInstruction> applied = new ArrayList<>();
 
-		new HandshakeDecisionProcessor(connectionCoordinator, new NoopPrepareStateStore(), handshakeStore, Messages::new)
+		new HandshakeDecisionProcessor(
+				connectionCoordinator,
+				new NoopPrepareStateStore(),
+				handshakeStore,
+				new PreparedRefusal(new NoopPrepareStateStore(), Messages::new)
+		)
 				.process(new HandshakeDecisionProcessor.Request(identity, applied::add), message -> {
 				})
 				.toCompletableFuture()
@@ -141,6 +154,11 @@ class PrepareRequestConnectionKeyTest {
 
 		@Override
 		public boolean clear(@NotNull UUID uniqueId) {
+			return false;
+		}
+
+		@Override
+		public boolean clearIf(UUID uniqueId, String connectionKey, @NotNull Predicate<PrepareDecision> condition) {
 			return false;
 		}
 	}

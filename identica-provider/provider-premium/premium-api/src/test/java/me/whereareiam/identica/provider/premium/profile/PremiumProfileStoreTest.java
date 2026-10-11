@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -143,6 +144,15 @@ class PremiumProfileStoreTest {
 		public @NotNull CompletableFuture<Optional<T>> consume(String key) {
 			T removed = key != null ? values.remove(key) : null;
 			return CompletableFuture.completedFuture(Optional.ofNullable(removed));
+		}
+
+		@Override
+		public @NotNull CompletableFuture<Optional<T>> consumeIf(String key, @NotNull Predicate<? super T> condition) {
+			T value = key != null ? values.get(key) : null;
+			if (value == null || !condition.test(value) || !values.remove(key, value))
+				return CompletableFuture.completedFuture(Optional.empty());
+
+			return CompletableFuture.completedFuture(Optional.of(value));
 		}
 
 		@Override

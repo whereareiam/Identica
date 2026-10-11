@@ -3,7 +3,7 @@ package me.whereareiam.identica.platform.velocity.adapter.auth;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.velocitypowered.api.event.connection.PreLoginEvent;
-import me.whereareiam.identica.platform.common.decision.HandshakeDecisionProcessor;
+import me.whereareiam.identica.platform.common.stage.handshake.HandshakeDecisionProcessor;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.platform.adapter.PlatformHandshakeApplierRegistry;

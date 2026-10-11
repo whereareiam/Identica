@@ -291,6 +291,14 @@ public final class Administrator {
 		}
 	}
 
+	/**
+	 * Lifts the join restriction of a provider.
+	 */
+	public Administrator liftsJoinRestriction(Provider provider) {
+		run("identica admin provider restriction join disable " + provider.getId(), joinRestriction().getDisabled());
+		return this;
+	}
+
 	private JoinRestrictionMessages.Commands joinRestriction() {
 		return configured.joinRestriction().getCommands();
 	}

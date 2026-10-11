@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 
 public final class InMemoryLocalCache<T> implements LocalCache<T> {
 	private final ConcurrentHashMap<String, Entry<T>> entries = new ConcurrentHashMap<>();
@@ -73,6 +75,22 @@ public final class InMemoryLocalCache<T> implements LocalCache<T> {
 			return CompletableFuture.completedFuture(Optional.empty());
 
 		return CompletableFuture.completedFuture(Optional.ofNullable(entry.value));
+	}
+
+	@Override
+	public @NotNull CompletableFuture<Optional<T>> consumeIf(String key, @NotNull Predicate<? super T> condition) {
+		if (key == null) return CompletableFuture.completedFuture(Optional.empty());
+
+		AtomicReference<T> removed = new AtomicReference<>();
+		entries.computeIfPresent(key, (ignored, entry) -> {
+			if (entry.expiresAt > 0 && entry.expiresAt <= System.currentTimeMillis()) return null;
+			if (!condition.test(entry.value)) return entry;
+
+			removed.set(entry.value);
+			return null;
+		});
+
+		return CompletableFuture.completedFuture(Optional.ofNullable(removed.get()));
 	}
 
 	@Override

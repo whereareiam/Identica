@@ -202,6 +202,17 @@ public final class ProxyConfiguration {
 	}
 
 	/**
+	 * Returns one provider's entry in {@code providers/providers.yml}, for its provider-specific settings such as
+	 * feature overrides.
+	 */
+	public Providers.ProviderEntry provider(Provider provider) {
+		return providers().getProviders().stream()
+				.filter(entry -> entry.getId().equals(provider.getId()))
+				.findFirst()
+				.orElseThrow(() -> new IllegalStateException("The test network has no entry for " + provider.getId()));
+	}
+
+	/**
 	 * Adds or replaces a file with one of Identica's models.
 	 *
 	 * @param path path inside Identica's data directory, such as {@code persistence.yml}

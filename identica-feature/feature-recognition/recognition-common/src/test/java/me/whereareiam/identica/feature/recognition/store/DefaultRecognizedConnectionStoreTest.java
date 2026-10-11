@@ -21,6 +21,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -183,6 +184,15 @@ class DefaultRecognizedConnectionStoreTest {
 				values.remove(storageKey(key));
 
 			return CompletableFuture.completedFuture(null);
+		}
+
+		@Override
+		public @NotNull CompletableFuture<Optional<T>> consumeIf(String key, @NotNull Predicate<? super T> condition) {
+			T value = value(key);
+			if (value == null || !condition.test(value) || !values.remove(storageKey(key), value))
+				return CompletableFuture.completedFuture(Optional.empty());
+
+			return CompletableFuture.completedFuture(Optional.of(value));
 		}
 
 		private @SuppressWarnings("unchecked") T value(String key) {

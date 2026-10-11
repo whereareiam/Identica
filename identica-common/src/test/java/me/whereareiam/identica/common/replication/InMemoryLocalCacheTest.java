@@ -95,4 +95,23 @@ class InMemoryLocalCacheTest {
 			Thread.currentThread().interrupt();
 		}
 	}
+
+	@DisplayName("Removes a value that matches the condition")
+	@Test
+	void consumeIfRemovesMatchingValue() {
+		cache.put("key", "value", 500).join();
+
+		assertEquals(Optional.of("value"), cache.consumeIf("key", "value"::equals).join());
+		assertEquals(Optional.empty(), cache.get("key").join());
+	}
+
+	@DisplayName("Keeps a value that does not match the condition")
+	@Test
+	void consumeIfKeepsOtherValue() {
+		cache.put("key", "value", 500).join();
+
+		assertEquals(Optional.empty(), cache.consumeIf("key", "other"::equals).join());
+		assertEquals(Optional.of("value"), cache.get("key").join());
+		assertEquals(Optional.empty(), cache.consumeIf("missing", value -> true).join());
+	}
 }

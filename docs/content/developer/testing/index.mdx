@@ -168,6 +168,8 @@ Journey routed = Journey.of(anvil, Client.offline("Bob").through(Provider.CREDEN
 
 Each `Journey` step checks both sides: what the player's client receives, and what the proxy reports on its own console for connections, server changes, and disconnect reasons. A message expectation only considers messages received since the previous one, so a prompt repeated after a reconnect is not satisfied by its earlier occurrence.
 
+A join the proxy may refuse starts with `attempt()`, or `attemptAgain()` for a player who connected before, instead of `join()`. The refusal that follows names its moment: `refusedWith(...)` before the proxy knows who is joining, `refusedAtLoginWith(...)` while the player is still logging in, before any backend or prompt, and `kickedWith(...)` for a disconnect at any point.
+
 Use `Accounts` for players who already have an account.
 
 A player whose username Identica changes, such as an account a username conflict renamed, joins under another name than its client's. `.named(username)` tells the journey the name the proxy reports the player under from the next connection on, and `.playsAs(username)` expects the backend to see the player under it. `ProxyConfiguration.usernameConflicts()` changes the username conflict rules of a test network:

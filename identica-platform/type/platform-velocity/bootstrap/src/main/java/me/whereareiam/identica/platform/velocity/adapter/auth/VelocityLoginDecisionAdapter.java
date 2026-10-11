@@ -5,122 +5,51 @@ import com.google.inject.Singleton;
 import com.velocitypowered.api.event.ResultedEvent;
 import com.velocitypowered.api.event.connection.LoginEvent;
 import com.velocitypowered.api.proxy.Player;
-import me.whereareiam.identica.ConnectionCoordinator;
-import me.whereareiam.identica.platform.common.decision.ConnectionDecisionApplier;
-import me.whereareiam.identica.identity.IdentityService;
+import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
-import me.whereareiam.identica.logging.Logger;
-import me.whereareiam.identica.model.auth.ConnectionDecision;
-import me.whereareiam.identica.model.auth.request.ConnectionRequest;
-import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
-import me.whereareiam.identica.model.provider.ProviderContext;
-import me.whereareiam.identica.pipeline.prepare.PrepareStateStore;
+import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.platform.common.adapter.PlatformLoginDecisionAdapter;
+import me.whereareiam.identica.platform.common.stage.login.LoginDecisionProcessor;
 import me.whereareiam.identica.platform.velocity.actor.VelocityCommandPlayer;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
 import java.util.UUID;
 
 @Singleton
+@RequiredArgsConstructor(onConstructor_ = @Inject)
 public class VelocityLoginDecisionAdapter implements PlatformLoginDecisionAdapter<LoginEvent> {
-	private final @NotNull ConnectionCoordinator connectionCoordinator;
-	private final @NotNull IdentityService identityService;
-	private final @NotNull PrepareStateStore prepareStateStore;
-	private final @NotNull ConnectionDecisionApplier decisionApplier;
+	private final @NotNull LoginDecisionProcessor processor;
 
-	@Inject
-	public VelocityLoginDecisionAdapter(
-			@NotNull ConnectionCoordinator connectionCoordinator,
-			@NotNull IdentityService identityService,
-			@NotNull PrepareStateStore prepareStateStore,
-			@NotNull ConnectionDecisionApplier decisionApplier
-	) {
-		this.connectionCoordinator = connectionCoordinator;
-		this.identityService = identityService;
-		this.prepareStateStore = prepareStateStore;
-		this.decisionApplier = decisionApplier;
-	}
-
+	@Override
 	public void process(@NotNull LoginEvent event) {
 		Player player = event.getPlayer();
-		String ip = resolveIp(player);
-		String intendedServer = player.getCurrentServer()
-				.map(server -> server.getServerInfo().getName())
-				.orElse(null);
-		PrepareDecision prepared = prepareStateStore.peek(player.getUniqueId()).orElse(null);
-
-		ProviderContext provider = prepared != null ? prepared.getProvider() : null;
-		String providerUsername = provider != null && !provider.getProviderUsername().isBlank()
-				? provider.getProviderUsername()
-				: player.getUsername();
-
-		ConnectionIdentity identity = new ConnectionIdentity(providerUsername, ip);
-		identity.setConnectionUniqueId(player.getUniqueId());
-		identity.setObservedUniqueId(player.getUniqueId());
-		if (prepared != null && prepared.getAccountUniqueId() != null && !prepared.getAccountUniqueId().equals(identity.getAccountUniqueId()))
-			identity.setAccountUniqueId(prepared.getAccountUniqueId());
-		if (prepared != null) identity.setClaimedUniqueId(prepared.getClaimedUniqueId());
-
-		applyOrigin(identity, player);
-		Logger.debug(
-				"Velocity login request player=%s username=%s ip=%s key=%s preparedUniqueId=%s preparedProvider=%s preparedSubject=%s preparedEffective=%s",
+		// The username is the one the profile stage saw, so the connection key matches the one stored there.
+		LoginDecisionProcessor.Request request = new LoginDecisionProcessor.Request(
 				player.getUniqueId(),
 				player.getUsername(),
-				ip,
-				identity.connectionKey(),
-				prepared != null ? prepared.getAccountUniqueId() : null,
-				provider != null ? provider.getProviderId() : null,
-				provider != null ? provider.getProviderSubject() : null,
-				prepared != null ? prepared.getEffectiveUsername() : null
+				resolveIp(player),
+				resolveOrigin(player),
+				player.getCurrentServer()
+						.map(server -> server.getServerInfo().getName())
+						.orElse(null)
 		);
 
-		ConnectionRequest request = ConnectionRequest.builder()
-				.identity(identity)
-				.connectionUniqueId(player.getUniqueId())
-				.provider(provider)
-				.selection(prepared != null ? prepared.getSelection() : null)
-				.intendedServer(intendedServer)
-				.build();
-		ConnectionDecision decision = connectionCoordinator.process(request)
+		processor.process(request, target(event))
 				.toCompletableFuture()
 				.join();
-		Logger.debug(
-				"Velocity login decision player=%s status=%s provider=%s subject=%s",
-				player.getUniqueId(),
-				decision != null ? decision.getStatus() : null,
-				provider != null ? provider.getProviderId() : null,
-				provider != null ? provider.getProviderSubject() : null
-		);
-
-		UUID accountUniqueId = identity.getAccountUniqueId();
-		VelocityCommandPlayer liveIdentity = new VelocityCommandPlayer(
-				player.getUniqueId(),
-				accountUniqueId,
-				player,
-				identity.getUsername(),
-				identity.getOrigin()
-		);
-		liveIdentity.setConnectionUsername(identity.getConnectionUsername());
-		decisionApplier.apply(decision, liveIdentity, loginTarget(event));
-		ConnectionDecision.Status status = decision != null ? decision.getStatus() : null;
-		if (status == ConnectionDecision.Status.ALLOW || status == ConnectionDecision.Status.WAIT)
-			identityService.attach(player.getUniqueId(), accountUniqueId, liveIdentity);
 	}
 
-	private String resolveIp(@NotNull Player player) {
-		if (player.getRemoteAddress() == null)
-			return null;
+	private @NotNull LoginDecisionProcessor.Target target(@NotNull LoginEvent event) {
+		Player player = event.getPlayer();
+		return new LoginDecisionProcessor.Target() {
+			@Override
+			public void refuse(@NotNull Component message) {
+				event.setResult(ResultedEvent.ComponentResult.denied(message));
+			}
 
-		if (player.getRemoteAddress().getAddress() != null)
-			return player.getRemoteAddress().getAddress().getHostAddress();
-
-		return player.getRemoteAddress().getHostString();
-	}
-
-	private @NotNull ConnectionDecisionApplier.Target loginTarget(@NotNull LoginEvent event) {
-		return new ConnectionDecisionApplier.Target() {
 			@Override
 			public void deny(@NotNull Component message) {
 				event.setResult(ResultedEvent.ComponentResult.denied(message));
@@ -130,16 +59,32 @@ public class VelocityLoginDecisionAdapter implements PlatformLoginDecisionAdapte
 			public void requireReconnect(@NotNull Component message) {
 				event.setResult(ResultedEvent.ComponentResult.denied(message));
 			}
+
+			@Override
+			public @NotNull Identity identity(
+					@Nullable UUID accountUniqueId,
+					@NotNull String username,
+					ConnectionIdentity.@Nullable Origin origin
+			) {
+				return new VelocityCommandPlayer(player.getUniqueId(), accountUniqueId, player, username, origin);
+			}
 		};
 	}
 
-	private void applyOrigin(@NotNull ConnectionIdentity identity, @NotNull Player player) {
-		InetSocketAddress virtualHost = player.getVirtualHost().orElse(null);
-		if (virtualHost == null) return;
+	private @Nullable String resolveIp(@NotNull Player player) {
+		if (player.getRemoteAddress() == null)
+			return null;
 
-		identity.setOrigin(new ConnectionIdentity.Origin(
-				virtualHost.getHostString(),
-				virtualHost.getPort()
-		));
+		if (player.getRemoteAddress().getAddress() != null)
+			return player.getRemoteAddress().getAddress().getHostAddress();
+
+		return player.getRemoteAddress().getHostString();
+	}
+
+	private ConnectionIdentity.@Nullable Origin resolveOrigin(@NotNull Player player) {
+		InetSocketAddress virtualHost = player.getVirtualHost().orElse(null);
+		if (virtualHost == null) return null;
+
+		return new ConnectionIdentity.Origin(virtualHost.getHostString(), virtualHost.getPort());
 	}
 }

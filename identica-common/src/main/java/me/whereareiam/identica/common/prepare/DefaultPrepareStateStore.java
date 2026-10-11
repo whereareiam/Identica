@@ -14,6 +14,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 @Singleton
 public class DefaultPrepareStateStore implements PrepareStateStore {
@@ -72,6 +73,20 @@ public class DefaultPrepareStateStore implements PrepareStateStore {
 
 		String connectionKey = keysByUniqueId.consume(uniqueIdKey).join().orElse(null);
 		if (connectionKey != null) removed = byConnectionKey.consume(connectionKey).join().isPresent() || removed;
+
+		return removed;
+	}
+
+	@Override
+	public boolean clearIf(
+			@Nullable UUID uniqueId,
+			@Nullable String connectionKey,
+			@NotNull Predicate<PrepareDecision> condition
+	) {
+		boolean removed = uniqueId != null
+				&& byUniqueId.consumeIf(uniqueId.toString(), condition).join().isPresent();
+		if (connectionKey != null && !connectionKey.isBlank())
+			removed = byConnectionKey.consumeIf(connectionKey, condition).join().isPresent() || removed;
 
 		return removed;
 	}

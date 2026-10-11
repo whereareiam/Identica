@@ -3,11 +3,12 @@ package me.whereareiam.identica.platform.bungeecord.adapter.profile;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.platform.common.decision.ProfileRewriteProcessor;
+import me.whereareiam.identica.platform.common.stage.profile.ProfileOutcome;
+import me.whereareiam.identica.platform.common.stage.profile.ProfileRewriteProcessor;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.logging.Logger;
-import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
 import me.whereareiam.identica.platform.common.adapter.PlatformProfileAdapter;
+import me.whereareiam.identica.platform.bungeecord.util.BaseComponentMapper;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.PendingConnection;
 import net.md_5.bungee.api.event.LoginEvent;
@@ -36,12 +37,25 @@ public class BungeeCordProfilePrepareAdapter implements PlatformProfileAdapter<L
 		identity.setObservedUniqueId(observedUniqueId);
 		applyOrigin(identity, connection);
 
-		processor.process(
+		ProfileOutcome outcome = processor.process(
 						new ProfileRewriteProcessor.Request(identity, observedUniqueId, connection.getName()),
 						target(event)
 				)
 				.toCompletableFuture()
 				.join();
+
+		switch (outcome) {
+			case ProfileOutcome.Rewritten ignored -> {
+				// The target already rewrote the pending connection.
+			}
+			case ProfileOutcome.Refused refused -> {
+				event.setCancelled(true);
+				event.setReason(TextComponent.fromArray(BaseComponentMapper.map(refused.message())));
+			}
+			case ProfileOutcome.Failed ignored -> {
+				// Continue unchanged: nothing is stored for the connection, so its login is processed as usual.
+			}
+		}
 	}
 
 	@Override
@@ -52,38 +66,28 @@ public class BungeeCordProfilePrepareAdapter implements PlatformProfileAdapter<L
 	private @NotNull ProfileRewriteProcessor.Target target(
 			@NotNull LoginEvent event
 	) {
-		return new ProfileRewriteProcessor.Target() {
-			@Override
-			public void apply(@NotNull ProfileRewriteProcessor.Rewrite rewrite) {
-				PendingConnection connection = event.getConnection();
-				UUID currentUniqueId = connection.getUniqueId();
-				UUID rewrittenUniqueId = rewrite.uniqueId();
-				if (rewrittenUniqueId != null) {
-					if (applyUniqueIdRewrite(connection, rewrittenUniqueId)) {
-						Logger.debug(
-								"Bungee profile rewrite applied username=%s from=%s to=%s",
-								connection.getName(),
-								currentUniqueId,
-								rewrittenUniqueId
-						);
-						return;
-					}
+		return rewrite -> {
+			PendingConnection connection = event.getConnection();
+			UUID currentUniqueId = connection.getUniqueId();
+			UUID rewrittenUniqueId = rewrite.uniqueId();
+			if (rewrittenUniqueId == null) return;
 
-					Logger.warn(
-							"Bungee profile rewrite could not update pending connection username=%s from=%s to=%s",
-							connection.getName(),
-							currentUniqueId,
-							rewrittenUniqueId
-					);
-				}
+			if (applyUniqueIdRewrite(connection, rewrittenUniqueId)) {
+				Logger.debug(
+						"Bungee profile rewrite applied username=%s from=%s to=%s",
+						connection.getName(),
+						currentUniqueId,
+						rewrittenUniqueId
+				);
+				return;
 			}
 
-			@Override
-			public void deny(@NotNull PrepareDecision prepared) {
-				event.setCancelled(true);
-				if (prepared.getDenialMessage() != null && !prepared.getDenialMessage().isBlank())
-					event.setReason(TextComponent.fromLegacy(prepared.getDenialMessage()));
-			}
+			Logger.warn(
+					"Bungee profile rewrite could not update pending connection username=%s from=%s to=%s",
+					connection.getName(),
+					currentUniqueId,
+					rewrittenUniqueId
+			);
 		};
 	}
 

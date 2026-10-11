@@ -1,21 +1,19 @@
-package me.whereareiam.identica.platform.common.decision;
+package me.whereareiam.identica.platform.common.stage.handshake;
 
 import com.google.inject.Inject;
-import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.ConnectionCoordinator;
-import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.handshake.HandshakeStore;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.auth.handshake.HandshakeDecision;
 import me.whereareiam.identica.model.auth.handshake.HandshakeInstruction;
-import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareRequest;
 import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
 import me.whereareiam.identica.pipeline.prepare.PrepareStateStore;
 import me.whereareiam.identica.type.PrepareStage;
+import me.whereareiam.identica.platform.common.stage.login.PreparedRefusal;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -31,7 +29,7 @@ public class HandshakeDecisionProcessor {
 	private final @NotNull ConnectionCoordinator connectionCoordinator;
 	private final @NotNull PrepareStateStore prepareStateStore;
 	private final @NotNull HandshakeStore handshakeStore;
-	private final @NotNull Provider<Messages> messagesProvider;
+	private final @NotNull PreparedRefusal preparedRefusal;
 
 	public @NotNull CompletionStage<Void> process(
 			@NotNull Request request,
@@ -67,12 +65,7 @@ public class HandshakeDecisionProcessor {
 	) {
 		if (decision == null || decision.getStatus() == null) return;
 		if (decision.getStatus() == HandshakeDecision.Status.DENY)
-			target.deny(Serializer.serialize(resolveHandshakeMessage(decision.getMessage())));
-	}
-
-	private @NotNull String resolveHandshakeMessage(@Nullable String message) {
-		if (message != null && !message.isBlank()) return message;
-		return String.join("\n", messagesProvider.get().getEngine().getPrepare().getHandshakeDenied());
+			target.deny(preparedRefusal.message(decision.getMessage()));
 	}
 
 	private void storePreparedState(@Nullable String connectionKey, @NotNull PrepareDecision prepared) {

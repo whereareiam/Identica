@@ -6,6 +6,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 /**
  * Store for staged connection preparation results.
@@ -55,4 +56,20 @@ public interface PrepareStateStore {
 	 * @return {@code true} if a decision was cleared
 	 */
 	boolean clear(@NotNull UUID uniqueId);
+
+	/**
+	 * Clears the decisions stored under the unique id and under the connection key that match the condition.
+	 * Each entry is checked and removed in one step, so a decision stored in between is never cleared. A decision
+	 * that does not match stays stored, with its expiry unchanged.
+	 *
+	 * @param uniqueId unique id, if known
+	 * @param connectionKey connection key, if known
+	 * @param condition what a stored decision must match to be cleared
+	 * @return {@code true} if a decision was cleared
+	 */
+	boolean clearIf(
+			@Nullable UUID uniqueId,
+			@Nullable String connectionKey,
+			@NotNull Predicate<PrepareDecision> condition
+	);
 }

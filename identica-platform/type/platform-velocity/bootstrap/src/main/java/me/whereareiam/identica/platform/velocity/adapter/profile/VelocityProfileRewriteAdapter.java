@@ -5,7 +5,8 @@ import com.google.inject.Singleton;
 import com.velocitypowered.api.event.player.GameProfileRequestEvent;
 import com.velocitypowered.api.util.GameProfile;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.platform.common.decision.ProfileRewriteProcessor;
+import me.whereareiam.identica.platform.common.stage.profile.ProfileOutcome;
+import me.whereareiam.identica.platform.common.stage.profile.ProfileRewriteProcessor;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.platform.common.adapter.PlatformProfileAdapter;
 import org.jetbrains.annotations.NotNull;
@@ -22,9 +23,22 @@ public class VelocityProfileRewriteAdapter implements PlatformProfileAdapter<Gam
 		GameProfile current = event.getGameProfile();
 		if (current == null) return;
 
-		processor.process(request(event, current), target(event, current))
+		ProfileOutcome outcome = processor.process(request(event, current), target(event, current))
 				.toCompletableFuture()
 				.join();
+
+		switch (outcome) {
+			case ProfileOutcome.Rewritten ignored -> {
+				// The target already rewrote the profile.
+			}
+			case ProfileOutcome.Refused ignored -> {
+				// GameProfileRequestEvent cannot refuse a connection. The refusal is stored as the prepared
+				// decision, and the LoginEvent that follows enforces it through LoginDecisionProcessor.
+			}
+			case ProfileOutcome.Failed ignored -> {
+				// Continue unchanged: nothing is stored for the connection, so its login is processed as usual.
+			}
+		}
 	}
 
 	private void applyOrigin(@NotNull ConnectionIdentity identity, @NotNull GameProfileRequestEvent event) {

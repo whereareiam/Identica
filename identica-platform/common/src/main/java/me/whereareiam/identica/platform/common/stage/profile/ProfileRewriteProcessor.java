@@ -1,4 +1,4 @@
-package me.whereareiam.identica.platform.common.decision;
+package me.whereareiam.identica.platform.common.stage.profile;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -10,6 +10,7 @@ import me.whereareiam.identica.model.pipeline.prepare.PrepareRequest;
 import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
 import me.whereareiam.identica.pipeline.prepare.PrepareStateStore;
 import me.whereareiam.identica.type.PrepareStage;
+import me.whereareiam.identica.platform.common.stage.login.PreparedRefusal;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -21,8 +22,18 @@ import java.util.concurrent.CompletionStage;
 public class ProfileRewriteProcessor {
 	private final @NotNull ConnectionCoordinator connectionCoordinator;
 	private final @NotNull PrepareStateStore prepareStateStore;
+	private final @NotNull PreparedRefusal preparedRefusal;
 
-	public @NotNull CompletionStage<Void> process(
+	/**
+	 * Prepares a connecting profile. An allowed profile is rewritten through the target before the outcome
+	 * completes; a refusal or a failed run is left to the platform. A failed run clears a denial stored by an
+	 * earlier attempt and keeps any other stored decision.
+	 *
+	 * @param request profile the connection presented
+	 * @param target  where an allowed profile is rewritten
+	 * @return what preparation decided
+	 */
+	public @NotNull CompletionStage<ProfileOutcome> process(
 			@NotNull Request request,
 			@NotNull Target target
 	) {
@@ -38,25 +49,31 @@ public class ProfileRewriteProcessor {
 						Logger.severe("Profile prepare failed username=%s error=%s",
 								request.identity().getUsername(),
 								error.getMessage());
-						return null;
+						// A denial from an earlier attempt must not be enforced on this one; this attempt's handshake
+						// decision stays, so the login keeps its provider context.
+						prepareStateStore.clearIf(
+								request.observedUniqueId(),
+								prepareRequest.getConnectionKey(),
+								PrepareDecision::isDenied
+						);
+						return new ProfileOutcome.Failed(error);
 					}
 
 					PrepareDecision prepared = decision != null ? decision : PrepareDecision.allow();
 					if (prepared.isDenied()) {
 						Logger.debug("Profile prepare denied username=%s", request.identity().getUsername());
 						storePreparedState(request.observedUniqueId(), prepareRequest.getConnectionKey(), prepared);
-						target.deny(prepared);
-						return null;
+						return new ProfileOutcome.Refused(preparedRefusal.message(prepared));
 					}
 
-					Rewrite rewrite = resolveRewrite(request, prepared);
+					ProfileOutcome.Rewritten rewrite = resolveRewrite(request, prepared);
 					storePreparedState(rewrite.uniqueId(), prepareRequest.getConnectionKey(), prepared);
 					target.apply(rewrite);
-					return null;
+					return rewrite;
 				});
 	}
 
-	private @NotNull Rewrite resolveRewrite(
+	private @NotNull ProfileOutcome.Rewritten resolveRewrite(
 			@NotNull Request request,
 			@NotNull PrepareDecision prepared
 	) {
@@ -67,7 +84,7 @@ public class ProfileRewriteProcessor {
 		if (username == null || username.isBlank())
 			username = request.currentUsername();
 
-		return new Rewrite(uniqueId, username);
+		return new ProfileOutcome.Rewritten(uniqueId, username);
 	}
 
 	private void storePreparedState(
@@ -86,16 +103,16 @@ public class ProfileRewriteProcessor {
 	) {
 	}
 
-	public record Rewrite(
-			@Nullable UUID uniqueId,
-			@NotNull String username
-	) {
-	}
-
+	/**
+	 * Where a platform rewrites the connecting profile to the prepared identity.
+	 */
+	@FunctionalInterface
 	public interface Target {
-		void apply(@NotNull Rewrite rewrite);
-
-		default void deny(@NotNull PrepareDecision prepared) {
-		}
+		/**
+		 * Rewrites the connecting profile to the prepared identity.
+		 *
+		 * @param rewrite unique ID and username the connection continues with
+		 */
+		void apply(@NotNull ProfileOutcome.Rewritten rewrite);
 	}
 }

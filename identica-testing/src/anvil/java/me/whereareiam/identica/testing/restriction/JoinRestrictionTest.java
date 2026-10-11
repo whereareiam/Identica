@@ -2,6 +2,7 @@ package me.whereareiam.identica.testing.restriction;
 
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.identica.feature.recognition.config.RecognitionSettings;
+import me.whereareiam.identica.feature.restriction.join.config.provider.JoinRestrictionFeatures;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
@@ -21,8 +22,8 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY;
 
 /**
  * An administrator restricts new joins through Credential, the network's only provider. A player with one of the
- * signals the join restriction allows still gets through, and a provider whose join restriction is not configured
- * cannot be restricted.
+ * signals the join restriction allows still gets through, a player without one is refused as soon as the proxy knows
+ * who is joining, before any prompt, and a provider whose join restriction is not configured cannot be restricted.
  */
 @Tag("join")
 class JoinRestrictionTest {
@@ -54,6 +55,72 @@ class JoinRestrictionTest {
 	}
 
 	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = LinkedAllowed.class)
+	void refusesANewPlayerAtJoinWhileRestricted(ScenarioContext anvil) {
+		Administrator.at(anvil, PROXY).restrictsJoins(Provider.CREDENTIAL);
+
+		Journey.offline(anvil, "Bob").attempt()
+				.refusedAtLoginWith(m -> m.joinRestriction().getDenied());
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = CredentialAllowsNothing.class)
+	void refusesALinkedAccountThroughAProviderThatAllowsNoSignal(ScenarioContext anvil) {
+		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD);
+		Administrator.at(anvil, PROXY).restrictsJoins(Provider.CREDENTIAL);
+
+		alice.attemptAgain()
+				.refusedAtLoginWith(m -> m.joinRestriction().getDenied());
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = RecognizedAllowed.class)
+	void refusesAPlayerWhoIsNotRecognizedWhileRestricted(ScenarioContext anvil) {
+		Accounts.credentialByAdmin(anvil, "Bob", PASSWORD);
+		Administrator.at(anvil, PROXY).restrictsJoins(Provider.CREDENTIAL);
+
+		Journey.offline(anvil, "Bob").attempt()
+				.refusedAtLoginWith(m -> m.joinRestriction().getDenied());
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = LinkedAllowed.class)
+	void letsANewPlayerRegisterOnceTheRestrictionIsLifted(ScenarioContext anvil) {
+		Administrator administrator = Administrator.at(anvil, PROXY).restrictsJoins(Provider.CREDENTIAL);
+		Journey bob = Journey.offline(anvil, "Bob").attempt()
+				.refusedAtLoginWith(m -> m.joinRestriction().getDenied());
+
+		administrator.liftsJoinRestriction(Provider.CREDENTIAL);
+
+		bob.rejoin()
+				.on(AUTH)
+				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
+				.enroll(Provider.CREDENTIAL)
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
+				.register(PASSWORD)
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getRegistration().getBody());
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = CredentialAllowsNothing.class)
+	void letsARefusedAccountLogInOnceTheRestrictionIsLifted(ScenarioContext anvil) {
+		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD);
+		Administrator administrator = Administrator.at(anvil, PROXY).restrictsJoins(Provider.CREDENTIAL);
+		alice.attemptAgain()
+				.refusedAtLoginWith(m -> m.joinRestriction().getDenied());
+
+		administrator.liftsJoinRestriction(Provider.CREDENTIAL);
+
+		alice.rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
+	}
+
+	@Test
 	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
 	void refusesToRestrictAProviderWhoseJoinRestrictionIsNotConfigured(ScenarioContext anvil) {
 		Administrator.at(anvil, PROXY).cannotRestrictJoins(Provider.CREDENTIAL);
@@ -71,6 +138,26 @@ class JoinRestrictionTest {
 		public void accept(ProxyConfiguration proxy) {
 			proxy.joinRestriction().setEnabled(true);
 			proxy.joinRestriction().setAllow(List.of("linked"));
+		}
+	}
+
+	/**
+	 * Lets linked accounts through every provider's restriction, except Credential's, whose own override allows no
+	 * signal.
+	 */
+	private static final class CredentialAllowsNothing implements Consumer<ProxyConfiguration> {
+		@Override
+		public void accept(ProxyConfiguration proxy) {
+			proxy.joinRestriction().setEnabled(true);
+			proxy.joinRestriction().setAllow(List.of("linked"));
+
+			JoinRestrictionFeatures.Restriction.Join join = new JoinRestrictionFeatures.Restriction.Join();
+			join.setAllow(List.of());
+			JoinRestrictionFeatures.Restriction restriction = new JoinRestrictionFeatures.Restriction();
+			restriction.setJoin(join);
+			JoinRestrictionFeatures features = new JoinRestrictionFeatures();
+			features.setRestriction(restriction);
+			proxy.provider(Provider.CREDENTIAL).setFeatures(features);
 		}
 	}
 

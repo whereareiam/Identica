@@ -53,6 +53,7 @@ public final class Journey {
 	private String connectedPlayer;
 	private int read;
 	private long console;
+	private long attempted;
 	private int connections;
 	private String matched = "";
 	private MessageText matchedMessage;
@@ -117,6 +118,7 @@ public final class Journey {
 	 * Connects without expecting an outcome, for joins the proxy may refuse.
 	 */
 	public Journey attempt() {
+		attempted = proxy.checkpoint();
 		session.connect();
 		return this;
 	}
@@ -125,6 +127,7 @@ public final class Journey {
 	 * Reconnects without expecting an outcome, for joins the proxy may refuse.
 	 */
 	public Journey attemptAgain() {
+		attempted = proxy.checkpoint();
 		session.rejoin();
 		return this;
 	}
@@ -401,6 +404,22 @@ public final class Journey {
 		assertFalse(session.state().connected(), name + " must be disconnected");
 		if (session.state().disconnectCause() == DisconnectCause.SERVER)
 			assertTrue(reason.in(received), name + " was disconnected with: " + received);
+		return this;
+	}
+
+	/**
+	 * Expects the proxy to refuse an attempt while the player is still logging in, once it knows who is joining,
+	 * with the given message, which the client receives as the reason. The proxy never sends the player to a
+	 * backend, and no message, such as a prompt, reaches the player before the refusal.
+	 */
+	public Journey refusedAtLoginWith(Function<IdenticaMessages, ?> message) {
+		kickedWith(message);
+		assertEquals(DisconnectCause.SERVER, session.state().disconnectCause(), name + " must be refused by the proxy");
+		List<String> routed = proxy.read(attempted, 500).getLines().stream().map(line -> line.getText())
+				.filter(line -> line.contains("[server connection] " + name + " -> "))
+				.toList();
+		assertEquals(List.of(), routed, name + " must be refused before reaching a backend");
+		assertEquals(List.of(), unread(), name + " must be refused before receiving a message");
 		return this;
 	}
 

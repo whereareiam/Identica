@@ -1,7 +1,7 @@
 ---
 title: Живые тесты
 description: Запуск и написание прохождений игрока для собранного плагина на настоящем прокси.
-sourceHash: 9fe4b100a4df3f9aac9c674e24372d3f41222ef6
+sourceHash: 66b79b99445c4532b83aeb446713a9cc00f9edba
 ---
 
 Модуль `identica-testing` запускает собранный плагин и провайдеры на настоящем прокси Velocity или BungeeCord с бэкенд-серверами Paper и проводит через них симулированных игроков с помощью [Anvil](https://github.com/whereareiam/anvil). Модульные тесты остаются в своих модулях, а эти тесты проверяют то, что видит игрок при входе на сервер.
@@ -27,7 +27,7 @@ sourceHash: 9fe4b100a4df3f9aac9c674e24372d3f41222ef6
 | Набор | Задача | Пакеты | Что проверяет |
 | --- | --- | --- | --- |
 | `join` | `anvilJoinTest` | `join`, `entrypoint`, `routing`, `restriction` | вход игрока: регистрация, вход в аккаунт, определение премиум-аккаунта, хосты и цели маршрутизации |
-| `account` | `anvilAccountTest` | `credential`, `verification`, `recognition`, `security` | уже созданный аккаунт: смена пароля, двухфакторная проверка, узнанные сессии, защита от злоупотреблений |
+| `account` | `anvilAccountTest` | `credential`, `verification`, `recognition`, `security`, `dialogs` | уже созданный аккаунт: смена пароля, двухфакторная проверка, узнанные сессии, защита от злоупотреблений |
 | `identity` | `anvilIdentityTest` | `username`, `identity` | ники и их конфликты, уникальные идентификаторы, резервирования |
 | `operations` | `anvilOperationsTest` | `administration`, `migration`, `startup`, `database`, `example` | перезагрузка, миграции, запуск, бэкенды баз данных, примеры |
 | `cluster` | `anvilClusterTest` | `cluster` | два прокси с общей базой данных; нужен Docker |
@@ -142,7 +142,7 @@ void registersWithTheOnlyProviderInSeamlessMode(ScenarioContext anvil) {
 
 - BungeeCord проверяет лицензионный вход через собственный сессионный сервер Mojang, а Anvil не может заменить его локальной заменой Mojang из сети, поэтому лицензионный игрок в такую сеть не войдёт. Провайдер Premium по-прежнему спрашивает у замены, какие ники лицензионные, поэтому офлайн-игроку с лицензионным ником сначала предлагается лицензионный вход — как и на Velocity.
 - Anvil сам записывает слушатель прокси, без принудительных хостов, поэтому `LOBBY_HOST` нигде не сопоставлен с `lobby`.
-- Аддон-пример — плагин Velocity; `addon = true` на другой платформе завершается ошибкой.
+- Аддоны — плагины Velocity; `addons` на другой платформе завершается ошибкой.
 - BungeeCord называет игрока в консоли только тогда, когда тот попадает на бэкенд, поэтому вход, который прокси отклоняет — например, из-за ограничения входа, — прохождение проверяет только по клиенту.
 
 Прохождения на BungeeCord лежат в пакете и наборе `platform`.
@@ -228,13 +228,13 @@ Identica принимает каждый код один раз, включая 
 
 ## Примеры [#the-examples]
 
-Каждый тестовый прокси устанавливает провайдер-пример из `examples/provider` рядом с официальными провайдерами; он отключён, если тест не включит его через `providers = Provider.EXAMPLE`. `@Identica(addon = true)` дополнительно устанавливает аддон-пример из `examples/addon` — отдельный плагин Velocity, который блокирует чат и команды, пока игрок не пройдёт аутентификацию. Тесты в `example` следят за тем, чтобы оба примера работали с текущим API.
+Каждый тестовый прокси устанавливает провайдер-пример из `examples/provider` рядом с официальными провайдерами; он отключён, если тест не включит его через `providers = Provider.EXAMPLE`. `@Identica(addons = Addon.EXAMPLE)` дополнительно устанавливает аддон-пример из `examples/addon` — отдельный плагин Velocity, который блокирует чат и команды, пока игрок не пройдёт аутентификацию. Тесты в `example` следят за тем, чтобы оба примера работали с текущим API.
 
 Текст, который не относится ни к одному файлу конфигурации, например собственное сообщение аддона или строка чата, сравнивается как обычный текст. `.chat(message)` отправляет сообщение в чат, `.seesText(text)` ждёт сообщение, содержащее этот текст, а `.doesNotSeeText(text)` ожидает, что такое сообщение не придёт. `Administrator.seesOnConsole(texts...)` ожидает строку консоли, содержащую все указанные тексты, после предыдущей команды администратора — например то, что аддон пишет в лог, реагируя на перезагрузку:
 
 ```java
 @Test
-@Identica(providers = Provider.EXAMPLE, addon = true)
+@Identica(providers = Provider.EXAMPLE, addons = Addon.EXAMPLE)
 void holdsBackChat(ScenarioContext anvil) {
 	Journey.offline(anvil, "Alice").join()
 			.on(AUTH)
@@ -244,3 +244,25 @@ void holdsBackChat(ScenarioContext anvil) {
 			.seesText("Log in before you chat.");
 }
 ```
+
+
+## Аддон Dialogs [#the-dialogs-addon]
+
+`@Identica(addons = Addon.DIALOGS)` устанавливает официальный аддон Dialogs из `addons/dialogs` вместе с PacketEvents, без которого он не работает на Velocity. Сценарий отвечает на его диалоги так же, как игрок: `.seesDialog(id)` ждёт диалог, файл которого в папке `dialogs/` аддона называется `id`, сравнивая заголовок и текст, а `.presses(button, inputs)` заполняет поля и нажимает кнопку, названную через этот файл. `.dialogShows(message)` ожидает, что диалог показывает сообщение из конфигурации Identica, например ответ на неверный пароль, а `.hasNoDialog()` — что открытого диалога нет:
+
+```java
+@Test
+@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, autoSelectSingleProvider = true, addons = Addon.DIALOGS)
+void logsInThroughTheDialog(ScenarioContext anvil) {
+	Journey.offline(anvil, "Alice").join()
+			.on(AUTH)
+			.seesDialog("register")
+			.presses(dialog -> dialog.getActions().getFirst(), Map.of("password", PASSWORD));
+}
+```
+
+`.seesNoDialog()` ожидает, что с предыдущей проверки диалогов ни один диалог не был показан, например для шага, который правило оставляет в чате.
+
+`ProxyConfiguration.editGenerated(anvil, Addon.DIALOGS, path, type, change)` меняет файл, созданный аддоном на запущенном прокси, через его собственные модели, например `RulesDocument` для `rules.yml` или `DialogDocument` для диалога; `generated` читает такой файл, а `putGenerated` добавляет новый, например собственный диалог. После `Administrator.reloads()` аддон читает их заново.
+
+Тестовые серверы работают на Minecraft 1.21.11, и клиент любого сценария той же версии, поэтому у каждого клиента есть диалоги. `@Identica(minecraft = MinecraftVersion.V1_21_1)` запускает серверы и клиентов на 1.21.1, то есть на клиенте без диалогов.

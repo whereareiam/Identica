@@ -19,6 +19,7 @@ java {
 
 dependencies {
 	// Identica's configuration and message models and defaults, to build and read the proxy's files through them.
+	anvilImplementation(projects.dialogsCommon)
 	anvilImplementation(projects.identicaApi)
 	anvilImplementation(projects.exampleProvider)
 	anvilImplementation(projects.identicaCommon)
@@ -68,6 +69,20 @@ fun projectJar(project: ProjectDependency): Configuration =
 		.apply { isTransitive = false }
 
 /**
+ * PacketEvents' Velocity plugin, which the dialogs addon needs on Velocity: a GitHub release asset, not a Maven
+ * artifact.
+ */
+val packetEventsVelocity: Configuration = configurations.detachedConfiguration(
+	dependencies.create(libs.packetevents.velocity.plugin.get().toString()) {
+		(this as ExternalModuleDependency).artifact {
+			name = "packetevents-velocity"
+			type = "jar"
+			extension = "jar"
+		}
+	}
+).apply { isTransitive = false }
+
+/**
  * Journeys that run at once. Each one has its own network, so the default leaves four processors to every
  * network; a machine with fewer than eight runs one journey after another.
  */
@@ -96,6 +111,8 @@ anvil {
 	artifact("premium", pluginJar(projects.providerPremiumRuntime))
 	artifact("example-provider", pluginJar(projects.exampleProvider))
 	artifact("example-addon", projectJar(projects.exampleAddon))
+	artifact("dialogs", pluginJar(projects.dialogsPlatformBundle))
+	artifact("packetevents", packetEventsVelocity)
 
 	// Each suite runs the journeys of its tag in anvil<Suite>Test, such as anvilJoinTest.
 	suites {

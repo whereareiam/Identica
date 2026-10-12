@@ -20,8 +20,8 @@ import java.util.stream.Collectors;
 public final class IdenticaScenarios implements AnvilScenarioFactory<Identica> {
 	@Override
 	public @NotNull AnvilScenario create(@NotNull Identica identica, @NotNull ScenarioResources resources) {
-		if (identica.addon() && identica.platform() != Platform.VELOCITY)
-			throw new IllegalArgumentException("The example addon is a Velocity plugin");
+		if (identica.addons().length > 0 && identica.platform() != Platform.VELOCITY)
+			throw new IllegalArgumentException("Addons are Velocity plugins");
 
 		Set<Provider> enabled = EnumSet.noneOf(Provider.class);
 		enabled.addAll(Arrays.asList(identica.providers()));
@@ -35,7 +35,7 @@ public final class IdenticaScenarios implements AnvilScenarioFactory<Identica> {
 			instantiate(change).accept(proxy);
 
 		return IdenticaNetwork.of(name(identica, enabled), identica.platform(), Map.of(IdenticaNetwork.PROXY, proxy),
-				yggdrasil.sessionServer(), identica.addon());
+				yggdrasil.sessionServer(), Set.copyOf(Arrays.asList(identica.addons())), identica.minecraft());
 	}
 
 	static Consumer<ProxyConfiguration> instantiate(Class<? extends Consumer<ProxyConfiguration>> change) {
@@ -57,8 +57,9 @@ public final class IdenticaScenarios implements AnvilScenarioFactory<Identica> {
 				identica.autoSelectSingleProvider() ? "autoselect" : "choice",
 				routing(identica.step(), identica.complete()),
 				identica.database().name(),
-				identica.addon() ? "addon" : "",
-				Arrays.stream(identica.configure()).map(Class::getSimpleName).collect(Collectors.joining("+")))
+				Arrays.stream(identica.addons()).map(addon -> addon.name() + "-addon").sorted().collect(Collectors.joining("+")),
+				Arrays.stream(identica.configure()).map(Class::getSimpleName).collect(Collectors.joining("+")),
+				identica.minecraft() == MinecraftVersion.V1_21_11 ? "" : identica.minecraft().getVersion())
 				.replaceAll("-+$", "").toLowerCase(Locale.ROOT);
 	}
 

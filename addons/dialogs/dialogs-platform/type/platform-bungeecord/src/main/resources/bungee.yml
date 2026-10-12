@@ -1,0 +1,6 @@
+name: Identica-Dialogs
+main: me.whereareiam.identica.addon.dialogs.platform.bungeecord.BungeeCordDialogs
+version: ${version}
+author: whereareiam
+description: Shows Identica's prompts as dialogs
+depends: [Identica]

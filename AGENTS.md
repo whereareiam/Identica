@@ -258,6 +258,10 @@ One or two sentences about the release.
 - Write normal present-state documentation for users and operators.
 - Do not write historical “used to” documentation unless the task explicitly calls for migration notes or release notes.
 - Prefer updating the existing relevant page over leaving behavior undocumented.
+- `docs/content/` is the English source. Translations live under `docs/i18n/<language>/` with the same paths and only for translated pages.
+- When you change a page or partial under `docs/content/` that has a translation, update the translation in the same work, then run `docs/i18n/check.sh stamp docs/i18n/<language>/<path>`. `docs/i18n/check.sh` lists outdated translations with the English diff; the pre-commit hook and CI run it too.
+- Translate into natural language for server operators, following `docs/i18n/<language>.glossary.md`. Keep code, config keys, commands, file names and link targets unchanged.
+- Put text that is the same in every language, such as configuration examples, into `_partials/` so a translation does not have to repeat it.
 
 ---
 

@@ -35,6 +35,13 @@
       "external": true
     }
   ],
+  "i18n": {
+    "default": "en",
+    "languages": {
+      "en": { "label": "English" },
+      "ru": { "label": "Русский" }
+    }
+  },
   "versions": {
     "home": "dev",
     "include": [

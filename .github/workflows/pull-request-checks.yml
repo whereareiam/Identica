@@ -20,3 +20,19 @@ jobs:
     with:
       ref: ${{ github.sha }}
       version: pr-${{ github.event.pull_request.number }}
+
+  translations:
+    name: Translations
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          # The history lets the check show how an original changed since its translation.
+          fetch-depth: 0
+
+      - name: Check translations against docs/content
+        run: sh docs/i18n/check.sh

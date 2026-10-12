@@ -1,0 +1,3 @@
+#!/bin/sh
+# Keeps the translations under docs/i18n in step with docs/content.
+exec sh docs/i18n/check.sh --staged

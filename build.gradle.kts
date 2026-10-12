@@ -21,6 +21,21 @@ extensions.configure<AttacheExtension>("attache") {
     repository("https://registry.whereareiam.me/maven/packages")
 }
 
+// Activates the repository's git hooks (.githooks/) for everyone who builds, unless hooks are already configured.
+if (rootDir.resolve(".git").exists()) {
+    val hooksPath = providers.exec {
+        commandLine("git", "config", "--get", "core.hooksPath")
+        isIgnoreExitValue = true
+    }.standardOutput.asText.get().trim()
+
+    if (hooksPath.isEmpty()) {
+        providers.exec {
+            commandLine("git", "config", "core.hooksPath", ".githooks")
+            isIgnoreExitValue = true
+        }.result.get()
+    }
+}
+
 defaultTasks("pluginJars")
 
 tasks.register("pluginJars") {

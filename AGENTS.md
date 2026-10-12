@@ -163,16 +163,22 @@ See `docs/content/developer/testing/index.mdx`.
 ### Branch Flow
 
 - Build each feature, fix, or isolated piece of work in its own `feature/...` branch.
-- Merge feature work into `dev` through a pull request.
+- Merge feature work into `dev` through a pull request. Pull requests are merged by rebase: each commit lands on `dev` as written, so a branch holds clean conventional commits and no fixups.
 - Releases are cut from `dev`: publishing the release draft tags the current `dev`.
 
 ### Pull Request Checks
 
 - Every pull request gets the metadata check (title and label) and the quick checks: tests and `assembleDistribution`.
 - Label a pull request with exactly one of `feature`, `change`, `bug`, `dependencies`, or with `skip-changelog`; `major` may accompany a category.
+- Add `provider:credential` or `provider:premium` when a pull request or issue concerns that provider's jar; work on the plugin itself carries no such label.
 - A run keeps as artifacts only what someone downloads: `identica-plugins-<version>` from a development build or release, and `test-results` when a test failed.
 - Development builds are started manually and publish a branch-qualified version. A published GitHub release publishes Maven artifacts, attaches the distribution, and publishes to the stores; a manual run of the release workflow only republishes to the stores.
 - Entry workflows only select a trigger and call `reusable-verify.yml` and `reusable-publish.yml`; shared steps come from `whereareiam/devops` and `whereareiam/blockops`.
+
+### Issues
+
+- A suggestion opens with `suggestion`, the label of an idea not decided on yet. An accepted one trades it for `feature` or `change`; a declined one is closed as not planned.
+- A bug report opens with `bug`.
 
 ### Release Notes
 

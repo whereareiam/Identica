@@ -219,16 +219,8 @@ public class MessagesDefaults implements DefaultsProvider<Messages> {
 				"",
 				"<dark_gray>discord.arcadeya.com"
 		));
-		Messages.Scenarios.Scenario.ScenarioRouting routingMessages = new Messages.Scenarios.Scenario.ScenarioRouting();
-		routingMessages.setMissingServer(List.of(
-				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
-				"",
-				"<white>No target server available for routing</white>",
-				"<white>Please contact a server administrator.</white>",
-				"",
-				"<dark_gray>discord.arcadeya.com"
-		));
-		scenario.setRouting(routingMessages);
+		// Empty, so the shared routing.missingServer is shown until a scenario is given its own.
+		scenario.setRouting(new Messages.Scenarios.Scenario.ScenarioRouting());
 		scenario.setErrors(buildScenarioErrors(label));
 	}
 

@@ -11,8 +11,10 @@ import me.whereareiam.identica.event.routing.RoutingTargetMissingEvent;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.routing.RoutingIntent;
+import me.whereareiam.identica.type.pipeline.PipelineType;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -42,20 +44,39 @@ public class RoutingTargetMissingListener implements EventListener {
 
 		event.setDisconnect(true);
 		if (event.getMessage() == null || event.getMessage().equals(Component.empty())) {
-			event.setMessage(buildMissingServerMessage());
+			event.setMessage(buildMissingServerMessage(intent.getPipelineType()));
 		}
 	}
 
-	private Component buildMissingServerMessage() {
-		Messages.Routing routing = messagesProvider.get().getRouting();
-		String message = joinMessage(routing.getMissingServer());
+	/**
+	 * Builds the reason from the scenario's own message, or from the shared one when the scenario
+	 * has none or the intent belongs to no scenario.
+	 */
+	private Component buildMissingServerMessage(@Nullable PipelineType scenario) {
+		Messages messages = messagesProvider.get();
+		String message = joinMessage(scenarioMissingServer(messages, scenario));
+		if (message.isBlank())
+			message = joinMessage(messages.getRouting().getMissingServer());
 		if (message.isBlank())
 			return Component.empty();
 
 		return Serializer.serialize(message);
 	}
 
-	private String joinMessage(@NotNull List<String> lines) {
+	private static @NotNull List<String> scenarioMissingServer(@NotNull Messages messages, @Nullable PipelineType scenario) {
+		if (scenario == null) return List.of();
+
+		Messages.Scenarios scenarios = messages.getScenarios();
+		Messages.Scenarios.Scenario messagesOfScenario = switch (scenario) {
+			case AUTHENTICATION -> scenarios.getAuthentication();
+			case REGISTRATION -> scenarios.getRegistration();
+			case MIGRATION -> scenarios.getMigration();
+		};
+
+		return messagesOfScenario.getRouting().getMissingServer();
+	}
+
+	private static String joinMessage(@NotNull List<String> lines) {
 		return String.join("\n", lines);
 	}
 }

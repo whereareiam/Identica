@@ -43,6 +43,24 @@ The `engine` section holds messages of the login flow itself. Two of them belong
 
 Emptying either message changes only the text. The earlier connection is still disconnected, and the new login is still refused, then with the scenario's general failure message.
 
+## routing
+
+Identica disconnects a player when the server it routes them to does not exist on the proxy. The reason comes from the scenario the player is in, and from the shared message when that scenario has none.
+
+#### routing.missingServer
+
+- Takes: a list of lines
+- Current default: a notice reading `No target server available for routing` and `Please contact a server administrator.`
+- Affects: the reason shown when a routing target server is missing and the player's scenario has no message of its own, or the route belongs to no scenario
+
+#### scenarios.authentication.routing.missingServer, scenarios.registration.routing.missingServer, scenarios.migration.routing.missingServer
+
+- Takes: a list of lines
+- Current default: `[]`
+- Affects: the reason shown to a player in that scenario when a routing target server is missing
+
+An empty scenario message shows `routing.missingServer` instead. To disconnect without a reason, empty both.
+
 ## prefix
 
 - Takes: a string

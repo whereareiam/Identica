@@ -10,6 +10,7 @@ import me.whereareiam.commandant.model.message.PaginationMessages;
 import me.whereareiam.identica.model.config.type.DateTimePattern;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -618,6 +619,10 @@ public class Messages implements MessageDocument {
 	@Setter
 	@ToString
 	public static class Routing {
+		/**
+		 * Reason shown when a server Identica routes to does not exist and the scenario of the
+		 * connection has no {@code missingServer} message of its own.
+		 */
 		private @NotNull List<String> missingServer;
 	}
 
@@ -729,11 +734,18 @@ public class Messages implements MessageDocument {
 				}
 			}
 
+			/**
+			 * Routing messages of one scenario.
+			 */
 			@Getter
 			@Setter
 			@ToString
 			public static class ScenarioRouting {
-				private @NotNull List<String> missingServer;
+				/**
+				 * Reason shown when a server the scenario routes to does not exist. When empty, the shared
+				 * {@code routing.missingServer} is shown instead.
+				 */
+				private @NotNull List<String> missingServer = new ArrayList<>();
 			}
 		}
 	}

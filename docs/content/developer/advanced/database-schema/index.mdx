@@ -139,3 +139,17 @@ public @NotNull OptionalInt baseline(@NotNull DatabaseContext database, int late
 ```
 
 `OptionalInt.empty()` is a new installation, which gets `schema()`; `0` runs every migration; any other version runs the migrations after it.
+
+## Where SQL belongs
+
+- The structure of the tables, their columns and indexes, is always declared with Dialectica, whether it is created, altered or dropped: the entities describe the current form, and a migration changes the structure through Dialectica schema changes.
+- At runtime, the add-on reads and writes its rows through Dialectica's `EntityAccess`. A hand-written Jdbi query is only for what `EntityAccess` does not cover, and it maps rows through the entity mapper, `@RegisterDialecticaMapper`.
+- A one-time data step inside a migration, which moves or transforms the rows of a past layout, may be plain SQL. A migration describes one fixed step from an exact past layout and never changes afterwards, so its SQL does not follow the entities.
+
+Such a data step:
+
+- uses standard SQL that runs unchanged on every database Identica supports;
+- is safe to run again, for example as `INSERT … SELECT … WHERE NOT EXISTS`, so that a migration that stopped halfway finishes on the next start;
+- is covered by tests that upgrade the past layout on every supported database, run the migration again, and compare the result with a new installation.
+
+The `username-layout` migration of Identica's `AccountSchema` works this way: Dialectica creates the username tables, two `INSERT … SELECT … WHERE NOT EXISTS` statements move the rows of Identica 2.2.1 into them, and Dialectica drops the old table and column.

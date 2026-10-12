@@ -5,7 +5,8 @@ import com.google.inject.Singleton;
 import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.base.IdenticEvent;
-import me.whereareiam.identica.event.lifecycle.IdenticaShutdownEvent;
+import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
+import me.whereareiam.identica.lifecycle.StartupPhase;
 import me.whereareiam.identica.event.routing.attempt.RoutingAttemptFinishedEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentClearedEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentExhaustedEvent;
@@ -29,7 +30,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.UUID;
 
 @Singleton
-public class RoutingRetryCoordinator implements EventListener {
+public class RoutingRetryCoordinator implements EventListener, RuntimeLifecycle {
 	private static final Origin ORIGIN = Origin.core(RoutingRetryCoordinator.class);
 	private static final Purpose PURPOSE = Purpose.of("routing-retry");
 
@@ -98,8 +99,23 @@ public class RoutingRetryCoordinator implements EventListener {
 		cancel(event.getConnectionUniqueId());
 	}
 
-	@IdenticEvent
-	public void onShutdown(@NotNull IdenticaShutdownEvent event) {
+	@Override
+	public @NotNull StartupPhase phase() {
+		return StartupPhase.RUNTIME;
+	}
+
+	/**
+	 * Has nothing to start: a retry is scheduled when a routing attempt needs one.
+	 */
+	@Override
+	public void initialize() {
+	}
+
+	/**
+	 * Cancels the retries still waiting.
+	 */
+	@Override
+	public void shutdown() {
 		scheduler.cancelByOrigin(ORIGIN);
 	}
 

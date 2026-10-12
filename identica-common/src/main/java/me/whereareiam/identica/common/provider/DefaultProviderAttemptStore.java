@@ -1,5 +1,7 @@
 package me.whereareiam.identica.common.provider;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
@@ -21,7 +23,7 @@ public class DefaultProviderAttemptStore implements ProviderAttemptStore {
 	private static final String KEY_PREFIX = "attempt:";
 
 	private final Provider<Providers> providersProvider;
-	private final ReplicatedCache<ProviderAttemptSnapshot> cache;
+	private final Supplier<ReplicatedCache<ProviderAttemptSnapshot>> cache;
 
 	@Inject
 	public DefaultProviderAttemptStore(
@@ -30,9 +32,8 @@ public class DefaultProviderAttemptStore implements ProviderAttemptStore {
 			@NotNull Provider<Providers> providersProvider
 	) {
 		this.providersProvider = providersProvider;
-		ReplicationType<ProviderAttemptSnapshot, ProviderAttemptSnapshot> type =
-				ReplicationType.identity(ProviderAttemptSnapshot.class);
-		this.cache = replicationSystem.cache(resolveNamespace(replicationProvider)).replicated(type);
+		this.cache = Suppliers.memoize(() -> replicationSystem.cache(resolveNamespace(replicationProvider))
+				.replicated(ReplicationType.identity(ProviderAttemptSnapshot.class)));
 	}
 
 	@Override
@@ -45,7 +46,7 @@ public class DefaultProviderAttemptStore implements ProviderAttemptStore {
 		String key = resolveKey(providerId, scope, username, ip);
 		if (key == null) return false;
 
-		Optional<ProviderAttemptSnapshot> snapshot = cache.get(key).join();
+		Optional<ProviderAttemptSnapshot> snapshot = cache.get().get(key).join();
 		return snapshot.isPresent();
 	}
 
@@ -62,7 +63,7 @@ public class DefaultProviderAttemptStore implements ProviderAttemptStore {
 		long ttlMs = providersProvider.get().getBehavior().attemptTtlMillis();
 		if (ttlMs <= 0) return;
 
-		cache.put(key, new ProviderAttemptSnapshot(System.currentTimeMillis()), ttlMs).join();
+		cache.get().put(key, new ProviderAttemptSnapshot(System.currentTimeMillis()), ttlMs).join();
 	}
 
 	@Override
@@ -74,7 +75,7 @@ public class DefaultProviderAttemptStore implements ProviderAttemptStore {
 	) {
 		String key = resolveKey(providerId, scope, username, ip);
 		if (key == null) return;
-		cache.invalidate(key).join();
+		cache.get().invalidate(key).join();
 	}
 
 	private @Nullable String resolveKey(

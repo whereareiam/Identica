@@ -46,15 +46,16 @@ class DefaultRecognizedConnectionStoreTest {
 		assertEquals(45_000L, replicationSystem.lastWriteTtlMs);
 	}
 
-	@DisplayName("Requires a configured recognized connection namespace")
+	@DisplayName("Requires a configured recognized connection namespace when it is first used")
 	@Test
 	void requiresConfiguredRecognizedConnectionNamespace() {
-		IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
-				new DefaultRecognizedConnectionStore(
-						new TestReplicationSystem(),
-						() -> settings(Duration.ofSeconds(30), " "),
-						() -> replication(true)
-				));
+		DefaultRecognizedConnectionStore store = new DefaultRecognizedConnectionStore(
+				new TestReplicationSystem(),
+				() -> settings(Duration.ofSeconds(30), " "),
+				() -> replication(true)
+		);
+
+		IllegalStateException exception = assertThrows(IllegalStateException.class, () -> store.isRecognized(UUID.randomUUID()));
 
 		assertTrue(exception.getMessage().contains("features.recognition.settings.replication.recognizedConnectionNamespace"));
 	}

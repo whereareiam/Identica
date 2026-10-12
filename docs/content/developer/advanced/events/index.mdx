@@ -53,6 +53,14 @@ public final class ExampleSessionListener implements EventListener {
 }
 ```
 
+## Startup and shutdown
+
+Identica starts in phases, each one after the previous has finished: the configuration, the log, the stores (the database and replication), the core subsystems, the features, the providers, the integrations such as usage statistics, and finally player connections. Three lifecycle events mark that sequence:
+
+- `IdenticaBootstrappedEvent` is called once the features have started, before the providers are loaded.
+- `IdenticaReadyEvent` is called at the end of startup. The providers are loaded with their commands and documents, Identica handles player connections, and the actions given to `IdenticaAPI.whenReady(...)` have run.
+- `IdenticaShutdownEvent` is called when Identica stops. At `EventOrder.LOW` Identica stops the phases in reverse, so a listener with `EventOrder.LOWEST` still runs while the providers and the database are open, and later listeners run after they are closed.
+
 ## Common event categories
 
 The current API exposes event groups such as:

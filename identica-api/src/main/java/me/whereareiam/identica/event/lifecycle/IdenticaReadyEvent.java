@@ -3,16 +3,9 @@ package me.whereareiam.identica.event.lifecycle;
 import me.whereareiam.identica.event.base.SynchronousEvent;
 
 /**
- * Event called when the Identica plugin finishes bootstrapping.
- * This event is triggered at the end of the onLoad() lifecycle method,
- * after the platform-specific infrastructure, dependency injection, and core systems
- * have been initialized.
- * <p>
- * At this point, the injector is available and dependencies can be resolved,
- * but the plugin is not yet fully operational.
- * <p>
- * This event is useful for modules or components that need to perform
- * initialization tasks that depend on the core infrastructure being ready.
+ * Event called at the end of startup, once every {@link me.whereareiam.identica.lifecycle.StartupPhase} has
+ * started: the providers are loaded with their commands and documents, the integrations run, and Identica handles
+ * player connections.
  */
 public class IdenticaReadyEvent implements SynchronousEvent {
 }

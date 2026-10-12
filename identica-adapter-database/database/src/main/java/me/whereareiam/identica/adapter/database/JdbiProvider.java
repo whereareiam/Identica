@@ -15,7 +15,7 @@ public class JdbiProvider implements Provider<Jdbi> {
 	@Override
 	public Jdbi get() {
 		if (!databaseService.isInitialized()) {
-			throw new IllegalStateException("Database is not initialized yet");
+			throw new IllegalStateException("The database is not open yet; it opens in the persistence phase of the startup");
 		}
 
 		return databaseService.getJdbi();

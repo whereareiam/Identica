@@ -1,5 +1,7 @@
 package me.whereareiam.identica.feature.sentinel;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
@@ -29,7 +31,7 @@ public class DefaultSentinelService implements SentinelService {
 
 	private final Registry<SentinelDefinition> registry;
 	private final me.whereareiam.identica.feature.FeatureRegistry features;
-	private final ReplicatedCache<SentinelEntry> cache;
+	private final Supplier<ReplicatedCache<SentinelEntry>> cache;
 
 	@Inject
 	public DefaultSentinelService(
@@ -40,8 +42,8 @@ public class DefaultSentinelService implements SentinelService {
 	) {
 		this.registry = registry;
 		this.features = features;
-		ReplicationType<SentinelEntry, SentinelEntry> type = ReplicationType.identity(SentinelEntry.class);
-		this.cache = replicationSystem.cache(resolveNamespace(settingsProvider)).replicated(type);
+		this.cache = Suppliers.memoize(() -> replicationSystem.cache(resolveNamespace(settingsProvider))
+				.replicated(ReplicationType.identity(SentinelEntry.class)));
 	}
 
 	@Override
@@ -123,7 +125,7 @@ public class DefaultSentinelService implements SentinelService {
 		String cacheKey = resolveKey(definition.id(), key);
 		if (cacheKey == null) return;
 
-		cache.invalidate(cacheKey).join();
+		cache.get().invalidate(cacheKey).join();
 	}
 
 	private boolean applies(SentinelDefinition definition, SentinelContext context) {
@@ -143,7 +145,7 @@ public class DefaultSentinelService implements SentinelService {
 		long now = System.currentTimeMillis();
 		if (entry.limitedUntil() <= 0) return null;
 		if (entry.limitedUntil() <= now) {
-			cache.invalidate(cacheKey).join();
+			cache.get().invalidate(cacheKey).join();
 			return null;
 		}
 
@@ -251,12 +253,12 @@ public class DefaultSentinelService implements SentinelService {
 	}
 
 	private Optional<SentinelEntry> read(String key) {
-		return cache.get(key).join();
+		return cache.get().get(key).join();
 	}
 
 	private void write(String key, SentinelEntry entry, long ttlMs) {
 		if (ttlMs <= 0) return;
-		cache.put(key, entry, ttlMs).join();
+		cache.get().put(key, entry, ttlMs).join();
 	}
 
 	private SentinelDefinition findDefinition(String id) {

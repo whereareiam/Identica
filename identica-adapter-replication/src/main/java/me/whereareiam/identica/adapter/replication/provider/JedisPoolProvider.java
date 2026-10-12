@@ -6,14 +6,21 @@ import com.google.inject.Singleton;
 import me.whereareiam.identica.Reloadable;
 import me.whereareiam.identica.model.config.Replication;
 import me.whereareiam.identica.Registry;
+import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
+import me.whereareiam.identica.lifecycle.StartupPhase;
+import org.jetbrains.annotations.NotNull;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 
 import java.util.Optional;
 
+/**
+ * The Redis pool replication talks through. It connects in {@link StartupPhase#PERSISTENCE} when replication is
+ * enabled, so an unreachable Redis stops the startup, and closes when Identica stops.
+ */
 @Singleton
-public class JedisPoolProvider implements Provider<JedisPool>, Reloadable {
+public class JedisPoolProvider implements Provider<JedisPool>, Reloadable, RuntimeLifecycle {
 	private final Provider<Replication> configProvider;
 	private JedisPool jedisPool;
 
@@ -25,9 +32,23 @@ public class JedisPoolProvider implements Provider<JedisPool>, Reloadable {
 		this.configProvider = configProvider;
 
 		reloadableRegistry.register(this);
+	}
+
+	@Override
+	public @NotNull StartupPhase phase() {
+		return StartupPhase.PERSISTENCE;
+	}
+
+	@Override
+	public void initialize() {
 		Replication replication = configProvider.get();
 		if (replication != null && replication.isEnabled())
 			get();
+	}
+
+	@Override
+	public void shutdown() {
+		close();
 	}
 
 	@Override

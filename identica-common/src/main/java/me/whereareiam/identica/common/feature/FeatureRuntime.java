@@ -4,7 +4,9 @@ import com.google.inject.Injector;
 import com.google.inject.Provider;
 import me.whereareiam.identica.model.config.provider.Providers;
 import com.google.inject.Module;
+import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Names;
+import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.feature.FeatureContext;
@@ -77,6 +79,7 @@ public final class FeatureRuntime implements FeatureRegistry, AutoCloseable {
 				binder.bind(FeatureRegistry.class).toInstance(this);
 				binder.bind(FeatureRuntime.class).toInstance(this);
 				binder.bind(ClassLoader.class).annotatedWith(Names.named("providerLibraryParent")).toInstance(getClass().getClassLoader());
+				Multibinder.newSetBinder(binder, RuntimeLifecycle.class).addBinding().to(FeatureLifecycle.class);
 			});
 			for (FeatureEntry entry : ordered)
 				composed.addAll(entry.feature().modules(context));

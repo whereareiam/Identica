@@ -295,9 +295,10 @@ class DefaultSessionServiceTest {
 		private Node(String serverId, Providers providers) {
 			DefaultReplicationSystem replicationSystem = new DefaultReplicationSystem(adapter);
 			events.register(new Capture(this));
-			new ReplicatedEventBridge(events, replicationSystem, () -> replication(serverId), new DefaultReplicatedEventRegistry());
+			new ReplicatedEventBridge(events, replicationSystem, () -> replication(serverId), new DefaultReplicatedEventRegistry()).initialize();
 			store = new SessionStore(LIFETIME_MS, replication(serverId), replicationSystem);
-			keepalive = new SessionKeepalive(store, new SessionFixtures.ManualScheduler(), events);
+			keepalive = new SessionKeepalive(store, new SessionFixtures.ManualScheduler());
+			keepalive.initialize();
 			service = new DefaultSessionService(
 					DefaultSessionServiceTest::settings,
 					() -> providers,

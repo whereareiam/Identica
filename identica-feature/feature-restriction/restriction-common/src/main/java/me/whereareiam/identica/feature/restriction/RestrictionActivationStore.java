@@ -1,5 +1,7 @@
 package me.whereareiam.identica.feature.restriction;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
@@ -16,7 +18,7 @@ import java.util.Locale;
 @Singleton
 public class RestrictionActivationStore {
 	private final Provider<RestrictionSettings> settingsProvider;
-	private final ReplicatedCache<Boolean> cache;
+	private final Supplier<ReplicatedCache<Boolean>> cache;
 
 	@Inject
 	public RestrictionActivationStore(
@@ -24,30 +26,29 @@ public class RestrictionActivationStore {
 			@NotNull Provider<RestrictionSettings> settingsProvider
 	) {
 		this.settingsProvider = settingsProvider;
-		ReplicationType<Boolean, Boolean> type = ReplicationType.identity(Boolean.class);
-		this.cache = replicationSystem.cache(resolveNamespace(settingsProvider))
-				.replicated(type);
+		this.cache = Suppliers.memoize(() -> replicationSystem.cache(resolveNamespace(settingsProvider))
+				.replicated(ReplicationType.identity(Boolean.class)));
 	}
 
 	public boolean isActive(@NotNull RestrictionType type, @Nullable String providerId) {
 		String key = key(type, providerId);
 		if (key == null) return false;
 
-		return cache.get(key).join().orElse(false);
+		return cache.get().get(key).join().orElse(false);
 	}
 
 	public void enable(@NotNull RestrictionType type, @Nullable String providerId) {
 		String key = key(type, providerId);
 		if (key == null) return;
 
-		cache.put(key, Boolean.TRUE, settingsProvider.get().toggleTtlMillis()).join();
+		cache.get().put(key, Boolean.TRUE, settingsProvider.get().toggleTtlMillis()).join();
 	}
 
 	public void disable(@NotNull RestrictionType type, @Nullable String providerId) {
 		String key = key(type, providerId);
 		if (key == null) return;
 
-		cache.invalidate(key).join();
+		cache.get().invalidate(key).join();
 	}
 
 	private @Nullable String key(@NotNull RestrictionType type, @Nullable String providerId) {

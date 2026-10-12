@@ -1,6 +1,7 @@
 package me.whereareiam.identica.adapter.database.username;
 
 import com.google.inject.Inject;
+import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
@@ -22,7 +23,7 @@ import java.util.UUID;
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class DefaultAccountUsernameStatePersistenceService implements AccountUsernameStatePersistenceService, EventListener {
-	private final EntityAccess<UsernameStateEntity> states;
+	private final Provider<EntityAccess<UsernameStateEntity>> states;
 	private final EventManager eventManager;
 
 	@Inject
@@ -32,23 +33,23 @@ public class DefaultAccountUsernameStatePersistenceService implements AccountUse
 
 	@Override
 	public @NotNull Optional<AccountUsernameState> find(@NotNull UUID uniqueId) {
-		return states.find(uniqueId).map(UsernameStateMapper::toModel);
+		return states.get().find(uniqueId).map(UsernameStateMapper::toModel);
 	}
 
 	@Override
 	public void save(@NotNull UUID uniqueId, @NotNull AccountUsernameSource source) {
 		UsernameStateEntity state = new UsernameStateEntity(uniqueId, source.getId(), System.currentTimeMillis());
-		if (states.find(uniqueId).isPresent()) {
-			states.update(state);
+		if (states.get().find(uniqueId).isPresent()) {
+			states.get().update(state);
 			return;
 		}
 
-		states.insert(state);
+		states.get().insert(state);
 	}
 
 	@Override
 	public void delete(@NotNull UUID uniqueId) {
-		states.delete(uniqueId);
+		states.get().delete(uniqueId);
 	}
 
 	@IdenticEvent(EventOrder.HIGH)

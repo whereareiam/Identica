@@ -87,6 +87,8 @@ public class EngineConfiguration extends AbstractModule {
 		bind(PersistAuthenticationUsernamePhase.class).asEagerSingleton();
 		bind(PersistRegistrationUsernamePhase.class).asEagerSingleton();
 		bind(UsernamePipelineExtension.class).asEagerSingleton();
-		Multibinder.newSetBinder(binder(), RuntimeLifecycle.class).addBinding().to(UsernamePipelineLifecycle.class);
+		Multibinder<RuntimeLifecycle> lifecycles = Multibinder.newSetBinder(binder(), RuntimeLifecycle.class);
+		lifecycles.addBinding().to(UsernamePipelineLifecycle.class);
+		lifecycles.addBinding().to(PendingPipelineKickCoordinator.class);
 	}
 }

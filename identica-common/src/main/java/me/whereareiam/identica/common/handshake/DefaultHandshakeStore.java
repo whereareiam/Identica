@@ -1,5 +1,7 @@
 package me.whereareiam.identica.common.handshake;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
@@ -30,7 +32,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 public final class DefaultHandshakeStore implements HandshakeStore, EventListener {
 	private static final String KEY_SEPARATOR = "|";
 	private final Set<HandshakePolicy> policies = new CopyOnWriteArraySet<>();
-	private final ReplicatedCache<HandshakeInstruction> cache;
+	private final Supplier<ReplicatedCache<HandshakeInstruction>> cache;
 	private final EventManager eventManager;
 
 	@Inject
@@ -39,8 +41,8 @@ public final class DefaultHandshakeStore implements HandshakeStore, EventListene
 			Provider<Replication> replicationProvider,
 			EventManager eventManager
 	) {
-		ReplicationType<HandshakeInstruction, HandshakeInstruction> type = ReplicationType.identity(HandshakeInstruction.class);
-		this.cache = replicationSystem.cache(resolveNamespace(replicationProvider)).replicated(type);
+		this.cache = Suppliers.memoize(() -> replicationSystem.cache(resolveNamespace(replicationProvider))
+				.replicated(ReplicationType.identity(HandshakeInstruction.class)));
 		this.eventManager = eventManager;
 		eventManager.register(this);
 	}
@@ -75,7 +77,7 @@ public final class DefaultHandshakeStore implements HandshakeStore, EventListene
 
 		String key = resolveKey(username, ip);
 		long ttlMs = Math.max(1, stored.getExpiresAt() - System.currentTimeMillis());
-		cache.put(key, stored, ttlMs).join();
+		cache.get().put(key, stored, ttlMs).join();
 	}
 
 	@Override
@@ -92,7 +94,7 @@ public final class DefaultHandshakeStore implements HandshakeStore, EventListene
 			return;
 		}
 
-		cache.invalidate(resolveKey(username, ip)).join();
+		cache.get().invalidate(resolveKey(username, ip)).join();
 	}
 
 	@IdenticEvent(EventOrder.LOWEST)
@@ -103,7 +105,7 @@ public final class DefaultHandshakeStore implements HandshakeStore, EventListene
 	}
 
 	private Optional<HandshakeInstruction> readByKey(@NotNull String key) {
-		HandshakeInstruction instruction = (cache.consume(key))
+		HandshakeInstruction instruction = (cache.get().consume(key))
 				.join()
 				.orElse(null);
 
@@ -120,10 +122,10 @@ public final class DefaultHandshakeStore implements HandshakeStore, EventListene
 		int pageSize = 100;
 
 		while (true) {
-			ReplicationPage resolved = cache.listKeys(page, pageSize).join();
+			ReplicationPage resolved = cache.get().listKeys(page, pageSize).join();
 			for (String key : resolved.getEntries()) {
 				if (key != null && key.startsWith(prefix))
-					cache.invalidate(key).join();
+					cache.get().invalidate(key).join();
 			}
 
 			if (resolved.getEntries().isEmpty()) return;

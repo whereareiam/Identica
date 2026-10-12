@@ -1,91 +1,80 @@
 package me.whereareiam.identica.common;
 
 import com.google.inject.Inject;
-import com.google.inject.Injector;
-import com.google.inject.Key;
-import com.google.inject.TypeLiteral;
-import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
-import java.util.Set;
-import java.util.ArrayList;
-import java.util.List;
-import me.whereareiam.identica.IdenticaAPI;
-import me.whereareiam.identica.command.CommandService;
-import me.whereareiam.identica.common.config.ConfigInitializer;
-import me.whereareiam.identica.common.logging.WelcomeBannerPrinter;
-import me.whereareiam.identica.database.DatabaseService;
 import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.base.IdenticEvent;
-import me.whereareiam.identica.common.feature.FeatureRuntime;
-import me.whereareiam.identica.common.provider.classloader.SharedLibraryClassLoaderFactory;
+import me.whereareiam.identica.event.lifecycle.IdenticaBootstrappedEvent;
 import me.whereareiam.identica.event.lifecycle.IdenticaReadyEvent;
 import me.whereareiam.identica.event.lifecycle.IdenticaShutdownEvent;
-import me.whereareiam.identica.listener.ListenerRegistrar;
+import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
+import me.whereareiam.identica.lifecycle.StartupPhase;
 import me.whereareiam.identica.logging.Logger;
-import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.type.event.EventOrder;
+import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * Starts and stops Identica: the bound {@link RuntimeLifecycle}s, phase by phase in the order of
+ * {@link StartupPhase}, and within a phase in the order they were bound. They stop in the reverse order.
+ */
 public class Identica implements EventListener {
-	private final Injector injector;
-	private final List<RuntimeLifecycle> lifecycles = new ArrayList<>();
-	private final ListenerRegistrar listenerRegistrar;
+	private final EventManager eventManager;
+	private final List<RuntimeLifecycle> lifecycles;
+	private final List<RuntimeLifecycle> started = new ArrayList<>();
 
 	@Inject
-	public Identica(
-			Injector injector,
-			EventManager eventManager,
-			ListenerRegistrar listenerRegistrar
-	) {
-		this.injector = injector;
-		this.listenerRegistrar = listenerRegistrar;
+	public Identica(@NotNull EventManager eventManager, @NotNull Set<RuntimeLifecycle> lifecycles) {
+		this.eventManager = eventManager;
+		this.lifecycles = lifecycles.stream()
+				.sorted(Comparator.comparing(RuntimeLifecycle::phase))
+				.toList();
 
 		eventManager.register(this);
 	}
 
-	public void bootstrap() {
-		ConfigInitializer.initialize(injector);
-		injector.getInstance(DatabaseService.class);
+	/**
+	 * Starts every lifecycle. {@link IdenticaBootstrappedEvent} is called once the features have started and
+	 * {@link IdenticaReadyEvent} at the end. When a lifecycle fails, the ones started before it, and the failed
+	 * one itself, are stopped in reverse and the failure is passed on.
+	 */
+	public void start() {
+		try {
+			for (StartupPhase phase : StartupPhase.values()) {
+				for (RuntimeLifecycle lifecycle : lifecycles) {
+					if (lifecycle.phase() != phase) continue;
 
-		IdenticaAPI.register(injector.getInstance(DefaultIdenticaAPI.class));
-		for (RuntimeLifecycle lifecycle : injector.getInstance(Key.get(new TypeLiteral<Set<RuntimeLifecycle>>() {}))) {
-			lifecycles.add(lifecycle);
-			lifecycle.initialize();
+					started.add(lifecycle);
+					lifecycle.initialize();
+				}
+				if (phase == StartupPhase.FEATURES) eventManager.call(new IdenticaBootstrappedEvent());
+			}
+		} catch (RuntimeException | Error failure) {
+			stop();
+			throw failure;
 		}
-	}
 
-	@IdenticEvent(EventOrder.LOW)
-	public void onReady(IdenticaReadyEvent event) {
-		injector.getInstance(CommandService.class);
-		injector.getInstance(ProviderManager.class).loadProviders();
-		listenerRegistrar.registerListeners();
-		IdenticaAPI.markReady();
-
-		injector.getInstance(WelcomeBannerPrinter.class).print();
+		eventManager.call(new IdenticaReadyEvent());
 	}
 
 	@IdenticEvent(EventOrder.LOW)
 	public void onShutdown(IdenticaShutdownEvent event) {
-		try {
-			injector.getInstance(ProviderManager.class).unloadProviders();
-		} finally {
+		stop();
+	}
+
+	private void stop() {
+		for (int i = started.size() - 1; i >= 0; i--) {
+			RuntimeLifecycle lifecycle = started.get(i);
 			try {
-				injector.getInstance(FeatureRuntime.class).shutdown();
-			} finally {
-				for (int i = lifecycles.size() - 1; i >= 0; i--) {
-					try {
-						lifecycles.get(i).shutdown();
-					} catch (RuntimeException failure) {
-						Logger.warn("Failed to stop identity subsystem: %s", failure.getMessage());
-					}
-				}
-				lifecycles.clear();
-				IdenticaAPI.unregister();
-				try {
-					injector.getInstance(SharedLibraryClassLoaderFactory.class).close();
-				} catch (java.io.IOException exception) {
-					Logger.warn("Failed to close shared provider libraries: %s", exception.getMessage());
-				}
+				lifecycle.shutdown();
+			} catch (RuntimeException failure) {
+				Logger.warn(failure, "Failed to stop %s", lifecycle.getClass().getSimpleName());
 			}
 		}
+		started.clear();
 	}
 }

@@ -45,6 +45,7 @@ dependencies {
     // Testcontainers waits for a MySQL container through MySQL's own driver; Identica uses MariaDB's.
     testFixturesRuntimeOnly(libs.mysql)
     testFixturesApi(libs.junit.jupiter)
+    testFixturesImplementation(libs.guice)
     testFixturesImplementation(libs.mockito.core)
     testFixturesImplementation(libs.annotations)
 }

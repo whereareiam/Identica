@@ -36,6 +36,8 @@ import org.incendo.cloud.setting.ManagerSetting;
 import org.incendo.cloud.internal.CommandNode;
 import org.incendo.cloud.permission.Permission;
 import org.incendo.cloud.suggestion.SuggestionProvider;
+import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
+import me.whereareiam.identica.lifecycle.StartupPhase;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -43,12 +45,16 @@ import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * Registers Identica's commands with the platform's command manager. The core commands are registered in
+ * {@link StartupPhase#RUNTIME}, before the features and providers add theirs.
+ */
 @Singleton
-public class DefaultCommandService implements CommandService {
+public class DefaultCommandService implements CommandService, RuntimeLifecycle {
 	private final Provider<Commands> commandsProvider;
 	private final Provider<Messages> messagesProvider;
 	private final Provider<CommandManager<Actor>> commandManagerProvider;
-	private final SerializerEngine serializer;
+	private final Provider<SerializerEngine> serializer;
 	private final Injector injector;
 	private final CrossPlayerSuggestions crossPlayerSuggestions;
 	private final ProviderIdSuggestions providerIdSuggestions;
@@ -63,7 +69,7 @@ public class DefaultCommandService implements CommandService {
 			Provider<Commands> commandsProvider,
 			Provider<Messages> messagesProvider,
 			Provider<CommandManager<Actor>> commandManagerProvider,
-			SerializerEngine serializer,
+			Provider<SerializerEngine> serializer,
 			Injector injector,
 			CrossPlayerSuggestions crossPlayerSuggestions,
 			ProviderIdSuggestions providerIdSuggestions
@@ -75,11 +81,18 @@ public class DefaultCommandService implements CommandService {
 		this.injector = injector;
 		this.crossPlayerSuggestions = crossPlayerSuggestions;
 		this.providerIdSuggestions = providerIdSuggestions;
-
-		initialize();
 	}
 
-	private void initialize() {
+	@Override
+	public @NotNull StartupPhase phase() {
+		return StartupPhase.RUNTIME;
+	}
+
+	/**
+	 * Registers the core commands, their suggestions and the exception handlers.
+	 */
+	@Override
+	public void initialize() {
 		CommandManager<Actor> commandManager = commandManagerProvider.get();
 		registerSyntaxFormatter(commandManager);
 		registerSuggestions(commandManager);
@@ -99,6 +112,14 @@ public class DefaultCommandService implements CommandService {
 		);
 
 		registerExceptionHandlers(commandManager);
+	}
+
+	/**
+	 * Leaves the commands registered: the proxy removes them with the plugin, and the features and providers
+	 * unregister their own when they stop.
+	 */
+	@Override
+	public void shutdown() {
 	}
 
 	@Override
@@ -342,7 +363,7 @@ public class DefaultCommandService implements CommandService {
 	private void registerExceptionHandlers(@NotNull CommandManager<Actor> commandManager) {
 		ExceptionMessages exceptionMessages = messagesProvider.get().getCommands().getExceptions();
 
-		SerializerEngine scopedSerializer = new ScopedSerializerEngine(serializer, Serializer.SCOPE);
+		SerializerEngine scopedSerializer = new ScopedSerializerEngine(serializer.get(), Serializer.SCOPE);
 		ExceptionHandlerRegistrar.register(
 				commandManager,
 				exceptionMessages,

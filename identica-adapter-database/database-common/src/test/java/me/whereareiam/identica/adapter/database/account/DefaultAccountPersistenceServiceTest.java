@@ -1,5 +1,6 @@
 package me.whereareiam.identica.adapter.database.account;
 
+import com.google.inject.util.Providers;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.entity.account.AccountEntity;
 import me.whereareiam.identica.adapter.database.repository.account.AccountRepository;
@@ -39,7 +40,7 @@ class DefaultAccountPersistenceServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		service = new DefaultAccountPersistenceService(accounts, accountRepository, eventManager);
+		service = new DefaultAccountPersistenceService(Providers.of(accounts), Providers.of(accountRepository), eventManager);
 	}
 
 	@DisplayName("Maps stored account entities back to domain models")

@@ -2,10 +2,8 @@ package me.whereareiam.identica.common.identity.session;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import me.whereareiam.identica.event.EventListener;
-import me.whereareiam.identica.event.EventManager;
-import me.whereareiam.identica.event.base.IdenticEvent;
-import me.whereareiam.identica.event.lifecycle.IdenticaShutdownEvent;
+import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
+import me.whereareiam.identica.lifecycle.StartupPhase;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.scheduler.JobKey;
@@ -30,7 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * first, so it is not written again.
  */
 @Singleton
-public class SessionKeepalive implements EventListener {
+public class SessionKeepalive implements RuntimeLifecycle {
 	/** Refreshes within one record lifetime. */
 	static final int REFRESHES_PER_LIFETIME = 3;
 	/** Record refreshes between two renewals of the index entries, a third of their lifetime. */
@@ -44,10 +42,21 @@ public class SessionKeepalive implements EventListener {
 	private final Map<String, Held> held = new ConcurrentHashMap<>();
 
 	@Inject
-	public SessionKeepalive(SessionStore store, Scheduler scheduler, EventManager eventManager) {
+	public SessionKeepalive(SessionStore store, Scheduler scheduler) {
 		this.store = store;
 		this.scheduler = scheduler;
+	}
 
+	@Override
+	public @NotNull StartupPhase phase() {
+		return StartupPhase.RUNTIME;
+	}
+
+	/**
+	 * Starts refreshing the held sessions every third of a record's lifetime.
+	 */
+	@Override
+	public void initialize() {
 		long interval = store.lifetimeMs() / REFRESHES_PER_LIFETIME;
 		scheduler.schedule(PeriodicalRunnableTask.builder()
 				.key(JOB_KEY)
@@ -55,7 +64,6 @@ public class SessionKeepalive implements EventListener {
 				.period(interval)
 				.runnable(this::refresh)
 				.build());
-		eventManager.register(this);
 	}
 
 	/**
@@ -76,8 +84,11 @@ public class SessionKeepalive implements EventListener {
 		return held.containsKey(sessionId);
 	}
 
-	@IdenticEvent
-	public void onShutdown(@NotNull IdenticaShutdownEvent event) {
+	/**
+	 * Stops refreshing and forgets the held sessions.
+	 */
+	@Override
+	public void shutdown() {
 		scheduler.cancel(JOB_KEY);
 		held.clear();
 	}

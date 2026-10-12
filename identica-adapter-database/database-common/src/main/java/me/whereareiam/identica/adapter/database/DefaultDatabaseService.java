@@ -1,9 +1,11 @@
 package me.whereareiam.identica.adapter.database;
 
 import com.google.inject.Inject;
+import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import com.zaxxer.hikari.HikariDataSource;
+import lombok.AccessLevel;
 import lombok.Getter;
 import me.whereareiam.dialectica.adapter.jdbi.DialecticaPlugin;
 import me.whereareiam.identica.adapter.database.config.LoggerConfig;
@@ -13,49 +15,57 @@ import me.whereareiam.identica.adapter.database.connection.UnsupportedDatabaseSe
 import me.whereareiam.identica.database.DatabaseService;
 import me.whereareiam.identica.adapter.database.schema.AccountSchema;
 import me.whereareiam.identica.adapter.database.schema.DatabaseSchemaInstaller;
-import me.whereareiam.identica.event.EventListener;
-import me.whereareiam.identica.event.EventManager;
-import me.whereareiam.identica.event.base.IdenticEvent;
-import me.whereareiam.identica.event.lifecycle.IdenticaShutdownEvent;
+import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
+import me.whereareiam.identica.lifecycle.StartupPhase;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.config.persistence.Persistence;
-import me.whereareiam.identica.type.event.EventOrder;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
+import org.jetbrains.annotations.NotNull;
 
 import javax.sql.DataSource;
 import java.nio.file.Path;
 
 /**
- * Default implementation of DatabaseService.
- * Opens the database, refuses a server older than {@link DatabaseServerRequirement} allows, installs
- * the core schema, and provides access to Jdbi and the {@link DatabaseSchemaInstaller} that installs
- * the other owners' schemas on it. The Jdbi speaks the database's Dialectica dialect, so entities and
- * the UUIDs and booleans of hand-written queries are stored the way the schema declares them.
+ * Identica's database, opened in {@link StartupPhase#PERSISTENCE}: opens the connection the {@code persistence}
+ * document configures, refuses a server older than {@link DatabaseServerRequirement} allows, installs the core
+ * schema, and provides access to Jdbi and the {@link DatabaseSchemaInstaller} that installs the other owners'
+ * schemas on it. The Jdbi speaks the database's Dialectica dialect, so entities and the UUIDs and booleans of
+ * hand-written queries are stored the way the schema declares them. It closes the connection when Identica stops.
  */
 @Getter
 @Singleton
-public class DefaultDatabaseService implements DatabaseService, EventListener {
-	private final Persistence persistence;
+public class DefaultDatabaseService implements DatabaseService, RuntimeLifecycle {
+	@Getter(AccessLevel.NONE)
+	private final Provider<Persistence> persistence;
+	@Getter(AccessLevel.NONE)
+	private final Path dataPath;
 	private DataSource dataSource;
 	private Jdbi jdbi;
 	private DatabaseSchemaInstaller schemaInstaller;
 
 	@Inject
 	public DefaultDatabaseService(
-			Persistence persistence,
-			EventManager eventManager,
+			Provider<Persistence> persistence,
 			@Named("dataPath") Path dataPath
 	) {
 		this.persistence = persistence;
-
-		eventManager.register(this);
-		initialize(dataPath);
+		this.dataPath = dataPath;
 	}
 
-	public void initialize(Path dataPath) {
+	@Override
+	public @NotNull StartupPhase phase() {
+		return StartupPhase.PERSISTENCE;
+	}
+
+	/**
+	 * Opens the database and installs the core schema. A failure stops Identica's startup.
+	 */
+	@Override
+	public void initialize() {
 		if (jdbi != null) throw new IllegalStateException("DatabaseService has already been initialized");
 
+		Persistence persistence = this.persistence.get();
 		try {
 			this.dataSource = DataSourceFactory.create(persistence, dataPath);
 			DatabaseServerRequirement.verify(persistence.getType(), dataSource);
@@ -79,8 +89,11 @@ public class DefaultDatabaseService implements DatabaseService, EventListener {
 		}
 	}
 
-	@IdenticEvent(EventOrder.HIGH)
-	public void onShutdown(IdenticaShutdownEvent event) {
+	/**
+	 * Closes the connection pool.
+	 */
+	@Override
+	public void shutdown() {
 		if (!isInitialized()) return;
 
 		try {

@@ -71,7 +71,7 @@ public class ProviderLifecycleController {
 	private final ProviderResolverRegistry resolverRegistry;
 	private final FeatureRegistry features;
 	private final ConflictService conflictService;
-	private final SchemaInstaller schemaInstaller;
+	private final Provider<SchemaInstaller> schemaInstaller;
 	private final EventManager eventManager;
 	private final HandshakeStore handshakeStore;
 	private final Registry<Reloadable> reloadables;
@@ -324,7 +324,7 @@ public class ProviderLifecycleController {
 
 	private void installDatabaseSchemas(Injector injector) {
 		for (DatabaseSchema schema : resolveSet(injector, DATABASE_SCHEMAS))
-			schemaInstaller.install(schema);
+			schemaInstaller.get().install(schema);
 	}
 
 	private void unregisterProviderBindings(InternalProvider internal) {

@@ -1,5 +1,6 @@
 package me.whereareiam.identica.adapter.database.provider;
 
+import com.google.inject.util.Providers;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.entity.account.AccountProviderProfileEntity;
 import me.whereareiam.identica.adapter.database.testing.TestDataFactory;
@@ -32,7 +33,7 @@ class DefaultProviderProfilePersistenceServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		service = new DefaultProviderProfilePersistenceService(profiles);
+		service = new DefaultProviderProfilePersistenceService(Providers.of(profiles));
 	}
 
 	@DisplayName("Refuses blank provider IDs and subjects when looking up profiles")

@@ -3,11 +3,8 @@ package me.whereareiam.identica.adapter.database.testing.schema;
 import com.zaxxer.hikari.HikariDataSource;
 import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
 import me.whereareiam.identica.adapter.database.connection.DataSourceFactory;
-import me.whereareiam.identica.event.EventManager;
-import me.whereareiam.identica.event.lifecycle.IdenticaShutdownEvent;
 import me.whereareiam.identica.model.config.persistence.Persistence;
 import me.whereareiam.identica.type.DatabaseType;
-import org.mockito.Mockito;
 
 import javax.sql.DataSource;
 import java.io.IOException;
@@ -83,14 +80,17 @@ public abstract class TestDatabase {
 	 * Opens the database as Identica does, which installs the core schema.
 	 */
 	public DefaultDatabaseService open() {
-		return new DefaultDatabaseService(requirePersistence(), Mockito.mock(EventManager.class), dataPath);
+		Persistence persistence = requirePersistence();
+		DefaultDatabaseService database = new DefaultDatabaseService(() -> persistence, dataPath);
+		database.initialize();
+		return database;
 	}
 
 	/**
 	 * Closes a database opened by {@link #open()}.
 	 */
 	public static void close(DefaultDatabaseService database) {
-		database.onShutdown(new IdenticaShutdownEvent());
+		database.shutdown();
 	}
 
 	private Persistence requirePersistence() {

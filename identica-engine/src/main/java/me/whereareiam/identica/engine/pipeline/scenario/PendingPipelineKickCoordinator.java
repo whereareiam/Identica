@@ -7,7 +7,8 @@ import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.base.IdenticEvent;
-import me.whereareiam.identica.event.lifecycle.IdenticaShutdownEvent;
+import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
+import me.whereareiam.identica.lifecycle.StartupPhase;
 import me.whereareiam.identica.event.scenario.ScenarioRequiredEvent;
 import me.whereareiam.identica.event.scenario.ScenarioResolvedEvent;
 import me.whereareiam.identica.event.scenario.authentication.AuthenticationResolvedEvent;
@@ -41,7 +42,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Singleton
-public class PendingPipelineKickCoordinator implements EventListener {
+public class PendingPipelineKickCoordinator implements EventListener, RuntimeLifecycle {
 	private static final Origin ORIGIN = Origin.core(PendingPipelineKickCoordinator.class);
 	private static final Purpose PURPOSE = Purpose.of("pipeline-expiry");
 
@@ -67,8 +68,23 @@ public class PendingPipelineKickCoordinator implements EventListener {
 		eventManager.register(this);
 	}
 
-	@IdenticEvent
-	public void onShutdown(@NotNull IdenticaShutdownEvent event) {
+	@Override
+	public @NotNull StartupPhase phase() {
+		return StartupPhase.RUNTIME;
+	}
+
+	/**
+	 * Has nothing to start: a kick is scheduled when a scenario is required.
+	 */
+	@Override
+	public void initialize() {
+	}
+
+	/**
+	 * Cancels the kicks still waiting.
+	 */
+	@Override
+	public void shutdown() {
 		scheduler.cancelByOrigin(ORIGIN);
 	}
 

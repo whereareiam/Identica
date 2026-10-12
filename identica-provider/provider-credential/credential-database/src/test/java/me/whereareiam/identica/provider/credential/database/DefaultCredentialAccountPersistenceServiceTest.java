@@ -1,5 +1,6 @@
 package me.whereareiam.identica.provider.credential.database;
 
+import com.google.inject.util.Providers;
 import me.whereareiam.dialectica.Dialectica;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
@@ -30,9 +31,9 @@ class DefaultCredentialAccountPersistenceServiceTest {
 			databaseService.getSchemaInstaller().install(new CredentialSchema());
 			Jdbi jdbi = databaseService.getJdbi();
 			DefaultCredentialAccountPersistenceService service = new DefaultCredentialAccountPersistenceService(
-					EntityAccess.of(jdbi, Dialectica.entity(CredentialAccountEntity.class)),
-					EntityAccess.of(jdbi, Dialectica.entity(CredentialAccountHistoryEntity.class)),
-					jdbi.onDemand(CredentialAccountRepository.class)
+					Providers.of(EntityAccess.of(jdbi, Dialectica.entity(CredentialAccountEntity.class))),
+					Providers.of(EntityAccess.of(jdbi, Dialectica.entity(CredentialAccountHistoryEntity.class))),
+					Providers.of(jdbi.onDemand(CredentialAccountRepository.class))
 			);
 
 			service.create(new CredentialAccount("credential", "alice", "hash", "ARGON2", 10L, 10L));

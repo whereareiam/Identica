@@ -10,6 +10,7 @@ import me.whereareiam.configura.type.Format;
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.common.config.ConfigBindings;
 import me.whereareiam.identica.common.config.ConfigMigrations;
+import me.whereareiam.identica.common.config.ConfigurationLifecycle;
 import me.whereareiam.identica.common.config.IdenticaModule;
 import me.whereareiam.identica.common.config.resolver.FileSystemConfigurationTypeResolver;
 import me.whereareiam.identica.common.conflict.ConflictConfiguration;
@@ -18,6 +19,7 @@ import me.whereareiam.identica.common.event.EventController;
 import me.whereareiam.identica.common.identity.IdentityConfiguration;
 import me.whereareiam.identica.common.identity.session.SessionConfiguration;
 import me.whereareiam.identica.common.listener.ListenerConfiguration;
+import me.whereareiam.identica.common.logging.LoggingLifecycle;
 import me.whereareiam.identica.common.messaging.MessagingConfiguration;
 import me.whereareiam.identica.common.prepare.PipelineStateConfiguration;
 import me.whereareiam.identica.common.provider.ProviderConfiguration;
@@ -27,17 +29,14 @@ import me.whereareiam.identica.common.replication.ReplicationConfiguration;
 import me.whereareiam.identica.common.routing.RoutingConfiguration;
 import me.whereareiam.identica.config.ConfigurationTypeResolver;
 import me.whereareiam.identica.event.EventManager;
+import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
 import me.whereareiam.identica.logging.BannerContributor;
-import me.whereareiam.identica.logging.Logger;
-import me.whereareiam.identica.logging.LoggingHelper;
 import me.whereareiam.identica.util.EventUtil;
 import me.whereareiam.keystone.serializer.SerializerEngine;
 import me.whereareiam.strata.Strata;
 import me.whereareiam.strata.adapter.configura.StrataFeature;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -48,6 +47,12 @@ public class CommonConfiguration extends AbstractModule {
 	@Override
 	protected void configure() {
 		requestInjection(this);
+
+		// Startup, in binding order within each phase
+		Multibinder<RuntimeLifecycle> lifecycles = Multibinder.newSetBinder(binder(), RuntimeLifecycle.class);
+		lifecycles.addBinding().to(ConfigurationLifecycle.class);
+		lifecycles.addBinding().to(LoggingLifecycle.class);
+		lifecycles.addBinding().to(ApiLifecycle.class);
 
 		// Configuration core
 		bind(ConfigurationTypeResolver.class)
@@ -71,7 +76,6 @@ public class CommonConfiguration extends AbstractModule {
 		bind(EventManager.class).to(EventController.class);
 		bind(SerializerEngine.class).toProvider(SerializerEngineProvider.class);
 		Multibinder.newSetBinder(binder(), BannerContributor.class);
-		Multibinder.newSetBinder(binder(), me.whereareiam.identica.lifecycle.RuntimeLifecycle.class);
 		bind(Identica.class).asEagerSingleton();
 	}
 
@@ -85,23 +89,6 @@ public class CommonConfiguration extends AbstractModule {
 		EventUtil.initialize(eventManager);
 	}
 
-	/**
-	 * Brings the data directory up to date before the shared Configura instance is installed, and
-	 * with it before any document is loaded. A failed migration fails the injector, so Identica does
-	 * not start on a directory it could not upgrade.
-	 * <p>
-	 * Identica's {@link Logger} is handed its platform backend right after, once the settings that
-	 * hold the log level can be read. This runs while the injector is created and before its eager
-	 * singletons, so what they log on start-up, such as the database opening and installing its
-	 * schema, reaches the proxy console.
-	 */
-	@Inject
-	void initializeConfiguraAndLogger(Configura configura, Strata strata, LoggingHelper loggingHelper) {
-		strata.migrate();
-		Config.setConfigured(configura);
-		Logger.init(loggingHelper);
-	}
-
 	@Provides
 	@Singleton
 	@NotNull Strata provideStrata(Configura configura, @Named("dataPath") Path dataPath) {
@@ -112,7 +99,7 @@ public class CommonConfiguration extends AbstractModule {
 	@Singleton
 	@Named("dataPath")
 	Path provideDataPath() {
-		return ensureDirectory(dataPath, "data");
+		return dataPath;
 	}
 
 	@Provides
@@ -130,7 +117,7 @@ public class CommonConfiguration extends AbstractModule {
 	@Singleton
 	@Named("providersPath")
 	Path provideProvidersPath(@Named("dataPath") Path dataPath) {
-		return ensureDirectory(dataPath.resolve("providers"), "providers");
+		return dataPath.resolve("providers");
 	}
 
 	@Provides
@@ -144,15 +131,6 @@ public class CommonConfiguration extends AbstractModule {
 	@Singleton
 	@Named("featuresPath")
 	Path provideFeaturesPath(@Named("dataPath") Path dataPath) {
-		return ensureDirectory(dataPath.resolve("features"), "features");
-	}
-
-	private Path ensureDirectory(Path path, String label) {
-		try {
-			Files.createDirectories(path);
-			return path;
-		} catch (IOException e) {
-			throw new RuntimeException("Failed to create " + label + " directory", e);
-		}
+		return dataPath.resolve("features");
 	}
 }

@@ -1,6 +1,7 @@
 package me.whereareiam.identica.provider.credential.database;
 
 import com.google.inject.Inject;
+import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
@@ -18,9 +19,9 @@ import java.util.Optional;
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class DefaultCredentialAccountPersistenceService implements CredentialAccountPersistenceService {
-	private final EntityAccess<CredentialAccountEntity> credentials;
-	private final EntityAccess<CredentialAccountHistoryEntity> passwordChanges;
-	private final CredentialAccountRepository credentialRepository;
+	private final Provider<EntityAccess<CredentialAccountEntity>> credentials;
+	private final Provider<EntityAccess<CredentialAccountHistoryEntity>> passwordChanges;
+	private final Provider<CredentialAccountRepository> credentialRepository;
 
 	@Override
 	public @NotNull Optional<CredentialAccount> findBySubject(
@@ -28,7 +29,7 @@ public class DefaultCredentialAccountPersistenceService implements CredentialAcc
 			@NotNull String providerSubject
 	) {
 		if (providerId.isBlank() || providerSubject.isBlank()) return Optional.empty();
-		return credentials.find(providerId, providerSubject)
+		return credentials.get().find(providerId, providerSubject)
 				.map(CredentialAccountMapper::toModel);
 	}
 
@@ -37,7 +38,7 @@ public class DefaultCredentialAccountPersistenceService implements CredentialAcc
 		CredentialAccount existing = findBySubject(credential.getProviderId(), credential.getProviderSubject()).orElse(null);
 		if (existing != null) return existing;
 
-		credentials.insert(CredentialAccountMapper.toEntity(credential));
+		credentials.get().insert(CredentialAccountMapper.toEntity(credential));
 		return credential;
 	}
 
@@ -49,12 +50,12 @@ public class DefaultCredentialAccountPersistenceService implements CredentialAcc
 			@NotNull String hashingMethod,
 			long updatedAt
 	) {
-		credentialRepository.updatePassword(providerId, providerSubject, passwordHash, hashingMethod, updatedAt);
+		credentialRepository.get().updatePassword(providerId, providerSubject, passwordHash, hashingMethod, updatedAt);
 	}
 
 	@Override
 	public void delete(@NotNull String providerId, @NotNull String providerSubject) {
-		credentials.delete(providerId, providerSubject);
+		credentials.get().delete(providerId, providerSubject);
 	}
 
 	@Override
@@ -62,6 +63,6 @@ public class DefaultCredentialAccountPersistenceService implements CredentialAcc
 		var entity = CredentialAccountHistoryMapper.toEntity(history);
 		if (entity == null)
 			return;
-		passwordChanges.insert(entity);
+		passwordChanges.get().insert(entity);
 	}
 }

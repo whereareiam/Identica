@@ -3,6 +3,7 @@ package me.whereareiam.identica.adapter.database;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import com.google.inject.multibindings.Multibinder;
 import me.whereareiam.dialectica.Dialectica;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.account.DefaultAccountPersistenceService;
@@ -27,6 +28,7 @@ import me.whereareiam.identica.database.DatabaseService;
 import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.persistence.provider.ProviderProfilePersistenceService;
 import me.whereareiam.identica.database.schema.SchemaInstaller;
+import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
 import me.whereareiam.identica.persistence.username.AccountUsernameHistoryPersistenceService;
 import me.whereareiam.identica.persistence.username.AccountUsernameStatePersistenceService;
 import org.jdbi.v3.core.Jdbi;
@@ -38,6 +40,7 @@ public class DatabaseConfiguration extends AbstractModule {
 	protected void configure() {
 		bind(Jdbi.class).toProvider(JdbiProvider.class);
 		bind(DatabaseService.class).to(DefaultDatabaseService.class).asEagerSingleton();
+		Multibinder.newSetBinder(binder(), RuntimeLifecycle.class).addBinding().to(DefaultDatabaseService.class);
 		bind(AccountPersistenceService.class).to(DefaultAccountPersistenceService.class).asEagerSingleton();
 		bind(AccountReservationPersistenceService.class).to(DefaultAccountReservationPersistenceService.class).asEagerSingleton();
 		bind(ProviderLinkPersistenceService.class).to(DefaultProviderLinkPersistenceService.class).asEagerSingleton();
@@ -48,13 +51,13 @@ public class DatabaseConfiguration extends AbstractModule {
 
 	@Provides
 	public DataSource provideDataSource(DefaultDatabaseService databaseService) {
-		return databaseService.getDataSource();
+		return open(databaseService).getDataSource();
 	}
 
 	@Provides
 	@Singleton
 	public SchemaInstaller provideSchemaInstaller(DefaultDatabaseService databaseService) {
-		return databaseService.getSchemaInstaller();
+		return open(databaseService).getSchemaInstaller();
 	}
 
 	@Provides
@@ -115,5 +118,12 @@ public class DatabaseConfiguration extends AbstractModule {
 	@Singleton
 	public UsernameHistoryRepository provideUsernameHistoryRepository(Jdbi jdbi) {
 		return jdbi.onDemand(UsernameHistoryRepository.class);
+	}
+
+	private static DefaultDatabaseService open(DefaultDatabaseService databaseService) {
+		if (!databaseService.isInitialized())
+			throw new IllegalStateException("The database is not open yet; it opens in the persistence phase of the startup");
+
+		return databaseService;
 	}
 }

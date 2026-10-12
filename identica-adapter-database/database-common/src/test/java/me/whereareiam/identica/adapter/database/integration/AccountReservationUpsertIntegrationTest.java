@@ -1,5 +1,6 @@
 package me.whereareiam.identica.adapter.database.integration;
 
+import com.google.inject.util.Providers;
 import me.whereareiam.dialectica.Dialectica;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
@@ -73,8 +74,8 @@ class AccountReservationUpsertIntegrationTest {
 
 	private static DefaultAccountReservationPersistenceService reservations(Jdbi jdbi) {
 		return new DefaultAccountReservationPersistenceService(
-				EntityAccess.of(jdbi, Dialectica.entity(AccountReservationEntity.class)),
-				jdbi.onDemand(AccountReservationRepository.class)
+				Providers.of(EntityAccess.of(jdbi, Dialectica.entity(AccountReservationEntity.class))),
+				Providers.of(jdbi.onDemand(AccountReservationRepository.class))
 		);
 	}
 

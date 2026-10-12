@@ -1,11 +1,8 @@
 package me.whereareiam.identica.adapter.database.testing;
 
 import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
-import me.whereareiam.identica.event.EventManager;
-import me.whereareiam.identica.event.lifecycle.IdenticaShutdownEvent;
 import me.whereareiam.identica.model.config.persistence.Persistence;
 import org.jdbi.v3.core.Jdbi;
-import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,7 +21,8 @@ public abstract class AbstractDatabaseFixture implements DatabaseFixture {
 		try {
 			dataPath = Files.createTempDirectory("identica-test-");
 			Persistence persistence = createPersistence(dataPath);
-			databaseService = new DefaultDatabaseService(persistence, Mockito.mock(EventManager.class), dataPath);
+			databaseService = new DefaultDatabaseService(() -> persistence, dataPath);
+			databaseService.initialize();
 			jdbi = databaseService.getJdbi();
 			started = true;
 		} catch (RuntimeException e) {
@@ -59,7 +57,7 @@ public abstract class AbstractDatabaseFixture implements DatabaseFixture {
 
 		try {
 			if (databaseService != null) {
-				databaseService.onShutdown(new IdenticaShutdownEvent());
+				databaseService.shutdown();
 			}
 		} finally {
 			started = false;

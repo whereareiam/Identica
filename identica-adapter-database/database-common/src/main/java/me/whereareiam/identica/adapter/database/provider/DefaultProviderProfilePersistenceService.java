@@ -1,6 +1,7 @@
 package me.whereareiam.identica.adapter.database.provider;
 
 import com.google.inject.Inject;
+import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
@@ -15,7 +16,7 @@ import java.util.Optional;
 @Singleton
 @RequiredArgsConstructor(onConstructor = @__(@Inject))
 public class DefaultProviderProfilePersistenceService implements ProviderProfilePersistenceService {
-	private final EntityAccess<AccountProviderProfileEntity> profiles;
+	private final Provider<EntityAccess<AccountProviderProfileEntity>> profiles;
 
 	@Override
 	public @NotNull Optional<AccountProviderProfile> findBySubject(
@@ -23,7 +24,7 @@ public class DefaultProviderProfilePersistenceService implements ProviderProfile
 			@NotNull String providerSubject
 	) {
 		if (providerId.isBlank() || providerSubject.isBlank()) return Optional.empty();
-		return profiles.find(providerId, providerSubject).map(AccountProviderProfileMapper::toModel);
+		return profiles.get().find(providerId, providerSubject).map(AccountProviderProfileMapper::toModel);
 	}
 
 	@Override
@@ -34,16 +35,16 @@ public class DefaultProviderProfilePersistenceService implements ProviderProfile
 			throw new IllegalArgumentException("Provider resolver provider subject is required");
 
 		AccountProviderProfileEntity entity = AccountProviderProfileMapper.toEntity(profile);
-		Optional<AccountProviderProfileEntity> existing = profiles.find(
+		Optional<AccountProviderProfileEntity> existing = profiles.get().find(
 				profile.getProviderId(),
 				profile.getProviderSubject()
 		);
 		if (existing.isPresent()) {
-			profiles.update(entity);
+			profiles.get().update(entity);
 			return AccountProviderProfileMapper.toModel(entity);
 		}
 
-		profiles.insert(entity);
+		profiles.get().insert(entity);
 
 		return AccountProviderProfileMapper.toModel(entity);
 	}
@@ -51,6 +52,6 @@ public class DefaultProviderProfilePersistenceService implements ProviderProfile
 	@Override
 	public void delete(@NotNull String providerId, @NotNull String providerSubject) {
 		if (providerId.isBlank() || providerSubject.isBlank()) return;
-		profiles.delete(providerId, providerSubject);
+		profiles.get().delete(providerId, providerSubject);
 	}
 }

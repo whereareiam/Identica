@@ -1,5 +1,6 @@
 package me.whereareiam.identica.adapter.database.integration;
 
+import com.google.inject.util.Providers;
 import me.whereareiam.dialectica.Dialectica;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
@@ -170,16 +171,16 @@ class StoredValueCompatibilityIntegrationTest {
 
 	private static DefaultAccountPersistenceService accounts(Jdbi jdbi) {
 		return new DefaultAccountPersistenceService(
-				EntityAccess.of(jdbi, Dialectica.entity(AccountEntity.class)),
-				jdbi.onDemand(AccountRepository.class),
+				Providers.of(EntityAccess.of(jdbi, Dialectica.entity(AccountEntity.class))),
+				Providers.of(jdbi.onDemand(AccountRepository.class)),
 				Mockito.mock(EventManager.class)
 		);
 	}
 
 	private static DefaultProviderLinkPersistenceService links(Jdbi jdbi) {
 		return new DefaultProviderLinkPersistenceService(
-				EntityAccess.of(jdbi, Dialectica.entity(AccountProviderLinkEntity.class)),
-				jdbi.onDemand(ProviderLinkRepository.class),
+				Providers.of(EntityAccess.of(jdbi, Dialectica.entity(AccountProviderLinkEntity.class))),
+				Providers.of(jdbi.onDemand(ProviderLinkRepository.class)),
 				Mockito.mock(EventManager.class)
 		);
 	}

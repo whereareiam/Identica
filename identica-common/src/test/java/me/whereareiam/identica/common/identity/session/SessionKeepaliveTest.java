@@ -1,10 +1,9 @@
 package me.whereareiam.identica.common.identity.session;
 
-import me.whereareiam.identica.common.event.EventController;
 import me.whereareiam.identica.common.replication.DefaultReplicationSystem;
 import me.whereareiam.identica.common.replication.ReplicationTestFixtures;
-import me.whereareiam.identica.event.lifecycle.IdenticaShutdownEvent;
 import me.whereareiam.identica.model.Session;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -23,8 +22,13 @@ class SessionKeepaliveTest {
 	private final ReplicationTestFixtures.TestReplicationAdapter adapter = SessionFixtures.sharedStore();
 	private final SessionStore store = new SessionStore(LIFETIME_MS, replication("alpha"), new DefaultReplicationSystem(adapter));
 	private final SessionFixtures.ManualScheduler scheduler = new SessionFixtures.ManualScheduler();
-	private final SessionKeepalive keepalive = new SessionKeepalive(store, scheduler, new EventController());
+	private final SessionKeepalive keepalive = new SessionKeepalive(store, scheduler);
 	private final UUID account = UUID.randomUUID();
+
+	@BeforeEach
+	void start() {
+		keepalive.initialize();
+	}
 
 	@DisplayName("Held sessions are refreshed every third of the heartbeat timeout")
 	@Test
@@ -109,7 +113,7 @@ class SessionKeepaliveTest {
 	void shutdownStopsRefreshing() {
 		held();
 
-		keepalive.onShutdown(new IdenticaShutdownEvent());
+		keepalive.shutdown();
 
 		assertFalse(scheduler.scheduled());
 	}

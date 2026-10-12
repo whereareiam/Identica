@@ -1,5 +1,7 @@
 package me.whereareiam.identica.feature.recognition.store;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
@@ -15,8 +17,8 @@ import java.util.UUID;
 
 @Singleton
 public class DefaultRecognizedConnectionStore implements RecognizedConnectionStore {
-	private final Cache<Boolean> cache;
 	private final Provider<RecognitionSettings> settingsProvider;
+	private final Supplier<Cache<Boolean>> cache;
 
 	@Inject
 	public DefaultRecognizedConnectionStore(
@@ -25,34 +27,43 @@ public class DefaultRecognizedConnectionStore implements RecognizedConnectionSto
 			@NotNull Provider<Replication> replicationProvider
 	) {
 		this.settingsProvider = settingsProvider;
-		RecognitionSettings settings = settingsProvider.get();
-		long ttlMs = settings.windowMillis();
+		this.cache = Suppliers.memoize(() -> createCache(replicationSystem, settingsProvider.get(), replicationProvider.get()));
+	}
 
+	@Override
+	public void markRecognized(@NotNull UUID connectionUniqueId) {
+		cache.get().put(connectionUniqueId.toString(), Boolean.TRUE, settingsProvider.get().windowMillis()).join();
+	}
+
+	@Override
+	public boolean isRecognized(@NotNull UUID connectionUniqueId) {
+		Optional<Boolean> stored = cache.get().get(connectionUniqueId.toString()).join();
+		return stored.orElse(false);
+	}
+
+	@Override
+	public boolean consumeRecognized(@NotNull UUID connectionUniqueId) {
+		Optional<Boolean> stored = cache.get().consume(connectionUniqueId.toString()).join();
+		return stored.orElse(false);
+	}
+
+	/**
+	 * Creates the cache on first use, once the recognition settings and the replication document are loaded.
+	 */
+	private static @NotNull Cache<Boolean> createCache(
+			@NotNull ReplicationSystem replicationSystem,
+			@NotNull RecognitionSettings settings,
+			@NotNull Replication replication
+	) {
+		long ttlMs = settings.windowMillis();
 		String namespace = resolveNamespace(settings);
-		this.cache = replicationProvider.get().isEnabled()
+		return replication.isEnabled()
 				? replicationSystem.cache(namespace)
 						.defaultTtl(ttlMs)
 						.replicated(ReplicationType.identity(Boolean.class))
 				: replicationSystem.cache(namespace)
 						.defaultTtl(ttlMs)
 						.local();
-	}
-
-	@Override
-	public void markRecognized(@NotNull UUID connectionUniqueId) {
-		cache.put(connectionUniqueId.toString(), Boolean.TRUE, settingsProvider.get().windowMillis()).join();
-	}
-
-	@Override
-	public boolean isRecognized(@NotNull UUID connectionUniqueId) {
-		Optional<Boolean> stored = cache.get(connectionUniqueId.toString()).join();
-		return stored.orElse(false);
-	}
-
-	@Override
-	public boolean consumeRecognized(@NotNull UUID connectionUniqueId) {
-		Optional<Boolean> stored = cache.consume(connectionUniqueId.toString()).join();
-		return stored.orElse(false);
 	}
 
 	private static @NotNull String resolveNamespace(@NotNull RecognitionSettings settings) {

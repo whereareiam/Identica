@@ -47,7 +47,7 @@ Protected actions evaluate verification for the current session's provider. A ta
 
 `IdenticaFeature` owns shared modules, initialization, shutdown, and optional provider-local contributions. Its internal dependency declarations determine wiring order. `configurationPath()` identifies the provider settings subtree, and `enabledByDefault(context)` reads the feature-owned shared default. Global services are initialized once; providers contribute only their integrations.
 
-Keep listeners, commands, pipeline extensions, models, persistence and configuration with the subsystem that owns them. Register lifecycle resources during initialization and remove them during shutdown, including partial initialization failures. Mandatory identity subsystems use `RuntimeLifecycle`; they do not appear in the feature registry.
+Keep listeners, commands, pipeline extensions, models, persistence and configuration with the subsystem that owns them. Register lifecycle resources during initialization and remove them during shutdown, including partial initialization failures. Mandatory subsystems use `RuntimeLifecycle` and name the `StartupPhase` they start in; they do not appear in the feature registry. Identica starts the phases in order and stops them in reverse, and building a lifecycle does no I/O: documents, the database and other stores are read once it starts.
 
 ## Validation
 

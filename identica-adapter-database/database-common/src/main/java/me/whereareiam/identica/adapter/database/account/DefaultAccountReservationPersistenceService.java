@@ -1,6 +1,7 @@
 package me.whereareiam.identica.adapter.database.account;
 
 import com.google.inject.Inject;
+import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.entity.account.AccountReservationEntity;
@@ -14,13 +15,13 @@ import java.util.UUID;
 
 @Singleton
 public class DefaultAccountReservationPersistenceService implements AccountReservationPersistenceService {
-	private final EntityAccess<AccountReservationEntity> reservations;
-	private final AccountReservationRepository repository;
+	private final Provider<EntityAccess<AccountReservationEntity>> reservations;
+	private final Provider<AccountReservationRepository> repository;
 
 	@Inject
 	public DefaultAccountReservationPersistenceService(
-			EntityAccess<AccountReservationEntity> reservations,
-			AccountReservationRepository repository
+			Provider<EntityAccess<AccountReservationEntity>> reservations,
+			Provider<AccountReservationRepository> repository
 	) {
 		this.reservations = reservations;
 		this.repository = repository;
@@ -32,7 +33,7 @@ public class DefaultAccountReservationPersistenceService implements AccountReser
 
 		try {
 			long now = System.currentTimeMillis();
-			return reservations.find(reservationKey)
+			return reservations.get().find(reservationKey)
 					.filter(reservation -> !isExpired(reservation.getExpiresAt(), now))
 					.map(AccountReservationEntity::getUniqueId);
 		} catch (Exception e) {
@@ -47,7 +48,7 @@ public class DefaultAccountReservationPersistenceService implements AccountReser
 		if (expiresAt <= createdAt) return;
 
 		try {
-			reservations.upsert(new AccountReservationEntity(reservationKey, uniqueId, createdAt, expiresAt));
+			reservations.get().upsert(new AccountReservationEntity(reservationKey, uniqueId, createdAt, expiresAt));
 		} catch (Exception e) {
 			Logger.warn(e, "Failed to reserve account UUID %s for %s", uniqueId, reservationKey);
 		}
@@ -58,7 +59,7 @@ public class DefaultAccountReservationPersistenceService implements AccountReser
 		if (reservationKey.isBlank()) return;
 
 		try {
-			reservations.delete(reservationKey);
+			reservations.get().delete(reservationKey);
 		} catch (Exception e) {
 			Logger.warn(e, "Failed to delete account reservation %s", reservationKey);
 		}
@@ -67,7 +68,7 @@ public class DefaultAccountReservationPersistenceService implements AccountReser
 	@Override
 	public void deleteByUniqueId(@NotNull UUID uniqueId) {
 		try {
-			repository.deleteByUniqueId(uniqueId);
+			repository.get().deleteByUniqueId(uniqueId);
 		} catch (Exception e) {
 			Logger.warn(e, "Failed to delete account reservations for %s", uniqueId);
 		}
@@ -76,7 +77,7 @@ public class DefaultAccountReservationPersistenceService implements AccountReser
 	@Override
 	public void deleteExpired(long now) {
 		try {
-			repository.deleteExpired(now);
+			repository.get().deleteExpired(now);
 		} catch (Exception e) {
 			Logger.warn(e, "Failed to delete expired account reservations");
 		}
@@ -84,7 +85,7 @@ public class DefaultAccountReservationPersistenceService implements AccountReser
 
 	private boolean isExpired(long expiresAt, long now) {
 		if (expiresAt > now) return false;
-		repository.deleteExpired(now);
+		repository.get().deleteExpired(now);
 		return true;
 	}
 }

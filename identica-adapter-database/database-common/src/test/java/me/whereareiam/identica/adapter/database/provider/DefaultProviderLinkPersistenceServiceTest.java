@@ -1,5 +1,6 @@
 package me.whereareiam.identica.adapter.database.provider;
 
+import com.google.inject.util.Providers;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.entity.account.AccountProviderLinkEntity;
 import me.whereareiam.identica.adapter.database.repository.provider.ProviderLinkRepository;
@@ -38,7 +39,7 @@ class DefaultProviderLinkPersistenceServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		service = new DefaultProviderLinkPersistenceService(links, repository, eventManager);
+		service = new DefaultProviderLinkPersistenceService(Providers.of(links), Providers.of(repository), eventManager);
 	}
 
 	@DisplayName("Refuses blank provider IDs and subjects when looking up links by subject")

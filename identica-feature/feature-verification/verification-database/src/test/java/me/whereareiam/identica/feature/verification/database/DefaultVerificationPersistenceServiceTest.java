@@ -1,5 +1,6 @@
 package me.whereareiam.identica.feature.verification.database;
 
+import com.google.inject.util.Providers;
 import me.whereareiam.dialectica.Dialectica;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
@@ -105,12 +106,12 @@ class DefaultVerificationPersistenceServiceTest {
 					.execute());
 
 			scenario.run(new DefaultVerificationPersistenceService(
-					EntityAccess.of(jdbi, Dialectica.entity(VerificationEnrollmentEntity.class)),
-					EntityAccess.of(jdbi, Dialectica.entity(VerificationSelectionEntity.class)),
-					EntityAccess.of(jdbi, Dialectica.entity(VerificationRecoveryCodeEntity.class)),
-					jdbi.onDemand(VerificationEnrollmentRepository.class),
-					jdbi.onDemand(VerificationSelectionRepository.class),
-					jdbi.onDemand(VerificationRecoveryCodeRepository.class)
+					Providers.of(EntityAccess.of(jdbi, Dialectica.entity(VerificationEnrollmentEntity.class))),
+					Providers.of(EntityAccess.of(jdbi, Dialectica.entity(VerificationSelectionEntity.class))),
+					Providers.of(EntityAccess.of(jdbi, Dialectica.entity(VerificationRecoveryCodeEntity.class))),
+					Providers.of(jdbi.onDemand(VerificationEnrollmentRepository.class)),
+					Providers.of(jdbi.onDemand(VerificationSelectionRepository.class)),
+					Providers.of(jdbi.onDemand(VerificationRecoveryCodeRepository.class))
 			), uniqueId);
 		} finally {
 			TestDatabase.close(databaseService);

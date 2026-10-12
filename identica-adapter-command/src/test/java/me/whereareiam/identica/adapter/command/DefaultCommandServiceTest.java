@@ -68,15 +68,17 @@ class DefaultCommandServiceTest {
 		Serializer.initialize(() -> serializer);
 		Injector injector = mock(Injector.class);
 		when(injector.getInstance(any(Class.class))).thenAnswer(invocation -> mock((Class<?>) invocation.getArgument(0)));
-		return new DefaultCommandService(
+		DefaultCommandService service = new DefaultCommandService(
 				() -> commands,
 				() -> messages,
 				() -> manager,
-				serializer,
+				() -> serializer,
 				injector,
 				coreSuggestions,
 				mock(ProviderIdSuggestions.class)
 		);
+		service.initialize();
+		return service;
 	}
 
 	@Test

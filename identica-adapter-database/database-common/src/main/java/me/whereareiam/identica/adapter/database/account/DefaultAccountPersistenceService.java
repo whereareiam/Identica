@@ -1,6 +1,7 @@
 package me.whereareiam.identica.adapter.database.account;
 
 import com.google.inject.Inject;
+import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
@@ -24,8 +25,8 @@ import java.util.UUID;
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class DefaultAccountPersistenceService implements AccountPersistenceService, EventListener {
-	private final EntityAccess<AccountEntity> accounts;
-	private final AccountRepository accountRepository;
+	private final Provider<EntityAccess<AccountEntity>> accounts;
+	private final Provider<AccountRepository> accountRepository;
 	private final EventManager eventManager;
 
 	@Inject
@@ -36,7 +37,7 @@ public class DefaultAccountPersistenceService implements AccountPersistenceServi
 	@Override
 	public @NotNull Optional<Account> findByUniqueId(@NotNull UUID uniqueId) {
 		try {
-			return accounts.find(uniqueId).map(AccountMapper::toModel);
+			return accounts.get().find(uniqueId).map(AccountMapper::toModel);
 		} catch (Exception e) {
 			Logger.warn(e, "Failed to load account %s", uniqueId);
 			return Optional.empty();
@@ -48,7 +49,7 @@ public class DefaultAccountPersistenceService implements AccountPersistenceServi
 		if (username.isBlank()) return List.of();
 
 		try {
-			return accountRepository.findByUsername(username).stream()
+			return accountRepository.get().findByUsername(username).stream()
 					.map(AccountMapper::toModel)
 					.toList();
 		} catch (Exception e) {
@@ -60,7 +61,7 @@ public class DefaultAccountPersistenceService implements AccountPersistenceServi
 	@Override
 	public long count() {
 		try {
-			return accountRepository.count();
+			return accountRepository.get().count();
 		} catch (Exception e) {
 			Logger.warn(e, "Failed to count accounts");
 			return 0L;
@@ -72,7 +73,7 @@ public class DefaultAccountPersistenceService implements AccountPersistenceServi
 		AccountEntity entity = AccountMapper.toEntity(account);
 
 		try {
-			accounts.insert(entity);
+			accounts.get().insert(entity);
 
 			return AccountMapper.toModel(entity);
 		} catch (Exception e) {
@@ -84,7 +85,7 @@ public class DefaultAccountPersistenceService implements AccountPersistenceServi
 	@Override
 	public void updateLastSeen(@NotNull UUID uniqueId, long lastSeenAt) {
 		try {
-			accountRepository.updateLastSeen(uniqueId, lastSeenAt);
+			accountRepository.get().updateLastSeen(uniqueId, lastSeenAt);
 		} catch (Exception e) {
 			Logger.warn(e, "Failed to update last seen for %s", uniqueId);
 		}
@@ -95,7 +96,7 @@ public class DefaultAccountPersistenceService implements AccountPersistenceServi
 		if (username.isBlank()) return;
 
 		try {
-			accountRepository.updateUsername(uniqueId, username);
+			accountRepository.get().updateUsername(uniqueId, username);
 		} catch (Exception e) {
 			Logger.warn(e, "Failed to update username for %s", uniqueId);
 		}
@@ -104,7 +105,7 @@ public class DefaultAccountPersistenceService implements AccountPersistenceServi
 	@Override
 	public void delete(@NotNull UUID uniqueId) {
 		try {
-			accounts.delete(uniqueId);
+			accounts.get().delete(uniqueId);
 		} catch (Exception e) {
 			Logger.warn(e, "Failed to delete account %s", uniqueId);
 		}

@@ -1,5 +1,7 @@
 package me.whereareiam.identica.common.identity;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
@@ -18,16 +20,15 @@ import java.util.concurrent.CompletableFuture;
 
 @Singleton
 public class DefaultReservationCache implements ReservationCache {
-	private final ReplicatedCache<String> cache;
+	private final Supplier<ReplicatedCache<String>> cache;
 
 	@Inject
 	public DefaultReservationCache(
 			ReplicationSystem replicationSystem,
 			Provider<Replication> replicationProvider
 	) {
-		ReplicationType<String, String> type = ReplicationType.identity(String.class)
-				.withCodec(SnapshotCodec.string());
-		this.cache = replicationSystem.cache(resolveNamespace(replicationProvider)).replicated(type);
+		this.cache = Suppliers.memoize(() -> replicationSystem.cache(resolveNamespace(replicationProvider))
+				.replicated(ReplicationType.identity(String.class).withCodec(SnapshotCodec.string())));
 	}
 
 	@Override
@@ -35,7 +36,7 @@ public class DefaultReservationCache implements ReservationCache {
 		if (key == null || key.isBlank()) {
 			return CompletableFuture.completedFuture(Optional.empty());
 		}
-		return cache.get(key)
+		return cache.get().get(key)
 				.thenApply(value -> value.flatMap(UniqueIdUtil::parseOptionalUniqueId));
 	}
 
@@ -44,7 +45,7 @@ public class DefaultReservationCache implements ReservationCache {
 		if (key == null || key.isBlank() || uuid == null) {
 			return CompletableFuture.completedFuture(null);
 		}
-		return cache.put(key, uuid.toString(), ttlMs);
+		return cache.get().put(key, uuid.toString(), ttlMs);
 	}
 
 	@Override
@@ -52,7 +53,7 @@ public class DefaultReservationCache implements ReservationCache {
 		if (key == null || key.isBlank()) {
 			return CompletableFuture.completedFuture(null);
 		}
-		return cache.invalidate(key);
+		return cache.get().invalidate(key);
 	}
 
 	private static String resolveNamespace(Provider<Replication> replicationProvider) {

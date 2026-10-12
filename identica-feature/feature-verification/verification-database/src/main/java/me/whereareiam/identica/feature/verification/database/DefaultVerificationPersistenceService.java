@@ -1,6 +1,7 @@
 package me.whereareiam.identica.feature.verification.database;
 
 import com.google.inject.Inject;
+import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.event.EventListener;
@@ -28,21 +29,21 @@ import java.util.UUID;
 
 @Singleton
 public class DefaultVerificationPersistenceService implements VerificationPersistenceService, EventListener {
-	private final EntityAccess<VerificationEnrollmentEntity> enrollments;
-	private final EntityAccess<VerificationSelectionEntity> selections;
-	private final EntityAccess<VerificationRecoveryCodeEntity> recoveryCodes;
-	private final VerificationEnrollmentRepository enrollmentRepository;
-	private final VerificationSelectionRepository selectionRepository;
-	private final VerificationRecoveryCodeRepository recoveryCodeRepository;
+	private final Provider<EntityAccess<VerificationEnrollmentEntity>> enrollments;
+	private final Provider<EntityAccess<VerificationSelectionEntity>> selections;
+	private final Provider<EntityAccess<VerificationRecoveryCodeEntity>> recoveryCodes;
+	private final Provider<VerificationEnrollmentRepository> enrollmentRepository;
+	private final Provider<VerificationSelectionRepository> selectionRepository;
+	private final Provider<VerificationRecoveryCodeRepository> recoveryCodeRepository;
 
 	@Inject
 	public DefaultVerificationPersistenceService(
-			EntityAccess<VerificationEnrollmentEntity> enrollments,
-			EntityAccess<VerificationSelectionEntity> selections,
-			EntityAccess<VerificationRecoveryCodeEntity> recoveryCodes,
-			VerificationEnrollmentRepository enrollmentRepository,
-			VerificationSelectionRepository selectionRepository,
-			VerificationRecoveryCodeRepository recoveryCodeRepository
+			Provider<EntityAccess<VerificationEnrollmentEntity>> enrollments,
+			Provider<EntityAccess<VerificationSelectionEntity>> selections,
+			Provider<EntityAccess<VerificationRecoveryCodeEntity>> recoveryCodes,
+			Provider<VerificationEnrollmentRepository> enrollmentRepository,
+			Provider<VerificationSelectionRepository> selectionRepository,
+			Provider<VerificationRecoveryCodeRepository> recoveryCodeRepository
 	) {
 		this.enrollments = enrollments;
 		this.selections = selections;
@@ -55,49 +56,49 @@ public class DefaultVerificationPersistenceService implements VerificationPersis
 	@Override
 	public @NotNull Optional<VerificationEnrollment> findEnrollment(@NotNull UUID uniqueId, @NotNull String methodId) {
 		if (methodId.isBlank()) return Optional.empty();
-		return enrollmentRepository.find(uniqueId, methodId).map(VerificationEnrollmentMapper::toModel);
+		return enrollmentRepository.get().find(uniqueId, methodId).map(VerificationEnrollmentMapper::toModel);
 	}
 
 	@Override
 	public @NotNull List<VerificationEnrollment> findEnrollments(@NotNull UUID uniqueId) {
-		return enrollmentRepository.findByUniqueId(uniqueId).stream()
+		return enrollmentRepository.get().findByUniqueId(uniqueId).stream()
 				.map(VerificationEnrollmentMapper::toModel)
 				.toList();
 	}
 
 	@Override
 	public long countEnrolledAccounts() {
-		return enrollmentRepository.countAccounts();
+		return enrollmentRepository.get().countAccounts();
 	}
 
 	@Override
 	public @NotNull VerificationEnrollment upsertEnrollment(@NotNull VerificationEnrollment enrollment) {
 		VerificationEnrollmentEntity entity = VerificationEnrollmentMapper.toEntity(enrollment);
-		if (enrollments.find(enrollment.getUniqueId(), enrollment.getMethodId(), enrollment.getEnrollmentId()).isPresent()) {
-			enrollments.update(entity);
+		if (enrollments.get().find(enrollment.getUniqueId(), enrollment.getMethodId(), enrollment.getEnrollmentId()).isPresent()) {
+			enrollments.get().update(entity);
 			return enrollment;
 		}
 
-		enrollments.insert(entity);
+		enrollments.get().insert(entity);
 		return enrollment;
 	}
 
 	@Override
 	public void deleteEnrollment(@NotNull UUID uniqueId, @NotNull String methodId) {
 		if (methodId.isBlank()) return;
-		recoveryCodeRepository.deleteByMethod(uniqueId, methodId);
-		enrollmentRepository.delete(uniqueId, methodId);
+		recoveryCodeRepository.get().deleteByMethod(uniqueId, methodId);
+		enrollmentRepository.get().delete(uniqueId, methodId);
 	}
 
 	@Override
 	public @NotNull Optional<VerificationSelection> findSelection(@NotNull UUID uniqueId, @NotNull String providerId) {
 		if (providerId.isBlank()) return Optional.empty();
-		return selections.find(uniqueId, providerId).map(VerificationSelectionMapper::toModel);
+		return selections.get().find(uniqueId, providerId).map(VerificationSelectionMapper::toModel);
 	}
 
 	@Override
 	public @NotNull List<VerificationSelection> findSelections(@NotNull UUID uniqueId) {
-		return selectionRepository.findByUniqueId(uniqueId).stream()
+		return selectionRepository.get().findByUniqueId(uniqueId).stream()
 				.map(VerificationSelectionMapper::toModel)
 				.toList();
 	}
@@ -107,30 +108,30 @@ public class DefaultVerificationPersistenceService implements VerificationPersis
 		VerificationSelectionEntity entity = VerificationSelectionMapper.toEntity(selection);
 		Optional<VerificationSelection> existing = findSelection(selection.getUniqueId(), selection.getProviderId());
 		if (existing.isPresent()) {
-			selections.update(entity);
+			selections.get().update(entity);
 			return selection;
 		}
 
-		selections.insert(entity);
+		selections.get().insert(entity);
 		return selection;
 	}
 
 	@Override
 	public void deleteSelection(@NotNull UUID uniqueId, @NotNull String providerId) {
 		if (providerId.isBlank()) return;
-		selections.delete(uniqueId, providerId);
+		selections.get().delete(uniqueId, providerId);
 	}
 
 	@Override
 	public void deleteSelectionsByMethod(@NotNull UUID uniqueId, @NotNull String methodId) {
 		if (methodId.isBlank()) return;
-		selectionRepository.deleteSelectionsByMethod(uniqueId, methodId);
+		selectionRepository.get().deleteSelectionsByMethod(uniqueId, methodId);
 	}
 
 	@Override
 	public @NotNull List<VerificationRecoveryCode> findRecoveryCodes(@NotNull UUID uniqueId, @NotNull String methodId) {
 		if (methodId.isBlank()) return List.of();
-		return recoveryCodeRepository.findByUniqueIdAndMethod(uniqueId, methodId).stream()
+		return recoveryCodeRepository.get().findByUniqueIdAndMethod(uniqueId, methodId).stream()
 				.map(VerificationRecoveryCodeMapper::toModel)
 				.toList();
 	}
@@ -142,32 +143,32 @@ public class DefaultVerificationPersistenceService implements VerificationPersis
 			@NotNull List<VerificationRecoveryCode> recoveryCodes
 	) {
 		if (methodId.isBlank()) return;
-		recoveryCodeRepository.deleteByMethod(uniqueId, methodId);
+		recoveryCodeRepository.get().deleteByMethod(uniqueId, methodId);
 		for (VerificationRecoveryCode recoveryCode : recoveryCodes)
-			this.recoveryCodes.insert(VerificationRecoveryCodeMapper.toEntity(recoveryCode));
+			this.recoveryCodes.get().insert(VerificationRecoveryCodeMapper.toEntity(recoveryCode));
 	}
 
 	@Override
 	public boolean markRecoveryCodeUsed(@NotNull UUID uniqueId, @NotNull String methodId, @NotNull String codeHash, long usedAt) {
 		if (methodId.isBlank() || codeHash.isBlank()) return false;
-		return recoveryCodeRepository.markUsed(uniqueId, methodId, codeHash, usedAt) > 0;
+		return recoveryCodeRepository.get().markUsed(uniqueId, methodId, codeHash, usedAt) > 0;
 	}
 
 	@Override
 	public void deleteAll(@NotNull UUID uniqueId) {
-		recoveryCodeRepository.deleteAll(uniqueId);
-		selectionRepository.deleteAll(uniqueId);
-		enrollmentRepository.deleteAll(uniqueId);
+		recoveryCodeRepository.get().deleteAll(uniqueId);
+		selectionRepository.get().deleteAll(uniqueId);
+		enrollmentRepository.get().deleteAll(uniqueId);
 	}
 
 	@Override
 	public void deleteProviderSelections(@NotNull UUID uniqueId, @Nullable String providerId) {
 		if (providerId == null || providerId.isBlank()) {
-			selectionRepository.deleteAll(uniqueId);
+			selectionRepository.get().deleteAll(uniqueId);
 			return;
 		}
 
-		selections.delete(uniqueId, providerId);
+		selections.get().delete(uniqueId, providerId);
 	}
 
 	@IdenticEvent(EventOrder.HIGH)

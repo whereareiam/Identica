@@ -1,6 +1,7 @@
 package me.whereareiam.identica.adapter.database.username;
 
 import com.google.inject.Inject;
+import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
@@ -21,8 +22,8 @@ import java.util.UUID;
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class DefaultAccountUsernameHistoryPersistenceService implements AccountUsernameHistoryPersistenceService, EventListener {
-	private final EntityAccess<UsernameHistoryEntity> history;
-	private final UsernameHistoryRepository repository;
+	private final Provider<EntityAccess<UsernameHistoryEntity>> history;
+	private final Provider<UsernameHistoryRepository> repository;
 	private final EventManager eventManager;
 
 	@Inject
@@ -34,12 +35,12 @@ public class DefaultAccountUsernameHistoryPersistenceService implements AccountU
 	public void record(@NotNull AccountUsernameHistoryEntry entry) {
 		if (entry.getOldUsername().isBlank() || entry.getNewUsername().isBlank()) return;
 
-		history.insert(UsernameHistoryMapper.toEntity(entry));
+		history.get().insert(UsernameHistoryMapper.toEntity(entry));
 	}
 
 	@Override
 	public void deleteAll(@NotNull UUID uniqueId) {
-		repository.deleteAll(uniqueId);
+		repository.get().deleteAll(uniqueId);
 	}
 
 	@IdenticEvent(EventOrder.HIGH)

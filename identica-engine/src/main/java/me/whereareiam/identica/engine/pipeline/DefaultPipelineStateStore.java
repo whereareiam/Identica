@@ -1,5 +1,7 @@
 package me.whereareiam.identica.engine.pipeline;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
@@ -38,20 +40,22 @@ public class DefaultPipelineStateStore implements PipelineStateStore {
 	private static final String STATE_NAMESPACE_SUFFIX = ":records";
 	private static final String ALIAS_NAMESPACE_SUFFIX = ":aliases";
 
-	private final ReplicatedCache<PipelineStateRecord> stateCache;
-	private final ReplicatedCache<String> aliasCache;
+	private final Supplier<Caches> caches;
 
 	@Inject
 	public DefaultPipelineStateStore(
 			@NotNull ReplicationSystem replicationSystem,
 			@NotNull Provider<Replication> replicationProvider
 	) {
-		String namespace = resolveNamespace(replicationProvider);
-		ReplicationType<PipelineStateRecord, PipelineStateRecord> stateType = ReplicationType.identity(PipelineStateRecord.class);
-		ReplicationType<String, String> aliasType = ReplicationType.identity(String.class)
-				.withCodec(SnapshotCodec.string());
-		this.stateCache = replicationSystem.cache(namespace + STATE_NAMESPACE_SUFFIX).replicated(stateType);
-		this.aliasCache = replicationSystem.cache(namespace + ALIAS_NAMESPACE_SUFFIX).replicated(aliasType);
+		this.caches = Suppliers.memoize(() -> {
+			String namespace = resolveNamespace(replicationProvider);
+			ReplicationType<String, String> aliasType = ReplicationType.identity(String.class)
+					.withCodec(SnapshotCodec.string());
+			return new Caches(
+					replicationSystem.cache(namespace + STATE_NAMESPACE_SUFFIX).replicated(ReplicationType.identity(PipelineStateRecord.class)),
+					replicationSystem.cache(namespace + ALIAS_NAMESPACE_SUFFIX).replicated(aliasType)
+			);
+		});
 	}
 
 	@Override
@@ -149,13 +153,13 @@ public class DefaultPipelineStateStore implements PipelineStateStore {
 			for (String alias : existing.aliases) {
 				if (next.aliases.contains(alias))
 					continue;
-				aliasCache.invalidate(alias).join();
+				caches.get().aliasCache().invalidate(alias).join();
 			}
 		}
 
-		stateCache.put(next.id, next, ttlMs).join();
+		caches.get().stateCache().put(next.id, next, ttlMs).join();
 		for (String alias : next.aliases)
-			aliasCache.put(alias, next.id, ttlMs).join();
+			caches.get().aliasCache().put(alias, next.id, ttlMs).join();
 	}
 
 	private @Nullable PipelineStateRecord resolvePrimaryRecord(@NotNull List<String> aliases, long now) {
@@ -179,12 +183,12 @@ public class DefaultPipelineStateStore implements PipelineStateStore {
 	}
 
 	private @NotNull Optional<PipelineStateRecord> findRecord(@NotNull String alias, long now) {
-		String stateId = aliasCache.getFresh(alias).join().orElse(null);
+		String stateId = caches.get().aliasCache().getFresh(alias).join().orElse(null);
 		if (stateId == null) return Optional.empty();
 
 		PipelineStateRecord record = readRecord(stateId);
 		if (record == null) {
-			aliasCache.invalidate(alias).join();
+			caches.get().aliasCache().invalidate(alias).join();
 			return Optional.empty();
 		}
 
@@ -195,7 +199,7 @@ public class DefaultPipelineStateStore implements PipelineStateStore {
 
 		List<String> recordAliases = record.aliases;
 		if (recordAliases == null || !recordAliases.contains(alias)) {
-			aliasCache.invalidate(alias).join();
+			caches.get().aliasCache().invalidate(alias).join();
 			return Optional.empty();
 		}
 
@@ -204,15 +208,15 @@ public class DefaultPipelineStateStore implements PipelineStateStore {
 
 	private @Nullable PipelineStateRecord readRecord(@Nullable String stateId) {
 		if (stateId == null || stateId.isBlank()) return null;
-		return stateCache.getFresh(stateId).join().orElse(null);
+		return caches.get().stateCache().getFresh(stateId).join().orElse(null);
 	}
 
 	private void invalidateRecord(@NotNull PipelineStateRecord record) {
-		stateCache.invalidate(record.id).join();
+		caches.get().stateCache().invalidate(record.id).join();
 		if (record.aliases == null || record.aliases.isEmpty()) return;
 
 		for (String alias : record.aliases)
-			aliasCache.invalidate(alias).join();
+			caches.get().aliasCache().invalidate(alias).join();
 	}
 
 	private @NotNull PipelineStateReference referenceFrom(
@@ -326,5 +330,15 @@ public class DefaultPipelineStateStore implements PipelineStateStore {
 		private static @NotNull ReadResult empty() {
 			return new ReadResult(null, Optional.empty());
 		}
+	}
+
+	/**
+	 * The caches of the records and of the aliases that find them, created on first use from the replication
+	 * document, which is loaded by then.
+	 */
+	private record Caches(
+			@NotNull ReplicatedCache<PipelineStateRecord> stateCache,
+			@NotNull ReplicatedCache<String> aliasCache
+	) {
 	}
 }

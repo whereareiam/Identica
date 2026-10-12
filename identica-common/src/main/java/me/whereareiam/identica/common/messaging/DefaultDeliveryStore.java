@@ -1,5 +1,7 @@
 package me.whereareiam.identica.common.messaging;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
@@ -19,10 +21,10 @@ import java.util.UUID;
 
 @Singleton
 public class DefaultDeliveryStore implements DeliveryStore {
-	private final ReplicatedCache<DeliveryRequest> requests;
-	private final ReplicatedCache<DeliveryRequestKeyIndex> connectionIndex;
-	private final ReplicatedCache<DeliveryRequestKeyIndex> accountIndex;
+	private final ReplicationSystem replicationSystem;
+	private final Provider<Replication> replicationProvider;
 	private final Provider<Engine> engineProvider;
+	private final Supplier<Caches> caches = Suppliers.memoize(this::createCaches);
 
 	@Inject
 	public DefaultDeliveryStore(
@@ -30,54 +32,50 @@ public class DefaultDeliveryStore implements DeliveryStore {
 			@NotNull Provider<Replication> replicationProvider,
 			@NotNull Provider<Engine> engineProvider
 	) {
-		Replication.Delivery delivery = replicationProvider.get().getCache().getDelivery();
-		var indexType = ReplicationType.identity(DeliveryRequestKeyIndex.class);
-
-		this.requests = replicationSystem.cache(delivery.getRequests()).replicated(ReplicationType.identity(DeliveryRequest.class));
-		this.connectionIndex = replicationSystem.cache(delivery.getConnectionIndex()).replicated(indexType);
-		this.accountIndex = replicationSystem.cache(delivery.getAccountIndex()).replicated(indexType);
+		this.replicationSystem = replicationSystem;
+		this.replicationProvider = replicationProvider;
 		this.engineProvider = engineProvider;
 	}
 
 	@Override
 	public void put(@NotNull DeliveryRequest request) {
 		String requestKey = key(request.getId());
-		requests.put(requestKey, request, ttlMs()).join();
+		caches.get().requests().put(requestKey, request, ttlMs()).join();
 
 		UUID connectionUniqueId = request.getTarget().getConnectionUniqueId();
 		if (connectionUniqueId != null)
-			putIndex(connectionIndex, key(connectionUniqueId), requestKey);
+			putIndex(caches.get().connectionIndex(), key(connectionUniqueId), requestKey);
 
 		UUID accountUniqueId = request.getTarget().getAccountUniqueId();
 		if (accountUniqueId != null)
-			putIndex(accountIndex, key(accountUniqueId), requestKey);
+			putIndex(caches.get().accountIndex(), key(accountUniqueId), requestKey);
 	}
 
 	@Override
 	public @NotNull List<DeliveryRequest> findByConnectionUniqueId(@NotNull UUID connectionUniqueId) {
-		return resolve(connectionIndex, key(connectionUniqueId));
+		return resolve(caches.get().connectionIndex(), key(connectionUniqueId));
 	}
 
 	@Override
 	public @NotNull List<DeliveryRequest> findByAccountUniqueId(@NotNull UUID accountUniqueId) {
-		return resolve(accountIndex, key(accountUniqueId));
+		return resolve(caches.get().accountIndex(), key(accountUniqueId));
 	}
 
 	@Override
 	public @NotNull Optional<DeliveryRequest> findById(@NotNull UUID deliveryUniqueId) {
-		return requests.get(key(deliveryUniqueId)).join();
+		return caches.get().requests().get(key(deliveryUniqueId)).join();
 	}
 
 	@Override
 	public boolean remove(@NotNull UUID deliveryUniqueId) {
-		DeliveryRequest request = requests.consume(key(deliveryUniqueId)).join().orElse(null);
+		DeliveryRequest request = caches.get().requests().consume(key(deliveryUniqueId)).join().orElse(null);
 		if (request == null) return false;
 
 		UUID connectionUniqueId = request.getTarget().getConnectionUniqueId();
-		if (connectionUniqueId != null) removeIndex(connectionIndex, key(connectionUniqueId), key(deliveryUniqueId));
+		if (connectionUniqueId != null) removeIndex(caches.get().connectionIndex(), key(connectionUniqueId), key(deliveryUniqueId));
 
 		UUID accountUniqueId = request.getTarget().getAccountUniqueId();
-		if (accountUniqueId != null) removeIndex(accountIndex, key(accountUniqueId), key(deliveryUniqueId));
+		if (accountUniqueId != null) removeIndex(caches.get().accountIndex(), key(accountUniqueId), key(deliveryUniqueId));
 
 		return true;
 	}
@@ -94,7 +92,7 @@ public class DefaultDeliveryStore implements DeliveryStore {
 		List<DeliveryRequest> resolved = new ArrayList<>();
 		List<String> retained = new ArrayList<>();
 		for (String requestKey : requestKeys) {
-			DeliveryRequest request = requests.get(requestKey).join().orElse(null);
+			DeliveryRequest request = caches.get().requests().get(requestKey).join().orElse(null);
 			if (request == null) continue;
 
 			resolved.add(request);
@@ -138,12 +136,32 @@ public class DefaultDeliveryStore implements DeliveryStore {
 		index.put(indexKey, new DeliveryRequestKeyIndex(values), ttlMs()).join();
 	}
 
+	/**
+	 * Creates the caches on first use, from the replication document, which is loaded by then.
+	 */
+	private @NotNull Caches createCaches() {
+		Replication.Delivery delivery = replicationProvider.get().getCache().getDelivery();
+		var indexType = ReplicationType.identity(DeliveryRequestKeyIndex.class);
+		return new Caches(
+				replicationSystem.cache(delivery.getRequests()).replicated(ReplicationType.identity(DeliveryRequest.class)),
+				replicationSystem.cache(delivery.getConnectionIndex()).replicated(indexType),
+				replicationSystem.cache(delivery.getAccountIndex()).replicated(indexType)
+		);
+	}
+
 	private @NotNull String key(@NotNull UUID uniqueId) {
 		return uniqueId.toString();
 	}
 
 	private long ttlMs() {
 		return engineProvider.get().getBehavior().bridgeTtlMillis();
+	}
+
+	private record Caches(
+			@NotNull ReplicatedCache<DeliveryRequest> requests,
+			@NotNull ReplicatedCache<DeliveryRequestKeyIndex> connectionIndex,
+			@NotNull ReplicatedCache<DeliveryRequestKeyIndex> accountIndex
+	) {
 	}
 
 	private record DeliveryRequestKeyIndex(@NotNull List<String> values) {

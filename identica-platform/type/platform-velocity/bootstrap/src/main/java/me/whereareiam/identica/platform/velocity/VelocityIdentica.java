@@ -20,8 +20,6 @@ import me.whereareiam.identica.common.CommonConfiguration;
 import me.whereareiam.identica.common.Identica;
 import me.whereareiam.identica.engine.EngineConfiguration;
 import me.whereareiam.identica.event.EventManager;
-import me.whereareiam.identica.event.lifecycle.IdenticaBootstrappedEvent;
-import me.whereareiam.identica.event.lifecycle.IdenticaReadyEvent;
 import me.whereareiam.identica.event.lifecycle.IdenticaShutdownEvent;
 import me.whereareiam.identica.common.feature.FeatureRuntime;
 import me.whereareiam.identica.feature.BuiltinFeatures;
@@ -107,10 +105,7 @@ public class VelocityIdentica {
 		EventManager eventManager = injector.getInstance(EventManager.class);
 		this.eventManager = eventManager;
 		try {
-			injector.getInstance(Identica.class).bootstrap();
-			featureRuntime.initialize(injector);
-			eventManager.call(new IdenticaBootstrappedEvent());
-			eventManager.call(new IdenticaReadyEvent());
+			injector.getInstance(Identica.class).start();
 		} catch (RuntimeException | Error failure) {
 			eventManager.call(new IdenticaShutdownEvent());
 			throw failure;

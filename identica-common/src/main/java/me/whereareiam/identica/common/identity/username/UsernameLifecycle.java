@@ -8,6 +8,8 @@ import me.whereareiam.identica.common.config.provider.UsernameConflictsProvider;
 import me.whereareiam.identica.common.config.provider.UsernameMessagesProvider;
 import me.whereareiam.identica.conflict.ConflictService;
 import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
+import me.whereareiam.identica.lifecycle.StartupPhase;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -23,6 +25,11 @@ public final class UsernameLifecycle implements RuntimeLifecycle {
 	private final ConflictService conflicts;
 	private final UsernameConflictType conflictType;
 	private final Deque<Runnable> cleanup = new ArrayDeque<>();
+
+	@Override
+	public @NotNull StartupPhase phase() {
+		return StartupPhase.RUNTIME;
+	}
 
 	@Override
 	public void initialize() {

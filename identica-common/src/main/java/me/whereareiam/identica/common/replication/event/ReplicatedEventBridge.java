@@ -6,6 +6,8 @@ import com.google.inject.Singleton;
 import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.base.IdenticEvent;
+import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
+import me.whereareiam.identica.lifecycle.StartupPhase;
 import me.whereareiam.identica.event.base.ReplicatedEvent;
 import me.whereareiam.identica.event.account.AccountClearEvent;
 import me.whereareiam.identica.event.account.AccountDeleteEvent;
@@ -29,15 +31,20 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Passes the replicated events between the proxies of a network: publishes the ones raised here and calls the ones
+ * received from the others. It subscribes to the events channel in {@link StartupPhase#RUNTIME}, once replication
+ * is open; until then it publishes nothing.
+ */
 @Singleton
-public class ReplicatedEventBridge implements EventListener {
+public class ReplicatedEventBridge implements EventListener, RuntimeLifecycle {
 	private final @NotNull EventManager eventManager;
 	private final @NotNull ReplicationSystem replicationSystem;
 	private final @NotNull Provider<Replication> replicationProvider;
 	private final @NotNull ReplicatedEventRegistry registry;
 	private final @NotNull Set<UUID> processedEvents = ConcurrentHashMap.newKeySet();
 	private final @NotNull ThreadLocal<Boolean> receiving = ThreadLocal.withInitial(() -> false);
-	private ReplicationChannel<ReplicatedEvent> channel;
+	private volatile ReplicationChannel<ReplicatedEvent> channel;
 
 	@Inject
 	public ReplicatedEventBridge(
@@ -53,11 +60,29 @@ public class ReplicatedEventBridge implements EventListener {
 
 		registerBuiltInEvents();
 		eventManager.register(this);
+	}
+
+	@Override
+	public @NotNull StartupPhase phase() {
+		return StartupPhase.RUNTIME;
+	}
+
+	@Override
+	public void initialize() {
 		initializeChannel();
+	}
+
+	/**
+	 * Stops publishing; the subscription ends with the replication connection.
+	 */
+	@Override
+	public void shutdown() {
+		channel = null;
 	}
 
 	@IdenticEvent(EventOrder.HIGHEST)
 	public void onReplicatedEvent(@NotNull ReplicatedEvent event) {
+		ReplicationChannel<ReplicatedEvent> channel = this.channel;
 		if (receiving.get()) return;
 		if (channel == null) return;
 		if (registry.typeOf(event.getClass()).isEmpty()) return;
@@ -76,8 +101,9 @@ public class ReplicatedEventBridge implements EventListener {
 				ReplicatedEventSnapshot.class,
 				new EventSnapshotMapper()
 		);
-		this.channel = replicationSystem.channel(channelName, type);
-		this.channel.subscribe(this::receive);
+		ReplicationChannel<ReplicatedEvent> channel = replicationSystem.channel(channelName, type);
+		channel.subscribe(this::receive);
+		this.channel = channel;
 	}
 
 	private void receive(@NotNull ReplicatedEvent event) {

@@ -1,5 +1,7 @@
 package me.whereareiam.identica.common.identity.session;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
@@ -43,10 +45,7 @@ public class SessionStore {
 	/** Sessions created in the same millisecond keep the order in which the index entry lists them. */
 	private static final Comparator<Session> OLDEST_FIRST = Comparator.comparingLong(Session::getCreatedAt);
 
-	private final long lifetimeMs;
-	private final ReplicatedCache<Session> records;
-	private final ReplicatedCache<String> accounts;
-	private final ReplicatedCache<String> subjects;
+	private final Supplier<Stored> stored;
 
 	@Inject
 	public SessionStore(
@@ -54,37 +53,29 @@ public class SessionStore {
 			Provider<Replication> replicationProvider,
 			ReplicationSystem replicationSystem
 	) {
-		this(settingsProvider.get().getSessions().heartbeatTimeoutMillis(), replicationProvider.get(), replicationSystem);
+		this.stored = Suppliers.memoize(() -> Stored.of(
+				settingsProvider.get().getSessions().heartbeatTimeoutMillis(),
+				replicationProvider.get(),
+				replicationSystem
+		));
 	}
 
 	SessionStore(long lifetimeMs, Replication replication, ReplicationSystem replicationSystem) {
-		Replication.Sessions namespaces = replication.getCache().getSessions();
-		ReplicationType<String, String> index = ReplicationType.identity(String.class).withCodec(SnapshotCodec.string());
-
-		this.lifetimeMs = lifetimeMs;
-		this.records = replicationSystem.cache(namespace(namespaces.getRecords(), "records"))
-				.defaultTtl(lifetimeMs)
-				.replicated(ReplicationType.identity(Session.class));
-		this.accounts = replicationSystem.cache(namespace(namespaces.getAccounts(), "accounts"))
-				.defaultTtl(lifetimeMs * INDEX_LIFETIMES)
-				.replicated(index);
-		this.subjects = replicationSystem.cache(namespace(namespaces.getSubjects(), "subjects"))
-				.defaultTtl(lifetimeMs * INDEX_LIFETIMES)
-				.replicated(index);
+		this.stored = Suppliers.ofInstance(Stored.of(lifetimeMs, replication, replicationSystem));
 	}
 
 	/**
 	 * Returns how long a record stays without being refreshed, in milliseconds.
 	 */
 	public long lifetimeMs() {
-		return lifetimeMs;
+		return stored.get().lifetimeMs();
 	}
 
 	public @NotNull CompletableFuture<Optional<Session>> find(@Nullable String sessionId) {
 		String key = trimToNull(sessionId);
 		if (key == null) return CompletableFuture.completedFuture(Optional.empty());
 
-		return records.getFresh(key);
+		return stored.get().records().getFresh(key);
 	}
 
 	/**
@@ -92,7 +83,7 @@ public class SessionStore {
 	 */
 	public @NotNull CompletableFuture<List<Session>> findByAccount(@Nullable UUID uniqueId) {
 		String key = accountKey(uniqueId);
-		return resolve(accounts, key, session -> key.equals(accountKey(session.getUniqueId())));
+		return resolve(stored.get().accounts(), key, session -> key.equals(accountKey(session.getUniqueId())));
 	}
 
 	/**
@@ -100,21 +91,21 @@ public class SessionStore {
 	 */
 	public @NotNull CompletableFuture<List<Session>> findBySubject(@Nullable String providerId, @Nullable String providerSubject) {
 		String key = subjectKey(providerId, providerSubject);
-		return resolve(subjects, key, session -> key.equals(subjectKey(session.getProviderId(), session.getProviderSubject())));
+		return resolve(stored.get().subjects(), key, session -> key.equals(subjectKey(session.getProviderId(), session.getProviderSubject())));
 	}
 
 	/**
 	 * Lists stored session ids.
 	 */
 	public @NotNull CompletableFuture<ReplicationPage> list(int page, int pageSize) {
-		return records.listKeys(page, pageSize);
+		return stored.get().records().listKeys(page, pageSize);
 	}
 
 	/**
 	 * Stores a session's record and lists it under its account and provider subject.
 	 */
 	public @NotNull CompletableFuture<Void> put(@NotNull Session session) {
-		return records.put(session.getSessionId(), session)
+		return stored.get().records().put(session.getSessionId(), session)
 				.thenCompose(ignored -> index(session));
 	}
 
@@ -124,9 +115,9 @@ public class SessionStore {
 	 */
 	public @NotNull CompletableFuture<Void> index(@NotNull Session session) {
 		String sessionId = session.getSessionId();
-		return change(accounts, accountKey(session.getUniqueId()), ids -> listed(ids, sessionId))
+		return change(stored.get().accounts(), accountKey(session.getUniqueId()), ids -> listed(ids, sessionId))
 				.thenCompose(ignored -> change(
-						subjects,
+						stored.get().subjects(),
 						subjectKey(session.getProviderId(), session.getProviderSubject()),
 						ids -> listed(ids, sessionId)
 				));
@@ -136,7 +127,7 @@ public class SessionStore {
 	 * Writes a session's record again, which gives it its full lifetime, without touching the index entries.
 	 */
 	public @NotNull CompletableFuture<Void> touch(@NotNull Session session) {
-		return records.put(session.getSessionId(), session);
+		return stored.get().records().put(session.getSessionId(), session);
 	}
 
 	/**
@@ -144,10 +135,10 @@ public class SessionStore {
 	 */
 	public @NotNull CompletableFuture<Void> remove(@NotNull Session session) {
 		String sessionId = session.getSessionId();
-		return records.invalidate(sessionId)
-				.thenCompose(ignored -> change(accounts, accountKey(session.getUniqueId()), ids -> ids.remove(sessionId)))
+		return stored.get().records().invalidate(sessionId)
+				.thenCompose(ignored -> change(stored.get().accounts(), accountKey(session.getUniqueId()), ids -> ids.remove(sessionId)))
 				.thenCompose(ignored -> change(
-						subjects,
+						stored.get().subjects(),
 						subjectKey(session.getProviderId(), session.getProviderSubject()),
 						ids -> ids.remove(sessionId)
 				));
@@ -158,7 +149,7 @@ public class SessionStore {
 	 */
 	public @NotNull CompletableFuture<Void> unlistSubject(@NotNull Session session, @Nullable String providerId, @Nullable String providerSubject) {
 		String sessionId = session.getSessionId();
-		return change(subjects, subjectKey(providerId, providerSubject), ids -> ids.remove(sessionId));
+		return change(stored.get().subjects(), subjectKey(providerId, providerSubject), ids -> ids.remove(sessionId));
 	}
 
 	private @NotNull CompletableFuture<List<Session>> resolve(
@@ -175,7 +166,7 @@ public class SessionStore {
 
 			CompletableFuture<Void> lookups = CompletableFuture.completedFuture(null);
 			for (String id : ids) {
-				lookups = lookups.thenCompose(ignored -> records.getFresh(id)).thenAccept(found -> {
+				lookups = lookups.thenCompose(ignored -> stored.get().records().getFresh(id)).thenAccept(found -> {
 					if (found.isPresent() && belongs.test(found.get())) sessions.add(found.get());
 					else stale.add(id);
 				});
@@ -253,5 +244,34 @@ public class SessionStore {
 			throw new IllegalStateException("replication.cache.sessions." + name + " is missing");
 
 		return namespace;
+	}
+
+	/**
+	 * What the store is built from, created on first use, once the settings and the replication document are
+	 * loaded: how long a record lives and the caches holding the records and the index entries.
+	 */
+	private record Stored(
+			long lifetimeMs,
+			@NotNull ReplicatedCache<Session> records,
+			@NotNull ReplicatedCache<String> accounts,
+			@NotNull ReplicatedCache<String> subjects
+	) {
+		static @NotNull Stored of(long lifetimeMs, @NotNull Replication replication, @NotNull ReplicationSystem replicationSystem) {
+			Replication.Sessions namespaces = replication.getCache().getSessions();
+			ReplicationType<String, String> index = ReplicationType.identity(String.class).withCodec(SnapshotCodec.string());
+
+			return new Stored(
+					lifetimeMs,
+					replicationSystem.cache(namespace(namespaces.getRecords(), "records"))
+							.defaultTtl(lifetimeMs)
+							.replicated(ReplicationType.identity(Session.class)),
+					replicationSystem.cache(namespace(namespaces.getAccounts(), "accounts"))
+							.defaultTtl(lifetimeMs * INDEX_LIFETIMES)
+							.replicated(index),
+					replicationSystem.cache(namespace(namespaces.getSubjects(), "subjects"))
+							.defaultTtl(lifetimeMs * INDEX_LIFETIMES)
+							.replicated(index)
+			);
+		}
 	}
 }

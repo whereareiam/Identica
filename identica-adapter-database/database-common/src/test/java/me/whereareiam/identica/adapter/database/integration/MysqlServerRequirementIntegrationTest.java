@@ -5,13 +5,12 @@ import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
 import me.whereareiam.identica.adapter.database.connection.DataSourceFactory;
 import me.whereareiam.identica.adapter.database.connection.UnsupportedDatabaseServerException;
 import me.whereareiam.identica.database.schema.AccountTable;
-import me.whereareiam.identica.event.EventManager;
-import me.whereareiam.identica.event.lifecycle.IdenticaShutdownEvent;
+import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.logging.LoggingHelper;
 import me.whereareiam.identica.model.config.persistence.external.MysqlPersistence;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.mockito.Mockito;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
@@ -21,7 +20,10 @@ import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -49,27 +51,61 @@ class MysqlServerRequirementIntegrationTest {
 	void opensOldestSupportedMysql() throws SQLException {
 		MysqlPersistence persistence = persistence(oldest);
 
-		DefaultDatabaseService database = new DefaultDatabaseService(persistence, Mockito.mock(EventManager.class), dataPath);
+		DefaultDatabaseService database = new DefaultDatabaseService(() -> persistence, dataPath);
+		database.initialize();
 		try {
 			assertTrue(database.isInitialized());
 		} finally {
-			database.onShutdown(new IdenticaShutdownEvent());
+			database.shutdown();
 		}
 
 		assertTrue(hasAccountTable(persistence));
 	}
 
-	@DisplayName("Refuses MySQL 8.0.18 before creating any table")
+	@DisplayName("Refuses MySQL 8.0.18 before creating any table and logs why")
 	@Test
 	void refusesOlderMysql() throws SQLException {
 		MysqlPersistence persistence = persistence(tooOld);
+		List<String> severe = new ArrayList<>();
+		Logger.init(severeLines(severe));
 
-		UnsupportedDatabaseServerException refusal = assertThrows(UnsupportedDatabaseServerException.class,
-				() -> new DefaultDatabaseService(persistence, Mockito.mock(EventManager.class), dataPath));
+		DefaultDatabaseService database = new DefaultDatabaseService(() -> persistence, dataPath);
+		UnsupportedDatabaseServerException refusal;
+		try {
+			refusal = assertThrows(UnsupportedDatabaseServerException.class, database::initialize);
+		} finally {
+			Logger.init(null);
+		}
 
 		assertTrue(refusal.getMessage().contains("MySQL 8.0.18"), refusal.getMessage());
 		assertTrue(refusal.getMessage().contains("MySQL 8.0.19 or newer"), refusal.getMessage());
+		assertEquals(List.of(refusal.getMessage()), severe);
 		assertFalse(hasAccountTable(persistence));
+	}
+
+	private static LoggingHelper severeLines(List<String> lines) {
+		return new LoggingHelper() {
+			@Override
+			public void info(String message, Object... objects) {
+			}
+
+			@Override
+			public void warn(String message, Object... objects) {
+			}
+
+			@Override
+			public void severe(String message, Object... objects) {
+				lines.add(message.formatted(objects));
+			}
+
+			@Override
+			public void debug(String message, Object... objects) {
+			}
+
+			@Override
+			public void trace(String message, Object... objects) {
+			}
+		};
 	}
 
 	private static MysqlPersistence persistence(MySQLContainer container) {

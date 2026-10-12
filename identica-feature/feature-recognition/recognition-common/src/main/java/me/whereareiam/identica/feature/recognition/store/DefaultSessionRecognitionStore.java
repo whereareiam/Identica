@@ -1,5 +1,7 @@
 package me.whereareiam.identica.feature.recognition.store;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
@@ -17,7 +19,7 @@ import java.util.Optional;
 
 @Singleton
 public class DefaultSessionRecognitionStore implements SessionRecognitionStore {
-	private final ReplicatedCache<SessionRecognitionSnapshot> cache;
+	private final Supplier<ReplicatedCache<SessionRecognitionSnapshot>> cache;
 
 	@Inject
 	public DefaultSessionRecognitionStore(
@@ -25,12 +27,7 @@ public class DefaultSessionRecognitionStore implements SessionRecognitionStore {
 			@NotNull Provider<Replication> ignoredReplicationProvider,
 			@NotNull ReplicationSystem replicationSystem
 	) {
-		long ttlMs = settingsProvider.get().validityMillis();
-		ReplicationType<SessionRecognitionSnapshot, SessionRecognitionSnapshot> type =
-				ReplicationType.identity(SessionRecognitionSnapshot.class);
-		this.cache = replicationSystem.cache(resolveNamespace(settingsProvider.get()))
-				.defaultTtl(ttlMs)
-				.replicated(type);
+		this.cache = Suppliers.memoize(() -> createCache(replicationSystem, settingsProvider.get()));
 	}
 
 	@Override
@@ -41,7 +38,7 @@ public class DefaultSessionRecognitionStore implements SessionRecognitionStore {
 		String key = key(providerId, providerSubject);
 		if (key == null) return Optional.empty();
 
-		return cache.get(key).join();
+		return cache.get().get(key).join();
 	}
 
 	@Override
@@ -51,7 +48,7 @@ public class DefaultSessionRecognitionStore implements SessionRecognitionStore {
 		String key = key(snapshot.getProviderId(), snapshot.getProviderSubject());
 		if (key == null) return;
 
-		cache.put(key, snapshot).join();
+		cache.get().put(key, snapshot).join();
 	}
 
 	@Override
@@ -63,7 +60,7 @@ public class DefaultSessionRecognitionStore implements SessionRecognitionStore {
 		if (key == null)
 			return;
 
-		cache.invalidate(key).join();
+		cache.get().invalidate(key).join();
 	}
 
 	private @Nullable String key(
@@ -81,6 +78,18 @@ public class DefaultSessionRecognitionStore implements SessionRecognitionStore {
 	private @Nullable String normalize(@Nullable String value) {
 		if (value == null || value.isBlank()) return null;
 		return value.trim().toLowerCase(Locale.ROOT);
+	}
+
+	/**
+	 * Creates the cache on first use, once the recognition settings are loaded.
+	 */
+	private static @NotNull ReplicatedCache<SessionRecognitionSnapshot> createCache(
+			@NotNull ReplicationSystem replicationSystem,
+			@NotNull RecognitionSettings settings
+	) {
+		return replicationSystem.cache(resolveNamespace(settings))
+				.defaultTtl(settings.validityMillis())
+				.replicated(ReplicationType.identity(SessionRecognitionSnapshot.class));
 	}
 
 	private static @NotNull String resolveNamespace(@NotNull RecognitionSettings settings) {

@@ -56,7 +56,7 @@ class DefaultSentinelServiceTest {
 		verifyNoInteractions(definition);
 	}
 
-	@DisplayName("Service reads the cache namespace from sentinel feature settings")
+	@DisplayName("Service reads the cache namespace from sentinel feature settings when it first uses the cache")
 	@Test
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	void serviceReadsCacheNamespaceFromFeatureSettings() {
@@ -65,13 +65,21 @@ class DefaultSentinelServiceTest {
 		ReplicatedCache cache = mock(ReplicatedCache.class);
 		when(replicationSystem.cache("identica:test:sentinels")).thenReturn(cacheBuilder);
 		when(cacheBuilder.replicated(any())).thenReturn(cache);
+		when(cache.invalidate(anyString())).thenReturn(CompletableFuture.completedFuture(null));
 
 		SentinelSettings settings = new SentinelSettings();
 		SentinelSettings.Replication replicationSettings = new SentinelSettings.Replication();
 		replicationSettings.setState("identica:test:sentinels");
 		settings.setReplication(replicationSettings);
+		SentinelPolicy policy = new SentinelPolicy();
+		policy.setEnabled(true);
+		SentinelRegistry registry = new SentinelRegistry();
+		registry.register(definition(policy));
 
-		new DefaultSentinelService(new SentinelRegistry(), mock(me.whereareiam.identica.feature.FeatureRegistry.class), replicationSystem, () -> settings);
+		DefaultSentinelService service = new DefaultSentinelService(registry, mock(me.whereareiam.identica.feature.FeatureRegistry.class), replicationSystem, () -> settings);
+		verifyNoInteractions(replicationSystem);
+
+		service.clear("test-rule", SentinelContext.builder().username("player").ip("203.0.113.10").build());
 
 		verify(replicationSystem).cache("identica:test:sentinels");
 	}
@@ -98,7 +106,26 @@ class DefaultSentinelServiceTest {
 		policy.setLockout(lockout);
 
 		SentinelRegistry registry = new SentinelRegistry();
-		registry.register(new SentinelDefinition() {
+		registry.register(definition(policy));
+		DefaultSentinelService service = new DefaultSentinelService(
+				registry,
+				mock(me.whereareiam.identica.feature.FeatureRegistry.class),
+				replicationSystem,
+				SentinelSettings::new
+		);
+
+		SentinelDecision decision = service.record(
+				"test-rule",
+				SentinelContext.builder().username("player").ip("203.0.113.10").build()
+		);
+
+		assertTrue(decision.isLimited());
+		assertTrue(decision.isDeny());
+		assertEquals(message, decision.getMessage());
+	}
+
+	private static SentinelDefinition definition(SentinelPolicy policy) {
+		return new SentinelDefinition() {
 			@Override
 			public @NotNull String id() {
 				return "test-rule";
@@ -118,21 +145,6 @@ class DefaultSentinelServiceTest {
 			public @NotNull SentinelPolicy policy(@NotNull SentinelContext context) {
 				return policy;
 			}
-		});
-		DefaultSentinelService service = new DefaultSentinelService(
-				registry,
-				mock(me.whereareiam.identica.feature.FeatureRegistry.class),
-				replicationSystem,
-				SentinelSettings::new
-		);
-
-		SentinelDecision decision = service.record(
-				"test-rule",
-				SentinelContext.builder().username("player").ip("203.0.113.10").build()
-		);
-
-		assertTrue(decision.isLimited());
-		assertTrue(decision.isDeny());
-		assertEquals(message, decision.getMessage());
+		};
 	}
 }

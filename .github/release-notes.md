@@ -17,3 +17,4 @@ version: 3.0.0
 ## For addon developers
 
 * `IdenticaAPI` is now an interface. Get it with `IdenticaAPI.get()`, or `IdenticaAPI.whenReady(...)` when your addon may start first, and call the same getters on it: `IdenticaAPI.getEventManager()` becomes `IdenticaAPI.get().getEventManager()`. `getService(...)` became `findService(...)`, which returns an `Optional`, and `getPresenceService()` became `getIdentityService()`.
+* `IdenticaReadyEvent` is now called at the end of startup, once the providers are loaded with their commands and documents and Identica handles connections; a listener of it no longer runs before the providers load. `IdenticaBootstrappedEvent` is called once the features have started, before the providers load. Identica starts in phases, and a `RuntimeLifecycle` names the `StartupPhase` it starts in.

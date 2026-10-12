@@ -16,6 +16,8 @@ Identica creates its tables on the first start and upgrades them on later starts
 - Values are case-sensitive. Any other value stops the startup with an error that names `type`, the value and the accepted values, and the file is left as it is. Since a failed startup refuses every connection, Identica never runs on a database the file did not ask for.
 - Affects: which persistence backend class and JDBC URL strategy are used
 
+`"MYSQL"` works with MySQL 8.0.19 or newer and with MariaDB.
+
 ## Backend-specific fields
 
 Different persistence types expose different fields.
@@ -51,6 +53,11 @@ If you only change `type` without letting the plugin boot again, the file struct
     If options are present, Identica appends them to the base H2 URL, automatically inserting `;` when needed.
   </ContentTab>
   <ContentTab value="MySQL">
+    This type serves both MySQL and MariaDB servers.
+
+    - MySQL must be 8.0.19 or newer. On an older MySQL server, Identica stops its startup before it creates or changes any table, with an error that names the version it found and the version it needs. Like any failed startup, this refuses every connection until the server is upgraded and the proxy restarted.
+    - Identica sets no minimum MariaDB version.
+
     #### host
 
     - Takes: a string

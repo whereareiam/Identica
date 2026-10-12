@@ -8,6 +8,8 @@ import lombok.Getter;
 import me.whereareiam.dialectica.adapter.jdbi.DialecticaPlugin;
 import me.whereareiam.identica.adapter.database.config.LoggerConfig;
 import me.whereareiam.identica.adapter.database.connection.DataSourceFactory;
+import me.whereareiam.identica.adapter.database.connection.DatabaseServerRequirement;
+import me.whereareiam.identica.adapter.database.connection.UnsupportedDatabaseServerException;
 import me.whereareiam.identica.database.DatabaseService;
 import me.whereareiam.identica.adapter.database.schema.AccountSchema;
 import me.whereareiam.identica.adapter.database.schema.DatabaseSchemaInstaller;
@@ -26,10 +28,10 @@ import java.nio.file.Path;
 
 /**
  * Default implementation of DatabaseService.
- * Opens the database, installs the core schema, and provides access to Jdbi and the
- * {@link DatabaseSchemaInstaller} that installs the other owners' schemas on it. The Jdbi speaks
- * the database's Dialectica dialect, so entities and the UUIDs and booleans of hand-written
- * queries are stored the way the schema declares them.
+ * Opens the database, refuses a server older than {@link DatabaseServerRequirement} allows, installs
+ * the core schema, and provides access to Jdbi and the {@link DatabaseSchemaInstaller} that installs
+ * the other owners' schemas on it. The Jdbi speaks the database's Dialectica dialect, so entities and
+ * the UUIDs and booleans of hand-written queries are stored the way the schema declares them.
  */
 @Getter
 @Singleton
@@ -56,6 +58,7 @@ public class DefaultDatabaseService implements DatabaseService, EventListener {
 
 		try {
 			this.dataSource = DataSourceFactory.create(persistence, dataPath);
+			DatabaseServerRequirement.verify(persistence.getType(), dataSource);
 
 			this.jdbi = Jdbi.create(dataSource);
 			jdbi.installPlugin(new SqlObjectPlugin());
@@ -65,6 +68,11 @@ public class DefaultDatabaseService implements DatabaseService, EventListener {
 
 			this.schemaInstaller = new DatabaseSchemaInstaller(jdbi);
 			schemaInstaller.install(new AccountSchema());
+		} catch (UnsupportedDatabaseServerException e) {
+			Logger.severe("%s", e.getMessage());
+			if (dataSource instanceof HikariDataSource hikariDataSource) hikariDataSource.close();
+			dataSource = null;
+			throw e;
 		} catch (Exception e) {
 			Logger.severe(e, "Failed to initialize database");
 			throw new RuntimeException("Failed to initialize database", e);

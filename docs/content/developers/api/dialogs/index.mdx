@@ -1,0 +1,41 @@
+---
+title: Dialogs addon
+description: Show your plugin's or provider's messages as dialogs, and show the configured dialogs directly.
+---
+
+The [dialogs addon](../../../admins/addons/official/dialogs/index.md) shows Identica's messages as Minecraft dialogs through Identica's [message service](../../extending/messages/index.mdx). It registers a part type, `dialog`, and presents every prompt and message its rules name with it. Your plugin or provider uses the same part, or the addon's own API.
+
+Depend on `me.whereareiam.identica.addon:dialogs-api` with `compileOnly`, and on the addon as a plugin dependency, so it starts first.
+
+## Show a message as a dialog of your choice
+
+A provider that asks its own question shows it as a dialog by presenting its prompt with a `DialogPart` that names one of the addon's dialog files. The dialog replaces chat; a player whose client cannot show dialogs gets the message in chat:
+
+```java
+MessageService messages = identica.getMessageService();
+
+MessageService.Registration passphrase = messages.presentPrompt("example:passphrase", Presentation.builder()
+        .part(DialogPart.of("passphrase"))
+        .removed(ChatPart.TYPE)
+        .build());
+```
+
+`DialogPart.byRules()` lets the addon's rules pick the dialog instead, as for the prompts the rules name. Remove the registration when your plugin is disabled.
+
+The dialog file decides what the player sees. An `ANSWER` button answers your prompt with the inputs whose keys are the names of its fields, through your prompt's command, so the dialog needs to know neither the command nor how an administrator renamed it. `{message}` shows your message's text and `{answer}` the dialog's own text for the message by its ID.
+
+## Show a configured dialog directly
+
+`Dialogs` shows a dialog from the addon's `dialogs/` folder to a player, outside any message, such as server rules after a login. The player keeps it until you close it, another dialog replaces it or they leave:
+
+```java
+Dialogs.whenReady(dialogs -> {
+    dialogs.show(player.getUniqueId(), "rules", Map.of("player", player.getUsername()));
+    // later
+    dialogs.clear(player.getUniqueId());
+});
+```
+
+The unique id is that of the player's connection on the proxy. `show` does nothing for a player who switched to chat, and the dialog appears once the player's client is in a server's world. A dialog shown this way shows no message, so an `ANSWER` button on it does nothing; use a `COMMAND` button.
+
+`dialog(id)` reads a configured dialog and `rules()` the rules in the order the addon tries them.

@@ -1,6 +1,7 @@
 package me.whereareiam.identica.testing.example;
 
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
+import me.whereareiam.identica.testing.environment.Addon;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.journey.Administrator;
@@ -25,7 +26,7 @@ class ExampleAddonTest {
 	private static final String COMMAND_HELD_BACK = "Log in before you use this command.";
 
 	@Test
-	@Identica(providers = Provider.CREDENTIAL, addon = true)
+	@Identica(providers = Provider.CREDENTIAL, addons = Addon.EXAMPLE)
 	void holdsBackChatUntilThePlayerHasRegistered(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
@@ -42,7 +43,7 @@ class ExampleAddonTest {
 	}
 
 	@Test
-	@Identica(providers = Provider.CREDENTIAL, addon = true)
+	@Identica(providers = Provider.CREDENTIAL, addons = Addon.EXAMPLE)
 	void holdsBackOtherCommandsButLetsTheRegistrationCommandsThrough(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
@@ -56,7 +57,7 @@ class ExampleAddonTest {
 	}
 
 	@Test
-	@Identica(providers = Provider.CREDENTIAL, addon = true)
+	@Identica(providers = Provider.CREDENTIAL, addons = Addon.EXAMPLE)
 	void startsOnceTheProvidersAreLoaded(ScenarioContext anvil) {
 		// Credential's commands only exist once Identica has loaded its providers
 		Administrator.at(anvil, PROXY)
@@ -64,7 +65,7 @@ class ExampleAddonTest {
 	}
 
 	@Test
-	@Identica(providers = Provider.CREDENTIAL, addon = true)
+	@Identica(providers = Provider.CREDENTIAL, addons = Addon.EXAMPLE)
 	void readsTheCommandsAndMessagesAgainWhenIdenticaReloads(ScenarioContext anvil) {
 		Administrator.at(anvil, PROXY)
 				.reloads()

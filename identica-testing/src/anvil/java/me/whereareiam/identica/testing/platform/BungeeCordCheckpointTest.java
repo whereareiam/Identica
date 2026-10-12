@@ -1,6 +1,7 @@
 package me.whereareiam.identica.testing.platform;
 
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
+import me.whereareiam.identica.testing.environment.Addon;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Platform;
 import me.whereareiam.identica.testing.environment.Provider;
@@ -35,7 +36,7 @@ class BungeeCordCheckpointTest {
 	private static final Duration PAST_THE_READ_TIMEOUT = Duration.ofSeconds(35);
 
 	@Test
-	@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL, addon = true)
+	@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL, addons = Addon.EXAMPLE)
 	void holdsAPlayerOnTheLoadingScreenUntilTheyHaveRegistered(ScenarioContext anvil) {
 		Journey alice = Journey.of(anvil, Client.offline("Alice").through(HOLD_HOST)).joinsHeld();
 		Administrator console = Administrator.at(anvil, PROXY);
@@ -50,7 +51,7 @@ class BungeeCordCheckpointTest {
 	}
 
 	@Test
-	@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL, addon = true)
+	@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL, addons = Addon.EXAMPLE)
 	void logsInWhileHeldAndReadsTheAnswersOnceJoined(ScenarioContext anvil) {
 		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
 		Journey alice = Journey.of(anvil, Client.offline("Alice").through(HOLD_HOST)).joinsHeld();
@@ -66,7 +67,7 @@ class BungeeCordCheckpointTest {
 	}
 
 	@Test
-	@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL, addon = true)
+	@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL, addons = Addon.EXAMPLE)
 	void keepsAHeldPlayerConnectedPastTheReadTimeout(ScenarioContext anvil) {
 		Journey alice = Journey.of(anvil, Client.offline("Alice").through(HOLD_HOST)).joinsHeld()
 				.staysHeld(PAST_THE_READ_TIMEOUT);
@@ -79,7 +80,7 @@ class BungeeCordCheckpointTest {
 	}
 
 	@Test
-	@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL, addon = true,
+	@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL, addons = Addon.EXAMPLE,
 			complete = AUTH)
 	void sendsAHeldPlayerOnToAnotherCompletionServer(ScenarioContext anvil) {
 		Journey alice = Journey.of(anvil, Client.offline("Alice").through(HOLD_HOST)).joinsHeld();
@@ -94,7 +95,7 @@ class BungeeCordCheckpointTest {
 	}
 
 	@Test
-	@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL, addon = true)
+	@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL, addons = Addon.EXAMPLE)
 	void releasesAPlayerWhoLeftWhileHeld(ScenarioContext anvil) {
 		Journey.of(anvil, Client.offline("Alice").through(HOLD_HOST)).joinsHeld().leave();
 
@@ -106,7 +107,7 @@ class BungeeCordCheckpointTest {
 	}
 
 	@Test
-	@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL, addon = true)
+	@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL, addons = Addon.EXAMPLE)
 	void asksAPlayerOnTheStepsServerWhereTheCheckpointHoldsThemThere(ScenarioContext anvil) {
 		Journey alice = Journey.of(anvil, Client.offline("Alice").through(ASK_HOST)).join()
 				.on(AUTH)

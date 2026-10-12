@@ -1,7 +1,7 @@
 ---
 title: Написание прохождений
 description: Как объявить тестовую сеть, описать игрока и проверить, что сообщают игрок и прокси.
-sourceHash: 25274fd7eb093c5a0cc11e1b80428809d0c545be
+sourceHash: fa8e38cfb783c9390b0f6aca63bbdd2ded2735be
 ---
 
 ## Написание теста [#write-a-test]
@@ -59,7 +59,7 @@ Journey routed = Journey.of(anvil, Client.offline("Bob").through(Provider.CREDEN
 Игрок, которого контрольная точка удерживает на экране загрузки, входит, но не попадает в мир ни одного сервера, пока путь не завершится. `joinsHeld()` подключает такого игрока и ожидает, что прокси его удерживает, `isHeld()` ещё раз проверяет, что его клиент не вошёл ни в один мир, `staysHeld(duration)` проверяет это дольше, например дольше тайм-аута чтения прокси, а `neverJoins(backend)` — что игрок так и не попадает на этот бэкенд. Контрольные точки аддона-примера удерживают игроков, которые указывают `IdenticaNetwork.HOLD_HOST`, на экране загрузки, а игроков, которые указывают `IdenticaNetwork.ASK_HOST`, — на сервере шага; `Administrator.answersFor(username, command)` отвечает за них из консоли:
 
 ```java
-@Identica(providers = Provider.CREDENTIAL, addon = true)
+@Identica(providers = Provider.CREDENTIAL, addons = Addon.EXAMPLE)
 void holdsAPlayerUntilTheyHaveRegistered(ScenarioContext anvil) {
 	Journey alice = Journey.of(anvil, Client.offline("Alice").through(HOLD_HOST)).joinsHeld();
 	Administrator console = Administrator.at(anvil, PROXY);
@@ -148,13 +148,13 @@ alice.waits(LOCKOUT)
 
 ## Примеры [#the-examples]
 
-Каждый тестовый прокси устанавливает провайдер-пример из `examples/provider` рядом с официальными провайдерами; он отключён, если тест не включит его через `providers = Provider.EXAMPLE`. `@Identica(addon = true)` дополнительно устанавливает аддон-пример из `examples/addon` — отдельный плагин, который на Velocity блокирует чат и команды, пока игрок не пройдёт аутентификацию, и на Velocity и BungeeCord удерживает игроков, которые заходят через `IdenticaNetwork.HOLD_HOST` или `IdenticaNetwork.ASK_HOST`, на своих контрольных точках. Тесты в `example` следят за тем, чтобы оба примера работали с текущим API.
+Каждый тестовый прокси устанавливает провайдер-пример из `examples/provider` рядом с официальными провайдерами; он отключён, если тест не включит его через `providers = Provider.EXAMPLE`. `@Identica(addons = Addon.EXAMPLE)` дополнительно устанавливает аддон-пример из `examples/addon` — отдельный плагин, который на Velocity блокирует чат и команды, пока игрок не пройдёт аутентификацию, и на Velocity и BungeeCord удерживает игроков, которые заходят через `IdenticaNetwork.HOLD_HOST` или `IdenticaNetwork.ASK_HOST`, на своих контрольных точках. Тесты в `example` следят за тем, чтобы оба примера работали с текущим API.
 
 Текст, который не относится ни к одному файлу конфигурации, например собственное сообщение аддона или строка чата, сравнивается как обычный текст. `.chat(message)` отправляет сообщение в чат, `.seesText(text)` ждёт сообщение, содержащее этот текст, а `.doesNotSeeText(text)` ожидает, что такое сообщение не придёт. `Administrator.seesOnConsole(texts...)` ожидает строку консоли, содержащую все указанные тексты, после предыдущей команды администратора — например то, что аддон пишет в лог, реагируя на перезагрузку:
 
 ```java
 @Test
-@Identica(providers = Provider.EXAMPLE, addon = true)
+@Identica(providers = Provider.EXAMPLE, addons = Addon.EXAMPLE)
 void holdsBackChat(ScenarioContext anvil) {
 	Journey.offline(anvil, "Alice").join()
 			.on(AUTH)
@@ -164,3 +164,24 @@ void holdsBackChat(ScenarioContext anvil) {
 			.seesText("Log in before you chat.");
 }
 ```
+
+## Аддон Dialogs [#the-dialogs-addon]
+
+`@Identica(addons = Addon.DIALOGS)` устанавливает официальный аддон Dialogs из `addons/dialogs`, а на Velocity вместе с ним PacketEvents; на BungeeCord аддон показывает диалоги через собственный API BungeeCord. Сценарий отвечает на его диалоги так же, как игрок: `.seesDialog(id)` ждёт диалог, файл которого в папке `dialogs/` аддона называется `id`, сравнивая заголовок и текст, а `.presses(button, inputs)` заполняет поля и нажимает кнопку, названную через этот файл. `.dialogShowsAnswer(id)` ожидает, что диалог показывает собственный текст для показанного сообщения, например для `credential:password-invalid` после неверного пароля, а `.hasNoDialog()` — что открытого диалога нет:
+
+```java
+@Test
+@Identica(providers = Provider.CREDENTIAL, addons = Addon.DIALOGS)
+void logsInThroughTheDialog(ScenarioContext anvil) {
+	Journey.offline(anvil, "Alice").join()
+			.on(AUTH)
+			.seesDialog("register")
+			.presses(dialog -> dialog.getActions().getFirst(), Map.of("password", PASSWORD));
+}
+```
+
+`.seesNoDialog()` ожидает, что с предыдущей проверки диалогов ни один диалог не был показан, например для шага, который правило оставляет в чате.
+
+`ProxyConfiguration.editGenerated(anvil, Addon.DIALOGS, path, type, change)` меняет файл, созданный аддоном на запущенном прокси, через его собственные модели, например `RulesDocument` для `rules.yml` или `DialogDocument` для диалога; `generated` читает такой файл, а `putGenerated` добавляет новый, например собственный диалог. После `Administrator.reloads()` аддон читает их заново.
+
+Тестовые серверы работают на Minecraft 1.21.11, и клиент любого сценария той же версии, поэтому у каждого клиента есть диалоги. `@Identica(minecraft = MinecraftVersion.V1_21_1)` запускает серверы и клиентов на 1.21.1, то есть на клиенте без диалогов.

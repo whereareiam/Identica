@@ -1,6 +1,7 @@
 package me.whereareiam.identica.testing.routing;
 
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
+import me.whereareiam.identica.testing.environment.Addon;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.journey.Administrator;
@@ -31,7 +32,7 @@ class CheckpointHoldTest {
 	private static final Duration PAST_THE_READ_TIMEOUT = Duration.ofSeconds(35);
 
 	@Test
-	@Identica(providers = Provider.CREDENTIAL, addon = true)
+	@Identica(providers = Provider.CREDENTIAL, addons = Addon.EXAMPLE)
 	void holdsAPlayerOnTheLoadingScreenUntilTheyHaveRegistered(ScenarioContext anvil) {
 		Journey alice = Journey.of(anvil, Client.offline("Alice").through(HOLD_HOST)).joinsHeld();
 		Administrator console = Administrator.at(anvil, PROXY);
@@ -46,7 +47,7 @@ class CheckpointHoldTest {
 	}
 
 	@Test
-	@Identica(providers = Provider.CREDENTIAL, addon = true)
+	@Identica(providers = Provider.CREDENTIAL, addons = Addon.EXAMPLE)
 	void keepsAHeldPlayerConnectedPastTheReadTimeout(ScenarioContext anvil) {
 		Journey alice = Journey.of(anvil, Client.offline("Alice").through(HOLD_HOST)).joinsHeld()
 				.staysHeld(PAST_THE_READ_TIMEOUT);
@@ -59,7 +60,7 @@ class CheckpointHoldTest {
 	}
 
 	@Test
-	@Identica(providers = Provider.CREDENTIAL, addon = true)
+	@Identica(providers = Provider.CREDENTIAL, addons = Addon.EXAMPLE)
 	void releasesAPlayerWhoLeftWhileHeld(ScenarioContext anvil) {
 		Journey.of(anvil, Client.offline("Alice").through(HOLD_HOST)).joinsHeld().leave();
 
@@ -71,7 +72,7 @@ class CheckpointHoldTest {
 	}
 
 	@Test
-	@Identica(providers = Provider.CREDENTIAL, addon = true)
+	@Identica(providers = Provider.CREDENTIAL, addons = Addon.EXAMPLE)
 	void asksAPlayerOnTheStepsServerWhereTheCheckpointHoldsThemThere(ScenarioContext anvil) {
 		Journey alice = Journey.of(anvil, Client.offline("Alice").through(ASK_HOST)).join()
 				.on(AUTH)

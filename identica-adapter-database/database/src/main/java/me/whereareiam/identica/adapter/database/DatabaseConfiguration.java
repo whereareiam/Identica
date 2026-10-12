@@ -3,16 +3,22 @@ package me.whereareiam.identica.adapter.database;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import me.whereareiam.dialectica.Dialectica;
+import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.account.DefaultAccountPersistenceService;
 import me.whereareiam.identica.adapter.database.account.DefaultAccountReservationPersistenceService;
+import me.whereareiam.identica.adapter.database.entity.account.AccountEntity;
+import me.whereareiam.identica.adapter.database.entity.account.AccountProviderLinkEntity;
+import me.whereareiam.identica.adapter.database.entity.account.AccountProviderProfileEntity;
+import me.whereareiam.identica.adapter.database.entity.account.AccountReservationEntity;
+import me.whereareiam.identica.adapter.database.entity.username.UsernameHistoryEntity;
+import me.whereareiam.identica.adapter.database.entity.username.UsernameStateEntity;
 import me.whereareiam.identica.adapter.database.provider.DefaultProviderLinkPersistenceService;
 import me.whereareiam.identica.adapter.database.provider.DefaultProviderProfilePersistenceService;
 import me.whereareiam.identica.adapter.database.repository.account.AccountRepository;
 import me.whereareiam.identica.adapter.database.repository.account.AccountReservationRepository;
 import me.whereareiam.identica.adapter.database.repository.provider.ProviderLinkRepository;
-import me.whereareiam.identica.adapter.database.repository.provider.ProviderProfileRepository;
 import me.whereareiam.identica.adapter.database.repository.username.UsernameHistoryRepository;
-import me.whereareiam.identica.adapter.database.repository.username.UsernameStateRepository;
 import me.whereareiam.identica.adapter.database.username.DefaultAccountUsernameHistoryPersistenceService;
 import me.whereareiam.identica.adapter.database.username.DefaultAccountUsernameStatePersistenceService;
 import me.whereareiam.identica.persistence.AccountPersistenceService;
@@ -53,6 +59,42 @@ public class DatabaseConfiguration extends AbstractModule {
 
 	@Provides
 	@Singleton
+	public EntityAccess<AccountEntity> provideAccounts(Jdbi jdbi) {
+		return EntityAccess.of(jdbi, Dialectica.entity(AccountEntity.class));
+	}
+
+	@Provides
+	@Singleton
+	public EntityAccess<AccountReservationEntity> provideAccountReservations(Jdbi jdbi) {
+		return EntityAccess.of(jdbi, Dialectica.entity(AccountReservationEntity.class));
+	}
+
+	@Provides
+	@Singleton
+	public EntityAccess<AccountProviderLinkEntity> provideProviderLinks(Jdbi jdbi) {
+		return EntityAccess.of(jdbi, Dialectica.entity(AccountProviderLinkEntity.class));
+	}
+
+	@Provides
+	@Singleton
+	public EntityAccess<AccountProviderProfileEntity> provideProviderProfiles(Jdbi jdbi) {
+		return EntityAccess.of(jdbi, Dialectica.entity(AccountProviderProfileEntity.class));
+	}
+
+	@Provides
+	@Singleton
+	public EntityAccess<UsernameStateEntity> provideUsernameStates(Jdbi jdbi) {
+		return EntityAccess.of(jdbi, Dialectica.entity(UsernameStateEntity.class));
+	}
+
+	@Provides
+	@Singleton
+	public EntityAccess<UsernameHistoryEntity> provideUsernameHistory(Jdbi jdbi) {
+		return EntityAccess.of(jdbi, Dialectica.entity(UsernameHistoryEntity.class));
+	}
+
+	@Provides
+	@Singleton
 	public AccountRepository provideAccountRepository(Jdbi jdbi) {
 		return jdbi.onDemand(AccountRepository.class);
 	}
@@ -71,20 +113,7 @@ public class DatabaseConfiguration extends AbstractModule {
 
 	@Provides
 	@Singleton
-	public ProviderProfileRepository provideProviderProfileRepository(Jdbi jdbi) {
-		return jdbi.onDemand(ProviderProfileRepository.class);
-	}
-
-	@Provides
-	@Singleton
-	public UsernameStateRepository provideUsernameStateRepository(Jdbi jdbi) {
-		return jdbi.onDemand(UsernameStateRepository.class);
-	}
-
-	@Provides
-	@Singleton
 	public UsernameHistoryRepository provideUsernameHistoryRepository(Jdbi jdbi) {
 		return jdbi.onDemand(UsernameHistoryRepository.class);
 	}
-
 }

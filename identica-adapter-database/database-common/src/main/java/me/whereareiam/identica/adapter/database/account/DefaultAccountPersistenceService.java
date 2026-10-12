@@ -3,6 +3,7 @@ package me.whereareiam.identica.adapter.database.account;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.entity.account.AccountEntity;
 import me.whereareiam.identica.adapter.database.mapper.account.AccountMapper;
 import me.whereareiam.identica.adapter.database.repository.account.AccountRepository;
@@ -23,6 +24,7 @@ import java.util.UUID;
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class DefaultAccountPersistenceService implements AccountPersistenceService, EventListener {
+	private final EntityAccess<AccountEntity> accounts;
 	private final AccountRepository accountRepository;
 	private final EventManager eventManager;
 
@@ -34,7 +36,7 @@ public class DefaultAccountPersistenceService implements AccountPersistenceServi
 	@Override
 	public @NotNull Optional<Account> findByUniqueId(@NotNull UUID uniqueId) {
 		try {
-			return accountRepository.findByUniqueId(uniqueId).map(AccountMapper::toModel);
+			return accounts.find(uniqueId).map(AccountMapper::toModel);
 		} catch (Exception e) {
 			Logger.warn(e, "Failed to load account %s", uniqueId);
 			return Optional.empty();
@@ -70,12 +72,7 @@ public class DefaultAccountPersistenceService implements AccountPersistenceServi
 		AccountEntity entity = AccountMapper.toEntity(account);
 
 		try {
-			accountRepository.insert(
-					entity.getUniqueId(),
-					entity.getUsername(),
-					entity.getCreatedAt(),
-					entity.getLastSeenAt()
-			);
+			accounts.insert(entity);
 
 			return AccountMapper.toModel(entity);
 		} catch (Exception e) {
@@ -107,7 +104,7 @@ public class DefaultAccountPersistenceService implements AccountPersistenceServi
 	@Override
 	public void delete(@NotNull UUID uniqueId) {
 		try {
-			accountRepository.delete(uniqueId);
+			accounts.delete(uniqueId);
 		} catch (Exception e) {
 			Logger.warn(e, "Failed to delete account %s", uniqueId);
 		}

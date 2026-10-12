@@ -2,6 +2,7 @@ package me.whereareiam.identica.adapter.database.provider;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.entity.account.AccountProviderLinkEntity;
 import me.whereareiam.identica.adapter.database.mapper.account.AccountProviderLinkMapper;
 import me.whereareiam.identica.adapter.database.repository.provider.ProviderLinkRepository;
@@ -18,13 +19,16 @@ import java.util.*;
 
 @Singleton
 public class DefaultProviderLinkPersistenceService implements ProviderLinkPersistenceService, EventListener {
+	private final EntityAccess<AccountProviderLinkEntity> links;
 	private final ProviderLinkRepository repository;
 
 	@Inject
 	public DefaultProviderLinkPersistenceService(
+			EntityAccess<AccountProviderLinkEntity> links,
 			ProviderLinkRepository repository,
 			EventManager eventManager
 	) {
+		this.links = links;
 		this.repository = repository;
 		eventManager.register(this);
 	}
@@ -34,7 +38,7 @@ public class DefaultProviderLinkPersistenceService implements ProviderLinkPersis
 			@NotNull String providerId, @NotNull String providerSubject
 	) {
 		if (providerId.isBlank() || providerSubject.isBlank()) return Optional.empty();
-		return repository.findBySubject(providerId, providerSubject).map(AccountProviderLinkMapper::toModel);
+		return links.find(providerId, providerSubject).map(AccountProviderLinkMapper::toModel);
 	}
 
 	@Override
@@ -63,7 +67,7 @@ public class DefaultProviderLinkPersistenceService implements ProviderLinkPersis
 			throw new IllegalArgumentException("Provider subject is required");
 
 		AccountProviderLinkEntity entity = AccountProviderLinkMapper.toEntity(link);
-		Optional<AccountProviderLinkEntity> existing = repository.findBySubject(link.getProviderId(), link.getProviderSubject());
+		Optional<AccountProviderLinkEntity> existing = links.find(link.getProviderId(), link.getProviderSubject());
 		if (existing.isPresent()) {
 			repository.update(link.getProviderId(), link.getProviderSubject(), link.isPrimaryLink(), link.getLastSeenAt());
 			if (link.isPrimaryLink()) {
@@ -75,14 +79,7 @@ public class DefaultProviderLinkPersistenceService implements ProviderLinkPersis
 					.build());
 		}
 
-		repository.insert(
-				entity.getUniqueId(),
-				entity.getProviderId(),
-				entity.getProviderSubject(),
-				entity.isPrimaryLink(),
-				entity.getLinkedAt(),
-				entity.getLastSeenAt()
-		);
+		links.insert(entity);
 
 		if (link.isPrimaryLink()) {
 			repository.updatePrimary(link.getUniqueId(), link.getProviderId(), true);

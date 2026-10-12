@@ -3,6 +3,11 @@ package me.whereareiam.identica.feature.verification.database;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import me.whereareiam.dialectica.Dialectica;
+import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
+import me.whereareiam.identica.feature.verification.database.entity.VerificationEnrollmentEntity;
+import me.whereareiam.identica.feature.verification.database.entity.VerificationRecoveryCodeEntity;
+import me.whereareiam.identica.feature.verification.database.entity.VerificationSelectionEntity;
 import me.whereareiam.identica.feature.verification.database.repository.VerificationEnrollmentRepository;
 import me.whereareiam.identica.feature.verification.database.repository.VerificationRecoveryCodeRepository;
 import me.whereareiam.identica.feature.verification.database.repository.VerificationSelectionRepository;
@@ -12,6 +17,24 @@ public class VerificationDatabaseConfiguration extends AbstractModule {
 	@Override
 	protected void configure() {
 		bind(VerificationPersistenceService.class).to(DefaultVerificationPersistenceService.class).in(Singleton.class);
+	}
+
+	@Provides
+	@Singleton
+	public EntityAccess<VerificationEnrollmentEntity> provideVerificationEnrollments(Jdbi jdbi) {
+		return EntityAccess.of(jdbi, Dialectica.entity(VerificationEnrollmentEntity.class));
+	}
+
+	@Provides
+	@Singleton
+	public EntityAccess<VerificationSelectionEntity> provideVerificationSelections(Jdbi jdbi) {
+		return EntityAccess.of(jdbi, Dialectica.entity(VerificationSelectionEntity.class));
+	}
+
+	@Provides
+	@Singleton
+	public EntityAccess<VerificationRecoveryCodeEntity> provideVerificationRecoveryCodes(Jdbi jdbi) {
+		return EntityAccess.of(jdbi, Dialectica.entity(VerificationRecoveryCodeEntity.class));
 	}
 
 	@Provides

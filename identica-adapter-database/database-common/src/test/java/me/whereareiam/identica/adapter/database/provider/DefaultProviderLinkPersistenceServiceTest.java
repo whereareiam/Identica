@@ -1,5 +1,6 @@
 package me.whereareiam.identica.adapter.database.provider;
 
+import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.entity.account.AccountProviderLinkEntity;
 import me.whereareiam.identica.adapter.database.repository.provider.ProviderLinkRepository;
 import me.whereareiam.identica.adapter.database.testing.TestDataFactory;
@@ -27,6 +28,8 @@ import static org.mockito.Mockito.*;
 @DisplayName("Default Provider-Link Persistence Service")
 class DefaultProviderLinkPersistenceServiceTest {
 	@Mock
+	private EntityAccess<AccountProviderLinkEntity> links;
+	@Mock
 	private ProviderLinkRepository repository;
 	@Mock
 	private EventManager eventManager;
@@ -35,7 +38,7 @@ class DefaultProviderLinkPersistenceServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		service = new DefaultProviderLinkPersistenceService(repository, eventManager);
+		service = new DefaultProviderLinkPersistenceService(links, repository, eventManager);
 	}
 
 	@DisplayName("Refuses blank provider IDs and subjects when looking up links by subject")
@@ -43,7 +46,7 @@ class DefaultProviderLinkPersistenceServiceTest {
 	void findBySubjectReturnsEmptyForBlankValues() {
 		assertTrue(service.findBySubject("", "subject").isEmpty());
 		assertTrue(service.findBySubject("provider", " ").isEmpty());
-		verifyNoInteractions(repository);
+		verifyNoInteractions(links, repository);
 	}
 
 	@DisplayName("Requires a provider ID when looking up a link by account and provider")
@@ -51,7 +54,7 @@ class DefaultProviderLinkPersistenceServiceTest {
 	void findByUniqueIdAndProviderIdReturnsEmptyForBlankProviderId() {
 		UUID uniqueId = UUID.randomUUID();
 		assertTrue(service.findByUniqueIdAndProviderId(uniqueId, " ").isEmpty());
-		verifyNoInteractions(repository);
+		verifyNoInteractions(links, repository);
 	}
 
 	@DisplayName("Rejects upserts with a blank provider ID")
@@ -98,7 +101,7 @@ class DefaultProviderLinkPersistenceServiceTest {
 				.linkedAt(TestDataFactory.LINKED_AT)
 				.lastSeenAt(123L)
 				.build();
-		when(repository.findBySubject("provider", "subject")).thenReturn(Optional.of(existing));
+		when(links.find("provider", "subject")).thenReturn(Optional.of(existing));
 
 		AccountProviderLink result = service.upsert(link);
 
@@ -113,11 +116,16 @@ class DefaultProviderLinkPersistenceServiceTest {
 	void upsertInsertsNewLink() {
 		UUID uniqueId = UUID.randomUUID();
 		AccountProviderLink link = TestDataFactory.providerLink(uniqueId, "provider", "subject", false);
-		when(repository.findBySubject("provider", "subject")).thenReturn(Optional.empty());
+		when(links.find("provider", "subject")).thenReturn(Optional.empty());
 
 		AccountProviderLink result = service.upsert(link);
 
-		verify(repository).insert(uniqueId, "provider", "subject", false, TestDataFactory.LINKED_AT, TestDataFactory.LAST_SEEN_AT);
+		verify(links).insert(argThat(entity -> uniqueId.equals(entity.getUniqueId())
+				&& "provider".equals(entity.getProviderId())
+				&& "subject".equals(entity.getProviderSubject())
+				&& !entity.isPrimaryLink()
+				&& entity.getLinkedAt() == TestDataFactory.LINKED_AT
+				&& entity.getLastSeenAt() == TestDataFactory.LAST_SEEN_AT));
 		verify(repository, never()).updatePrimary(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyBoolean());
 		assertEquals(uniqueId, result.getUniqueId());
 	}

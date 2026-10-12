@@ -1,8 +1,8 @@
 package me.whereareiam.identica.adapter.database.repository.provider;
 
+import me.whereareiam.dialectica.adapter.jdbi.entity.RegisterDialecticaMapper;
 import me.whereareiam.identica.adapter.database.entity.account.AccountProviderLinkEntity;
 import org.jdbi.v3.sqlobject.config.KeyColumn;
-import org.jdbi.v3.sqlobject.config.RegisterBeanMapper;
 import org.jdbi.v3.sqlobject.config.ValueColumn;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
@@ -13,31 +13,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-@RegisterBeanMapper(AccountProviderLinkEntity.class)
+/**
+ * The provider link queries beyond reading and writing one link by its provider subject, which
+ * {@code EntityAccess<AccountProviderLinkEntity>} does.
+ */
+@RegisterDialecticaMapper(AccountProviderLinkEntity.class)
 public interface ProviderLinkRepository {
 	@SqlQuery("""
-			SELECT unique_id AS uniqueId,
-			       provider_id AS providerId,
-			       provider_subject AS providerSubject,
-			       is_primary AS primaryLink,
-			       linked_at AS linkedAt,
-			       last_seen_at AS lastSeenAt
-			  FROM identica_provider_links
-			 WHERE provider_id = :providerId
-			   AND provider_subject = :providerSubject
-			""")
-	Optional<AccountProviderLinkEntity> findBySubject(
-			@Bind("providerId") String providerId,
-			@Bind("providerSubject") String providerSubject
-	);
-
-	@SqlQuery("""
-			SELECT unique_id AS uniqueId,
-			       provider_id AS providerId,
-			       provider_subject AS providerSubject,
-			       is_primary AS primaryLink,
-			       linked_at AS linkedAt,
-			       last_seen_at AS lastSeenAt
+			SELECT *
 			  FROM identica_provider_links
 			 WHERE unique_id = :uniqueId
 			   AND provider_id = :providerId
@@ -47,16 +30,7 @@ public interface ProviderLinkRepository {
 			@Bind("providerId") String providerId
 	);
 
-	@SqlQuery("""
-			SELECT unique_id AS uniqueId,
-			       provider_id AS providerId,
-			       provider_subject AS providerSubject,
-			       is_primary AS primaryLink,
-			       linked_at AS linkedAt,
-			       last_seen_at AS lastSeenAt
-			  FROM identica_provider_links
-			 WHERE unique_id = :uniqueId
-			""")
+	@SqlQuery("SELECT * FROM identica_provider_links WHERE unique_id = :uniqueId")
 	List<AccountProviderLinkEntity> findByUniqueId(@Bind("uniqueId") UUID uniqueId);
 
 	@SqlQuery("""
@@ -68,22 +42,6 @@ public interface ProviderLinkRepository {
 	@KeyColumn("providerId")
 	@ValueColumn("usageCount")
 	Map<String, Long> countByProvider();
-
-	@SqlUpdate("""
-			INSERT INTO identica_provider_links (
-				unique_id, provider_id, provider_subject, is_primary, linked_at, last_seen_at
-			) VALUES (
-				:uniqueId, :providerId, :providerSubject, :primary, :linkedAt, :lastSeenAt
-			)
-			""")
-	void insert(
-			@Bind("uniqueId") UUID uniqueId,
-			@Bind("providerId") String providerId,
-			@Bind("providerSubject") String providerSubject,
-			@Bind("primary") boolean primary,
-			@Bind("linkedAt") long linkedAt,
-			@Bind("lastSeenAt") long lastSeenAt
-	);
 
 	@SqlUpdate("""
 			UPDATE identica_provider_links

@@ -84,6 +84,7 @@ strata-adapter-database-jdbi = { group = "me.whereareiam", name = "strata-adapte
 strata-adapter-database-dialectica = { group = "me.whereareiam", name = "strata-adapter-database-dialectica", version.ref = "strata" }
 dialectica = { group = "me.whereareiam", name = "dialectica", version.ref = "dialectica" }
 dialectica-bundle = { group = "me.whereareiam", name = "dialectica-bundle", version.ref = "dialectica" }
+dialectica-adapter-jdbi = { group = "me.whereareiam", name = "dialectica-adapter-jdbi", version.ref = "dialectica" }
 jedis = { group = "redis.clients", name = "jedis", version.ref = "jedis" }
 statistica-common = { group = "me.whereareiam", name = "statistica-common", version.ref = "statistica" }
 statistica-adapter-jdbc = { group = "me.whereareiam", name = "statistica-adapter-jdbc", version.ref = "statistica" }

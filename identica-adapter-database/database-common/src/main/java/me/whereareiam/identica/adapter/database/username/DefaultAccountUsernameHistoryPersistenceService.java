@@ -3,6 +3,8 @@ package me.whereareiam.identica.adapter.database.username;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
+import me.whereareiam.identica.adapter.database.entity.username.UsernameHistoryEntity;
 import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.account.AccountLifecycleEvent;
@@ -19,6 +21,7 @@ import java.util.UUID;
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class DefaultAccountUsernameHistoryPersistenceService implements AccountUsernameHistoryPersistenceService, EventListener {
+	private final EntityAccess<UsernameHistoryEntity> history;
 	private final UsernameHistoryRepository repository;
 	private final EventManager eventManager;
 
@@ -31,15 +34,7 @@ public class DefaultAccountUsernameHistoryPersistenceService implements AccountU
 	public void record(@NotNull AccountUsernameHistoryEntry entry) {
 		if (entry.getOldUsername().isBlank() || entry.getNewUsername().isBlank()) return;
 
-		var entity = UsernameHistoryMapper.toEntity(entry);
-		repository.insert(
-				entity.getUniqueId(),
-				entity.getProviderId(),
-				entity.getOldUsername(),
-				entity.getNewUsername(),
-				entity.getSource(),
-				entity.getChangedAt()
-		);
+		history.insert(UsernameHistoryMapper.toEntity(entry));
 	}
 
 	@Override

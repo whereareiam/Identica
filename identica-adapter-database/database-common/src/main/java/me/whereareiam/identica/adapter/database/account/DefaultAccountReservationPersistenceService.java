@@ -1,13 +1,12 @@
 package me.whereareiam.identica.adapter.database.account;
 
 import com.google.inject.Inject;
-import com.google.inject.Provider;
 import com.google.inject.Singleton;
+import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.entity.account.AccountReservationEntity;
 import me.whereareiam.identica.adapter.database.repository.account.AccountReservationRepository;
 import me.whereareiam.identica.persistence.AccountReservationPersistenceService;
 import me.whereareiam.identica.logging.Logger;
-import me.whereareiam.identica.model.config.persistence.Persistence;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
@@ -15,16 +14,16 @@ import java.util.UUID;
 
 @Singleton
 public class DefaultAccountReservationPersistenceService implements AccountReservationPersistenceService {
+	private final EntityAccess<AccountReservationEntity> reservations;
 	private final AccountReservationRepository repository;
-	private final Provider<Persistence> persistenceProvider;
 
 	@Inject
 	public DefaultAccountReservationPersistenceService(
-			AccountReservationRepository repository,
-			Provider<Persistence> persistenceProvider
+			EntityAccess<AccountReservationEntity> reservations,
+			AccountReservationRepository repository
 	) {
+		this.reservations = reservations;
 		this.repository = repository;
-		this.persistenceProvider = persistenceProvider;
 	}
 
 	@Override
@@ -33,7 +32,7 @@ public class DefaultAccountReservationPersistenceService implements AccountReser
 
 		try {
 			long now = System.currentTimeMillis();
-			return repository.find(reservationKey)
+			return reservations.find(reservationKey)
 					.filter(reservation -> !isExpired(reservation.getExpiresAt(), now))
 					.map(AccountReservationEntity::getUniqueId);
 		} catch (Exception e) {
@@ -48,11 +47,7 @@ public class DefaultAccountReservationPersistenceService implements AccountReser
 		if (expiresAt <= createdAt) return;
 
 		try {
-			switch (persistenceProvider.get().getType()) {
-				case H2 -> repository.upsertH2(reservationKey, uniqueId, createdAt, expiresAt);
-				case POSTGRES, SQLITE -> repository.upsertPostgresSqlite(reservationKey, uniqueId, createdAt, expiresAt);
-				case MYSQL -> repository.upsertMysql(reservationKey, uniqueId, createdAt, expiresAt);
-			}
+			reservations.upsert(new AccountReservationEntity(reservationKey, uniqueId, createdAt, expiresAt));
 		} catch (Exception e) {
 			Logger.warn(e, "Failed to reserve account UUID %s for %s", uniqueId, reservationKey);
 		}
@@ -63,7 +58,7 @@ public class DefaultAccountReservationPersistenceService implements AccountReser
 		if (reservationKey.isBlank()) return;
 
 		try {
-			repository.delete(reservationKey);
+			reservations.delete(reservationKey);
 		} catch (Exception e) {
 			Logger.warn(e, "Failed to delete account reservation %s", reservationKey);
 		}

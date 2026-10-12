@@ -10,6 +10,7 @@ dependencies {
     compileOnly(projects.identicaAdapterDatabaseApi)
 
     attache(libs.dialectica.bundle)
+    attache(libs.dialectica.adapter.jdbi)
     attache(libs.strata)
     attache(libs.strata.adapter.database)
     attache(libs.strata.adapter.database.jdbi)
@@ -32,6 +33,7 @@ dependencies {
     testFixturesApi(projects.identicaAdapterDatabaseApi)
     testFixturesApi(libs.bundles.database)
     testFixturesApi(libs.dialectica.bundle)
+    testFixturesApi(libs.dialectica.adapter.jdbi)
     testFixturesApi(libs.strata)
     testFixturesApi(libs.strata.adapter.database)
     testFixturesApi(libs.strata.adapter.database.jdbi)
@@ -50,6 +52,15 @@ dependencies {
 extensions.configure<AttacheExtension>("attache") {
     library(libs.dialectica.bundle) {
         relocate("me{}whereareiam{}dialectica", "me.whereareiam.identica.library.dialectica")
+    }
+
+    library(libs.dialectica.adapter.jdbi) {
+        relocate("me{}whereareiam{}dialectica", "me.whereareiam.identica.library.dialectica")
+        relocate("org{}jdbi", "me.whereareiam.identica.library.jdbi")
+        relocate("io{}leangen{}geantyref", "me.whereareiam.identica.library.geantyref")
+        // Dialectica comes from the bundle, in the version Identica declares.
+        excludeTransitive("me.whereareiam", "dialectica-api")
+        excludeTransitive("me.whereareiam", "dialectica-common")
     }
 
     library(libs.strata) {

@@ -5,6 +5,7 @@ import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.Getter;
+import me.whereareiam.dialectica.adapter.jdbi.DialecticaPlugin;
 import me.whereareiam.identica.adapter.database.config.LoggerConfig;
 import me.whereareiam.identica.adapter.database.connection.DataSourceFactory;
 import me.whereareiam.identica.database.DatabaseService;
@@ -26,7 +27,9 @@ import java.nio.file.Path;
 /**
  * Default implementation of DatabaseService.
  * Opens the database, installs the core schema, and provides access to Jdbi and the
- * {@link DatabaseSchemaInstaller} that installs the other owners' schemas on it.
+ * {@link DatabaseSchemaInstaller} that installs the other owners' schemas on it. The Jdbi speaks
+ * the database's Dialectica dialect, so entities and the UUIDs and booleans of hand-written
+ * queries are stored the way the schema declares them.
  */
 @Getter
 @Singleton
@@ -56,6 +59,7 @@ public class DefaultDatabaseService implements DatabaseService, EventListener {
 
 			this.jdbi = Jdbi.create(dataSource);
 			jdbi.installPlugin(new SqlObjectPlugin());
+			jdbi.installPlugin(new DialecticaPlugin());
 
 			LoggerConfig.configure(jdbi);
 

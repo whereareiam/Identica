@@ -12,6 +12,7 @@ dependencies {
     testImplementation(libs.jdbi.core)
     testImplementation(libs.jdbi.sqlobject)
     testImplementation(libs.dialectica.bundle)
+    testImplementation(libs.dialectica.adapter.jdbi)
     testImplementation(projects.identicaAdapterDatabaseApi)
     testImplementation(libs.commandant)
     testImplementation(libs.velocity)

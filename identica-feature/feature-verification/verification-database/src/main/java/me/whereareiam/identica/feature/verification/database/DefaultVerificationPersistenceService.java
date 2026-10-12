@@ -2,9 +2,13 @@ package me.whereareiam.identica.feature.verification.database;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.account.AccountLifecycleEvent;
 import me.whereareiam.identica.event.base.IdenticEvent;
+import me.whereareiam.identica.feature.verification.database.entity.VerificationEnrollmentEntity;
+import me.whereareiam.identica.feature.verification.database.entity.VerificationRecoveryCodeEntity;
+import me.whereareiam.identica.feature.verification.database.entity.VerificationSelectionEntity;
 import me.whereareiam.identica.feature.verification.database.mapper.VerificationEnrollmentMapper;
 import me.whereareiam.identica.feature.verification.database.mapper.VerificationRecoveryCodeMapper;
 import me.whereareiam.identica.feature.verification.database.mapper.VerificationSelectionMapper;
@@ -24,16 +28,25 @@ import java.util.UUID;
 
 @Singleton
 public class DefaultVerificationPersistenceService implements VerificationPersistenceService, EventListener {
+	private final EntityAccess<VerificationEnrollmentEntity> enrollments;
+	private final EntityAccess<VerificationSelectionEntity> selections;
+	private final EntityAccess<VerificationRecoveryCodeEntity> recoveryCodes;
 	private final VerificationEnrollmentRepository enrollmentRepository;
 	private final VerificationSelectionRepository selectionRepository;
 	private final VerificationRecoveryCodeRepository recoveryCodeRepository;
 
 	@Inject
 	public DefaultVerificationPersistenceService(
+			EntityAccess<VerificationEnrollmentEntity> enrollments,
+			EntityAccess<VerificationSelectionEntity> selections,
+			EntityAccess<VerificationRecoveryCodeEntity> recoveryCodes,
 			VerificationEnrollmentRepository enrollmentRepository,
 			VerificationSelectionRepository selectionRepository,
 			VerificationRecoveryCodeRepository recoveryCodeRepository
 	) {
+		this.enrollments = enrollments;
+		this.selections = selections;
+		this.recoveryCodes = recoveryCodes;
 		this.enrollmentRepository = enrollmentRepository;
 		this.selectionRepository = selectionRepository;
 		this.recoveryCodeRepository = recoveryCodeRepository;
@@ -59,34 +72,13 @@ public class DefaultVerificationPersistenceService implements VerificationPersis
 
 	@Override
 	public @NotNull VerificationEnrollment upsertEnrollment(@NotNull VerificationEnrollment enrollment) {
-		Optional<VerificationEnrollment> existing = enrollmentRepository.find(
-						enrollment.getUniqueId(),
-						enrollment.getMethodId(),
-						enrollment.getEnrollmentId()
-				)
-				.map(VerificationEnrollmentMapper::toModel);
-		if (existing.isPresent()) {
-			enrollmentRepository.update(
-					enrollment.getUniqueId(),
-					enrollment.getMethodId(),
-					enrollment.getEnrollmentId(),
-					enrollment.getCredential(),
-					enrollment.getLabel(),
-					enrollment.getCreatedAt(),
-					enrollment.getEnabledAt()
-			);
+		VerificationEnrollmentEntity entity = VerificationEnrollmentMapper.toEntity(enrollment);
+		if (enrollments.find(enrollment.getUniqueId(), enrollment.getMethodId(), enrollment.getEnrollmentId()).isPresent()) {
+			enrollments.update(entity);
 			return enrollment;
 		}
 
-		enrollmentRepository.insert(
-				enrollment.getUniqueId(),
-				enrollment.getMethodId(),
-				enrollment.getEnrollmentId(),
-				enrollment.getCredential(),
-				enrollment.getLabel(),
-				enrollment.getCreatedAt(),
-				enrollment.getEnabledAt()
-		);
+		enrollments.insert(entity);
 		return enrollment;
 	}
 
@@ -100,7 +92,7 @@ public class DefaultVerificationPersistenceService implements VerificationPersis
 	@Override
 	public @NotNull Optional<VerificationSelection> findSelection(@NotNull UUID uniqueId, @NotNull String providerId) {
 		if (providerId.isBlank()) return Optional.empty();
-		return selectionRepository.find(uniqueId, providerId).map(VerificationSelectionMapper::toModel);
+		return selections.find(uniqueId, providerId).map(VerificationSelectionMapper::toModel);
 	}
 
 	@Override
@@ -112,30 +104,21 @@ public class DefaultVerificationPersistenceService implements VerificationPersis
 
 	@Override
 	public @NotNull VerificationSelection upsertSelection(@NotNull VerificationSelection selection) {
+		VerificationSelectionEntity entity = VerificationSelectionMapper.toEntity(selection);
 		Optional<VerificationSelection> existing = findSelection(selection.getUniqueId(), selection.getProviderId());
 		if (existing.isPresent()) {
-			selectionRepository.update(
-					selection.getUniqueId(),
-					selection.getProviderId(),
-					selection.getMethodId(),
-					selection.getSelectedAt()
-			);
+			selections.update(entity);
 			return selection;
 		}
 
-		selectionRepository.insert(
-				selection.getUniqueId(),
-				selection.getProviderId(),
-				selection.getMethodId(),
-				selection.getSelectedAt()
-		);
+		selections.insert(entity);
 		return selection;
 	}
 
 	@Override
 	public void deleteSelection(@NotNull UUID uniqueId, @NotNull String providerId) {
 		if (providerId.isBlank()) return;
-		selectionRepository.delete(uniqueId, providerId);
+		selections.delete(uniqueId, providerId);
 	}
 
 	@Override
@@ -160,15 +143,8 @@ public class DefaultVerificationPersistenceService implements VerificationPersis
 	) {
 		if (methodId.isBlank()) return;
 		recoveryCodeRepository.deleteByMethod(uniqueId, methodId);
-		for (VerificationRecoveryCode recoveryCode : recoveryCodes) {
-			recoveryCodeRepository.insert(
-					recoveryCode.getUniqueId(),
-					recoveryCode.getMethodId(),
-					recoveryCode.getCodeHash(),
-					recoveryCode.getCreatedAt(),
-					recoveryCode.getUsedAt()
-			);
-		}
+		for (VerificationRecoveryCode recoveryCode : recoveryCodes)
+			this.recoveryCodes.insert(VerificationRecoveryCodeMapper.toEntity(recoveryCode));
 	}
 
 	@Override
@@ -191,7 +167,7 @@ public class DefaultVerificationPersistenceService implements VerificationPersis
 			return;
 		}
 
-		selectionRepository.delete(uniqueId, providerId);
+		selections.delete(uniqueId, providerId);
 	}
 
 	@IdenticEvent(EventOrder.HIGH)

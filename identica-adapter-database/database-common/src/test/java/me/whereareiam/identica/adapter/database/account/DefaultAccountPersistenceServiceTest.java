@@ -1,5 +1,6 @@
 package me.whereareiam.identica.adapter.database.account;
 
+import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.entity.account.AccountEntity;
 import me.whereareiam.identica.adapter.database.repository.account.AccountRepository;
 import me.whereareiam.identica.adapter.database.testing.TestDataFactory;
@@ -21,11 +22,14 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Default Account Persistence Service")
 class DefaultAccountPersistenceServiceTest {
+	@Mock
+	private EntityAccess<AccountEntity> accounts;
 	@Mock
 	private AccountRepository accountRepository;
 	@Mock
@@ -35,7 +39,7 @@ class DefaultAccountPersistenceServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		service = new DefaultAccountPersistenceService(accountRepository, eventManager);
+		service = new DefaultAccountPersistenceService(accounts, accountRepository, eventManager);
 	}
 
 	@DisplayName("Maps stored account entities back to domain models")
@@ -48,7 +52,7 @@ class DefaultAccountPersistenceServiceTest {
 				.createdAt(TestDataFactory.CREATED_AT)
 				.lastSeenAt(TestDataFactory.LAST_SEEN_AT)
 				.build();
-		when(accountRepository.findByUniqueId(uniqueId)).thenReturn(Optional.of(entity));
+		when(accounts.find(uniqueId)).thenReturn(Optional.of(entity));
 
 		Optional<Account> result = service.findByUniqueId(uniqueId);
 
@@ -63,7 +67,7 @@ class DefaultAccountPersistenceServiceTest {
 	@Test
 	void findByUniqueIdReturnsEmptyOnException() {
 		UUID uniqueId = UUID.randomUUID();
-		when(accountRepository.findByUniqueId(uniqueId)).thenThrow(new RuntimeException("boom"));
+		when(accounts.find(uniqueId)).thenThrow(new RuntimeException("boom"));
 
 		assertTrue(service.findByUniqueId(uniqueId).isEmpty());
 	}
@@ -95,12 +99,10 @@ class DefaultAccountPersistenceServiceTest {
 
 		Account created = service.create(account);
 
-		verify(accountRepository).insert(
-				uniqueId,
-				"PlayerOne",
-				TestDataFactory.CREATED_AT,
-				TestDataFactory.LAST_SEEN_AT
-		);
+		verify(accounts).insert(argThat(entity -> uniqueId.equals(entity.getUniqueId())
+				&& "PlayerOne".equals(entity.getUsername())
+				&& entity.getCreatedAt() == TestDataFactory.CREATED_AT
+				&& entity.getLastSeenAt() == TestDataFactory.LAST_SEEN_AT));
 		assertEquals(uniqueId, created.getUniqueId());
 	}
 
@@ -135,7 +137,7 @@ class DefaultAccountPersistenceServiceTest {
 	@Test
 	void deleteSwallowsExceptions() {
 		UUID uniqueId = UUID.randomUUID();
-		doThrow(new RuntimeException("boom")).when(accountRepository).delete(uniqueId);
+		doThrow(new RuntimeException("boom")).when(accounts).delete(uniqueId);
 
 		assertDoesNotThrow(() -> service.delete(uniqueId));
 	}
@@ -149,7 +151,7 @@ class DefaultAccountPersistenceServiceTest {
 
 		service.onAccountLifecycle(event);
 
-		verify(accountRepository).delete(uniqueId);
+		verify(accounts).delete(uniqueId);
 	}
 
 	@DisplayName("Deletes persisted account data when an account is deleted")
@@ -161,7 +163,7 @@ class DefaultAccountPersistenceServiceTest {
 
 		service.onAccountLifecycle(event);
 
-		verify(accountRepository).delete(uniqueId);
+		verify(accounts).delete(uniqueId);
 	}
 
 	@DisplayName("Ignores lifecycle events that do not carry an account UUID")
@@ -172,6 +174,6 @@ class DefaultAccountPersistenceServiceTest {
 
 		service.onAccountLifecycle(event);
 
-		verify(accountRepository, never()).delete(org.mockito.ArgumentMatchers.any());
+		verify(accounts, never()).delete(org.mockito.ArgumentMatchers.any());
 	}
 }

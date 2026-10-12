@@ -12,6 +12,8 @@ import com.google.inject.name.Names;
 import me.whereareiam.configura.Config;
 import me.whereareiam.configura.Configura;
 import me.whereareiam.configura.type.Format;
+import me.whereareiam.dialectica.adapter.jdbi.DialecticaPlugin;
+import me.whereareiam.dialectica.dialect.h2.H2Dialect;
 import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.Reloadable;
@@ -46,6 +48,7 @@ import me.whereareiam.identica.replication.cache.LocalCache;
 import me.whereareiam.identica.replication.cache.ReplicatedCache;
 import me.whereareiam.identica.replication.cache.base.ReplicationCacheBuilder;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -55,6 +58,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -280,9 +284,15 @@ class BundledFeatureCompositionTest {
 			bind(PipelineStateStore.class).toInstance(mock(PipelineStateStore.class));
 			bind(ConnectionCoordinator.class).toInstance(mock(ConnectionCoordinator.class));
 			bind(ReplicationSystem.class).toInstance(emptyReplication());
-			Jdbi jdbi = mock(Jdbi.class);
-			// Keep feature persistence services real; stub only generated SQL repository interfaces.
-			when(jdbi.onDemand(any())).thenAnswer(invocation -> mock((Class<?>) invocation.getArgument(0)));
+			// Keep feature persistence services real; stub only generated SQL repository interfaces. The
+			// Jdbi speaks H2 so that entity access can be created, and never connects.
+			Jdbi database = Jdbi.create(() -> {
+				throw new SQLException("This test has no database");
+			});
+			database.installPlugin(new SqlObjectPlugin());
+			database.installPlugin(new DialecticaPlugin(new H2Dialect()));
+			Jdbi jdbi = spy(database);
+			doAnswer(invocation -> mock((Class<?>) invocation.getArgument(0))).when(jdbi).onDemand(any());
 			bind(Jdbi.class).toInstance(jdbi);
 		}
 	}

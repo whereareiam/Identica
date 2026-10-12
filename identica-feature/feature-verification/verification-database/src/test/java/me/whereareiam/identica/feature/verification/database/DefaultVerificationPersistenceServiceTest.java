@@ -1,0 +1,128 @@
+package me.whereareiam.identica.feature.verification.database;
+
+import me.whereareiam.dialectica.Dialectica;
+import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
+import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
+import me.whereareiam.identica.adapter.database.testing.schema.TestDatabase;
+import me.whereareiam.identica.feature.verification.database.entity.VerificationEnrollmentEntity;
+import me.whereareiam.identica.feature.verification.database.entity.VerificationRecoveryCodeEntity;
+import me.whereareiam.identica.feature.verification.database.entity.VerificationSelectionEntity;
+import me.whereareiam.identica.feature.verification.database.repository.VerificationEnrollmentRepository;
+import me.whereareiam.identica.feature.verification.database.repository.VerificationRecoveryCodeRepository;
+import me.whereareiam.identica.feature.verification.database.repository.VerificationSelectionRepository;
+import me.whereareiam.identica.feature.verification.model.VerificationRecoveryCode;
+import me.whereareiam.identica.feature.verification.model.enrollment.VerificationEnrollment;
+import me.whereareiam.identica.feature.verification.model.selection.VerificationSelection;
+import org.jdbi.v3.core.Jdbi;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.List;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@DisplayName("Verification persistence")
+class DefaultVerificationPersistenceServiceTest {
+	@DisplayName("Stores, replaces and removes enrollments")
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
+	void storesEnrollments(TestDatabase database) {
+		withVerification(database, (service, uniqueId) -> {
+			service.upsertEnrollment(enrollment(uniqueId, "first", "secret", 10L));
+			service.upsertEnrollment(enrollment(uniqueId, "second", "secret", 20L));
+			service.upsertEnrollment(enrollment(uniqueId, "first", "changed", 30L));
+
+			VerificationEnrollment latest = service.findEnrollment(uniqueId, "totp").orElseThrow();
+			assertEquals("first", latest.getEnrollmentId());
+			assertEquals("changed", latest.getCredential());
+			assertEquals(30L, latest.getEnabledAt());
+			assertEquals(2, service.findEnrollments(uniqueId).size());
+			assertEquals(1, service.countEnrolledAccounts());
+
+			service.deleteEnrollment(uniqueId, "totp");
+
+			assertTrue(service.findEnrollments(uniqueId).isEmpty());
+		});
+	}
+
+	@DisplayName("Stores and replaces the selected method of a provider")
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
+	void storesSelections(TestDatabase database) {
+		withVerification(database, (service, uniqueId) -> {
+			service.upsertSelection(new VerificationSelection(uniqueId, "premium", "totp", 10L));
+			service.upsertSelection(new VerificationSelection(uniqueId, "premium", "email", 20L));
+			service.upsertSelection(new VerificationSelection(uniqueId, "credential", "totp", 30L));
+
+			VerificationSelection premium = service.findSelection(uniqueId, "premium").orElseThrow();
+			assertEquals("email", premium.getMethodId());
+			assertEquals(20L, premium.getSelectedAt());
+			assertEquals(2, service.findSelections(uniqueId).size());
+
+			service.deleteSelection(uniqueId, "premium");
+			service.deleteSelectionsByMethod(uniqueId, "totp");
+
+			assertTrue(service.findSelections(uniqueId).isEmpty());
+		});
+	}
+
+	@DisplayName("Uses a recovery code once")
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
+	void usesRecoveryCodesOnce(TestDatabase database) {
+		withVerification(database, (service, uniqueId) -> {
+			service.replaceRecoveryCodes(uniqueId, "totp", List.of(
+					new VerificationRecoveryCode(uniqueId, "totp", "hash-a", 10L, 0L),
+					new VerificationRecoveryCode(uniqueId, "totp", "hash-b", 10L, 0L)
+			));
+
+			assertTrue(service.markRecoveryCodeUsed(uniqueId, "totp", "hash-a", 20L));
+			assertFalse(service.markRecoveryCodeUsed(uniqueId, "totp", "hash-a", 30L));
+			assertEquals(20L, service.findRecoveryCodes(uniqueId, "totp").stream()
+					.filter(code -> code.getCodeHash().equals("hash-a"))
+					.findFirst().orElseThrow()
+					.getUsedAt());
+
+			service.replaceRecoveryCodes(uniqueId, "totp", List.of(new VerificationRecoveryCode(uniqueId, "totp", "hash-c", 40L, 0L)));
+
+			assertEquals(List.of("hash-c"), service.findRecoveryCodes(uniqueId, "totp").stream().map(VerificationRecoveryCode::getCodeHash).toList());
+		});
+	}
+
+	private static void withVerification(TestDatabase database, Scenario scenario) {
+		database.reset();
+		DefaultDatabaseService databaseService = database.open();
+		try {
+			databaseService.getSchemaInstaller().install(new VerificationSchema());
+			Jdbi jdbi = databaseService.getJdbi();
+			UUID uniqueId = UUID.randomUUID();
+			jdbi.useHandle(handle -> handle.createUpdate("INSERT INTO identica_accounts (unique_id, username, created_at, last_seen_at) VALUES (:uniqueId, 'Alice', 1, 1)")
+					.bind("uniqueId", uniqueId)
+					.execute());
+
+			scenario.run(new DefaultVerificationPersistenceService(
+					EntityAccess.of(jdbi, Dialectica.entity(VerificationEnrollmentEntity.class)),
+					EntityAccess.of(jdbi, Dialectica.entity(VerificationSelectionEntity.class)),
+					EntityAccess.of(jdbi, Dialectica.entity(VerificationRecoveryCodeEntity.class)),
+					jdbi.onDemand(VerificationEnrollmentRepository.class),
+					jdbi.onDemand(VerificationSelectionRepository.class),
+					jdbi.onDemand(VerificationRecoveryCodeRepository.class)
+			), uniqueId);
+		} finally {
+			TestDatabase.close(databaseService);
+		}
+	}
+
+	private static VerificationEnrollment enrollment(UUID uniqueId, String enrollmentId, String credential, long enabledAt) {
+		return new VerificationEnrollment(uniqueId, "totp", enrollmentId, credential, "Phone", 1L, enabledAt);
+	}
+
+	@FunctionalInterface
+	private interface Scenario {
+		void run(DefaultVerificationPersistenceService service, UUID uniqueId);
+	}
+}

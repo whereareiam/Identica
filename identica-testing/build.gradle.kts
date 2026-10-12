@@ -1,3 +1,5 @@
+import me.whereareiam.anvil.integration.junit.gradle.AnvilTest
+
 plugins {
 	java
 	alias(libs.plugins.freefair.lombok)
@@ -19,6 +21,10 @@ dependencies {
 	anvilImplementation(projects.identicaApi)
 	anvilImplementation(projects.exampleProvider)
 	anvilImplementation(projects.identicaCommon)
+	// The databases earlier versions of Identica left, which upgrade journeys start from.
+	anvilImplementation(testFixtures(projects.identicaAdapterDatabaseCommon))
+	anvilImplementation(testFixtures(projects.providerCredentialDatabase))
+	anvilImplementation(testFixtures(projects.featureVerificationDatabase))
 	anvilImplementation(projects.featureRecognitionCommon)
 	anvilImplementation(projects.featureRestrictionJoinCommon)
 	anvilImplementation(projects.featureSentinelApi)
@@ -81,13 +87,20 @@ anvil {
 	artifact("premium", pluginJar(projects.providerPremiumRuntime))
 	artifact("example-provider", pluginJar(projects.exampleProvider))
 	artifact("example-addon", projectJar(projects.exampleAddon))
+
+	// Journeys that start from what an earlier version of Identica left run in anvilUpgradeTest, not in anvilTest.
+	suites {
+		register("upgrade") {
+			includeTags("upgrade")
+		}
+	}
 }
 
-tasks.withType<Test>().configureEach {
+tasks.named<Test>("test") {
 	useJUnitPlatform()
 }
 
-tasks.named<Test>("anvilTest") {
+tasks.withType<AnvilTest>().configureEach {
 	systemProperty("junit.jupiter.execution.parallel.enabled", "true")
 	systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
 	systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")

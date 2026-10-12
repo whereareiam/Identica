@@ -18,7 +18,7 @@ class StatisticsSchemaTest extends DatabaseSchemaContract {
 
 	@Override
 	protected List<String> developmentBuild() {
-		return List.of("account", "statistics");
+		return List.of("development-build/account", "development-build/statistics");
 	}
 
 	@Override

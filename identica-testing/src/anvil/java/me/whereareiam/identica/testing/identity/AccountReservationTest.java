@@ -35,14 +35,14 @@ class AccountReservationTest {
 
 		Journey alice = registered(Journey.offline(anvil, "Alice").join());
 
-		assertEquals(reserved, alice.identity().getObservedUniqueId());
+		assertEquals(reserved, alice.identity().getObserved().getUniqueId());
 	}
 
 	@Test
 	@Identica(providers = Provider.CREDENTIAL)
 	void givesTheReservedUuidToThePlayerOfADeletedAccount(ScenarioContext anvil) {
 		Journey alice = loggedIn(Accounts.credential(anvil, "Alice", PASSWORD));
-		UUID deleted = alice.identity().getObservedUniqueId();
+		UUID deleted = alice.identity().getObserved().getUniqueId();
 		UUID reserved = offline("Alice");
 		assertNotEquals(reserved, deleted);
 
@@ -51,7 +51,7 @@ class AccountReservationTest {
 		admin.reserves("Alice", reserved);
 
 		registered(alice.rejoin());
-		assertEquals(reserved, alice.identity().getObservedUniqueId());
+		assertEquals(reserved, alice.identity().getObserved().getUniqueId());
 	}
 
 	@Test
@@ -76,7 +76,7 @@ class AccountReservationTest {
 
 		Journey alice = registered(Journey.offline(anvil, "Alice").join());
 
-		assertNotEquals(reserved, alice.identity().getObservedUniqueId());
+		assertNotEquals(reserved, alice.identity().getObserved().getUniqueId());
 	}
 
 	@Test
@@ -87,7 +87,7 @@ class AccountReservationTest {
 
 		Journey bob = registered(Journey.offline(anvil, "Bob").join());
 
-		assertNotEquals(reserved, bob.identity().getObservedUniqueId());
+		assertNotEquals(reserved, bob.identity().getObserved().getUniqueId());
 	}
 
 	private static Journey loggedIn(Journey player) {

@@ -37,6 +37,13 @@ public record SchemaSnapshot(Map<String, Table> tables) {
 	}
 
 	/**
+	 * Describes every table in the connection's schema.
+	 */
+	public static SchemaSnapshot everyTable(Connection connection) throws SQLException {
+		return of(connection, tableNames(connection));
+	}
+
+	/**
 	 * Returns the lowercase names of every table in the connection's schema.
 	 */
 	public static Set<String> tableNames(Connection connection) throws SQLException {

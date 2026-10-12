@@ -1,9 +1,16 @@
 package me.whereareiam.identica.feature.verification.database;
 
 import me.whereareiam.identica.adapter.database.testing.schema.DatabaseSchemaContract;
+import me.whereareiam.identica.adapter.database.testing.schema.EarlierInstallation;
+import me.whereareiam.identica.adapter.database.testing.schema.SchemaSnapshot;
+import me.whereareiam.identica.adapter.database.testing.schema.TestDatabase;
 import me.whereareiam.identica.database.schema.DatabaseSchema;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class VerificationSchemaTest extends DatabaseSchemaContract {
 	private static final String ACCOUNT = "'00000000-0000-0000-0000-000000000001'";
@@ -15,7 +22,7 @@ class VerificationSchemaTest extends DatabaseSchemaContract {
 
 	@Override
 	protected List<String> developmentBuild() {
-		return List.of("account", "verification");
+		return List.of("development-build/account", "development-build/verification");
 	}
 
 	@Override
@@ -35,5 +42,22 @@ class VerificationSchemaTest extends DatabaseSchemaContract {
 				"INSERT INTO identica_verification_recovery_codes (unique_id, method_id, code_hash, created_at, used_at) VALUES (" + ACCOUNT + ", 'totp', 'hash', 1, NULL)",
 				"INSERT INTO identica_verification_selections (unique_id, provider_id, method_id, selected_at) VALUES (" + ACCOUNT + ", 'credential', 'totp', 1)"
 		);
+	}
+
+	/**
+	 * Identica 2.2.1 created the verification tables in its core, as the feature later did.
+	 */
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
+	void bringsThe221TablesToTheTablesOfANewInstallation(TestDatabase database) {
+		SchemaSnapshot expected = newInstallation(database);
+		database.reset();
+		EarlierInstallation.create(database, "identica-2.2.1/account");
+		EarlierInstallation.create(database, "identica-2.2.1/verification");
+
+		install(database);
+
+		assertEquals(expected, database.connect(SchemaSnapshot::everyTable));
+		assertEquals(List.of("1 baseline"), history(database));
 	}
 }

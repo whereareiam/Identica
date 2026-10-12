@@ -77,7 +77,7 @@ class StoredValueCompatibilityIntegrationTest {
 			Account account = accounts(jdbi).findByUniqueId(uniqueId).orElseThrow();
 			assertEquals("Before", account.getUsername());
 			assertEquals(List.of(uniqueId), accounts(jdbi).findByUsername("before").stream().map(Account::getUniqueId).toList());
-			AccountProviderLink link = links(jdbi).findBySubject("premium", "Before").orElseThrow();
+			AccountProviderLink link = links(jdbi).findBySubject("example", "Before").orElseThrow();
 			assertEquals(uniqueId, link.getUniqueId());
 			assertTrue(link.isPrimaryLink());
 			assertEquals(List.of(uniqueId), links(jdbi).findByUniqueId(uniqueId).stream().map(AccountProviderLink::getUniqueId).toList());
@@ -143,7 +143,7 @@ class StoredValueCompatibilityIntegrationTest {
 							)
 							""")
 					.bind("uniqueId", uniqueId)
-					.bind("providerId", "premium")
+					.bind("providerId", "example")
 					.bind("providerSubject", username)
 					.bind("primary", true)
 					.bind("linkedAt", TestDataFactory.LINKED_AT)
@@ -154,7 +154,7 @@ class StoredValueCompatibilityIntegrationTest {
 
 	private static void writeAsNow(Jdbi jdbi, UUID uniqueId, String username) {
 		accounts(jdbi).create(TestDataFactory.account(uniqueId, username));
-		links(jdbi).upsert(TestDataFactory.providerLink(uniqueId, "premium", username, true));
+		links(jdbi).upsert(TestDataFactory.providerLink(uniqueId, "example", username, true));
 	}
 
 	private static StoredLink stored(Connection connection, String subject) throws SQLException {

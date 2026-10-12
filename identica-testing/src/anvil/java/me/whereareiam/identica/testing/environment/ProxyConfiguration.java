@@ -74,6 +74,7 @@ public final class ProxyConfiguration {
 	private final String name;
 	private final Map<String, Object> documents = new LinkedHashMap<>();
 	private final Map<String, String> unreadable = new LinkedHashMap<>();
+	private final Map<String, Path> seeds = new LinkedHashMap<>();
 
 	ProxyConfiguration(
 			String name,
@@ -206,6 +207,18 @@ public final class ProxyConfiguration {
 	}
 
 	/**
+	 * Places a file in Identica's data directory before the proxy starts for the first time, unless the data
+	 * directory has it already, such as the database an earlier version of Identica left. A proxy that restarts
+	 * keeps the file as it left it.
+	 *
+	 * @param path path inside Identica's data directory, such as {@code identica.db}
+	 * @param source file to copy
+	 */
+	public void seed(String path, Path source) {
+		seeds.put(path, source);
+	}
+
+	/**
 	 * Reads a file as the running proxy left it, into one of Identica's models.
 	 *
 	 * @param anvil running network
@@ -253,6 +266,13 @@ public final class ProxyConfiguration {
 
 	private static Path dataDirectory(ScenarioContext anvil) {
 		return anvil.processes().proxy(anvil.definition().getEntrypoint()).workDirectory().resolve(IdenticaNetwork.DATA);
+	}
+
+	/**
+	 * Returns the files placed before the first start, by path inside Identica's data directory.
+	 */
+	Map<String, Path> seeds() {
+		return Map.copyOf(seeds);
 	}
 
 	/**

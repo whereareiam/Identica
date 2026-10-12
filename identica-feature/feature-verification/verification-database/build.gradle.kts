@@ -1,5 +1,7 @@
 plugins {
     id("module-java")
+    // The verification tables earlier versions of Identica left, for the schema tests here and the upgrade journeys.
+    `java-test-fixtures`
 }
 
 dependencies {

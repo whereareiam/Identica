@@ -17,6 +17,11 @@ on:
         required: false
         type: boolean
         default: false
+      upgrade:
+        description: Also run the journeys that start a proxy on what an earlier version of Identica left.
+        required: false
+        type: boolean
+        default: false
     outputs:
       version:
         description: Artifact version that was verified.
@@ -63,6 +68,12 @@ jobs:
         env:
           VERSION: ${{ steps.identity.outputs.version }}
         run: ./gradlew --no-daemon test assembleDistribution
+
+      - name: Upgrade journeys
+        if: inputs.upgrade
+        env:
+          VERSION: ${{ steps.identity.outputs.version }}
+        run: ./gradlew --no-daemon :identica-testing:anvilUpgradeTest
 
       - uses: whereareiam/devops/primitive/report/junit/publish@v3
         if: always()

@@ -76,7 +76,7 @@ class DefaultProviderLinkPersistenceServiceTest {
 	@DisplayName("Returns grouped provider-link usage counts")
 	@Test
 	void countByProviderReturnsRepositorySnapshot() {
-		Map<String, Long> counts = Map.of("premium", 4L, "credential", 2L);
+		Map<String, Long> counts = Map.of("example", 4L, "another", 2L);
 		when(repository.countByProvider()).thenReturn(counts);
 
 		Map<String, Long> result = service.countByProvider();

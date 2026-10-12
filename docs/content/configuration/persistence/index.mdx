@@ -9,6 +9,8 @@ Identica uses SQLite when the file does not exist yet or does not set `type`.
 
 Identica creates its tables on the first start and upgrades them on later starts, after an update of Identica, a feature or a provider. It remembers how far each set of tables has come in the `strata_history` table; leave that table as it is. Proxies that share a database upgrade it once: the first proxy to start does it while the others wait.
 
+Identica upgrades a database that Identica 2.2.1 or a later release wrote. Stop every proxy that uses the database and back it up before the first start of a new release. A database of a release older than 2.2.1 is not upgraded: the Credential provider refuses to load on it and says so in the console. Start Identica 2.2.1 on it once, then the new release.
+
 ## type
 
 - Takes: `"SQLITE"`, `"H2"`, `"MYSQL"`, or `"POSTGRES"`

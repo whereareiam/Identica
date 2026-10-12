@@ -68,6 +68,7 @@ jobs:
       ref: ${{ needs.resolve.outputs.tag }}
       version: ${{ needs.resolve.outputs.tag }}
       distribution: true
+      upgrade: true
 
   # A manual run only republishes to the stores; Maven and the GitHub release keep what the release published.
   publish:

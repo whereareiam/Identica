@@ -33,9 +33,9 @@ class AccountReservationUpsertIntegrationTest {
 			DefaultAccountReservationPersistenceService reservations = reservations(jdbi);
 			UUID uniqueId = UUID.randomUUID();
 
-			reservations.reserve("premium:alice", uniqueId, CREATED_AT, EXPIRES_AT);
+			reservations.reserve("example:alice", uniqueId, CREATED_AT, EXPIRES_AT);
 
-			assertEquals(Optional.of(uniqueId), reservations.find("premium:alice"));
+			assertEquals(Optional.of(uniqueId), reservations.find("example:alice"));
 			assertEquals(1, count(jdbi));
 		} finally {
 			TestDatabase.close(service);
@@ -55,16 +55,16 @@ class AccountReservationUpsertIntegrationTest {
 			UUID first = UUID.randomUUID();
 			UUID second = UUID.randomUUID();
 			UUID other = UUID.randomUUID();
-			reservations.reserve("premium:alice", first, CREATED_AT, EXPIRES_AT);
-			reservations.reserve("premium:bob", other, CREATED_AT, EXPIRES_AT);
+			reservations.reserve("example:alice", first, CREATED_AT, EXPIRES_AT);
+			reservations.reserve("example:bob", other, CREATED_AT, EXPIRES_AT);
 
-			reservations.reserve("premium:alice", second, CREATED_AT + 1, EXPIRES_AT - 1);
+			reservations.reserve("example:alice", second, CREATED_AT + 1, EXPIRES_AT - 1);
 
-			AccountReservationEntity replaced = rows.find("premium:alice").orElseThrow();
+			AccountReservationEntity replaced = rows.find("example:alice").orElseThrow();
 			assertEquals(second, replaced.getUniqueId());
 			assertEquals(CREATED_AT + 1, replaced.getCreatedAt());
 			assertEquals(EXPIRES_AT - 1, replaced.getExpiresAt());
-			assertEquals(Optional.of(other), reservations.find("premium:bob"));
+			assertEquals(Optional.of(other), reservations.find("example:bob"));
 			assertEquals(2, count(jdbi));
 		} finally {
 			TestDatabase.close(service);

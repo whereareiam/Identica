@@ -34,10 +34,18 @@ public abstract class DatabaseSchemaContract {
 	protected abstract DatabaseSchema schema();
 
 	/**
-	 * Returns the development build directories to create, in order: the owners this schema
-	 * requires, then its own.
+	 * Returns the {@link EarlierInstallation} layouts of the last development build to create, in
+	 * order: those of the owners this schema requires, then its own, such as
+	 * {@code development-build/account}.
 	 */
 	protected abstract List<String> developmentBuild();
+
+	/**
+	 * Returns the version this schema's baseline gives the tables of the last development build.
+	 */
+	protected int developmentBuildVersion() {
+		return 1;
+	}
 
 	/**
 	 * Returns the tables of this schema.
@@ -112,9 +120,11 @@ public abstract class DatabaseSchemaContract {
 		database.connect(connection -> {
 			assertEquals(upgraded(developmentBuild), SchemaSnapshot.of(connection, tables()));
 			assertEquals(rows, counts(connection));
-			List<String> expected = new ArrayList<>(List.of("1 baseline"));
+			int baseline = developmentBuildVersion();
+			List<String> expected = new ArrayList<>();
+			if (baseline > 0) expected.add(baseline + " baseline");
 			schema().migrations().stream()
-					.filter(migration -> migration.getVersion() > 1)
+					.filter(migration -> migration.getVersion() > baseline)
 					.forEach(migration -> expected.add(migration.getVersion() + " " + migration.getName()));
 			assertEquals(expected, history(connection));
 			return null;
@@ -123,18 +133,39 @@ public abstract class DatabaseSchemaContract {
 
 	private SchemaSnapshot developmentBuildSnapshot(TestDatabase database) {
 		database.reset();
-		developmentBuild().forEach(owner -> DevelopmentBuild.create(database, owner));
+		developmentBuild().forEach(layout -> EarlierInstallation.create(database, layout));
 
 		return database.connect(connection -> SchemaSnapshot.of(connection, tables()));
 	}
 
-	private void install(TestDatabase database) {
+	/**
+	 * Returns every table of the database once a new installation got this schema and the ones it
+	 * requires, as an upgraded database has to end up.
+	 */
+	protected final SchemaSnapshot newInstallation(TestDatabase database) {
+		database.reset();
+		install(database);
+
+		return database.connect(SchemaSnapshot::everyTable);
+	}
+
+	/**
+	 * Opens the database as Identica does, which installs the core schema, and installs this one.
+	 */
+	protected final void install(TestDatabase database) {
 		DefaultDatabaseService service = database.open();
 		try {
 			service.getSchemaInstaller().install(schema());
 		} finally {
 			TestDatabase.close(service);
 		}
+	}
+
+	/**
+	 * Returns the version and name of each entry Strata recorded for this schema, in order.
+	 */
+	protected final List<String> history(TestDatabase database) {
+		return database.connect(this::history);
 	}
 
 	private int latest() {

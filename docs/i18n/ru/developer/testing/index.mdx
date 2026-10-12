@@ -1,7 +1,7 @@
 ---
 title: Живые тесты
 description: Запуск и написание прохождений игрока для собранного плагина на настоящем прокси.
-sourceHash: d3b6409b88447766d36487022f881c0e884cef1e
+sourceHash: d7dddf257425125d00efea1b1ff7f45e82449b1b
 ---
 
 Модуль `identica-testing` запускает собранный плагин и провайдеры на настоящем прокси Velocity с бэкенд-серверами Paper и проводит через них симулированных игроков с помощью [Anvil](https://github.com/whereareiam/anvil). Модульные тесты остаются в своих модулях, а эти тесты проверяют то, что видит игрок при входе на сервер.
@@ -25,6 +25,14 @@ sourceHash: d3b6409b88447766d36487022f881c0e884cef1e
 ```shell
 ./gradlew :identica-testing:anvilTest --tests '*CredentialFirstJoinTest'
 ```
+
+Сценарии, которые запускают прокси на том, что оставила более ранняя версия Identica, например на базе данных Identica 2.2.1, помечены `@Tag("upgrade")` и образуют набор `upgrade`, объявленный в `anvil { suites { ... } }` сборки модуля. `anvilTest` их пропускает; запускайте их вручную, а workflow выпуска запускает их один раз перед публикацией:
+
+```shell
+./gradlew :identica-testing:anvilUpgradeTest
+```
+
+`./gradlew :identica-testing:anvil` запускает `anvilTest` и все наборы. `anvilScenarios` перечисляет сценарии, `anvilRun --scenario=<name>` запускает один из них, чтобы осмотреться, а `anvilLogin --account=<id>` и `anvilLogout --account=<id>` управляют аккаунтами, под которыми входит Anvil.
 
 Если тест падает, его сеть сохраняется в `identica-testing/build/anvil/<scenario>/<run>/`. В папке каждого процесса лежит `anvil-console.log`, а отладочное логирование Identica включено в каждой тестовой сети.
 
@@ -63,7 +71,7 @@ private static final class NoDisconnectMessages implements Consumer<ProxyConfigu
 }
 ```
 
-`proxy.engine()`, `proxy.routing()`, `proxy.settings()`, `proxy.providers()`, `proxy.messages()`, `proxy.credential()` (настройки провайдера Credential), `proxy.sentinel()`, `proxy.recognition()`, `proxy.verification()` и `proxy.joinRestriction()` (общие настройки этих функций) возвращают модели, которые изменяет тест. `proxy.put(path, model)` добавляет ещё один файл, `proxy.omit(path)` исключает файл, `proxy.corrupt(path, content)` записывает файл, который Identica не сможет прочитать, а `ProxyConfiguration.generated(anvil, path, type)` читает файл в том виде, в каком его оставил работающий прокси. Пока сеть работает, `ProxyConfiguration.editGenerated(anvil, path, type, change)` изменяет файл через его модель, а `ProxyConfiguration.corruptGenerated(anvil, path, content)` заменяет его содержимым, которое Identica не сможет прочитать; после этого `Administrator.at(anvil, PROXY).reloads()` и `.failsToReload()` перезагружают конфигурацию и ожидают соответствующий настроенный ответ.
+`proxy.engine()`, `proxy.routing()`, `proxy.settings()`, `proxy.providers()`, `proxy.messages()`, `proxy.credential()` (настройки провайдера Credential), `proxy.sentinel()`, `proxy.recognition()`, `proxy.verification()` и `proxy.joinRestriction()` (общие настройки этих функций) возвращают модели, которые изменяет тест. `proxy.put(path, model)` добавляет ещё один файл, `proxy.omit(path)` исключает файл, `proxy.corrupt(path, content)` записывает файл, который Identica не сможет прочитать, `proxy.seed(path, file)` кладёт файл, например базу данных, оставленную более ранней версией, до первого запуска прокси, а `ProxyConfiguration.generated(anvil, path, type)` читает файл в том виде, в каком его оставил работающий прокси. Пока сеть работает, `ProxyConfiguration.editGenerated(anvil, path, type, change)` изменяет файл через его модель, а `ProxyConfiguration.corruptGenerated(anvil, path, content)` заменяет его содержимым, которое Identica не сможет прочитать; после этого `Administrator.at(anvil, PROXY).reloads()` и `.failsToReload()` перезагружают конфигурацию и ожидают соответствующий настроенный ответ.
 
 Прохождение, проверяющее блокировку или срок действия, задаёт короткую длительность и пропускает её с помощью `.waits(duration)`; ожидание никогда не используется, чтобы дать прокси время отреагировать, потому что каждый другой шаг и так этого дожидается:
 

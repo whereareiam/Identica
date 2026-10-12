@@ -31,7 +31,7 @@ public final class IdenticaScenarios implements AnvilScenarioFactory<Identica> {
 		for (Class<? extends Consumer<ProxyConfiguration>> change : identica.configure())
 			instantiate(change).accept(proxy);
 
-		return IdenticaNetwork.velocity(name(identica, enabled), Map.of(IdenticaNetwork.PROXY, proxy.files()), yggdrasil.sessionServer(),
+		return IdenticaNetwork.velocity(name(identica, enabled), Map.of(IdenticaNetwork.PROXY, proxy), yggdrasil.sessionServer(),
 				identica.addon());
 	}
 

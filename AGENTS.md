@@ -143,7 +143,7 @@ Do not replace these libraries with unrelated alternatives in the same area unle
 
 `identica-testing` starts the packaged plugin on a real Velocity proxy with Paper backends and drives simulated players through it.
 
-- run them with `./gradlew :identica-testing:anvilTest`; `test` and `pluginJars` do not start them
+- run them with `./gradlew :identica-testing:anvilTest`; `./gradlew :identica-testing:anvil` runs it and every suite; `test` and `pluginJars` do not start them
 - they need an installed Java 21 and network access on first use; a test takes about 5 seconds and several run at once, each on its own network (`-Pidentica.journeys.parallelism=1` runs them one after another)
 - every test gets fresh proxies, while the `auth` and `lobby` servers start once and serve one test after another, so a journey must not depend on the state of a backend world
 - add or update a journey when a change affects what a joining player experiences
@@ -152,6 +152,7 @@ Do not replace these libraries with unrelated alternatives in the same area unle
 - a failed test keeps its network under `identica-testing/build/anvil/`; read the `anvil-console.log` files there, where Identica's debug logging is enabled
 - change a test proxy's files through `@Identica(configure = ...)` (both proxies of a cluster through `@IdenticaCluster(configure = ...)`), a `Consumer<ProxyConfiguration>` working on Identica's models; `omit` and `corrupt` cover new installations and unreadable files; `ProxyConfiguration.editGenerated` and `corruptGenerated` change the files of a running proxy before `Administrator` reloads it
 - `@IdenticaCluster` starts two proxies on a shared PostgreSQL and, unless turned off, one Redis; a journey names its proxy (`Journey.offline(anvil, "Alice", PROXY_B)`) and `Administrator` runs console commands on one; these tests need Docker and are skipped without it
+- journeys that start from what an earlier version of Identica left are tagged `@Tag("upgrade")` and form the `upgrade` suite (`anvil { suites { ... } }`); `anvilTest` leaves them out and `./gradlew :identica-testing:anvilUpgradeTest` runs them, by hand and in the release workflow; `ProxyConfiguration.seed(path, file)` places such a file, like the SQLite database built from the `identica-2.2.1` layouts that `EarlierInstallation` creates, before the proxy first starts
 - premium accounts come from the network's own stand-in for Mojang, a `YggdrasilMock` test parameter (`yggdrasil.register(...)`), which also verifies premium logins; never add real account credentials to the repository or CI
 
 See `docs/content/developer/testing/index.mdx`.

@@ -9,6 +9,7 @@ import me.whereareiam.strata.adapter.database.DatabaseContext;
 import me.whereareiam.strata.adapter.database.DatabaseTarget;
 import me.whereareiam.strata.adapter.database.dialectica.SchemaCreation;
 import me.whereareiam.strata.adapter.database.jdbi.JdbiConnector;
+import me.whereareiam.strata.exception.MigrationException;
 import me.whereareiam.strata.model.AppliedMigration;
 import me.whereareiam.strata.model.MigrationReport;
 import org.jdbi.v3.core.Jdbi;
@@ -51,10 +52,24 @@ public final class DatabaseSchemaInstaller implements SchemaInstaller {
 				.creation(SchemaCreation.of(schema.schema()))
 				.migrations(schema.migrations())
 				.build();
-		MigrationReport report = new Strata(List.of(migrations)).migrate();
+		MigrationReport report;
+		try {
+			report = new Strata(List.of(migrations)).migrate();
+		} catch (MigrationException failure) {
+			// Strata names the stream; the reason, such as a database too old to upgrade, is its cause.
+			Logger.severe("Database schema %s could not be brought up to date: %s", stream, reason(failure));
+			throw failure;
+		}
 		for (AppliedMigration applied : report.getApplied().getOrDefault(stream, List.of()))
 			Logger.info("Database schema %s: applied %d %s", stream, applied.getVersion(), applied.getName());
 
 		installed.add(stream);
+	}
+
+	private static String reason(Throwable failure) {
+		Throwable reason = failure;
+		while (reason.getCause() != null) reason = reason.getCause();
+
+		return reason.getMessage() != null ? reason.getMessage() : reason.toString();
 	}
 }

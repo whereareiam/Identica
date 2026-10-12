@@ -43,7 +43,7 @@ public final class IdenticaClusterScenarios implements AnvilScenarioFactory<Iden
 		PostgreSQLContainer database = resources.own(started(new PostgreSQLContainer(POSTGRES)));
 		RedisContainer redis = cluster.replication() ? resources.own(started(new RedisContainer(REDIS))) : null;
 
-		Map<String, Map<String, String>> proxies = new LinkedHashMap<>();
+		Map<String, ProxyConfiguration> proxies = new LinkedHashMap<>();
 		for (String proxy : List.of(IdenticaNetwork.PROXY_A, IdenticaNetwork.PROXY_B)) {
 			ProxyConfiguration configuration = new ProxyConfiguration(proxy, JourneyMode.INTERACTIVE, JourneyPolicy.PREFER,
 					EnumSet.of(Provider.CREDENTIAL), false, true, cluster.step(), cluster.complete(), yggdrasil);
@@ -52,7 +52,7 @@ public final class IdenticaClusterScenarios implements AnvilScenarioFactory<Iden
 				configuration.put("replication.yml", replication(proxy, redis));
 			for (Class<? extends Consumer<ProxyConfiguration>> change : cluster.configure())
 				IdenticaScenarios.instantiate(change).accept(configuration);
-			proxies.put(proxy, configuration.files());
+			proxies.put(proxy, configuration);
 		}
 
 		String name = String.join("-", "identica-cluster", redis == null ? "database" : "replicated",

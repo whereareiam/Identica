@@ -10,6 +10,7 @@ import me.whereareiam.anvil.api.model.workspace.AssetSource;
 import me.whereareiam.anvil.api.model.workspace.WorkspaceAsset;
 import me.whereareiam.anvil.api.model.workspace.WorkspaceCache;
 import me.whereareiam.anvil.api.model.workspace.WorkspacePlan;
+import me.whereareiam.anvil.api.type.AssetInstallMode;
 import me.whereareiam.anvil.api.type.CacheIdentity;
 import me.whereareiam.anvil.api.type.Platforms;
 import me.whereareiam.anvil.api.type.ProcessLifetime;
@@ -42,10 +43,10 @@ public final class IdenticaNetwork {
 	 * through the first proxy unless they choose another one.
 	 *
 	 * @param name scenario name
-	 * @param proxies configuration files by path inside Identica's data directory, for each proxy name
+	 * @param proxies the files of each proxy, by its name
 	 * @param sessionServer session server the proxies verify online players against
 	 */
-	public static AnvilScenario velocity(String name, Map<String, Map<String, String>> proxies, URI sessionServer) {
+	public static AnvilScenario velocity(String name, Map<String, ProxyConfiguration> proxies, URI sessionServer) {
 		return velocity(name, proxies, sessionServer, false);
 	}
 
@@ -54,7 +55,7 @@ public final class IdenticaNetwork {
 	 *
 	 * @param addon whether every proxy runs the example addon next to Identica
 	 */
-	public static AnvilScenario velocity(String name, Map<String, Map<String, String>> proxies, URI sessionServer, boolean addon) {
+	public static AnvilScenario velocity(String name, Map<String, ProxyConfiguration> proxies, URI sessionServer, boolean addon) {
 		AnvilScenario.AnvilScenarioBuilder scenario = AnvilScenario.builder()
 				.name(name)
 				.entrypoint(proxies.keySet().iterator().next())
@@ -65,7 +66,7 @@ public final class IdenticaNetwork {
 		return scenario.build();
 	}
 
-	private static MinecraftProxy proxy(String name, Map<String, String> configuration, URI sessionServer, boolean addon) {
+	private static MinecraftProxy proxy(String name, ProxyConfiguration configuration, URI sessionServer, boolean addon) {
 		WorkspacePlan.WorkspacePlanBuilder workspace = WorkspacePlan.builder()
 				.asset(artifact("identica", Path.of("plugins", "identica.jar")))
 				.asset(artifact("credential", Path.of(DATA, "providers", "credential.jar")))
@@ -75,10 +76,16 @@ public final class IdenticaNetwork {
 				.cache(libraries("identica-provider-libraries", Path.of(DATA, "providers", ".libraries")));
 		if (addon)
 			workspace.asset(artifact("example-addon", Path.of("plugins", "identica-example-addon.jar")));
-		configuration.forEach((file, content) -> workspace.asset(WorkspaceAsset.builder()
+		configuration.files().forEach((file, content) -> workspace.asset(WorkspaceAsset.builder()
 				.group("identica-configuration")
 				.source(AssetSource.text(content))
 				.target(Path.of(DATA, file))
+				.build()));
+		configuration.seeds().forEach((file, source) -> workspace.asset(WorkspaceAsset.builder()
+				.group("identica-seed")
+				.source(AssetSource.path(source))
+				.target(Path.of(DATA, file))
+				.mode(AssetInstallMode.SEED_ONCE)
 				.build()));
 
 		return MinecraftProxy.builder()

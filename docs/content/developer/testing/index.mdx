@@ -25,6 +25,14 @@ Run one class or one test with `--tests`:
 ./gradlew :identica-testing:anvilTest --tests '*CredentialFirstJoinTest'
 ```
 
+Journeys that start a proxy on what an earlier version of Identica left, such as the database of Identica 2.2.1, are tagged `@Tag("upgrade")` and form the `upgrade` suite, declared in `anvil { suites { ... } }` of the module's build. `anvilTest` leaves them out; run them by hand, and the release workflow runs them once before it publishes:
+
+```shell
+./gradlew :identica-testing:anvilUpgradeTest
+```
+
+`./gradlew :identica-testing:anvil` runs `anvilTest` and every suite. `anvilScenarios` lists the scenarios, `anvilRun --scenario=<name>` starts one to look around in, and `anvilLogin --account=<id>` and `anvilLogout --account=<id>` manage the accounts Anvil signs in with.
+
 When a test fails, its network is kept under `identica-testing/build/anvil/<scenario>/<run>/`. Each process folder holds an `anvil-console.log`, and Identica's debug logging is enabled in every test network.
 
 ## Premium accounts
@@ -62,7 +70,7 @@ private static final class NoDisconnectMessages implements Consumer<ProxyConfigu
 }
 ```
 
-`proxy.engine()`, `proxy.routing()`, `proxy.settings()`, `proxy.providers()`, `proxy.messages()`, `proxy.credential()` (the Credential provider's settings), `proxy.sentinel()`, `proxy.recognition()`, `proxy.verification()` and `proxy.joinRestriction()` (those features' shared settings) return the models a test changes. `proxy.put(path, model)` adds another file, `proxy.omit(path)` leaves a file out, `proxy.corrupt(path, content)` writes one Identica cannot read, and `ProxyConfiguration.generated(anvil, path, type)` reads a file as the running proxy left it. While the network runs, `ProxyConfiguration.editGenerated(anvil, path, type, change)` changes a file through its model and `ProxyConfiguration.corruptGenerated(anvil, path, content)` replaces it with content Identica cannot read; `Administrator.at(anvil, PROXY).reloads()` and `.failsToReload()` then reload the configuration and expect the configured answer.
+`proxy.engine()`, `proxy.routing()`, `proxy.settings()`, `proxy.providers()`, `proxy.messages()`, `proxy.credential()` (the Credential provider's settings), `proxy.sentinel()`, `proxy.recognition()`, `proxy.verification()` and `proxy.joinRestriction()` (those features' shared settings) return the models a test changes. `proxy.put(path, model)` adds another file, `proxy.omit(path)` leaves a file out, `proxy.corrupt(path, content)` writes one Identica cannot read, `proxy.seed(path, file)` places a file, such as a database an earlier version left, before the proxy first starts, and `ProxyConfiguration.generated(anvil, path, type)` reads a file as the running proxy left it. While the network runs, `ProxyConfiguration.editGenerated(anvil, path, type, change)` changes a file through its model and `ProxyConfiguration.corruptGenerated(anvil, path, content)` replaces it with content Identica cannot read; `Administrator.at(anvil, PROXY).reloads()` and `.failsToReload()` then reload the configuration and expect the configured answer.
 
 A journey about a lockout or a validity window configures a short duration and lets it pass with `.waits(duration)`; it never waits to give the proxy time to act, because every other step already waits for that:
 

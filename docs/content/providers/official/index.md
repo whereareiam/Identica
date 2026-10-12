@@ -11,5 +11,5 @@ Each provider has its own landing page under this section.
 - [`Premium`](./premium/index.md)  
   Lets players log in with their real Minecraft premium account and keeps their identity consistent even if their username changes.
 
-- [`Password`](./credential/index.md)  
+- [`Credential`](./credential/index.md)  
   For servers that want credential-based access for players who do not use an official Minecraft premium account.

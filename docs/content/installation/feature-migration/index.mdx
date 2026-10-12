@@ -1,6 +1,6 @@
 ---
 title: Feature configuration migration
-description: Move an existing capability-based installation to optional runtime features.
+description: Move an existing capability-based installation to the built-in features.
 ---
 
 This migration applies to installations with shared configuration under `providers/capabilities` and provider overrides under `providers[].capabilities`. The normal configuration reference describes the current layout.
@@ -24,7 +24,7 @@ Move any customized core sentinel fields as follows, retaining the values:
 | `messages`: `engine.resumeSentineled` | `features/sentinel/messages`: `resumeSpam.denied` |
 | `replication`: `cache.sentinels` | `features/sentinel/settings`: `replication.state` |
 
-If these values are already configured in the sentinel feature documents, retain those values and remove the obsolete core fields. Select `sentinel` at startup for the protections to operate.
+If these values are already configured in the sentinel feature documents, retain those values and remove the obsolete core fields. Sentinel is compiled into Identica and enabled by default through `enabled` in `features/sentinel/settings`.
 
 In `providers/providers`, move `providers[].capabilities.recognition` to `providers[].features.recognition` and `providers[].capabilities.restriction.join` to `providers[].features.restriction.join`. Merge these into the existing `features` object, retaining `features.verification` and any other feature overrides. Remove the obsolete `capabilities` configuration subtree after moving its settings.
 
@@ -80,7 +80,7 @@ Username-only messages now belong to `identity/username/messages`:
 
 Choose one shared synchronization-failure message when the old scenario-specific values differ, retain any existing feature message customizations, and remove the obsolete core fields. See [Username messages](../../configuration/identity/username/index.mdx#messages) for the current shape.
 
-Verification defaults apply to every provider ID with an explicit `providers[].features.verification` node. Providers without that node do not participate through this configuration subtree. Review custom provider overrides with the same defaults as official providers: verification enabled, `KEEP_LOCKED`, and one enabled `totp` method with priority `100`.
+The verification `defaults` in `features/verification/settings` apply to every provider, whether or not it has a `providers[].features.verification` node; a node only overrides the fields it sets. Out of the box this means verification enabled but not required, `KEEP_LOCKED`, and one enabled `totp` method with priority `100`, for official and community providers alike. Add `enabled: false` under a provider's `features.verification` where it should not offer verification.
 
 Configure each supported feature globally and under `providers[].features`. All implementations are compiled into Identica.
 

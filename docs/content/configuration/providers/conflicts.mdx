@@ -5,7 +5,7 @@ description: Field-by-field explanation of Identica's conflict resolution config
 
 The conflicts configuration controls how Identica resolves provider conflicts such as username collisions.
 
-This document lives under `providers/conflicts` and provides optional generic overrides for contributed conflict types. Core does not supply username-specific default rules. The optional [Username](../identity/username/index.mdx) feature owns its defaults in `identity/username/conflicts`. A `rules.username` entry in `providers/conflicts` takes precedence over those feature rules.
+This document lives under `providers/conflicts` and provides optional generic overrides for contributed conflict types. Core does not supply username-specific default rules. [Username](../identity/username/index.mdx) handling, which is mandatory identity behavior, owns its defaults in `identity/username/conflicts`. A `rules.username` entry in `providers/conflicts` takes precedence over those identity rules.
 
 Conflicts are configured per conflict key.
 Each key defines:

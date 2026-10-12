@@ -1,5 +1,5 @@
 #!/bin/sh
-# Scriptorium translation check, version 1.
+# Scriptorium translation check, version 2.
 # Source: https://github.com/whereareiam/scriptorium/blob/dev/scripts/i18n-check.sh
 #
 # Copy this file to docs/i18n/check.sh in a project that Scriptorium publishes. It keeps
@@ -138,11 +138,16 @@ command_check_staged() {
     rest=${file#"$i18n_dir"/}
     [ "${rest#*/}" != "$rest" ] || continue
     is_page "$file" || continue
-    printf '%s\n' "$changed" | grep -Fqx -e "$file" -e "$(original_of "$file")" && echo "$file"
+    # `if` keeps an untouched last file from failing the loop, which `set -e` would turn into a silent exit.
+    if printf '%s\n' "$changed" | grep -Fqx -e "$file" -e "$(original_of "$file")"; then
+      echo "$file"
+    fi
   done)
 
   report "$(printf '%s\n' "$translations" | while IFS= read -r translation; do
-    [ -n "$translation" ] && check_translation "$translation" index
+    if [ -n "$translation" ]; then
+      check_translation "$translation" index
+    fi
   done)"
 }
 

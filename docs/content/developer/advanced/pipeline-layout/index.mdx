@@ -1,0 +1,45 @@
+---
+title: Pipeline layout
+description: Where pipeline classes live in the engine, providers, and features, and the rules the build checks.
+---
+
+Identica moves a player through pipelines. Each pipeline is made of groups, and each group runs phases in order. Providers add steps and features add phases through a `PipelineExtension`. Every module lays out its pipeline packages the same way, so a class's package tells you where it runs.
+
+## Pipelines and their groups
+
+| Pipeline | Runs | Groups |
+| --- | --- | --- |
+| `prepare` | while the connection is prepared, before a scenario starts | `context`, `handshake`, `policy`, `profile`, `finalize` |
+| `scenario` | the `authentication`, `registration`, or `migration` scenario | shared: `preparation`, `journey`, `session`, `finalize`; per scenario: `identity` and `session` for all three, plus `policy` for authentication and registration |
+| `completion` | after a scenario, to send the player where they belong | `context`, `step` |
+
+## Package layout
+
+In the engine, under `me.whereareiam.identica.engine.pipeline`:
+
+- `prepare/group/<group>/phase/` and `completion/group/<group>/...` hold the phases of those pipelines.
+- `scenario/shared/group/<group>/` holds groups that every scenario runs.
+- `scenario/type/<scenario>/group/<group>/phase/` holds the groups and phases of one scenario.
+
+In a provider, under `<provider package>.pipeline`:
+
+- the provider's `PipelineExtension` sits directly in `pipeline/`
+- `step/type/<scenario>/` holds steps that belong to one scenario, for example `step/type/authentication/`
+- `step/shared/` holds steps that several scenarios use
+- `step/base/` holds the abstract classes those steps extend
+
+In a feature, under `<feature package>.pipeline`:
+
+- the feature's `PipelineExtension` sits directly in `pipeline/`
+- phases mirror the engine path they join, for example `prepare/group/policy/phase/` or `scenario/type/authentication/group/identity/phase/`
+- `phase/base/` holds the abstract classes those phases extend
+
+## Rules the build checks
+
+`./gradlew validatePipelineStructure` checks these rules over the main sources of the `identica-*` modules, and every module's `check` task runs it:
+
+- There is no top-level `pipeline/scenario/base/` package. Code that every scenario shares belongs in `scenario/shared/`.
+- A `base` package under `pipeline/` contains only abstract classes.
+- In providers and features, a class that implements `PipelineExtension` or `PipelinePhase`, or extends `InteractiveStep` or `SeamlessStep`, lives under `pipeline/`.
+
+A violation fails the build with the offending file paths.

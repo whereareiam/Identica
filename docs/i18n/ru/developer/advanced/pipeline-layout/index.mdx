@@ -1,0 +1,46 @@
+---
+title: Структура конвейеров
+description: Где находятся классы конвейеров в движке, провайдерах и функциях и какие правила проверяет сборка.
+sourceHash: b315de00771fa4091c64cb1bade5082f5a9b9222
+---
+
+Identica проводит игрока через конвейеры. Каждый конвейер состоит из групп, а каждая группа по порядку выполняет фазы. Провайдеры добавляют шаги, а функции — фазы через `PipelineExtension`. Все модули раскладывают пакеты конвейеров одинаково, поэтому по пакету класса видно, где он выполняется.
+
+## Конвейеры и их группы [#pipelines-and-their-groups]
+
+| Конвейер | Когда выполняется | Группы |
+| --- | --- | --- |
+| `prepare` | пока подключение подготавливается, до начала сценария | `context`, `handshake`, `policy`, `profile`, `finalize` |
+| `scenario` | сценарий `authentication`, `registration` или `migration` | общие: `preparation`, `journey`, `session`, `finalize`; для отдельных сценариев: `identity` и `session` во всех трёх, а также `policy` в аутентификации и регистрации |
+| `completion` | после сценария, чтобы отправить игрока туда, где он должен оказаться | `context`, `step` |
+
+## Структура пакетов [#package-layout]
+
+В движке, в `me.whereareiam.identica.engine.pipeline`:
+
+- `prepare/group/<group>/phase/` и `completion/group/<group>/...` содержат фазы этих конвейеров.
+- `scenario/shared/group/<group>/` содержит группы, которые выполняет каждый сценарий.
+- `scenario/type/<scenario>/group/<group>/phase/` содержит группы и фазы одного сценария.
+
+В провайдере, в `<пакет провайдера>.pipeline`:
+
+- `PipelineExtension` провайдера лежит прямо в `pipeline/`
+- `step/type/<scenario>/` содержит шаги, которые относятся к одному сценарию, например `step/type/authentication/`
+- `step/shared/` содержит шаги, которые используют несколько сценариев
+- `step/base/` содержит абстрактные классы, от которых наследуются эти шаги
+
+В функции, в `<пакет функции>.pipeline`:
+
+- `PipelineExtension` функции лежит прямо в `pipeline/`
+- фазы повторяют путь движка, к которому они подключаются, например `prepare/group/policy/phase/` или `scenario/type/authentication/group/identity/phase/`
+- `phase/base/` содержит абстрактные классы, от которых наследуются эти фазы
+
+## Правила, которые проверяет сборка [#rules-the-build-checks]
+
+`./gradlew validatePipelineStructure` проверяет эти правила в основных исходниках модулей `identica-*`, а задача `check` каждого модуля запускает эту проверку:
+
+- Пакета `pipeline/scenario/base/` верхнего уровня нет. Код, общий для всех сценариев, относится к `scenario/shared/`.
+- Пакет `base` внутри `pipeline/` содержит только абстрактные классы.
+- В провайдерах и функциях класс, который реализует `PipelineExtension` или `PipelinePhase` либо наследуется от `InteractiveStep` или `SeamlessStep`, лежит внутри `pipeline/`.
+
+При нарушении сборка завершается ошибкой и перечисляет пути проблемных файлов.

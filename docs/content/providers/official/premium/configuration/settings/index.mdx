@@ -41,7 +41,7 @@ A player no method decides for is treated as not premium.
 | `["CLIENT_PROFILE", "LOOKUP"]` | Asked for a premium login only when it sends the premium profile | Premium username: asked for a premium login |
 | `["CLIENT_PROFILE"]` | Asked for a premium login only when it sends the premium profile | Treated as not premium |
 
-With only `LOOKUP`, an offline player who uses a premium username is asked for a premium login on the first join. Their client cannot complete it and disconnects with an invalid-session message; the next join from the same IP within [`attemptTtl`](../../../../../configuration/providers/index.mdx#attempttl) continues with the next provider, unless the username has been linked to Premium since.
+With only `LOOKUP`, an offline player who uses a premium username is asked for a premium login on the first join. Their client cannot complete it and disconnects with an invalid-session message; the next join from the same IP within [`attemptTtl`](../../../../../configuration/providers/index.mdx#attemptttl) continues with the next provider, unless the username has been linked to Premium since.
 With `CLIENT_PROFILE`, that player continues with the next provider on the first join, and in an `INTERACTIVE` journey Premium is not offered to them.
 
 `CLIENT_PROFILE` also protects usernames linked to Premium. A client that sends a different profile id than the linked one is refused with the `verification.ownedUsername` message from Premium's `messages.yml`, unless the username now belongs to the profile that client sent.

@@ -1,0 +1,250 @@
+---
+title: Использование API
+description: Как подключить API Identica как зависимость в другом плагине и безопасно с ним работать.
+sourceHash: cb6c299bdac7713603681ee7c89b661281c4cba5
+---
+
+На этой странице описано, как использовать API Identica из другого плагина или аддона.
+
+## Координаты [#coordinates]
+
+Опубликованный артефакт API имеет такие координаты:
+
+- Группа: `me.whereareiam.identica`
+- Артефакт: `api`
+
+Для плагинов-аддонов обычно подходит `compileOnly` или аналогичная зависимость с областью provided.
+Во время работы API предоставляет сама Identica.
+
+## Репозитории [#repositories]
+
+Identica публикует артефакты релизов и сборок для разработки в [публичный репозиторий Maven](https://registry.whereareiam.me/maven/packages).
+
+API публикуется только там. Файлы релизов и сборок для разработки содержат jar-файлы плагина и провайдеров, которые устанавливают на серверы, но не API.
+
+## Подключение зависимости [#adding-the-dependency]
+
+<Tabs items={["Gradle Kotlin DSL", "Gradle Groovy DSL", "Maven"]}>
+  <Tab value="Gradle Kotlin DSL">
+```kotlin
+repositories {
+    maven("https://registry.whereareiam.me/maven/packages")
+}
+
+dependencies {
+    compileOnly("me.whereareiam.identica:api:1.0.0")
+}
+```
+  </Tab>
+  <Tab value="Gradle Groovy DSL">
+```groovy
+repositories {
+    maven { url = uri("https://registry.whereareiam.me/maven/packages") }
+}
+
+dependencies {
+    compileOnly "me.whereareiam.identica:api:1.0.0"
+}
+```
+  </Tab>
+  <Tab value="Maven">
+```xml
+<repositories>
+  <repository>
+    <id>identica-release</id>
+    <url>https://registry.whereareiam.me/maven/packages</url>
+  </repository>
+</repositories>
+
+<dependencies>
+  <dependency>
+    <groupId>me.whereareiam.identica</groupId>
+    <artifactId>api</artifactId>
+    <version>1.0.0</version>
+    <scope>provided</scope>
+  </dependency>
+</dependencies>
+```
+  </Tab>
+</Tabs>
+
+Для сборок для разработки укажите версию для разработки — репозиторий тот же.
+
+## Версионирование [#versioning-semantics]
+
+Сейчас Identica публикует API в двух основных потоках версий:
+
+- релизные версии, например `1.0.0`;
+- версии для разработки, например `dev-91e1b65`.
+
+На практике:
+
+- релизные версии публикуются из релизов, отмеченных тегом;
+- версии для разработки публикуются из ветки `dev`;
+- версии для разработки имеют формат `dev-<short-commit-sha>`.
+
+Если вы пишете обычный плагин-аддон, выбирайте релизные версии.
+Версии для разработки используйте, только если вы сознательно опираетесь на ещё не выпущенные изменения API.
+
+## Javadoc [#javadocs]
+
+Скачайте соответствующий артефакт `javadoc` из репозитория Maven или позвольте IDE подтянуть его вместе с зависимостью API.
+
+## Получение API [#getting-the-api]
+
+Точка входа в API — `me.whereareiam.identica.IdenticaAPI`. Её статические методы возвращают API запущенного экземпляра Identica, через который доступны все сервисы, нужные аддону. Identica регистрирует его при запуске и удаляет при остановке.
+
+- `IdenticaAPI.get()` возвращает API и выбрасывает исключение, если Identica не запущена. Используйте его, когда ваш аддон загружается после Identica.
+- `IdenticaAPI.whenReady(identica -> ...)` выполняет ваш код, когда Identica готова к работе: провайдеры загружены, их команды и документы на месте. Если Identica уже готова, код выполнится сразу, иначе — как только она будет готова. Используйте этот метод, чтобы запускать аддон независимо от того, когда он загружается.
+- `IdenticaAPI.find()` возвращает `Optional<IdenticaAPI>` и никогда не выбрасывает исключений.
+
+Передавайте `IdenticaAPI` в классы своего аддона, а не вызывайте `IdenticaAPI.get()` повсюду. Тогда эти классы зависят от интерфейса, который можно подменить моком в тестах.
+
+Интеграция с запуском платформы и её жизненным циклом зависит от платформы, на которую рассчитан ваш аддон.
+
+<ContentTabs items={["Velocity"]}>
+  <ContentTab value="Velocity">
+    Плагины Velocity могут объявлять зависимости от других плагинов прямо в `@Plugin`.
+    Это влияет на порядок загрузки плагинов.
+    Если ваш аддон действительно зависит от Identica, объявите её обязательной зависимостью, чтобы Velocity загружал Identica раньше вашего аддона.
+    Если интеграция необязательна, объявите зависимость как необязательную и проверяйте наличие плагина `identica`, прежде чем аддон обратится к любому классу Identica: без плагина этих классов нет.
+
+```java
+import com.google.inject.Inject;
+import com.velocitypowered.api.plugin.Dependency;
+import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
+import com.velocitypowered.api.plugin.Plugin;
+import me.whereareiam.identica.IdenticaAPI;
+
+@Plugin(
+    id = "example-identica-addon",
+    name = "ExampleIdenticaAddon",
+    version = "1.0.0",
+    dependencies = {
+        @Dependency(id = "identica")
+    }
+)
+public final class ExampleIdenticaAddon {
+    @Inject
+    public ExampleIdenticaAddon() {
+    }
+
+    @Subscribe
+    public void onProxyInitialization(ProxyInitializeEvent event) {
+        IdenticaAPI.whenReady(identica -> new ExampleAddon(identica).inspectProviders());
+    }
+}
+```
+  </ContentTab>
+</ContentTabs>
+
+## Простой пример работы с сервисом [#basic-service-usage-example]
+
+```java
+import me.whereareiam.identica.IdenticaAPI;
+
+public final class ExampleAddon {
+    private final IdenticaAPI identica;
+
+    public ExampleAddon(IdenticaAPI identica) {
+        this.identica = identica;
+    }
+
+    public void inspectProviders() {
+        identica.getProviderManager().getProviders().forEach(provider -> {
+            if (provider != null && provider.getDescriptor() != null) {
+                System.out.println(provider.getDescriptor().getId());
+            }
+        });
+    }
+}
+```
+
+## Поиск других сервисов [#finding-other-services]
+
+Сервисы, для которых в `IdenticaAPI` нет геттера, например API функции, ищутся по типу. `findService` возвращает пустой `Optional`, если у Identica нет сервиса такого типа.
+
+```java
+Optional<FeatureRegistry> features = identica.findService(FeatureRegistry.class);
+```
+
+Здесь `FeatureRegistry` — это `me.whereareiam.identica.feature.FeatureRegistry`.
+
+## Сервисы функций и политика провайдеров [#feature-services-and-provider-policy]
+
+Реализации функций скомпилированы в Identica. Ищите их API по типу и перед запуском необязательных интеграций проверяйте, включена ли функция для провайдера с учётом всех настроек.
+
+```java
+FeatureRegistry features = identica.findService(FeatureRegistry.class).orElseThrow();
+if (features.isEnabled(providerId, "verification")) {
+    identica.findService(VerificationService.class).ifPresent(verification -> {
+        // Resolve verification for this provider.
+    });
+}
+```
+
+`isEnabled` учитывает поддержку, заявленную провайдером, общие значения по умолчанию и переопределения для провайдера. Признаки провайдера проверяются отдельно, через `ProviderDescriptor.hasTrait(ProviderTrait.AUTHORITATIVE_USERNAME)`; никакой переключатель функций не даёт и не отменяет эту гарантию.
+
+Контракты описаны на странице [Признаки и функции провайдеров](../features/index.mdx).
+
+## Полезные сервисы [#common-services-worth-using]
+
+Вот некоторые из самых полезных для плагинов-аддонов сервисов `IdenticaAPI`:
+
+- `getProviderManager()` — список загруженных провайдеров и сведения о них;
+- `getProviderOperations()` — доступность провайдеров и операции с провайдерами во время работы;
+- `getSessionService()` — поиск, получение списка, открытие и закрытие сессий;
+- `getAccountService()` — поиск аккаунтов и операции их жизненного цикла;
+- `getIdentityService()` — идентичности игроков на этом прокси;
+- `getReplicationSystem()` — если вы сознательно интегрируетесь с реплицируемыми кэшами или каналами Identica;
+- `getEventManager()` — регистрация и вызов событий Identica;
+- `getPendingScenarioService()` — нужно ли игроку ещё пройти аутентификацию, регистрацию или миграцию;
+- `getConfigCatalog()` — загруженные документы конфигурации, например все документы сообщений;
+- `getReloadables()` — чтобы ваш код перезагружался по `/identica admin reload`.
+
+Аддоны, которые не пропускают чат или команды, пока игрок не прошёл аутентификацию, описаны на странице [Написание аддона](../writing-addons/index.mdx).
+
+Если выбрана функция `verification`, найдите через `identica.findService(...)` сервис `VerificationService` — для привязки, проверки, выбора и сброса — или `VerificationRegistry` — для получения доступных методов. Оба типа находятся в `me.whereareiam.identica.feature.verification`.
+
+## Пример поиска сессии [#session-lookup-example]
+
+```java
+import me.whereareiam.identica.IdenticaAPI;
+import me.whereareiam.identica.identity.session.SessionService;
+
+import java.util.UUID;
+
+public final class ExampleAddon {
+    private final IdenticaAPI identica;
+
+    public ExampleAddon(IdenticaAPI identica) {
+        this.identica = identica;
+    }
+
+    public void printSession(UUID uniqueId) {
+        SessionService sessionService = identica.getSessionService();
+        sessionService.findByUniqueId(uniqueId).thenAccept(optionalSession -> {
+            optionalSession.ifPresent(session ->
+                System.out.println(session.getProviderId() + " -> " + session.getEffectiveUsername())
+            );
+        });
+    }
+}
+```
+
+Сессия принадлежит подключению: `session.getConnection()` возвращает `SessionConnection` с уникальным идентификатором подключения и `replication.serverId` прокси, на котором оно находится. У аккаунта по одной сессии на каждое подключение, поэтому при `ALLOW_MULTIPLE` их может быть несколько:
+
+- `findAllByUniqueId(uniqueId)` возвращает все сессии аккаунта, начиная с самой старой;
+- `findByUniqueId(uniqueId)` возвращает самую новую — этого достаточно, чтобы узнать, в сети ли аккаунт и как он вошёл;
+- `findByConnection(uniqueId, SessionConnection.of(player.getUniqueId()))` возвращает сессию одного подключения;
+- `list(page, pageSize)` постранично перебирает идентификаторы сессий, которые затем можно получить через `findBySessionId`.
+
+`SessionService.open(session)` продолжает сохранённую сессию, только если новая сессия указывает то же подключение; любое другое подключение считается одновременным входом, и решение принимает настроенная политика одновременных входов. `close(uniqueId)` завершает все сессии аккаунта. Чтобы завершить сессию только одного подключения, например когда этот игрок выходит, укажите подключение в запросе на закрытие — сессии других подключений останутся нетронутыми:
+
+```java
+sessionService.close(SessionCloseRequest.builder()
+        .uniqueId(accountUniqueId)
+        .connection(SessionConnection.of(player.getUniqueId()))
+        .build());
+```

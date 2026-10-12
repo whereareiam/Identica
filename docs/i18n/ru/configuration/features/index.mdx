@@ -1,0 +1,55 @@
+---
+title: Функции
+description: Настройка встроенных функций глобально и отдельно для каждого провайдера, который их поддерживает.
+sourceHash: d085cb7ec9a9cd845f8c4a45d35d77130886b369
+---
+
+Все функции встроены в Identica. Провайдеры заявляют, какие функции они поддерживают, а администраторы решают, где эти функции использовать.
+
+## Глобальные значения по умолчанию и переопределения для провайдеров [#global-defaults-and-provider-overrides]
+
+Общие настройки находятся в `features/`. Переопределения задаются в `providers/providers`, в объекте `features` каждого провайдера. Пропущенные поля наследуют общие значения по умолчанию. Явное `enabled: true` или `enabled: false` меняет поведение только для этого провайдера.
+
+Например:
+
+```yaml
+providers:
+  - id: credential
+    features:
+      recognition:
+        enabled: false
+      verification:
+        enabled: true
+        required: true
+  - id: premium
+    features:
+      recognition:
+        enabled: true
+      verification:
+        enabled: false
+```
+
+Здесь распознавание включено только для провайдера Premium, а для провайдера Credential верификация обязательна. Сама реализация функции остаётся доступной обоим. Чтобы явно включить функцию переопределением, провайдер должен заявить её поддержку.
+
+| Функция | Общие настройки | Переопределение для провайдера |
+| --- | --- | --- |
+| Распознавание | `features/recognition/settings` | `features.recognition` |
+| Верификация | `features/verification/settings` | `features.verification` |
+| Sentinel | `features/sentinel/settings` | `features.sentinel.enabled`, когда провайдер уже известен |
+| Ограничения | `features/restriction/settings` | `features.restriction.enabled` |
+| Ограничение входа | `features/restriction/join/settings` | `features.restriction.join` |
+
+Распознавание и Sentinel наследуют общее значение `enabled`. Верификация наследует общую политику `defaults`, включая `enabled`, `required` и методы. Ограничение входа наследует `enabled` и `allow` из своих общих настроек. Если внешний переключатель ограничений равен false, ограничение входа тоже отключается.
+
+Кроме того, Sentinel отвечает за глобальные проверки подключений, которые выполняются до того, как провайдер становится известен. Эти проверки используют общие настройки. Когда провайдер выбран, Sentinel учитывает его переключатель включения. Правило против перебора паролей провайдера Credential применяется только к попыткам входа через Credential, а его подробная политика по-прежнему задаётся в настройках Credential.
+
+## Свойства идентичности [#identity-traits]
+
+Ник, за который отвечает провайдер, — это гарантия идентичности, а не функция, которую можно включить или выключить. Провайдер Premium заявляет `AUTHORITATIVE_USERNAME`: Identica следует его подтверждённому нику, если только ручное право на ник или политика конфликтов не требуют иного. Переключателя `features.username.enabled` не существует. Подробнее — в разделе [Право на ник](../identity/username/index.mdx).
+
+## Справка по функциям [#feature-references]
+
+- [Распознавание](./recognition/index.mdx)
+- [Ограничения](./restriction/index.mdx)
+- [Sentinel](./sentinel/index.mdx)
+- [Верификация](./verification/index.mdx)

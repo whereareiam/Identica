@@ -1,0 +1,97 @@
+---
+title: Написание провайдера
+description: Как добавить способ аутентификации в виде jar-файла провайдера, который Identica загружает из своей папки провайдеров.
+sourceHash: c3e11b1115a5b23f41acc5e522cdc1ddafa78d66
+---
+
+Провайдер — это один из способов аутентификации игроков, например пароль или лицензионный аккаунт. Identica загружает каждый провайдер из отдельного jar-файла в `plugins/identica/providers`. Провайдер решает, может ли игрок продолжить; Identica создаёт аккаунт, привязывает его к провайдеру, открывает сессию и направляет игрока дальше.
+
+В репозитории есть `examples/provider` — полноценный провайдер: игрок регистрируется и входит, вводя кодовую фразу, которую выбрал администратор. На этой странице он разобран по шагам. Его live-тесты загружают его на настоящем прокси, поэтому он соответствует текущему API.
+
+## Jar-файл [#the-jar]
+
+В корне jar-файла лежит `provider.json`:
+
+```json
+{
+  "id": "example",
+  "name": "Example",
+  "version": "1.0.0",
+  "main": "me.whereareiam.identica.example.provider.ExampleProvider",
+  "supportedPlatforms": ["VELOCITY", "BUNGEECORD"]
+}
+```
+
+`id`, `name`, `version` и `main` обязательны. Файлы провайдера размещаются в `plugins/identica/providers/<name>`. Компилируйте провайдер против API с `compileOnly`, а любые библиотеки, которых Identica не предоставляет, встраивайте в jar-файл и релоцируйте — так делают официальные провайдеры.
+
+## Класс провайдера [#the-provider-class]
+
+Класс из `main` наследует `me.whereareiam.identica.provider.IdenticaProvider`. Identica создаёт его дважды: сначала через конструктор без параметров, чтобы прочитать то, что он объявляет, а затем через собственный Guice-инжектор провайдера — с сервисами, которые он использует:
+
+```java
+@NoArgsConstructor
+@AllArgsConstructor(onConstructor_ = @Inject)
+public class ExampleProvider extends IdenticaProvider {
+    private CommandService commandService;
+    private PipelineExtensionRegistry pipelineExtensionRegistry;
+    private ExamplePipelineExtension pipelineExtension;
+    private ExamplePassphraseCommand passphraseCommand;
+
+    @Override
+    public List<Module> modules() {
+        return List.of(new ExampleModule());
+    }
+
+    @Override
+    public void onEnable() {
+        pipelineExtensionRegistry.register(pipelineExtension);
+        commandService.registerCommandInstances(Map.of("example-passphrase", passphraseDefinition()), passphraseCommand);
+    }
+
+    @Override
+    public void onDisable() {
+        commandService.unregisterCommands(Set.of("example-passphrase"));
+        pipelineExtensionRegistry.unregister(pipelineExtension.id());
+    }
+}
+```
+
+Модуль связывает документы провайдера и `SubjectResolver`. Субъект обозначает аккаунт игрока у этого провайдера, и по нему Identica узнаёт вернувшегося игрока.
+
+## Ожидание ввода игрока [#waiting-for-the-player]
+
+Шаг в этапе провайдера при регистрации и аутентификации ждёт, пока игрок введёт кодовую фразу. Он читает попытку из состояния текущего прохода конвейера, продолжает ждать с запросом, пока попытки нет, и завершает этап, если фраза верна:
+
+```java
+public CompletableFuture<StepResult> execute(ScenarioContext context, PipelineState state) {
+    ExamplePassphraseAttempt attempt = state.get(ExamplePassphraseAttempt.KEY).orElse(null);
+    if (attempt == null) return CompletableFuture.completedFuture(StepResult.waiting(messages.get().getPrompt()));
+
+    state.remove(ExamplePassphraseAttempt.KEY);
+    if (!settings.get().getPassphrase().equals(attempt.getPassphrase()))
+        return CompletableFuture.completedFuture(StepResult.waiting(messages.get().getInvalid()));
+
+    return CompletableFuture.completedFuture(StepResult.complete(context));
+}
+```
+
+`PipelineExtension` регистрирует шаг через `builder.registerStep(providerId, StageType.PROVIDER, mode, step)` для обоих режимов прохождения.
+
+Команда передаёт попытку в ожидающее прохождение через `ConnectionCoordinator.advance(...)` и показывает ответ, если прохождение продолжает ждать. Пометьте её аннотацией `@AvailableWhilePending`, чтобы аддоны, которые не пропускают команды до аутентификации игрока, пропускали её.
+
+## Конфигурация [#configuration]
+
+Каждый документ — это `ConfigProvider` с рабочей папкой провайдера, которая внедряется как `@Named("workingPath") Path`. При первом запуске документ записывает значения по умолчанию и перезагружается по `/identica admin reload`. Документ сообщений реализует `MessageDocument`, поэтому аддоны находят его через `identica.getConfigCatalog()`.
+
+## Включение провайдера [#enabling-it]
+
+Identica загружает провайдер, только если в `providers/providers.yml` для него есть запись с `enabled: true`:
+
+```yaml
+providers:
+  - id: "example"
+    enabled: true
+    priority: 75
+```
+
+Когда игрок заходит, первыми пробуются провайдеры с более высоким приоритетом.

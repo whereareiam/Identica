@@ -1,0 +1,142 @@
+---
+title: Схемы базы данных
+description: Как аддон объявляет свои таблицы в базе данных Identica и обновляет их между версиями.
+sourceHash: c601058aab58989309825b82f580a918373e7d99
+---
+
+Аддон, который хранит данные в базе данных Identica, объявляет свои таблицы как `DatabaseSchema` и устанавливает их через `SchemaInstaller` — оба интерфейса входят в API базы данных Identica. На новой установке Identica создаёт таблицы, на существующей — выполняет миграции аддона, а в таблице `strata_history` записывает, до какой версии дошла каждая схема. Прокси с общей базой данных устанавливают схему один раз: первый берёт блокировку, а остальные ждут его.
+
+У каждого владельца таблиц своя схема, которая называется потоком:
+
+| Поток | Владелец | Устанавливается |
+| --- | --- | --- |
+| `identica/account` | Identica: аккаунты, привязки и профили провайдеров, резервирования, ники | когда Identica открывает базу данных |
+| `identica/feature/verification` | функция верификации | когда функция включена |
+| `identica/provider/credential` | провайдер Credential | когда провайдер загружен |
+| `identica/integration/statistics` | статистика использования: аренда, по которой выбирается прокси, отправляющий общие счётчики | когда Identica готова к работе |
+
+## Зависимости [#dependencies]
+
+Контракты базы данных находятся в `me.whereareiam.identica:database-api`, рядом с `me.whereareiam.identica:api`. Таблицы объявляются аннотациями [Dialectica](https://github.com/whereareiam/Dialectica), а миграции — это миграции [Strata](https://github.com/whereareiam/strata). Identica предоставляет все эти библиотеки во время работы, поэтому подключайте их только для компиляции:
+
+```kotlin
+dependencies {
+    compileOnly("me.whereareiam.identica:api:<version>")
+    compileOnly("me.whereareiam.identica:database-api:<version>")
+    compileOnly("me.whereareiam:dialectica:3.1.0")
+    compileOnly("me.whereareiam:strata-adapter-database:3.1.1")
+    compileOnly("me.whereareiam:strata-adapter-database-dialectica:3.1.1")
+}
+```
+
+Identica перемещает (relocate) обе библиотеки. Поэтому при сборке своего jar-файла аддон точно так же перемещает свои ссылки на них, не включая сами библиотеки в jar-файл, — так же, как это делают собственные провайдеры Identica. С Shadow это выглядит так:
+
+```kotlin
+tasks.shadowJar {
+    relocate("me.whereareiam.dialectica", "me.whereareiam.identica.library.dialectica")
+    relocate("me.whereareiam.strata", "me.whereareiam.identica.library.strata")
+}
+```
+
+## Объявление таблиц [#declaring-the-tables]
+
+Каждая таблица — это класс сущности с аннотациями Dialectica. Таблица, которая принадлежит аккаунту, ссылается на таблицу аккаунтов Identica по имени через `AccountTable`, чтобы её строки удалялись вместе с аккаунтом:
+
+```java
+import me.whereareiam.dialectica.entity.annotation.Id;
+import me.whereareiam.dialectica.entity.annotation.Index;
+import me.whereareiam.dialectica.entity.annotation.Length;
+import me.whereareiam.dialectica.entity.annotation.Nullable;
+import me.whereareiam.dialectica.entity.annotation.References;
+import me.whereareiam.dialectica.entity.annotation.Table;
+import me.whereareiam.dialectica.schema.type.ReferentialAction;
+import me.whereareiam.identica.database.schema.AccountTable;
+
+@Table("example_notes")
+@Index(name = "example_notes_created_at", columns = "createdAt")
+public record NoteEntity(
+        @Id @Length(64) String noteId,
+        @References(table = AccountTable.NAME, column = AccountTable.KEY,
+                onDelete = ReferentialAction.CASCADE) UUID uniqueId,
+        String text,
+        @Nullable Long createdAt
+) {}
+```
+
+Добавляйте к именам таблиц и индексов префикс с именем аддона. В [README Dialectica](https://github.com/whereareiam/Dialectica#declaring-entities) перечислены все аннотации и тип столбца, который каждый тип Java получает в каждой базе данных.
+
+## Объявление схемы [#declaring-the-schema]
+
+Схема называет свой поток, перечисляет свои таблицы в их новейшем виде и перечисляет потоки, на таблицы которых она ссылается:
+
+```java
+import me.whereareiam.dialectica.Dialectica;
+import me.whereareiam.dialectica.schema.Schema;
+import me.whereareiam.identica.database.schema.DatabaseSchema;
+
+public final class NotesSchema implements DatabaseSchema {
+    @Override
+    public @NotNull String stream() {
+        return "example/notes";
+    }
+
+    @Override
+    public @NotNull Schema schema() {
+        return Schema.of(Dialectica.entity(NoteEntity.class).table());
+    }
+
+    @Override
+    public @NotNull Set<String> requires() {
+        return Set.of(ACCOUNT_STREAM);
+    }
+}
+```
+
+Имя потока состоит из сегментов в нижнем регистре, разделённых косой чертой, и после релиза никогда не меняется.
+
+## Установка схемы [#installing-it]
+
+Устанавливайте схему при загрузке аддона, до того как он начнёт читать или записывать свои таблицы:
+
+```java
+IdenticaAPI.getService(SchemaInstaller.class).install(new NotesSchema());
+```
+
+Провайдер вместо этого привязывает свои схемы в собственном модуле, и Identica устанавливает их при загрузке провайдера:
+
+```java
+Multibinder.newSetBinder(binder(), DatabaseSchema.class).addBinding().to(NotesSchema.class);
+```
+
+Установка отклоняет схему, если потоки, от которых она зависит, ещё не установлены, а повторная установка той же схемы ничего не меняет. Схема, которую не удаётся привести к актуальному состоянию, выбрасывает `MigrationException` из Strata; в этом случае аддон не должен продолжать работу со своими таблицами.
+
+## Последующие изменения таблиц [#changing-the-tables-later]
+
+Схема, вышедшая в релиз, меняется через миграции. Добавляйте каждое изменение как следующую по номеру миграцию и меняйте сущность так, чтобы `schema()` по-прежнему описывал новейший вид — именно его получает новая установка:
+
+```java
+@Override
+public @NotNull List<Migration<DatabaseContext>> migrations() {
+    return List.of(
+            SchemaMigration.of(1, "note-title",
+                    new AddColumn("example_notes", ColumnDefinition.builder("title", ColumnType.varchar(64)).build())),
+            new Migration<>(2, "fill-titles", database -> database.update(
+                    "UPDATE example_notes SET title = 'Untitled' WHERE title IS NULL"))
+    );
+}
+```
+
+- Версии начинаются с 1, идут без пропусков и после релиза никогда не перенумеровываются и не меняются.
+- `SchemaMigration` применяет изменения схемы Dialectica, которые пропускают то, что в базе данных уже есть; изменение данных — это обычная `Migration`.
+- Миграция записывает только в собственные таблицы аддона.
+
+Strata по порядку выполняет миграции, которых установка ещё не видела, и записывает каждую из них. Когда поток впервые выполняется на базе данных, в которой его таблицы уже есть — например, потому что аддон создал их до того, как начал использовать миграции, — его метод `baseline` сообщает, в каком состоянии находится эта база данных. По умолчанию каждая такая база данных считается новой установкой; переопределите метод, чтобы он возвращал версию, которой соответствуют существующие таблицы:
+
+```java
+@Override
+public @NotNull OptionalInt baseline(@NotNull DatabaseContext database, int latest) throws SQLException {
+    return database.tableExists("example_notes") ? OptionalInt.of(0) : OptionalInt.empty();
+}
+```
+
+`OptionalInt.empty()` означает новую установку, которая получает `schema()`; `0` запускает все миграции; любая другая версия запускает миграции, идущие после неё.

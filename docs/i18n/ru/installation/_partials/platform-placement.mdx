@@ -1,0 +1,110 @@
+---
+sourceHash: e01084bb74c92f07f4642862d84a45b9b82e928b
+---
+
+<ContentTabs items={["Velocity", "BungeeCord"]}>
+  <ContentTab value="Velocity">
+    На Velocity Identica можно установить одним из двух способов:
+
+    1. Использовать `Identica-BUNDLE-<version>.jar` в качестве основного jar-файла.
+    2. Использовать jar-файл для конкретной платформы из `Identica-PLATFORMS-<version>.zip`.
+
+    Размещение универсального jar-файла:
+
+    1. Скопируйте `Identica-BUNDLE-<version>.jar` в `plugins/`.
+    2. Создайте `plugins/identica/`, если этой папки ещё нет.
+    3. Создайте `plugins/identica/providers/`, если этой папки ещё нет.
+    4. Скопируйте `Identica-Credential-<version>.jar` в `plugins/identica/providers/`.
+    5. Скопируйте `Identica-Premium-<version>.jar` в `plugins/identica/providers/`.
+
+    Структура с универсальным jar-файлом:
+
+    ```text
+    plugins/
+    ├── Identica-BUNDLE-<version>.jar
+    └── identica/
+        └── providers/
+            ├── Identica-Credential-<version>.jar
+            └── Identica-Premium-<version>.jar
+    ```
+
+    Размещение jar-файла для конкретной платформы:
+
+    1. Распакуйте `Identica-PLATFORMS-<version>.zip`.
+    2. Скопируйте `Identica-VELOCITY-<version>.jar` в `plugins/`.
+    3. Создайте `plugins/identica/`, если этой папки ещё нет.
+    4. Создайте `plugins/identica/providers/`, если этой папки ещё нет.
+    5. Скопируйте `Identica-Credential-<version>.jar` в `plugins/identica/providers/`.
+    6. Скопируйте `Identica-Premium-<version>.jar` в `plugins/identica/providers/`.
+
+    Перед запуском прокси ещё раз проверьте правила размещения:
+
+    - универсальный jar-файл кладётся в `plugins/` и заменяет только jar-файл для конкретной платформы
+    - jar-файл для конкретной платформы кладётся в `plugins/`
+    - jar-файлы провайдеров кладутся в `plugins/identica/providers/`
+    - jar-файлы провайдеров нельзя класть прямо в корень папки `plugins/`
+
+    Структура с jar-файлом для конкретной платформы:
+
+    ```text
+    plugins/
+    ├── Identica-VELOCITY-<version>.jar
+    └── identica/
+        └── providers/
+            ├── Identica-Credential-<version>.jar
+            └── Identica-Premium-<version>.jar
+    ```
+  </ContentTab>
+  <ContentTab value="BungeeCord">
+    На BungeeCord Identica можно установить одним из двух способов:
+
+    1. Использовать `Identica-BUNDLE-<version>.jar` в качестве основного jar-файла.
+    2. Использовать jar-файл для конкретной платформы из `Identica-PLATFORMS-<version>.zip`.
+
+    Размещение универсального jar-файла:
+
+    1. Скопируйте `Identica-BUNDLE-<version>.jar` в `plugins/`.
+    2. Создайте `plugins/identica/`, если этой папки ещё нет.
+    3. Создайте `plugins/identica/providers/`, если этой папки ещё нет.
+    4. Скопируйте `Identica-Credential-<version>.jar` в `plugins/identica/providers/`.
+    5. Скопируйте `Identica-Premium-<version>.jar` в `plugins/identica/providers/`.
+
+    Структура с универсальным jar-файлом:
+
+    ```text
+    plugins/
+    ├── Identica-BUNDLE-<version>.jar
+    └── identica/
+        └── providers/
+            ├── Identica-Credential-<version>.jar
+            └── Identica-Premium-<version>.jar
+    ```
+
+    Размещение jar-файла для конкретной платформы:
+
+    1. Распакуйте `Identica-PLATFORMS-<version>.zip`.
+    2. Скопируйте `Identica-BUNGEECORD-<version>.jar` в `plugins/`.
+    3. Создайте `plugins/identica/`, если этой папки ещё нет.
+    4. Создайте `plugins/identica/providers/`, если этой папки ещё нет.
+    5. Скопируйте `Identica-Credential-<version>.jar` в `plugins/identica/providers/`.
+    6. Скопируйте `Identica-Premium-<version>.jar` в `plugins/identica/providers/`.
+
+    Перед запуском прокси ещё раз проверьте правила размещения:
+
+    - универсальный jar-файл кладётся в `plugins/` и заменяет только jar-файл для конкретной платформы
+    - jar-файл для конкретной платформы кладётся в `plugins/`
+    - jar-файлы провайдеров кладутся в `plugins/identica/providers/`
+    - jar-файлы провайдеров нельзя класть прямо в корень папки `plugins/`
+
+    Структура с jar-файлом для конкретной платформы:
+
+    ```text
+    plugins/
+    ├── Identica-BUNGEECORD-<version>.jar
+    └── identica/
+        └── providers/
+            ├── Identica-Credential-<version>.jar
+            └── Identica-Premium-<version>.jar
+    ```
+  </ContentTab>
+</ContentTabs>

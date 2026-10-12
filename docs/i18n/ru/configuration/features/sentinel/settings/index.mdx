@@ -1,0 +1,133 @@
+---
+title: Настройки
+description: Подробное описание каждой настройки функции Sentinel в Identica.
+sourceHash: 1e61901601eaa69cfc1ade8c96454a71a5a62d0d
+---
+
+На этой странице описаны настройки встроенной функции Sentinel.
+
+Общие настройки находятся в `features/sentinel/settings`, сообщения — в `features/sentinel/messages`. Общий переключатель `enabled` по умолчанию равен true; проверки, принадлежащие провайдерам, могут переопределить его через `providers[].features.sentinel.enabled`.
+
+## Настройки [#settings]
+
+### sentinels.resumeSpam.enabled
+
+<Badge type="warning">Для опытных</Badge>
+
+- Принимает: `true` или `false`
+- По умолчанию: `false`
+- Влияет на: разрешено ли работать встроенной проверке спама продолжениями (resume-spam)
+
+Эта проверка отслеживает попытки обработки, продолжения и перехода к следующему шагу.
+
+### sentinels.resumeSpam.maxAttempts
+
+<Badge type="warning">Для опытных</Badge>
+
+- Принимает: целое число больше `0`
+- По умолчанию: `10`
+- Влияет на: сколько попыток разрешено, прежде чем срабатывает блокировка
+
+### sentinels.resumeSpam.lockout.enabled
+
+<Badge type="warning">Для опытных</Badge>
+
+- Принимает: `true` или `false`
+- По умолчанию: `true`
+- Влияет на: может ли проверка активно блокировать попытки после превышения порога
+
+### sentinels.resumeSpam.lockout.duration
+
+<Badge type="warning">Для опытных</Badge>
+
+- Принимает: положительную длительность
+- По умолчанию: `"30s"`
+- Влияет на: сколько длится блокировка
+
+### sentinels.resumeSpam.warning.enabled
+
+<Badge type="warning">Для опытных</Badge>
+
+- Принимает: `true` или `false`
+- По умолчанию: `false`
+- Влияет на: могут ли выдаваться предупреждения до блокировки
+
+### sentinels.resumeSpam.warning.thresholdPercentage
+
+<Badge type="warning">Для опытных</Badge>
+
+- Принимает: целое число процентов от `0` до `100`
+- По умолчанию: `0`
+- Влияет на: с какого момента относительно `maxAttempts` начинают выдаваться предупреждения
+
+Текущий код приводит значение к диапазону `0..100` и вычисляет порог предупреждения от `maxAttempts`.
+Например, при `maxAttempts: 10` и `thresholdPercentage: 70` предупреждения начинаются с попытки `8`.
+
+### replication.state
+
+<Badge type="warning">Для опытных</Badge>
+
+- Принимает: строку
+- По умолчанию: `"identica:sentinels"`
+- Влияет на: пространство имён для реплицируемого состояния Sentinel
+
+В этом пространстве имён хранятся общие счётчики Sentinel и состояние блокировок.
+
+## Сообщения [#messages]
+
+Следующие поля относятся к `features/sentinel/messages`.
+
+### resumeSpam.denied
+
+- Принимает: список строк
+- По умолчанию: встроенный блок сообщения о блокировке
+- Влияет на: сообщение об отказе, которое показывается, пока действует блокировка за спам продолжениями
+
+Плейсхолдер `{seconds}` заменяется оставшимся временем блокировки.
+Пустой список отключает сообщение, но блокировка по-прежнему отклоняет попытки.
+
+## Пример настроек [#settings-example]
+
+Этот пример относится к `features/sentinel/settings`:
+
+<Tabs items={["YAML", "JSON"]}>
+  <Tab value="YAML">
+```yaml
+sentinels:
+  resumeSpam:
+    enabled: true
+    maxAttempts: 10
+    lockout:
+      enabled: true
+      duration: "30s"
+    warning:
+      enabled: true
+      thresholdPercentage: 70
+replication:
+  state: "identica:sentinels"
+```
+  </Tab>
+  <Tab value="JSON">
+```json
+{
+  "sentinels": {
+    "resumeSpam": {
+      "enabled": true,
+      "maxAttempts": 10,
+      "lockout": {
+        "enabled": true,
+        "duration": "30s"
+      },
+      "warning": {
+        "enabled": true,
+        "thresholdPercentage": 70
+      }
+    }
+  },
+  "replication": {
+    "state": "identica:sentinels"
+  }
+}
+```
+  </Tab>
+</Tabs>

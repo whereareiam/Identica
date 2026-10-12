@@ -1,0 +1,67 @@
+---
+sourceHash: 16882221da145667968915f62ea7e8a47bf7744f
+---
+
+<ContentTabs items={["Velocity", "BungeeCord"]}>
+  <ContentTab value="Velocity">
+    Главная цель первого запуска — дать Velocity загрузить основной jar-файл, а Identica — подготовить папку конфигурации.
+
+    После первого запуска проверьте эти сгенерированные файлы:
+
+    - `plugins/identica/settings`
+    - `plugins/identica/engine`
+    - `plugins/identica/routing`
+    - `plugins/identica/messages`
+    - `plugins/identica/commands`
+    - `plugins/identica/features/sentinel/settings`
+    - `plugins/identica/features/sentinel/messages`
+    - `plugins/identica/features/recognition/settings`
+    - `plugins/identica/features/restriction/settings`
+    - `plugins/identica/features/restriction/join/settings`
+    - `plugins/identica/features/restriction/join/commands`
+    - `plugins/identica/features/restriction/join/messages`
+    - `plugins/identica/identity/username/conflicts`
+    - `plugins/identica/identity/username/messages`
+    - `plugins/identica/features/verification/settings`
+    - `plugins/identica/persistence`
+    - `plugins/identica/replication`
+    - `plugins/identica/providers/conflicts`
+    - `plugins/identica/providers/providers`
+
+    При текущем порядке запуска по умолчанию создаётся маркер конфигурации с `type=YAML`.
+
+    Когда эти файлы появятся, прокси можно спокойно остановить.
+  </ContentTab>
+  <ContentTab value="BungeeCord">
+    Главная цель первого запуска — дать BungeeCord загрузить основной jar-файл, а Identica — подготовить папку конфигурации.
+
+    После первого запуска проверьте эти сгенерированные файлы:
+
+    - `plugins/Identica/settings`
+    - `plugins/Identica/engine`
+    - `plugins/Identica/routing`
+    - `plugins/Identica/messages`
+    - `plugins/Identica/commands`
+    - `plugins/Identica/features/sentinel/settings`
+    - `plugins/Identica/features/sentinel/messages`
+    - `plugins/Identica/features/recognition/settings`
+    - `plugins/Identica/features/restriction/settings`
+    - `plugins/Identica/features/restriction/join/settings`
+    - `plugins/Identica/features/restriction/join/commands`
+    - `plugins/Identica/features/restriction/join/messages`
+    - `plugins/Identica/identity/username/conflicts`
+    - `plugins/Identica/identity/username/messages`
+    - `plugins/Identica/features/verification/settings`
+    - `plugins/Identica/features/verification/messages`
+    - `plugins/Identica/persistence`
+    - `plugins/Identica/replication`
+    - `plugins/Identica/providers/conflicts`
+    - `plugins/Identica/providers/providers`
+
+    При текущем порядке запуска по умолчанию создаётся маркер конфигурации с `type=YAML`.
+
+    Когда эти файлы появятся, прокси можно спокойно остановить.
+  </ContentTab>
+</ContentTabs>
+
+Все встроенные функции уже входят в сборку Identica. Настройте их общие значения по умолчанию и переопределения для провайдеров; отдельный файл установки или выбора функций не используется.

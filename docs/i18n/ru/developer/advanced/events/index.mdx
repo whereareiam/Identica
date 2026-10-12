@@ -1,0 +1,153 @@
+---
+title: События
+description: Как слушать события Identica, реагировать на них и учитывать их особенности.
+sourceHash: fa3ceb3b80ac249b9e9a3d460fb3e649a655299c
+---
+
+У Identica собственная система событий для плагинов-аддонов, интеграций и внутренних компонентов.
+
+## Базовая схема слушателя [#basic-listener-pattern]
+
+Чтобы получать события Identica в плагине-аддоне:
+
+- реализуйте `EventListener`
+- пометьте методы-обработчики аннотацией `@IdenticEvent`
+- зарегистрируйте слушатель через `identica.getEventManager()`
+
+### Пример слушателя [#listener-example]
+
+```java
+import me.whereareiam.identica.IdenticaAPI;
+import me.whereareiam.identica.event.EventListener;
+import me.whereareiam.identica.event.base.IdenticEvent;
+import me.whereareiam.identica.event.scenario.registration.RegistrationRequiredEvent;
+
+public final class ExampleRegistrationListener implements EventListener {
+    @IdenticEvent
+    public void onRegistrationRequired(RegistrationRequiredEvent event) {
+        System.out.println(
+            "Registration is now required with journey mode: " + event.getJourneyMode()
+        );
+    }
+
+    public void register() {
+        IdenticaAPI.whenReady(identica -> identica.getEventManager().register(this));
+    }
+}
+```
+
+## Порядок событий [#event-order]
+
+Если нужен определённый порядок выполнения, передайте его в `@IdenticEvent`.
+
+```java
+import me.whereareiam.identica.event.EventListener;
+import me.whereareiam.identica.event.base.IdenticEvent;
+import me.whereareiam.identica.event.session.SessionOpenedEvent;
+import me.whereareiam.identica.type.event.EventOrder;
+
+public final class ExampleSessionListener implements EventListener {
+    @IdenticEvent(EventOrder.LOW)
+    public void onSessionOpened(SessionOpenedEvent event) {
+        System.out.println("Opened session for: " + event.getSession().getEffectiveUsername());
+    }
+}
+```
+
+## Основные категории событий [#common-event-categories]
+
+Текущий API предоставляет такие группы событий:
+
+- события жизненного цикла
+- события сценариев и конвейера
+- события маршрутизации
+- события сессий
+- события провайдеров
+- события, принадлежащие функциям, например привязка верификации (если эта функция выбрана)
+- события аккаунтов и идентичности
+
+Это значит, что плагины-аддоны могут реагировать на разных уровнях — от высокоуровневых событий начала сценария до отдельных решений верификации или маршрутизации.
+
+## Отменяемые и изменяемые события [#cancellable-and-mutable-events]
+
+Некоторые события только информируют.
+Другие можно изменить или отменить.
+
+Например, `VerificationEnrollEvent` можно отменить, и слушатели могут переписать в нём провайдер или метод до начала привязки. Это событие входит в API функции верификации. Подключите этот API как зависимость для компиляции и зарегистрируйте слушатель после инициализации Identica. Поведение верификации следует действующим настройкам задействованного провайдера.
+
+```java
+import me.whereareiam.identica.event.EventListener;
+import me.whereareiam.identica.event.base.IdenticEvent;
+import me.whereareiam.identica.feature.verification.event.enroll.VerificationEnrollEvent;
+
+public final class ExampleVerificationListener implements EventListener {
+    @IdenticEvent
+    public void onEnroll(VerificationEnrollEvent event) {
+        if ("totp".equalsIgnoreCase(event.getMethodId())) {
+            event.setProviderId("credential");
+        }
+    }
+}
+```
+
+Другой пример — `AccountPrepareEvent`, в котором слушатели могут повлиять на итоговое решение о подготовке аккаунта.
+
+```java
+import me.whereareiam.identica.event.EventListener;
+import me.whereareiam.identica.event.account.AccountPrepareEvent;
+import me.whereareiam.identica.event.base.IdenticEvent;
+import me.whereareiam.identica.model.identity.AccountDecision;
+
+public final class ExampleAccountPrepareListener implements EventListener {
+    @IdenticEvent
+    public void onPrepare(AccountPrepareEvent event) {
+        if (event.getDecision() == null) {
+            event.setDecision(AccountDecision.allow());
+        }
+    }
+}
+```
+
+Всегда проверяйте конкретный тип события, прежде чем считать его отменяемым или изменяемым.
+
+## Синхронные и асинхронные события [#synchronous-vs-asynchronous]
+
+Identica различает синхронные и несинхронные события через иерархию типов событий.
+Если событие реализует `SynchronousEvent`, оно обрабатывается синхронно в текущем потоке.
+
+Для авторов аддонов это значит, что обработчики событий нужно считать частью активного процесса выполнения и избегать в них лишней блокирующей работы.
+
+## Реплицируемые события [#replicated-events]
+
+Некоторые события Identica также реализуют `ReplicatedEvent`.
+Они предназначены для передачи через канал репликации и повторного воспроизведения на других экземплярах.
+
+Важные свойства реплицируемых событий:
+
+- они несут идентификатор события репликации для дедупликации
+- они несут идентификатор сервера-источника
+- передаваться по сети могут только зарегистрированные типы реплицируемых событий
+- они должны представлять факты, которые каждый экземпляр может безопасно обработать локально
+
+Последний пункт важен: не каждое событие должно становиться реплицируемым.
+Однократные глобальные операции обычно лучше выражать командами или вызовами сервисов, а не повторно воспроизводимыми событиями.
+
+## Встроенные реплицируемые события [#built-in-replicated-events]
+
+Текущий мост реплицируемых событий регистрирует такие встроенные типы реплицируемых событий:
+
+- `SessionClosedEvent`
+- `AccountClearEvent`
+- `AccountDeleteEvent`
+
+Они распространяются, потому что представляют изменения состояния, которые другие экземпляры могут безопасно наблюдать и применять локально.
+
+## Когда важны реплицируемые события [#when-to-care-about-replicated-events]
+
+Автору аддона стоит учитывать реплицируемые события, когда:
+
+- ваша интеграция работает в среде из нескольких экземпляров с репликацией
+- вам нужно согласованно реагировать на изменения аккаунтов или сессий на всех экземплярах
+- вы собираетесь определить событие, которому может понадобиться повторное воспроизведение на других экземплярах
+
+Если ваш аддон реагирует только локально и ему не нужно повторное воспроизведение на других экземплярах, обычно достаточно обычных событий Identica.

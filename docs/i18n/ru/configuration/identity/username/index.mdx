@@ -1,0 +1,255 @@
+---
+title: Ник
+description: Синхронизация ника под управлением провайдера.
+sourceHash: 7420e1aed44e26c857d40284fee921e8d3124a3f
+---
+
+Identica следует подтверждённому нику, который передаёт провайдер, объявивший `ProviderTrait.AUTHORITATIVE_USERNAME`. Провайдер Premium объявляет это свойство через `traits()`, провайдер Credential — нет.
+
+Это обязательное поведение идентичности, а не функция, которую можно выключить. Синхронизация применяется к основной привязке провайдера и учитывает ручное право на ник. Пользовательская конфигурация не может выдать это свойство или превратить его в переключатель функции.
+
+Сообщения находятся в `identity/username/messages`.
+
+## Конфликты [#conflicts]
+
+Эта подсистема добавляет встроенный тип конфликта `username`.
+Значения по умолчанию и настройки конфликтов ников находятся в `identity/username/conflicts`. Здесь используется общая структура документа `Conflicts`: словарь `rules` верхнего уровня с записью `username`.
+
+Необязательное общее переопределение в `providers/conflicts` имеет приоритет, если содержит `rules.username`. Чтобы использовать правила, которыми владеет подсистема идентичности, не добавляйте эту запись. Общая структура правил описана на странице [Конфликты](../../providers/conflicts.mdx).
+В этом разделе описаны специфичные для ников селектор и поведение обработчиков для `rules.username`.
+
+Конфликт ников возникает, когда провайдер со свойством `AUTHORITATIVE_USERNAME` хочет применить ник, который уже занят другим активным аккаунтом.
+Если активный конфликтующий аккаунт не найден, обычная синхронизация ника продолжается без разрешения конфликта.
+
+Документ конфликтов подсистемы идентичности имеет такую структуру:
+
+```yaml
+rules:
+  username:
+    default:
+      resolvers:
+        - id: format_display
+          parameters:
+            format:
+              pattern: "{username}*"
+            target: joiner
+    cases:
+      - when:
+          providers: [premium, credential]
+        resolvers:
+          - id: format_display
+            parameters:
+              format:
+                pattern: "{username}_{incomingProvider:8}"
+              target: joiner
+```
+
+Перед запуском обработчиков подсистема также применяет проверку точки входа.
+Если входящий аккаунт и активный конфликтующий аккаунт относятся к разным провайдерам и у обоих провайдеров есть точки входа, Identica требует, чтобы такое совпадение обрабатывалось через вход по точке входа провайдера.
+Если игрок зашёл не через точку входа, конфликт отклоняется с сообщением подсистемы `pipeline.policy.entrypointRequired`.
+
+### Пример ситуации [#example-situation]
+
+Со сгенерированными правилами конфликтов по умолчанию:
+
+- Активный аккаунт `credential` уже использует ник `Steve`.
+- Заходит аккаунт `premium` со свойством `AUTHORITATIVE_USERNAME` и тоже сообщает ник `Steve`.
+- Identica обнаруживает конфликт ников до применения изменения.
+- Первым выполняется правило для сочетания `premium` + `credential`.
+- Это правило по умолчанию форматирует ник входящей стороны как `{username}_{incomingProvider}`.
+- Проще говоря, заходящий игрок получает ник вроде `Steve_Premium`.
+
+Для других сочетаний провайдеров, которым не соответствует ни одно конкретное правило из `cases`, сгенерированное правило по умолчанию вместо этого добавляет к нику входящей стороны `*`, например `Steve*`.
+
+Поле-селектор ниже определяет, когда применяется правило из `cases`.
+
+### rules.username.cases[].when.providers
+
+- Принимает: список id провайдеров
+- Влияет на: то, к какому сочетанию провайдеров применяется правило
+
+Правило срабатывает, когда в контексте конфликта присутствуют оба id провайдеров, независимо от их порядка в списке.
+В большинстве правил должно быть ровно два id провайдеров, например `premium` и `credential`.
+
+Поля ниже настраивают встроенный обработчик `format_display` для `rules.username`.
+
+### format_display
+
+`format_display` формирует ник на замену из текущего контекста конфликта и возвращает отформатированное значение как результат обработчика.
+
+#### rules.username.default.resolvers[].parameters.format.pattern
+#### rules.username.cases[].resolvers[].parameters.format.pattern
+
+- Принимает: строку
+- Влияет на: отформатированный ник, который выдаёт `format_display`
+
+Поддерживаемые плейсхолдеры:
+
+- `{username}` или `{requested}`
+- `{incomingProvider}` и `{existingProvider}`
+- `{incomingProviderId}` и `{existingProviderId}`
+- `{random}` или `{random:4}`
+
+Плейсхолдеры отображаемых названий провайдеров поддерживают необязательное обрезание с помощью `:maxSymbolCount`.
+
+Примеры:
+
+```text
+{incomingProvider}
+{incomingProvider:8}
+{existingProvider:6}
+{username}_{incomingProvider:8}_{random:3}
+```
+
+Обрезание поддерживают только `{incomingProvider}` и `{existingProvider}`.
+
+#### rules.username.default.resolvers[].parameters.format.uppercase
+#### rules.username.cases[].resolvers[].parameters.format.uppercase
+
+- Принимает: `true` или `false`
+- По умолчанию: `false`
+- Влияет на: то, переводится ли весь отформатированный результат в верхний регистр
+
+#### rules.username.default.resolvers[].parameters.format.lowercase
+#### rules.username.cases[].resolvers[].parameters.format.lowercase
+
+- Принимает: `true` или `false`
+- По умолчанию: `false`
+- Влияет на: то, переводится ли весь отформатированный результат в нижний регистр
+
+Не включайте `uppercase` и `lowercase` одновременно.
+
+#### rules.username.default.resolvers[].parameters.target
+#### rules.username.cases[].resolvers[].parameters.target
+
+- Принимает: `"joiner"`, `"existing"` или `"both"`
+- По умолчанию: `"joiner"`
+- Влияет на: то, какая сторона получает отформатированное значение
+
+`joiner` означает сторону входящего аккаунта.
+
+Шаблон с обрезанием названия провайдера:
+
+<Tabs items={["YAML", "JSON"]}>
+  <Tab value="YAML">
+```yaml
+resolvers:
+  - id: "format_display"
+    parameters:
+      format:
+        pattern: "{username}_{incomingProvider:8}"
+      target: "joiner"
+```
+  </Tab>
+  <Tab value="JSON">
+```json
+{
+  "resolvers": [
+    {
+      "id": "format_display",
+      "parameters": {
+        "format": {
+          "pattern": "{username}_{incomingProvider:8}"
+        },
+        "target": "joiner"
+      }
+    }
+  ]
+}
+```
+  </Tab>
+</Tabs>
+
+Шаблон, переводящий весь результат в верхний регистр:
+
+<Tabs items={["YAML", "JSON"]}>
+  <Tab value="YAML">
+```yaml
+resolvers:
+  - id: "format_display"
+    parameters:
+      format:
+        pattern: "{username}_{incomingProvider}"
+        uppercase: true
+      target: "joiner"
+```
+  </Tab>
+  <Tab value="JSON">
+```json
+{
+  "resolvers": [
+    {
+      "id": "format_display",
+      "parameters": {
+        "format": {
+          "pattern": "{username}_{incomingProvider}",
+          "uppercase": true
+        },
+        "target": "joiner"
+      }
+    }
+  ]
+}
+```
+  </Tab>
+</Tabs>
+
+Шаблон, применяемый к обеим сторонам:
+
+<Tabs items={["YAML", "JSON"]}>
+  <Tab value="YAML">
+```yaml
+resolvers:
+  - id: "format_display"
+    parameters:
+      format:
+        pattern: "{username}_{random:3}"
+      target: "both"
+```
+  </Tab>
+  <Tab value="JSON">
+```json
+{
+  "resolvers": [
+    {
+      "id": "format_display",
+      "parameters": {
+        "format": {
+          "pattern": "{username}_{random:3}"
+        },
+        "target": "both"
+      }
+    }
+  ]
+}
+```
+  </Tab>
+</Tabs>
+
+## Сообщения [#messages]
+
+Сообщения конвейера для ников находятся в `identity/username/messages` и применяются ко всем частям подсистемы в сценариях аутентификации, регистрации и миграции.
+
+### pipeline.identity.synchronizationFailed
+
+- Принимает: список строк сообщения
+- По умолчанию: встроенное сообщение об ошибке синхронизации ника
+- Влияет на: сообщение, которое показывается, когда функции не удаётся синхронизировать ник аккаунта
+
+### pipeline.policy.entrypointRequired
+
+- Принимает: список строк сообщения
+- По умолчанию: встроенное сообщение о необходимости зайти через точку входа провайдера
+- Влияет на: сообщение, которое показывается, когда конфликт ников нужно обработать через точку входа провайдера
+
+Например:
+
+```yaml
+pipeline:
+  identity:
+    synchronizationFailed:
+      - "<red>Unable to synchronize your username.</red>"
+  policy:
+    entrypointRequired:
+      - "<yellow>Use the entrypoint for {existingProvider} or {incomingProvider}.</yellow>"
+```

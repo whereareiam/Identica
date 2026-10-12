@@ -1,0 +1,77 @@
+---
+title: Написание аддона
+description: Как не пропускать чат и команды, пока игрок не прошёл аутентификацию, читать сообщения Identica и следить за перезагрузками.
+sourceHash: 70310e7442e1292b316197292eac6d3e0b6ee9c8
+---
+
+Аддон — это отдельный плагин на том же прокси, построенный поверх Identica, например плагин, который блокирует чат или команды, пока игрок не вошёл. На этой странице описано, что обычно нужно такому аддону. Сначала подключите зависимость, как описано на странице [Использование API](../consuming-api/index.mdx).
+
+В репозитории есть `examples/addon` — полноценный аддон для Velocity, написанный именно так: он не пропускает чат и команды, пока игрок не прошёл аутентификацию, и заново читает список разрешённых команд после перезагрузки. Его live-тесты запускают его на настоящем прокси, поэтому он соответствует текущему API.
+
+## Запуск после старта Identica [#start-once-identica-is-running]
+
+Получите `IdenticaAPI` через `IdenticaAPI.whenReady(...)` и передайте его в классы аддона. В примерах ниже он называется `identica`.
+
+```java
+IdenticaAPI.whenReady(identica -> new ChatBlocker(identica).enable());
+```
+
+## Должен ли игрок ещё пройти аутентификацию [#tell-whether-a-player-still-has-to-authenticate]
+
+Пока игрок не вошёл, не зарегистрировался или не завершил миграцию, для его подключения открыт незавершённый сценарий. Вместо того чтобы самостоятельно отслеживать события сценариев, спросите `PendingScenarioService`:
+
+```java
+PendingScenarioService pending = identica.getPendingScenarioService();
+
+if (pending.isPending(player.getUniqueId())) {
+    // hold back chat or commands
+}
+
+pending.find(player.getUniqueId()); // Optional<PipelineType>: AUTHENTICATION, REGISTRATION or MIGRATION
+```
+
+Уникальный идентификатор подключения — это уникальный идентификатор игрока на прокси. Сценарий считается незавершённым с момента его `ScenarioRequiredEvent` до его `ScenarioResolvedEvent` или до выхода игрока. Слушатели этих событий уже видят новое состояние, поэтому аддон, реагирующий на события, может обращаться к сервису прямо из своего слушателя.
+
+Чтобы отреагировать на начало или окончание сценария, слушайте `ScenarioRequiredEvent` и `ScenarioResolvedEvent`. Слушатель этих интерфейсов получает события аутентификации, регистрации и миграции одинаково.
+
+## Разрешение команд, нужных для входа [#allow-the-commands-a-player-needs-to-log-in]
+
+Команды вроде `/login`, `/pass`, `/identica enroll` или `/2fa confirm` помечены как доступные, пока сценарий не завершён. Их названия — это псевдонимы, которые администратор может изменить, поэтому получайте их из Identica, а не перечисляйте сами:
+
+```java
+Set<String> allowed = identica.getCommandService().getCommandsAvailableWhilePending();
+```
+
+Набор содержит каждую команду так, как её вводит игрок, — без слеша, в нижнем регистре, а подкоманды — под каждым псевдонимом корневой команды Identica: `login`, `l`, `identica enroll`, `id enroll`, `2fa confirm`. Введённая команда разрешена, если она совпадает с одной из них или начинается с одной из них и пробела. Провайдер или функция, добавляющие собственную команду входа, помечают её метод аннотацией `@AvailableWhilePending` рядом с `@Definition`, и после регистрации команда появляется в этом наборе.
+
+## Чтение сообщений Identica [#read-identicas-messages]
+
+У ядра, каждой функции и каждого загруженного провайдера есть собственный документ сообщений. Каждый из них реализует `MessageDocument`, поэтому каталог возвращает их все, включая документы провайдеров, загруженных позже:
+
+```java
+Collection<MessageDocument> messages = identica.getConfigCatalog().documents(MessageDocument.class);
+```
+
+`documents()` без типа возвращает все загруженные документы. Модели всегда актуальные; не храните их, а читайте заново после перезагрузки.
+
+## Отслеживание перезагрузок [#follow-reloads]
+
+`/identica admin reload` заменяет документы конфигурации. Перестройте всё, что вы на их основе вычислили, одним из двух способов:
+
+- слушайте `IdenticaReloadedEvent` — оно вызывается после того, как всё перезагрузилось;
+- или зарегистрируйте `Reloadable` через `identica.getReloadables().register(...)` — он перезагружается после всех документов конфигурации; когда аддон отключается, отмените его регистрацию.
+
+```java
+public final class MessageIndex implements EventListener {
+    @IdenticEvent
+    public void onReloaded(IdenticaReloadedEvent event) {
+        rebuild();
+    }
+}
+
+identica.getEventManager().register(new MessageIndex());
+```
+
+## Собственные настройки в формате Identica [#keep-your-own-settings-in-identicas-format]
+
+`identica.getConfigura()` возвращает экземпляр Configura, который использует Identica. Стройте конфигурацию аддона на его основе — тогда файл ваших настроек будет в том же формате, что и у Identica, и вам не придётся встраивать собственную библиотеку.

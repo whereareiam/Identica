@@ -12,8 +12,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -21,7 +19,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Default Provider-Profile Persistence Service")
@@ -60,34 +58,17 @@ class DefaultProviderProfilePersistenceServiceTest {
 		assertThrows(IllegalArgumentException.class, () -> service.upsert(profile));
 	}
 
-	@DisplayName("Updates an existing provider profile when the subject already exists")
+	@DisplayName("Writes a provider profile in one upsert, without reading it first")
 	@Test
-	void upsertUpdatesExistingProfile() {
+	void upsertWritesProfileAtOnce() {
 		AccountProviderProfile profile = TestDataFactory.providerProfile("provider", "subject", "user");
-		AccountProviderProfileEntity existing = AccountProviderProfileEntity.builder()
-				.providerId("provider")
-				.providerSubject("subject")
-				.providerUsername("old")
-				.build();
-		when(profiles.find("provider", "subject")).thenReturn(Optional.of(existing));
 
 		AccountProviderProfile result = service.upsert(profile);
 
-		verify(profiles).update(argThat(entity -> "user".equals(entity.getProviderUsername())));
-		assertEquals("user", result.getProviderUsername());
-	}
-
-	@DisplayName("Inserts a new provider profile when no subject exists yet")
-	@Test
-	void upsertInsertsNewProfile() {
-		AccountProviderProfile profile = TestDataFactory.providerProfile("provider", "subject", "user");
-		when(profiles.find("provider", "subject")).thenReturn(Optional.empty());
-
-		AccountProviderProfile result = service.upsert(profile);
-
-		verify(profiles).insert(argThat(entity -> "provider".equals(entity.getProviderId())
+		verify(profiles).upsert(argThat(entity -> "provider".equals(entity.getProviderId())
 				&& "subject".equals(entity.getProviderSubject())
 				&& "user".equals(entity.getProviderUsername())));
+		verifyNoMoreInteractions(profiles);
 		assertEquals("user", result.getProviderUsername());
 	}
 

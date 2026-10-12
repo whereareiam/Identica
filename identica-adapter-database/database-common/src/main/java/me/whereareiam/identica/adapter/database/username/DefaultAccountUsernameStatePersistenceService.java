@@ -38,13 +38,7 @@ public class DefaultAccountUsernameStatePersistenceService implements AccountUse
 
 	@Override
 	public void save(@NotNull UUID uniqueId, @NotNull AccountUsernameSource source) {
-		UsernameStateEntity state = new UsernameStateEntity(uniqueId, source.getId(), System.currentTimeMillis());
-		if (states.get().find(uniqueId).isPresent()) {
-			states.get().update(state);
-			return;
-		}
-
-		states.get().insert(state);
+		states.get().upsert(new UsernameStateEntity(uniqueId, source.getId(), System.currentTimeMillis()));
 	}
 
 	@Override

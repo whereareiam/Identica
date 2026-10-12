@@ -9,7 +9,6 @@ import me.whereareiam.identica.provider.credential.database.entity.CredentialAcc
 import me.whereareiam.identica.provider.credential.database.entity.CredentialAccountHistoryEntity;
 import me.whereareiam.identica.provider.credential.database.mapper.CredentialAccountHistoryMapper;
 import me.whereareiam.identica.provider.credential.database.mapper.CredentialAccountMapper;
-import me.whereareiam.identica.provider.credential.database.repository.CredentialAccountRepository;
 import me.whereareiam.identica.provider.credential.model.CredentialAccount;
 import me.whereareiam.identica.provider.credential.model.CredentialAccountHistory;
 import org.jetbrains.annotations.NotNull;
@@ -21,7 +20,6 @@ import java.util.Optional;
 public class DefaultCredentialAccountPersistenceService implements CredentialAccountPersistenceService {
 	private final Provider<EntityAccess<CredentialAccountEntity>> credentials;
 	private final Provider<EntityAccess<CredentialAccountHistoryEntity>> passwordChanges;
-	private final Provider<CredentialAccountRepository> credentialRepository;
 
 	@Override
 	public @NotNull Optional<CredentialAccount> findBySubject(
@@ -35,11 +33,12 @@ public class DefaultCredentialAccountPersistenceService implements CredentialAcc
 
 	@Override
 	public @NotNull CredentialAccount create(@NotNull CredentialAccount credential) {
-		CredentialAccount existing = findBySubject(credential.getProviderId(), credential.getProviderSubject()).orElse(null);
-		if (existing != null) return existing;
+		if (credentials.get().insertIfAbsent(CredentialAccountMapper.toEntity(credential))) return credential;
 
-		credentials.get().insert(CredentialAccountMapper.toEntity(credential));
-		return credential;
+		return credentials.get().find(credential.getProviderId(), credential.getProviderSubject())
+				.map(CredentialAccountMapper::toModel)
+				.orElseThrow(() -> new IllegalStateException("Credential " + credential.getProviderId() + ":"
+						+ credential.getProviderSubject() + " was removed while it was created"));
 	}
 
 	@Override
@@ -50,7 +49,11 @@ public class DefaultCredentialAccountPersistenceService implements CredentialAcc
 			@NotNull String hashingMethod,
 			long updatedAt
 	) {
-		credentialRepository.get().updatePassword(providerId, providerSubject, passwordHash, hashingMethod, updatedAt);
+		credentials.get().update(providerId, providerSubject)
+				.set("password_hash", passwordHash)
+				.set("hashing_method", hashingMethod)
+				.set("updated_at", updatedAt)
+				.execute();
 	}
 
 	@Override

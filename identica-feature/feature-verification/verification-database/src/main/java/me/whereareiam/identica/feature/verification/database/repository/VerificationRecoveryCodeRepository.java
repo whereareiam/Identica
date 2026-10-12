@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * The recovery code queries beyond storing one code, which
+ * The recovery code queries beyond storing one code and marking it used, which
  * {@code EntityAccess<VerificationRecoveryCodeEntity>} does.
  */
 @RegisterDialecticaMapper(VerificationRecoveryCodeEntity.class)
@@ -22,21 +22,6 @@ public interface VerificationRecoveryCodeRepository {
 			   AND method_id = :methodId
 			""")
 	List<VerificationRecoveryCodeEntity> findByUniqueIdAndMethod(@Bind("uniqueId") UUID uniqueId, @Bind("methodId") String methodId);
-
-	@SqlUpdate("""
-			UPDATE identica_verification_recovery_codes
-			   SET used_at = :usedAt
-			 WHERE unique_id = :uniqueId
-			   AND method_id = :methodId
-			   AND code_hash = :codeHash
-			   AND used_at = 0
-			""")
-	int markUsed(
-			@Bind("uniqueId") UUID uniqueId,
-			@Bind("methodId") String methodId,
-			@Bind("codeHash") String codeHash,
-			@Bind("usedAt") long usedAt
-	);
 
 	@SqlUpdate("""
 			DELETE FROM identica_verification_recovery_codes

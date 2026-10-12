@@ -3,6 +3,7 @@ package me.whereareiam.identica.adapter.database.provider;
 import com.google.inject.util.Providers;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.entity.account.AccountProviderLinkEntity;
+import me.whereareiam.identica.adapter.database.mapper.account.AccountProviderLinkMapper;
 import me.whereareiam.identica.adapter.database.repository.provider.ProviderLinkRepository;
 import me.whereareiam.identica.adapter.database.testing.TestDataFactory;
 import me.whereareiam.identica.event.EventManager;
@@ -86,47 +87,48 @@ class DefaultProviderLinkPersistenceServiceTest {
 		verify(repository).countByProvider();
 	}
 
-	@DisplayName("Updates an existing provider link and refreshes primary-link state")
+	@DisplayName("Writes a link in one upsert that changes only the primary flag and last-seen time of a known link")
 	@Test
-	void upsertUpdatesExistingLink() {
+	void upsertWritesKnownColumnsOnly() {
 		UUID uniqueId = UUID.randomUUID();
 		AccountProviderLink link = TestDataFactory.providerLink(uniqueId, "provider", "subject", true)
 				.toBuilder()
+				.linkedAt(1L)
 				.lastSeenAt(999L)
 				.build();
-		AccountProviderLinkEntity existing = AccountProviderLinkEntity.builder()
+		AccountProviderLinkEntity stored = AccountProviderLinkEntity.builder()
 				.uniqueId(uniqueId)
 				.providerId("provider")
 				.providerSubject("subject")
-				.primaryLink(false)
+				.primaryLink(true)
 				.linkedAt(TestDataFactory.LINKED_AT)
-				.lastSeenAt(123L)
+				.lastSeenAt(999L)
 				.build();
-		when(links.find("provider", "subject")).thenReturn(Optional.of(existing));
+		when(links.find("provider", "subject")).thenReturn(Optional.of(stored));
 
 		AccountProviderLink result = service.upsert(link);
 
-		verify(repository).update("provider", "subject", true, 999L);
+		verify(links).upsert(argThat(entity -> uniqueId.equals(entity.getUniqueId())
+				&& "provider".equals(entity.getProviderId())
+				&& "subject".equals(entity.getProviderSubject())
+				&& entity.isPrimaryLink()
+				&& entity.getLinkedAt() == 1L
+				&& entity.getLastSeenAt() == 999L), eq("is_primary"), eq("last_seen_at"));
 		verify(repository).updatePrimary(uniqueId, "provider", true);
 		assertTrue(result.isPrimaryLink());
+		assertEquals(TestDataFactory.LINKED_AT, result.getLinkedAt());
 		assertEquals(999L, result.getLastSeenAt());
 	}
 
-	@DisplayName("Inserts a new provider link when no existing subject is found")
+	@DisplayName("Leaves the primary flags of an account alone when saving a link that is not primary")
 	@Test
-	void upsertInsertsNewLink() {
+	void upsertKeepsPrimaryFlagsForSecondaryLinks() {
 		UUID uniqueId = UUID.randomUUID();
 		AccountProviderLink link = TestDataFactory.providerLink(uniqueId, "provider", "subject", false);
-		when(links.find("provider", "subject")).thenReturn(Optional.empty());
+		when(links.find("provider", "subject")).thenReturn(Optional.of(AccountProviderLinkMapper.toEntity(link)));
 
 		AccountProviderLink result = service.upsert(link);
 
-		verify(links).insert(argThat(entity -> uniqueId.equals(entity.getUniqueId())
-				&& "provider".equals(entity.getProviderId())
-				&& "subject".equals(entity.getProviderSubject())
-				&& !entity.isPrimaryLink()
-				&& entity.getLinkedAt() == TestDataFactory.LINKED_AT
-				&& entity.getLastSeenAt() == TestDataFactory.LAST_SEEN_AT));
 		verify(repository, never()).updatePrimary(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyBoolean());
 		assertEquals(uniqueId, result.getUniqueId());
 	}

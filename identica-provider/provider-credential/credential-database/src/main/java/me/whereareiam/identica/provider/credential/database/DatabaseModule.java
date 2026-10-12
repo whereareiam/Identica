@@ -9,7 +9,6 @@ import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.database.schema.DatabaseSchema;
 import me.whereareiam.identica.provider.credential.database.entity.CredentialAccountEntity;
 import me.whereareiam.identica.provider.credential.database.entity.CredentialAccountHistoryEntity;
-import me.whereareiam.identica.provider.credential.database.repository.CredentialAccountRepository;
 import org.jdbi.v3.core.Jdbi;
 
 public class DatabaseModule extends AbstractModule {
@@ -31,11 +30,5 @@ public class DatabaseModule extends AbstractModule {
 	@Singleton
 	public EntityAccess<CredentialAccountHistoryEntity> provideCredentialAccountHistory(Jdbi jdbi) {
 		return EntityAccess.of(jdbi, Dialectica.entity(CredentialAccountHistoryEntity.class));
-	}
-
-	@Provides
-	@Singleton
-	public CredentialAccountRepository provideCredentialAccountRepository(Jdbi jdbi) {
-		return jdbi.onDemand(CredentialAccountRepository.class);
 	}
 }

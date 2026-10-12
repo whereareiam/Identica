@@ -85,7 +85,7 @@ public class DefaultAccountPersistenceService implements AccountPersistenceServi
 	@Override
 	public void updateLastSeen(@NotNull UUID uniqueId, long lastSeenAt) {
 		try {
-			accountRepository.get().updateLastSeen(uniqueId, lastSeenAt);
+			accounts.get().update(uniqueId).set("last_seen_at", lastSeenAt).execute();
 		} catch (Exception e) {
 			Logger.warn(e, "Failed to update last seen for %s", uniqueId);
 		}
@@ -96,7 +96,7 @@ public class DefaultAccountPersistenceService implements AccountPersistenceServi
 		if (username.isBlank()) return;
 
 		try {
-			accountRepository.get().updateUsername(uniqueId, username);
+			accounts.get().update(uniqueId).set("username", username).execute();
 		} catch (Exception e) {
 			Logger.warn(e, "Failed to update username for %s", uniqueId);
 		}

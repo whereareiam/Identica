@@ -45,20 +45,6 @@ public interface ProviderLinkRepository {
 
 	@SqlUpdate("""
 			UPDATE identica_provider_links
-			   SET is_primary = :primary,
-			       last_seen_at = :lastSeenAt
-			 WHERE provider_id = :providerId
-			   AND provider_subject = :providerSubject
-			""")
-	void update(
-			@Bind("providerId") String providerId,
-			@Bind("providerSubject") String providerSubject,
-			@Bind("primary") boolean primary,
-			@Bind("lastSeenAt") long lastSeenAt
-	);
-
-	@SqlUpdate("""
-			UPDATE identica_provider_links
 			   SET is_primary = :primary
 			 WHERE unique_id = :uniqueId
 			   AND provider_id = :providerId

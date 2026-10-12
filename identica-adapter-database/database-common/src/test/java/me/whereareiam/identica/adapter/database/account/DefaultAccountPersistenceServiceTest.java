@@ -107,11 +107,11 @@ class DefaultAccountPersistenceServiceTest {
 		assertEquals(uniqueId, created.getUniqueId());
 	}
 
-	@DisplayName("Swallows repository errors when updating the last-seen timestamp")
+	@DisplayName("Swallows database errors when updating the last-seen timestamp")
 	@Test
 	void updateLastSeenSwallowsExceptions() {
 		UUID uniqueId = UUID.randomUUID();
-		doThrow(new RuntimeException("boom")).when(accountRepository).updateLastSeen(uniqueId, 123L);
+		when(accounts.update(uniqueId)).thenThrow(new RuntimeException("boom"));
 
 		assertDoesNotThrow(() -> service.updateLastSeen(uniqueId, 123L));
 	}
@@ -121,17 +121,7 @@ class DefaultAccountPersistenceServiceTest {
 	void updateUsernameIgnoresBlankInput() {
 		service.updateUsername(UUID.randomUUID(), " ");
 
-		verify(accountRepository, never()).updateUsername(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
-	}
-
-	@DisplayName("Delegates username updates to the repository")
-	@Test
-	void updateUsernameCallsRepository() {
-		UUID uniqueId = UUID.randomUUID();
-
-		service.updateUsername(uniqueId, "PlayerTwo");
-
-		verify(accountRepository).updateUsername(uniqueId, "PlayerTwo");
+		verifyNoInteractions(accounts);
 	}
 
 	@DisplayName("Swallows repository errors when deleting an account")

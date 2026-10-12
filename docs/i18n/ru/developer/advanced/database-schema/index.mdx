@@ -1,7 +1,7 @@
 ---
 title: Схемы базы данных
 description: Как аддон объявляет свои таблицы в базе данных Identica и обновляет их между версиями.
-sourceHash: c5649a18d36766d96d55fba7f36516061ad6a636
+sourceHash: eb87bcbaacc49bdb24e855f81e8181f7d4117fe5
 ---
 
 Аддон, который хранит данные в базе данных Identica, объявляет свои таблицы как `DatabaseSchema` и устанавливает их через `SchemaInstaller` — оба интерфейса входят в API базы данных Identica. На новой установке Identica создаёт таблицы, на существующей — выполняет миграции аддона, а в таблице `strata_history` записывает, до какой версии дошла каждая схема. Прокси с общей базой данных устанавливают схему один раз: первый берёт блокировку, а остальные ждут его.
@@ -23,8 +23,8 @@ sourceHash: c5649a18d36766d96d55fba7f36516061ad6a636
 dependencies {
     compileOnly("me.whereareiam.identica:api:<version>")
     compileOnly("me.whereareiam.identica:database-api:<version>")
-    compileOnly("me.whereareiam:dialectica:3.1.0")
-    compileOnly("me.whereareiam:dialectica-adapter-jdbi:3.1.0")
+    compileOnly("me.whereareiam:dialectica:4.0.0")
+    compileOnly("me.whereareiam:dialectica-adapter-jdbi:4.0.0")
     compileOnly("me.whereareiam:strata-adapter-database:3.1.1")
     compileOnly("me.whereareiam:strata-adapter-database-dialectica:3.1.1")
 }

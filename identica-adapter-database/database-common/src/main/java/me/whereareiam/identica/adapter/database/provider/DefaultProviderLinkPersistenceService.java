@@ -67,26 +67,16 @@ public class DefaultProviderLinkPersistenceService implements ProviderLinkPersis
 		if (link.getProviderSubject().isBlank())
 			throw new IllegalArgumentException("Provider subject is required");
 
-		AccountProviderLinkEntity entity = AccountProviderLinkMapper.toEntity(link);
-		Optional<AccountProviderLinkEntity> existing = links.get().find(link.getProviderId(), link.getProviderSubject());
-		if (existing.isPresent()) {
-			repository.get().update(link.getProviderId(), link.getProviderSubject(), link.isPrimaryLink(), link.getLastSeenAt());
-			if (link.isPrimaryLink()) {
-				repository.get().updatePrimary(link.getUniqueId(), link.getProviderId(), true);
-			}
-			return AccountProviderLinkMapper.toModel(existing.get().toBuilder()
-					.primaryLink(link.isPrimaryLink())
-					.lastSeenAt(link.getLastSeenAt())
-					.build());
-		}
-
-		links.get().insert(entity);
-
-		if (link.isPrimaryLink()) {
+		// A known link keeps its account and link time; a second link of the account to the provider
+		// is refused with Dialectica's KeyConflictException.
+		links.get().upsert(AccountProviderLinkMapper.toEntity(link), "is_primary", "last_seen_at");
+		if (link.isPrimaryLink())
 			repository.get().updatePrimary(link.getUniqueId(), link.getProviderId(), true);
-		}
 
-		return AccountProviderLinkMapper.toModel(entity);
+		return links.get().find(link.getProviderId(), link.getProviderSubject())
+				.map(AccountProviderLinkMapper::toModel)
+				.orElseThrow(() -> new IllegalStateException("Provider link " + link.getProviderId() + ":"
+						+ link.getProviderSubject() + " was removed while it was saved"));
 	}
 
 	@Override

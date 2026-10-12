@@ -4,6 +4,7 @@ import com.google.inject.util.Providers;
 import me.whereareiam.dialectica.Dialectica;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
+import me.whereareiam.identica.adapter.database.testing.SimultaneousCalls;
 import me.whereareiam.identica.adapter.database.testing.schema.TestDatabase;
 import me.whereareiam.identica.feature.verification.database.entity.VerificationEnrollmentEntity;
 import me.whereareiam.identica.feature.verification.database.entity.VerificationRecoveryCodeEntity;
@@ -21,6 +22,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -28,6 +30,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Verification persistence")
 class DefaultVerificationPersistenceServiceTest {
+	private static final int ROUNDS = 20;
+	private static final int PROXIES = 4;
+
 	@DisplayName("Stores, replaces and removes enrollments")
 	@ParameterizedTest(name = "{0}")
 	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
@@ -91,6 +96,70 @@ class DefaultVerificationPersistenceServiceTest {
 			service.replaceRecoveryCodes(uniqueId, "totp", List.of(new VerificationRecoveryCode(uniqueId, "totp", "hash-c", 40L, 0L)));
 
 			assertEquals(List.of("hash-c"), service.findRecoveryCodes(uniqueId, "totp").stream().map(VerificationRecoveryCode::getCodeHash).toList());
+		});
+	}
+
+	@DisplayName("Two proxies saving the same new enrollment at once both succeed, and one of their enrollments is kept")
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
+	void savesTheSameEnrollmentAtOnce(TestDatabase database) {
+		withVerification(database, (service, uniqueId) -> {
+			for (int round = 0; round < ROUNDS; round++) {
+				String enrollmentId = "enrollment-" + round;
+				List<String> written = List.of(enrollmentId + "-a", enrollmentId + "-b");
+
+				SimultaneousCalls.run(2, party -> service.upsertEnrollment(enrollment(uniqueId, enrollmentId, written.get(party), 10L)));
+
+				String kept = service.findEnrollments(uniqueId).stream()
+						.filter(enrollment -> enrollment.getEnrollmentId().equals(enrollmentId))
+						.findFirst().orElseThrow()
+						.getCredential();
+				assertTrue(written.contains(kept), "kept " + kept + " of " + written);
+			}
+			assertEquals(ROUNDS, service.findEnrollments(uniqueId).size());
+		});
+	}
+
+	@DisplayName("Two proxies saving the same new selection at once both succeed, and one of their selections is kept")
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
+	void savesTheSameSelectionAtOnce(TestDatabase database) {
+		withVerification(database, (service, uniqueId) -> {
+			for (int round = 0; round < ROUNDS; round++) {
+				String providerId = "provider-" + round;
+				List<String> written = List.of("totp", "email");
+
+				SimultaneousCalls.run(2, party -> service.upsertSelection(new VerificationSelection(uniqueId, providerId, written.get(party), 10L)));
+
+				String kept = service.findSelection(uniqueId, providerId).orElseThrow().getMethodId();
+				assertTrue(written.contains(kept), "kept " + kept + " of " + written);
+			}
+			assertEquals(ROUNDS, service.findSelections(uniqueId).size());
+		});
+	}
+
+	@DisplayName("A recovery code used on several proxies at once is accepted on exactly one")
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
+	void usesARecoveryCodeOnceAcrossProxies(TestDatabase database) {
+		withVerification(database, (service, uniqueId) -> {
+			List<VerificationRecoveryCode> codes = IntStream.range(0, ROUNDS)
+					.mapToObj(round -> new VerificationRecoveryCode(uniqueId, "totp", "hash-" + round, 10L, 0L))
+					.toList();
+			service.replaceRecoveryCodes(uniqueId, "totp", codes);
+
+			for (VerificationRecoveryCode code : codes) {
+				List<Boolean> accepted = SimultaneousCalls.run(PROXIES, party ->
+						service.markRecoveryCodeUsed(uniqueId, "totp", code.getCodeHash(), 100L + party));
+
+				List<Integer> winners = IntStream.range(0, PROXIES).filter(accepted::get).boxed().toList();
+				assertEquals(1, winners.size(), "accepted on " + winners);
+				long usedAt = service.findRecoveryCodes(uniqueId, "totp").stream()
+						.filter(stored -> stored.getCodeHash().equals(code.getCodeHash()))
+						.findFirst().orElseThrow()
+						.getUsedAt();
+				assertEquals(100L + winners.getFirst(), usedAt);
+			}
 		});
 	}
 

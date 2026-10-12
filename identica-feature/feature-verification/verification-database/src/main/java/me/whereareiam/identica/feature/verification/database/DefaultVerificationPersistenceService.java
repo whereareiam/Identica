@@ -73,13 +73,7 @@ public class DefaultVerificationPersistenceService implements VerificationPersis
 
 	@Override
 	public @NotNull VerificationEnrollment upsertEnrollment(@NotNull VerificationEnrollment enrollment) {
-		VerificationEnrollmentEntity entity = VerificationEnrollmentMapper.toEntity(enrollment);
-		if (enrollments.get().find(enrollment.getUniqueId(), enrollment.getMethodId(), enrollment.getEnrollmentId()).isPresent()) {
-			enrollments.get().update(entity);
-			return enrollment;
-		}
-
-		enrollments.get().insert(entity);
+		enrollments.get().upsert(VerificationEnrollmentMapper.toEntity(enrollment));
 		return enrollment;
 	}
 
@@ -105,14 +99,7 @@ public class DefaultVerificationPersistenceService implements VerificationPersis
 
 	@Override
 	public @NotNull VerificationSelection upsertSelection(@NotNull VerificationSelection selection) {
-		VerificationSelectionEntity entity = VerificationSelectionMapper.toEntity(selection);
-		Optional<VerificationSelection> existing = findSelection(selection.getUniqueId(), selection.getProviderId());
-		if (existing.isPresent()) {
-			selections.get().update(entity);
-			return selection;
-		}
-
-		selections.get().insert(entity);
+		selections.get().upsert(VerificationSelectionMapper.toEntity(selection));
 		return selection;
 	}
 
@@ -151,7 +138,10 @@ public class DefaultVerificationPersistenceService implements VerificationPersis
 	@Override
 	public boolean markRecoveryCodeUsed(@NotNull UUID uniqueId, @NotNull String methodId, @NotNull String codeHash, long usedAt) {
 		if (methodId.isBlank() || codeHash.isBlank()) return false;
-		return recoveryCodeRepository.get().markUsed(uniqueId, methodId, codeHash, usedAt) > 0;
+		return recoveryCodes.get().update(uniqueId, methodId, codeHash)
+				.set("used_at", usedAt)
+				.when("used_at", 0L)
+				.execute();
 	}
 
 	@Override

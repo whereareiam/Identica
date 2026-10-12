@@ -35,17 +35,7 @@ public class DefaultProviderProfilePersistenceService implements ProviderProfile
 			throw new IllegalArgumentException("Provider resolver provider subject is required");
 
 		AccountProviderProfileEntity entity = AccountProviderProfileMapper.toEntity(profile);
-		Optional<AccountProviderProfileEntity> existing = profiles.get().find(
-				profile.getProviderId(),
-				profile.getProviderSubject()
-		);
-		if (existing.isPresent()) {
-			profiles.get().update(entity);
-			return AccountProviderProfileMapper.toModel(entity);
-		}
-
-		profiles.get().insert(entity);
-
+		profiles.get().upsert(entity);
 		return AccountProviderProfileMapper.toModel(entity);
 	}
 

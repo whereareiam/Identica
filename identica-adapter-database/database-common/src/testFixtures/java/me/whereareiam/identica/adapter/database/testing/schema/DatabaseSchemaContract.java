@@ -59,8 +59,12 @@ public abstract class DatabaseSchemaContract {
 
 	/**
 	 * Returns the schema a development build has once this schema's migrations ran on it.
+	 *
+	 * @param database         database the migrations ran on, whose column types a migration that
+	 *                         adds a column has to name
+	 * @param developmentBuild schema the development build created there
 	 */
-	protected SchemaSnapshot upgraded(SchemaSnapshot developmentBuild) {
+	protected SchemaSnapshot upgraded(TestDatabase database, SchemaSnapshot developmentBuild) {
 		return developmentBuild;
 	}
 
@@ -69,7 +73,7 @@ public abstract class DatabaseSchemaContract {
 	 * and this schema's migrations then changed.
 	 */
 	protected SchemaSnapshot created(TestDatabase database, SchemaSnapshot developmentBuild) {
-		return upgraded(developmentBuild);
+		return upgraded(database, developmentBuild);
 	}
 
 	@ParameterizedTest(name = "{0}")
@@ -118,7 +122,7 @@ public abstract class DatabaseSchemaContract {
 		install(database);
 
 		database.connect(connection -> {
-			assertEquals(upgraded(developmentBuild), SchemaSnapshot.of(connection, tables()));
+			assertEquals(upgraded(database, developmentBuild), SchemaSnapshot.of(connection, tables()));
 			assertEquals(rows, counts(connection));
 			int baseline = developmentBuildVersion();
 			List<String> expected = new ArrayList<>();

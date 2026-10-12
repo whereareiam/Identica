@@ -13,10 +13,12 @@ import me.whereareiam.identica.feature.verification.enrollment.VerificationEnrol
 import me.whereareiam.identica.feature.verification.model.VerificationRecoveryCode;
 import me.whereareiam.identica.feature.verification.model.config.VerificationSettings;
 import me.whereareiam.identica.feature.verification.model.enrollment.PendingVerificationEnrollment;
+import me.whereareiam.identica.feature.verification.model.enrollment.VerificationEnrollment;
 import me.whereareiam.identica.feature.verification.model.enrollment.VerificationEnrollmentResult;
 import me.whereareiam.identica.feature.verification.model.interaction.CodeVerificationInteraction;
 import me.whereareiam.identica.feature.verification.model.interaction.SavedVerificationInteraction;
 import me.whereareiam.identica.feature.verification.resolution.VerificationRequirementResolver;
+import me.whereareiam.identica.feature.verification.type.totp.TotpClock;
 import me.whereareiam.identica.feature.verification.type.totp.TotpCodec;
 import me.whereareiam.identica.feature.verification.type.totp.TotpVerificationMethod;
 import me.whereareiam.identica.feature.verification.type.totp.process.TotpChallengeProcess;
@@ -32,6 +34,8 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.time.Instant;
+import java.time.InstantSource;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -40,10 +44,14 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 class DefaultVerificationServiceEnrollmentFlowTest {
+	private static final Instant NOW = Instant.parse("2026-10-12T12:00:00Z");
+	private static final TotpClock CLOCK = new TotpClock(InstantSource.fixed(NOW));
+
 	private final VerificationMessages commandsMessages = messages();
 
 	@Test
@@ -125,11 +133,8 @@ class DefaultVerificationServiceEnrollmentFlowTest {
 		assertNotNull(resumedAfterStart);
 		assertEquals("totp-confirm-code", resumedAfterStart.getStepId());
 
-		String code = TotpCodec.currentCode(
-				startedState.getSecret(),
-				verification.getTotp().getDigits(),
-				verification.getTotp().periodSeconds()
-		);
+		long step = TotpCodec.timeStep(NOW, verification.getTotp().periodSeconds());
+		String code = TotpCodec.code(startedState.getSecret(), step, verification.getTotp().getDigits());
 		VerificationEnrollmentResult<?> awaitingSavedConfirmation = service.submitEnrollment(
 				uniqueId,
 				CodeVerificationInteraction.builder()
@@ -157,7 +162,10 @@ class DefaultVerificationServiceEnrollmentFlowTest {
 		assertEquals("totp-confirm-saved", ((TotpEnrollmentState) activated.getState()).getStepId());
 		assertNull(pending.get());
 
-		verify(persistenceService).upsertEnrollment(any());
+		ArgumentCaptor<VerificationEnrollment> enrollmentCaptor = ArgumentCaptor.forClass(VerificationEnrollment.class);
+		verify(persistenceService).upsertEnrollment(enrollmentCaptor.capture());
+		assertEquals(step, enrollmentCaptor.getValue().getAcceptedCounter(), "the confirming code's step is accepted already");
+		verify(persistenceService, never()).acceptCounter(any(), any(), any(), anyLong());
 		ArgumentCaptor<List<VerificationRecoveryCode>> recoveryCodesCaptor = ArgumentCaptor.forClass(List.class);
 		verify(persistenceService).replaceRecoveryCodes(eq(uniqueId), eq("totp"), recoveryCodesCaptor.capture());
         assertFalse(recoveryCodesCaptor.getValue().isEmpty());
@@ -171,9 +179,9 @@ class DefaultVerificationServiceEnrollmentFlowTest {
 			@NotNull VerificationPersistenceService persistenceService
 	) {
 		TotpSetupStep setupStep = new TotpSetupStep(() -> verification, () -> commandsMessages);
-		TotpConfirmCodeStep confirmCodeStep = new TotpConfirmCodeStep(() -> verification);
+		TotpConfirmCodeStep confirmCodeStep = new TotpConfirmCodeStep(() -> verification, CLOCK);
 		TotpConfirmSavedStep confirmSavedStep = new TotpConfirmSavedStep();
-		TotpChallengeVerificationStep challengeStep = new TotpChallengeVerificationStep(() -> verification, persistenceService);
+		TotpChallengeVerificationStep challengeStep = new TotpChallengeVerificationStep(() -> verification, persistenceService, CLOCK);
 		return new TotpVerificationMethod(
 				() -> verification,
 				new TotpEnrollmentProcess(setupStep, confirmCodeStep, confirmSavedStep),

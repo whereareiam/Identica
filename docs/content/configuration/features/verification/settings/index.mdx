@@ -114,6 +114,8 @@ Higher values are more tolerant of clock drift and slow input, but they also mak
 
 Higher values can help with clock drift, but they also widen the accepted verification window.
 
+Whatever the windows, each code is accepted once: once a code is accepted, codes of its window and of earlier windows are refused for that account. A player whose app runs ahead and who types a future window's code therefore waits until the window after it before the next code is accepted.
+
 ### recoveryCodes
 
 The `recoveryCodes` subsection controls backup codes generated during TOTP enrollment.

@@ -10,6 +10,7 @@ import me.whereareiam.identica.feature.verification.model.interaction.SavedVerif
 import me.whereareiam.identica.feature.verification.model.process.VerificationProcessContext;
 import me.whereareiam.identica.feature.verification.model.process.VerificationProcessResult;
 import me.whereareiam.identica.feature.verification.model.process.VerificationProcessTransition;
+import me.whereareiam.identica.feature.verification.type.totp.TotpClock;
 import me.whereareiam.identica.feature.verification.type.totp.TotpCodec;
 import me.whereareiam.identica.feature.verification.type.totp.state.TotpEnrollmentState;
 import me.whereareiam.identica.feature.verification.type.totp.step.TotpConfirmCodeStep;
@@ -18,11 +19,16 @@ import me.whereareiam.identica.feature.verification.type.totp.step.TotpSetupStep
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
+import java.time.InstantSource;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class TotpEnrollmentProcessTest {
+	private static final Instant NOW = Instant.parse("2026-10-12T12:00:00Z");
+	private static final TotpClock CLOCK = new TotpClock(InstantSource.fixed(NOW));
+
 	@Test
 	void startStoresNextCursorAfterSetupStep() {
 		VerificationSettings verification = verification();
@@ -68,10 +74,10 @@ class TotpEnrollmentProcessTest {
 		UUID subjectUniqueId = UUID.randomUUID();
 		VerificationEnrollmentResult<TotpEnrollmentState> started = process.start(context(subjectUniqueId, null));
 		TotpEnrollmentState state = started.getState();
-		String code = TotpCodec.currentCode(
+		String code = TotpCodec.code(
 				state.getSecret(),
-				verification.getTotp().getDigits(),
-				verification.getTotp().periodSeconds()
+				TotpCodec.timeStep(NOW, verification.getTotp().periodSeconds()),
+				verification.getTotp().getDigits()
 		);
 
 		VerificationEnrollmentResult<TotpEnrollmentState> result = process.submit(
@@ -86,6 +92,7 @@ class TotpEnrollmentProcessTest {
 		assertEquals("totp-confirm-saved", result.getState().getStepId());
 		assertTrue(result.getState().isVerified());
 		assertFalse(result.getState().getRecoveryCodes().isEmpty());
+		assertEquals(TotpCodec.timeStep(NOW, verification.getTotp().periodSeconds()), result.getState().acceptedCounter());
 	}
 
 	@Test
@@ -107,6 +114,7 @@ class TotpEnrollmentProcessTest {
 		assertEquals("totp-confirm-saved", result.getState().getStepId());
 		assertTrue(result.getState().isVerified());
 		assertFalse(result.getState().getRecoveryCodes().isEmpty());
+		assertEquals(TotpCodec.timeStep(NOW, verification.getTotp().periodSeconds()), result.getState().acceptedCounter());
 	}
 
 	@Test
@@ -143,10 +151,10 @@ class TotpEnrollmentProcessTest {
 			@NotNull UUID subjectUniqueId,
 			@NotNull TotpEnrollmentState state
 	) {
-		String code = TotpCodec.currentCode(
+		String code = TotpCodec.code(
 				state.getSecret(),
-				verification.getTotp().getDigits(),
-				verification.getTotp().periodSeconds()
+				TotpCodec.timeStep(NOW, verification.getTotp().periodSeconds()),
+				verification.getTotp().getDigits()
 		);
 		return process.submit(
 				context(subjectUniqueId, state),
@@ -161,7 +169,7 @@ class TotpEnrollmentProcessTest {
 	private @NotNull TotpEnrollmentProcess process(@NotNull VerificationSettings verification) {
 		return new TotpEnrollmentProcess(
 				new TotpSetupStep(() -> verification, this::messages),
-				new TotpConfirmCodeStep(() -> verification),
+				new TotpConfirmCodeStep(() -> verification, CLOCK),
 				new TotpConfirmSavedStep()
 		);
 	}
@@ -198,7 +206,7 @@ class TotpEnrollmentProcessTest {
 		private final @NotNull String targetStepId;
 
 		private RedirectingConfirmCodeStep(@NotNull VerificationSettings verification, @NotNull String targetStepId) {
-			super(() -> verification);
+			super(() -> verification, CLOCK);
 			this.targetStepId = targetStepId;
 		}
 

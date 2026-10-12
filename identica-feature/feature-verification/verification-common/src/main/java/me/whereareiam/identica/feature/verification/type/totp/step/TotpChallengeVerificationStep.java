@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.feature.verification.VerificationInteraction;
 import me.whereareiam.identica.feature.verification.database.VerificationPersistenceService;
 import me.whereareiam.identica.feature.verification.model.config.VerificationSettings;
+import me.whereareiam.identica.feature.verification.model.enrollment.VerificationEnrollment;
 import me.whereareiam.identica.feature.verification.model.interaction.CodeVerificationInteraction;
 import me.whereareiam.identica.feature.verification.model.interaction.RecoveryCodeVerificationInteraction;
 import me.whereareiam.identica.feature.verification.model.process.VerificationProcessContext;
@@ -14,16 +15,20 @@ import me.whereareiam.identica.feature.verification.model.process.VerificationPr
 import me.whereareiam.identica.feature.verification.process.VerificationProcessStep;
 import me.whereareiam.identica.feature.verification.type.process.VerificationProcessStatus;
 import me.whereareiam.identica.feature.verification.type.totp.RecoveryCodeGenerator;
+import me.whereareiam.identica.feature.verification.type.totp.TotpClock;
 import me.whereareiam.identica.feature.verification.type.totp.TotpCodec;
 import me.whereareiam.identica.feature.verification.type.totp.state.TotpChallengeState;
 import me.whereareiam.identica.logging.Logger;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.OptionalLong;
 
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class TotpChallengeVerificationStep implements VerificationProcessStep<VerificationInteraction, TotpChallengeState> {
 	private final Provider<VerificationSettings> verificationProvider;
 	private final VerificationPersistenceService persistenceService;
+	private final TotpClock clock;
 
 	@Override
 	public @NotNull String id() {
@@ -80,8 +85,8 @@ public class TotpChallengeVerificationStep implements VerificationProcessStep<Ve
 			return VerificationProcessResult.waiting(state);
 		}
 
-		String secret = context.getEnrollments().isEmpty() ? "" : context.getEnrollments().getFirst().getCredential();
-		if (!secret.isBlank() && verify(secret, code)) {
+		VerificationEnrollment enrollment = context.getEnrollments().isEmpty() ? null : context.getEnrollments().getFirst();
+		if (enrollment != null && accept(context, enrollment, code)) {
 			Logger.debug(
 					"TOTP challenge verified uniqueId=%s provider=%s purpose=%s attempts=%s",
 					context.getSubjectUniqueId(),
@@ -127,15 +132,43 @@ public class TotpChallengeVerificationStep implements VerificationProcessStep<Ve
 				.build();
 	}
 
-	private boolean verify(@NotNull String secret, @NotNull String code) {
+	/**
+	 * Accepts a code of the enrollment's secret once: its time step has to be newer than the one
+	 * accepted last, which it then becomes, on every proxy that shares the database.
+	 */
+	private boolean accept(
+			@NotNull VerificationProcessContext<TotpChallengeState> context,
+			@NotNull VerificationEnrollment enrollment,
+			@NotNull String code
+	) {
+		String secret = enrollment.getCredential();
+		if (secret == null || secret.isBlank()) return false;
+
 		VerificationSettings.Totp totp = verificationProvider.get().getTotp();
-		return TotpCodec.verify(
+		OptionalLong step = TotpCodec.matchingStep(
 				secret,
 				code,
 				totp.getDigits(),
-				totp.periodSeconds(),
+				clock.currentStep(totp.periodSeconds()),
 				totp.getAllowedPastWindows(),
 				totp.getAllowedFutureWindows()
 		);
+		if (step.isEmpty()) return false;
+
+		boolean accepted = persistenceService.acceptCounter(
+				enrollment.getUniqueId(),
+				enrollment.getMethodId(),
+				enrollment.getEnrollmentId(),
+				step.getAsLong()
+		);
+		if (!accepted)
+			Logger.debug(
+					"TOTP challenge refused a code already used uniqueId=%s provider=%s purpose=%s step=%s",
+					context.getSubjectUniqueId(),
+					context.getProviderId(),
+					context.getPurpose(),
+					step.getAsLong()
+			);
+		return accepted;
 	}
 }

@@ -88,7 +88,7 @@ class AccountSchemaTest extends DatabaseSchemaContract {
 	 * Development builds left the username history index out on SQLite; the username layout adds it.
 	 */
 	@Override
-	protected SchemaSnapshot upgraded(SchemaSnapshot developmentBuild) {
+	protected SchemaSnapshot upgraded(TestDatabase database, SchemaSnapshot developmentBuild) {
 		return developmentBuild.withIndex("identica_account_username_history", "unique_id", "changed_at");
 	}
 

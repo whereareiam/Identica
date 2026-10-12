@@ -78,6 +78,14 @@ public class DefaultVerificationPersistenceService implements VerificationPersis
 	}
 
 	@Override
+	public boolean acceptCounter(@NotNull UUID uniqueId, @NotNull String methodId, @NotNull String enrollmentId, long counter) {
+		return enrollments.get().update(uniqueId, methodId, enrollmentId)
+				.set(VerificationEnrollmentEntity.ACCEPTED_COUNTER, counter)
+				.whenBelow(VerificationEnrollmentEntity.ACCEPTED_COUNTER, counter)
+				.execute();
+	}
+
+	@Override
 	public void deleteEnrollment(@NotNull UUID uniqueId, @NotNull String methodId) {
 		if (methodId.isBlank()) return;
 		recoveryCodeRepository.get().deleteByMethod(uniqueId, methodId);

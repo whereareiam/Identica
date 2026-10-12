@@ -18,7 +18,10 @@ import me.whereareiam.identica.feature.verification.config.provider.Verification
 import me.whereareiam.identica.feature.verification.config.provider.VerificationSettingsProvider;
 import me.whereareiam.identica.feature.verification.enrollment.VerificationEnrollmentStore;
 import me.whereareiam.identica.feature.verification.model.config.VerificationSettings;
+import me.whereareiam.identica.feature.verification.type.totp.TotpClock;
 import me.whereareiam.identica.feature.verification.type.totp.TotpVerificationMethod;
+
+import java.time.InstantSource;
 
 public class VerificationCommonConfiguration extends AbstractModule {
 	@Override
@@ -30,6 +33,7 @@ public class VerificationCommonConfiguration extends AbstractModule {
 		bind(VerificationChallengeStore.class).in(com.google.inject.Singleton.class);
 		bind(VerificationService.class).to(DefaultVerificationService.class).in(com.google.inject.Singleton.class);
 		bind(VerificationRegistry.class).to(DefaultVerificationRegistry.class).in(com.google.inject.Singleton.class);
+		bind(TotpClock.class).toInstance(new TotpClock(InstantSource.system()));
 		Multibinder.newSetBinder(binder(), VerificationMethod.class)
 				.addBinding()
 				.to(TotpVerificationMethod.class);

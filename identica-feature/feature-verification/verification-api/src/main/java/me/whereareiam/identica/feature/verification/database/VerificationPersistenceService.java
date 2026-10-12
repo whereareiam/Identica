@@ -20,6 +20,21 @@ public interface VerificationPersistenceService {
 	void deleteEnrollment(@NotNull UUID uniqueId, @NotNull String methodId);
 
 	/**
+	 * Raises an enrollment's {@linkplain VerificationEnrollment#getAcceptedCounter() accepted counter}
+	 * to a counter, when the counter is greater than the one accepted last. The check and the write
+	 * are one statement, so of several proxies offering the same counter at once, exactly one
+	 * succeeds.
+	 *
+	 * @param uniqueId     account of the enrollment
+	 * @param methodId     method of the enrollment
+	 * @param enrollmentId id of the enrollment
+	 * @param counter      counter of the code to accept
+	 * @return whether the counter was accepted; {@code false} when it, or a greater one, was
+	 *         accepted already, or the enrollment does not exist
+	 */
+	boolean acceptCounter(@NotNull UUID uniqueId, @NotNull String methodId, @NotNull String enrollmentId, long counter);
+
+	/**
 	 * Counts the accounts with at least one verification method enabled.
 	 *
 	 * @return the number of accounts

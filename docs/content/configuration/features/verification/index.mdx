@@ -13,6 +13,8 @@ A player joins through the `credential` provider and enters their password succe
 Instead of finishing login immediately, Identica asks for a code from the built-in default TOTP verification method.
 The player enters the current code from their authenticator app, verification succeeds, and only then does the login flow complete.
 
+Each authenticator code is accepted once per account, whether it confirms a login or a protected action such as disabling the method; the code that confirmed the enrollment counts as used too. Once a code is accepted, codes of its time window and of earlier windows are refused, through every proxy that shares the database, and the player types the next code. A refused code gets the same answer as a wrong one. Recovery codes are single-use as well.
+
 If verification is optional instead of required, the same provider can still work without forcing that second step for every player or every situation.
 
 Verification is compiled into Identica. Shared defaults live under `features/verification/`; providers override them in `providers[].features.verification`. See [Settings](./settings/index.mdx).

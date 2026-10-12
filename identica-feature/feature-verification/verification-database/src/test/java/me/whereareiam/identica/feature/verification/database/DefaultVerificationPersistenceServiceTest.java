@@ -20,6 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
@@ -52,6 +53,45 @@ class DefaultVerificationPersistenceServiceTest {
 			service.deleteEnrollment(uniqueId, "totp");
 
 			assertTrue(service.findEnrollments(uniqueId).isEmpty());
+		});
+	}
+
+	@DisplayName("Accepts each counter of an enrollment once and never an older one")
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
+	void acceptsEachCounterOnce(TestDatabase database) {
+		withVerification(database, (service, uniqueId) -> {
+			service.upsertEnrollment(enrollment(uniqueId, "default", "secret", 10L).toBuilder().acceptedCounter(100L).build());
+			service.upsertEnrollment(enrollment(uniqueId, "other", "secret", 5L));
+
+			assertFalse(service.acceptCounter(uniqueId, "totp", "default", 100L), "the counter the enrollment started with");
+			assertFalse(service.acceptCounter(uniqueId, "totp", "default", 99L));
+			assertTrue(service.acceptCounter(uniqueId, "totp", "default", 102L));
+			assertFalse(service.acceptCounter(uniqueId, "totp", "default", 102L));
+			assertFalse(service.acceptCounter(uniqueId, "totp", "default", 101L));
+			assertTrue(service.acceptCounter(uniqueId, "totp", "other", 101L), "each enrollment keeps its own counter");
+			assertFalse(service.acceptCounter(uniqueId, "totp", "missing", 200L));
+
+			assertEquals(102L, service.findEnrollments(uniqueId).stream()
+					.filter(enrollment -> enrollment.getEnrollmentId().equals("default"))
+					.findFirst().orElseThrow()
+					.getAcceptedCounter());
+		});
+	}
+
+	@DisplayName("Accepts a counter offered by several proxies at once exactly once")
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
+	void acceptsAConcurrentlyOfferedCounterOnce(TestDatabase database) {
+		withVerification(database, (service, uniqueId) -> {
+			service.upsertEnrollment(enrollment(uniqueId, "default", "secret", 10L));
+			for (long counter = 1; counter <= 10; counter++) {
+				long offered = counter;
+				List<Boolean> offers = SimultaneousCalls.run(PROXIES, party ->
+						service.acceptCounter(uniqueId, "totp", "default", offered));
+
+				assertEquals(1, offers.stream().filter(Boolean::booleanValue).count(), "counter " + offered);
+			}
 		});
 	}
 
@@ -188,7 +228,7 @@ class DefaultVerificationPersistenceServiceTest {
 	}
 
 	private static VerificationEnrollment enrollment(UUID uniqueId, String enrollmentId, String credential, long enabledAt) {
-		return new VerificationEnrollment(uniqueId, "totp", enrollmentId, credential, "Phone", 1L, enabledAt);
+		return new VerificationEnrollment(uniqueId, "totp", enrollmentId, credential, "Phone", 1L, enabledAt, 0L);
 	}
 
 	@FunctionalInterface

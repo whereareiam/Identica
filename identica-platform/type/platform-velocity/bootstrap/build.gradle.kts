@@ -35,6 +35,7 @@ dependencies {
     testRuntimeOnly(libs.strata)
     testRuntimeOnly(libs.strata.adapter.configura)
     testRuntimeOnly(libs.strata.adapter.database)
+    testRuntimeOnly(libs.strata.adapter.database.dialectica)
     testRuntimeOnly(libs.jedis)
     testRuntimeOnly(libs.hikaricp)
 }

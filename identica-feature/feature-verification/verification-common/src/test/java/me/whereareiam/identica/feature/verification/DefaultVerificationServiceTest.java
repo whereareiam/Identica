@@ -5,6 +5,7 @@ import me.whereareiam.identica.feature.verification.config.defaults.Verification
 import me.whereareiam.identica.feature.verification.database.VerificationPersistenceService;
 import me.whereareiam.identica.feature.verification.model.config.VerificationSettings;
 import me.whereareiam.identica.feature.verification.type.VerificationMethodCapability;
+import me.whereareiam.identica.feature.verification.type.totp.TotpClock;
 import me.whereareiam.identica.feature.verification.type.totp.TotpVerificationMethod;
 import me.whereareiam.identica.feature.verification.type.totp.process.TotpChallengeProcess;
 import me.whereareiam.identica.feature.verification.type.totp.process.TotpEnrollmentProcess;
@@ -14,6 +15,7 @@ import me.whereareiam.identica.feature.verification.type.totp.step.TotpConfirmSa
 import me.whereareiam.identica.feature.verification.type.totp.step.TotpSetupStep;
 import org.junit.jupiter.api.Test;
 
+import java.time.InstantSource;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -21,15 +23,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
 class DefaultVerificationServiceTest {
+	private static final TotpClock CLOCK = new TotpClock(InstantSource.system());
+
 	@Test
 	void registryFindsRegisteredMethodByDescriptorId() {
 		VerificationSettings verification = new VerificationDefaults().supply(new VerificationSettings());
 		VerificationMessages messages = messages();
 		VerificationPersistenceService persistenceService = mock(VerificationPersistenceService.class);
 		TotpSetupStep setupStep = new TotpSetupStep(() -> verification, () -> messages);
-		TotpConfirmCodeStep confirmCodeStep = new TotpConfirmCodeStep(() -> verification);
+		TotpConfirmCodeStep confirmCodeStep = new TotpConfirmCodeStep(() -> verification, CLOCK);
 		TotpConfirmSavedStep confirmSavedStep = new TotpConfirmSavedStep();
-		TotpChallengeVerificationStep challengeStep = new TotpChallengeVerificationStep(() -> verification, persistenceService);
+		TotpChallengeVerificationStep challengeStep = new TotpChallengeVerificationStep(() -> verification, persistenceService, CLOCK);
 		TotpVerificationMethod method = new TotpVerificationMethod(
 				() -> verification,
 				new TotpEnrollmentProcess(setupStep, confirmCodeStep, confirmSavedStep),
@@ -48,9 +52,9 @@ class DefaultVerificationServiceTest {
 		VerificationMessages messages = messages();
 		VerificationPersistenceService persistenceService = mock(VerificationPersistenceService.class);
 		TotpSetupStep setupStep = new TotpSetupStep(() -> verification, () -> messages);
-		TotpConfirmCodeStep confirmCodeStep = new TotpConfirmCodeStep(() -> verification);
+		TotpConfirmCodeStep confirmCodeStep = new TotpConfirmCodeStep(() -> verification, CLOCK);
 		TotpConfirmSavedStep confirmSavedStep = new TotpConfirmSavedStep();
-		TotpChallengeVerificationStep challengeStep = new TotpChallengeVerificationStep(() -> verification, persistenceService);
+		TotpChallengeVerificationStep challengeStep = new TotpChallengeVerificationStep(() -> verification, persistenceService, CLOCK);
 		TotpVerificationMethod method = new TotpVerificationMethod(
 				() -> verification,
 				new TotpEnrollmentProcess(setupStep, confirmCodeStep, confirmSavedStep),

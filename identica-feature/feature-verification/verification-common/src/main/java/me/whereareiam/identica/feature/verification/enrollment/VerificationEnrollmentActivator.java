@@ -41,6 +41,7 @@ public class VerificationEnrollmentActivator {
 				.label(state != null ? state.label() : "")
 				.createdAt(record.getCreatedAt())
 				.enabledAt(now)
+				.acceptedCounter(state != null ? state.acceptedCounter() : 0L)
 				.build());
 
 		List<VerificationRecoveryCode> codes = new ArrayList<>();

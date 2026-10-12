@@ -15,6 +15,7 @@ public final class VerificationEnrollmentMapper {
 				.label(entity.getLabel())
 				.createdAt(Objects.requireNonNullElse(entity.getCreatedAt(), 0L))
 				.enabledAt(Objects.requireNonNullElse(entity.getEnabledAt(), 0L))
+				.acceptedCounter(entity.getAcceptedCounter())
 				.build();
 	}
 
@@ -27,6 +28,7 @@ public final class VerificationEnrollmentMapper {
 				.label(model.getLabel())
 				.createdAt(model.getCreatedAt())
 				.enabledAt(model.getEnabledAt())
+				.acceptedCounter(model.getAcceptedCounter())
 				.build();
 	}
 }

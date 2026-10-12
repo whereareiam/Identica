@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * A player with a Credential account protects it with the built-in authenticator-app (TOTP) verification on a
  * network whose only provider is Credential. Verification is enabled and optional, as Identica generates it: a
  * player who enrolled a method is asked for its code after the password, everyone else only types the password.
+ * Each authenticator code is accepted once, so a journey that types a second code takes the app's next one.
  */
 class TotpVerificationTest {
 	private static final String PASSWORD = "Secret-123";
@@ -29,7 +30,7 @@ class TotpVerificationTest {
 	private static final int RECOVERY_CODES = 8;
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void asksForTheAuthenticatorCodeAfterThePasswordOnceEnrolled(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 
@@ -40,13 +41,13 @@ class TotpVerificationTest {
 				.login(PASSWORD)
 				.sees(m -> m.credential().getScenario().getAuthentication().getVerification().getPrompt())
 				.remainsOn(AUTH)
-				.command("2fa confirm " + alice.app().code())
+				.command("2fa confirm " + alice.app().nextCode())
 				.on(LOBBY)
 				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void refusesAWrongAuthenticatorCodeAndAcceptsTheRightOne(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 
@@ -59,13 +60,13 @@ class TotpVerificationTest {
 				.command("2fa confirm " + alice.app().wrongCode())
 				.sees(m -> m.verification().getCommands().getConfirm().getInvalidCode())
 				.remainsOn(AUTH)
-				.command("2fa confirm " + alice.app().code())
+				.command("2fa confirm " + alice.app().nextCode())
 				.on(LOBBY)
 				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void acceptsARecoveryCodeInsteadOfTheAuthenticatorCodeOnlyOnce(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 		String recoveryCode = alice.recoveryCodes().getFirst();
@@ -91,13 +92,13 @@ class TotpVerificationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void logsInWithThePasswordAloneOnceTheAuthenticatorIsDisabled(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 
 		alice.journey().command("2fa disable totp")
 				.sees(m -> m.verification().getCommands().getDisable().getProtectedPrompt())
-				.command("2fa confirm " + alice.app().code())
+				.command("2fa confirm " + alice.app().nextCode())
 				.sees(m -> m.verification().getCommands().getDisable().getDisabled())
 				.leave()
 				.rejoin()
@@ -109,7 +110,7 @@ class TotpVerificationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void keepsTheAuthenticatorWhenTheCodeConfirmingItsDisablingIsWrong(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 
@@ -127,7 +128,7 @@ class TotpVerificationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void doesNotEnrollTheAuthenticatorWhenTheConfirmingCodeIsWrong(ScenarioContext anvil) {
 		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)
@@ -145,6 +146,102 @@ class TotpVerificationTest {
 				.on(AUTH)
 				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
 				.login(PASSWORD)
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	void refusesAnAuthenticatorCodeUsedAtAnEarlierLoginAndAcceptsTheNextOne(ScenarioContext anvil) {
+		Enrolled alice = enrolled(anvil);
+
+		verificationPrompt(alice.journey().leave())
+				.command("2fa confirm " + alice.app().nextCode())
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
+		verificationPrompt(alice.journey().leave())
+				.command("2fa confirm " + alice.app().usedCode())
+				.sees(m -> m.verification().getCommands().getConfirm().getInvalidCode())
+				.remainsOn(AUTH)
+				.command("2fa confirm " + alice.app().nextCode())
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	void refusesTheCodeThatConfirmedTheEnrollmentAtTheFirstLogin(ScenarioContext anvil) {
+		Enrolled alice = enrolled(anvil);
+
+		verificationPrompt(alice.journey().leave())
+				.command("2fa confirm " + alice.app().usedCode())
+				.sees(m -> m.verification().getCommands().getConfirm().getInvalidCode())
+				.remainsOn(AUTH)
+				.command("2fa confirm " + alice.app().nextCode())
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
+	}
+
+	/**
+	 * Alice's phone runs a period ahead, so she types the code of the next period. Identica accepts it as clock
+	 * drift, and from then on only codes after it.
+	 */
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	void acceptsTheCodeOfAnAppWhoseClockRunsAheadOnce(ScenarioContext anvil) {
+		Enrolled alice = enrolled(anvil);
+
+		verificationPrompt(alice.journey().leave())
+				.command("2fa confirm " + alice.app().codeAhead())
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
+		verificationPrompt(alice.journey().leave())
+				.command("2fa confirm " + alice.app().usedCode())
+				.sees(m -> m.verification().getCommands().getConfirm().getInvalidCode())
+				.remainsOn(AUTH)
+				.command("2fa confirm " + alice.app().nextCode())
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	void keepsTheAuthenticatorWhenAUsedCodeConfirmsItsDisabling(ScenarioContext anvil) {
+		Enrolled alice = enrolled(anvil);
+
+		verificationPrompt(alice.journey().command("2fa disable totp")
+				.sees(m -> m.verification().getCommands().getDisable().getProtectedPrompt())
+				.command("2fa confirm " + alice.app().usedCode())
+				.sees(m -> m.verification().getCommands().getConfirm().getInvalidCode())
+				.leave())
+				.remainsOn(AUTH);
+	}
+
+	/**
+	 * A new authenticator starts from the code that confirmed it, as the first one did.
+	 */
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	void refusesTheCodeThatConfirmedAReEnrolledAuthenticator(ScenarioContext anvil) {
+		Enrolled alice = enrolled(anvil);
+		Journey journey = alice.journey().command("2fa disable totp")
+				.sees(m -> m.verification().getCommands().getDisable().getProtectedPrompt())
+				.command("2fa confirm " + alice.app().nextCode())
+				.sees(m -> m.verification().getCommands().getDisable().getDisabled());
+
+		Authenticator phone = Authenticator.of(journey.command("2fa enroll totp")
+				.sees(m -> m.verification().getMethods().getTotp().getPending())
+				.reads("secret"));
+		journey.command("2fa enroll confirm " + phone.code())
+				.sees(m -> m.verification().getCommands().getConfirm().getRecoveryCodes().getBody())
+				.command("2fa enroll confirm saved")
+				.sees(m -> m.verification().getCommands().getConfirm().getEnabled());
+
+		verificationPrompt(journey.leave())
+				.command("2fa confirm " + phone.usedCode())
+				.sees(m -> m.verification().getCommands().getConfirm().getInvalidCode())
+				.remainsOn(AUTH)
+				.command("2fa confirm " + phone.nextCode())
 				.on(LOBBY)
 				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
 	}
@@ -183,6 +280,17 @@ class TotpVerificationTest {
 				.sees(m -> m.verification().getCommands().getConfirm().getEnabled())
 				.sees(m -> m.verification().getCommands().getConfirm().getAutoSelected());
 		return new Enrolled(alice, app, recoveryCodes);
+	}
+
+	/**
+	 * Rejoins after leaving and types the password, which brings Alice to the authenticator prompt.
+	 */
+	private static Journey verificationPrompt(Journey left) {
+		return left.rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.sees(m -> m.credential().getScenario().getAuthentication().getVerification().getPrompt());
 	}
 
 	private record Enrolled(Journey journey, Authenticator app, List<String> recoveryCodes) {

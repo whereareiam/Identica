@@ -8,6 +8,7 @@ dependencies {
     implementation(projects.featureVerificationApi)
 
     compileOnly(projects.identicaAdapterDatabaseApi)
+    compileOnly(libs.strata.adapter.database.dialectica)
     compileOnly(libs.jdbi.core)
     compileOnly(libs.jdbi.sqlobject)
     compileOnly(libs.dialectica.adapter.jdbi)

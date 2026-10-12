@@ -5,6 +5,7 @@ import me.whereareiam.identica.adapter.database.testing.schema.EarlierInstallati
 import me.whereareiam.identica.adapter.database.testing.schema.SchemaSnapshot;
 import me.whereareiam.identica.adapter.database.testing.schema.TestDatabase;
 import me.whereareiam.identica.database.schema.DatabaseSchema;
+import me.whereareiam.identica.feature.verification.database.entity.VerificationEnrollmentEntity;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -45,6 +46,22 @@ class VerificationSchemaTest extends DatabaseSchemaContract {
 	}
 
 	/**
+	 * Version 2 adds {@code accepted_counter} to the enrollments, a {@code BIGINT} that refuses
+	 * {@code NULL} and defaults to {@code 0}, as each database's metadata describes it; MariaDB
+	 * reports as MySQL does.
+	 */
+	@Override
+	protected SchemaSnapshot upgraded(TestDatabase database, SchemaSnapshot developmentBuild) {
+		String type = switch (database.type()) {
+			case H2 -> "BIGINT(64)";
+			case SQLITE -> "INTEGER(2000000000)";
+			case POSTGRES -> "INT8(19)";
+			case MYSQL -> "BIGINT(19)";
+		};
+		return developmentBuild.withColumn(VerificationEnrollmentEntity.TABLE, VerificationEnrollmentEntity.ACCEPTED_COUNTER + " " + type + " not null default 0");
+	}
+
+	/**
 	 * Identica 2.2.1 created the verification tables in its core, as the feature later did.
 	 */
 	@ParameterizedTest(name = "{0}")
@@ -58,6 +75,6 @@ class VerificationSchemaTest extends DatabaseSchemaContract {
 		install(database);
 
 		assertEquals(expected, database.connect(SchemaSnapshot::everyTable));
-		assertEquals(List.of("1 baseline"), history(database));
+		assertEquals(List.of("1 baseline", "2 accepted-counter"), history(database));
 	}
 }

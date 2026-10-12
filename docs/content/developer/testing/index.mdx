@@ -169,6 +169,8 @@ Authenticator app = Authenticator.of(alice.command("2fa enroll totp")
 alice.command("2fa enroll confirm " + app.code());
 ```
 
+Identica accepts each code once, the confirming code included, so a journey that types a second code takes `app.nextCode()`, which waits until the app shows the code after the last one it returned. `app.usedCode()` is the code it returned last, to type it again on purpose; `app.codeAhead()` is the code of an app whose clock runs a window ahead; `app.wrongCode()` is a code Identica accepts in no window. The app changes codes every five seconds, so the waits stay short; give the network the same period with `configure = Authenticator.ShortPeriod.class`, which also widens the drift window into the past so a reused code is only refused because it was used.
+
 ## The examples
 
 Every test proxy installs the example provider from `examples/provider` next to the official ones, disabled unless the test enables it with `providers = Provider.EXAMPLE`. `@Identica(addon = true)` also installs the example addon from `examples/addon`, a separate Velocity plugin that holds back chat and commands until a player has authenticated. The tests under `example` keep both working against the current API.

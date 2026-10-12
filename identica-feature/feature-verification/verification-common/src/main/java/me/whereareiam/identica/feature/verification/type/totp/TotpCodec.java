@@ -6,8 +6,14 @@ import java.net.URLEncoder;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.time.Instant;
 import java.util.Locale;
+import java.util.OptionalLong;
 
+/**
+ * Time-based one-time passwords as RFC 6238 defines them, with HMAC-SHA1. It holds no clock: callers
+ * pass the time step, which {@link TotpClock} provides.
+ */
 public final class TotpCodec {
 	private static final char[] BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".toCharArray();
 	private static final SecureRandom RANDOM = new SecureRandom();
@@ -18,32 +24,41 @@ public final class TotpCodec {
 		return encodeBase32(raw);
 	}
 
-	public static boolean verify(
+	/**
+	 * Returns the time step an instant falls in: the number of whole periods since the Unix epoch.
+	 */
+	public static long timeStep(Instant instant, long periodSeconds) {
+		return Math.floorDiv(instant.getEpochSecond(), periodSeconds);
+	}
+
+	/**
+	 * Returns the newest time step around {@code currentStep} whose code is {@code input}, looking
+	 * {@code allowedPastWindows} steps back and {@code allowedFutureWindows} steps ahead, or nothing
+	 * when the input is no such code.
+	 */
+	public static OptionalLong matchingStep(
 			String secret,
 			String input,
 			int digits,
-			long periodSeconds,
+			long currentStep,
 			int allowedPastWindows,
 			int allowedFutureWindows
 	) {
 		String normalizedInput = input == null ? "" : input.trim();
-		if (!normalizedInput.matches("\\d{" + digits + "}")) return false;
+		if (!normalizedInput.matches("\\d{" + digits + "}")) return OptionalLong.empty();
 
 		byte[] key = decodeBase32(secret);
-		long counter = System.currentTimeMillis() / 1000L / periodSeconds;
-		for (long offset = -allowedPastWindows; offset <= allowedFutureWindows; offset++) {
-			String candidate = generateCode(key, counter + offset, digits);
-			if (candidate.equals(normalizedInput)) return true;
-		}
+		for (long step = currentStep + allowedFutureWindows; step >= currentStep - allowedPastWindows; step--)
+			if (generateCode(key, step, digits).equals(normalizedInput)) return OptionalLong.of(step);
 
-		return false;
+		return OptionalLong.empty();
 	}
 
-	public static String currentCode(String secret, int digits, long periodSeconds) {
-		byte[] key = decodeBase32(secret);
-		long counter = System.currentTimeMillis() / 1000L / periodSeconds;
-
-		return generateCode(key, counter, digits);
+	/**
+	 * Returns the code of a time step.
+	 */
+	public static String code(String secret, long step, int digits) {
+		return generateCode(decodeBase32(secret), step, digits);
 	}
 
 	public static String buildOtpAuthUri(

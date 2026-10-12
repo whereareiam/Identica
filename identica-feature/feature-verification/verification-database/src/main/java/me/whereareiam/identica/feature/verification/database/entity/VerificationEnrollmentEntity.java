@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import me.whereareiam.dialectica.entity.annotation.Default;
 import me.whereareiam.dialectica.entity.annotation.Id;
 import me.whereareiam.dialectica.entity.annotation.Length;
 import me.whereareiam.dialectica.entity.annotation.Nullable;
@@ -20,8 +21,11 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
-@Table("identica_verification_enrollments")
+@Table(VerificationEnrollmentEntity.TABLE)
 public class VerificationEnrollmentEntity {
+	public static final String TABLE = "identica_verification_enrollments";
+	public static final String ACCEPTED_COUNTER = "accepted_counter";
+
 	@Id
 	@References(table = AccountTable.NAME, column = AccountTable.KEY, onDelete = ReferentialAction.CASCADE)
 	private UUID uniqueId;
@@ -39,4 +43,7 @@ public class VerificationEnrollmentEntity {
 	private Long createdAt;
 	@Nullable
 	private Long enabledAt;
+	/** Last TOTP time step or HOTP counter a code was accepted for; never decreases. */
+	@Default("0")
+	private long acceptedCounter;
 }

@@ -15,8 +15,8 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 /**
- * Tables as the database's own metadata describes them: each column with its type, size and
- * nullability, the primary key, the indexes by their columns, and the foreign keys with their
+ * Tables as the database's own metadata describes them: each column with its type, size,
+ * nullability and default, the primary key, the indexes by their columns, and the foreign keys with their
  * delete rule. Two databases with equal snapshots have the same schema, however it was written.
  * <p>
  * Primary key columns record no nullability, since SQLite reports them as nullable when the DDL
@@ -69,6 +69,22 @@ public record SchemaSnapshot(Map<String, Table> tables) {
 		return new SchemaSnapshot(changed);
 	}
 
+	/**
+	 * Returns this snapshot with a column appended to a table, as if it had been added.
+	 *
+	 * @param column the column as {@code name TYPE(size) nullability}, followed by
+	 *               {@code default value} when it has a default
+	 */
+	public SchemaSnapshot withColumn(String table, String column) {
+		Map<String, Table> changed = new TreeMap<>(tables);
+		Table described = changed.get(table);
+		List<String> columns = new ArrayList<>(described.columns());
+		columns.add(column);
+		changed.put(table, new Table(columns, described.primaryKey(), described.indexes(), described.foreignKeys()));
+
+		return new SchemaSnapshot(changed);
+	}
+
 	private static Table describe(Connection connection, String table) throws SQLException {
 		DatabaseMetaData metaData = connection.getMetaData();
 		String stored = metaData.storesUpperCaseIdentifiers() ? table.toUpperCase(Locale.ROOT) : table;
@@ -86,7 +102,8 @@ public record SchemaSnapshot(Map<String, Table> tables) {
 			while (rows.next()) {
 				String column = lower(rows.getString("COLUMN_NAME"));
 				String nullability = primaryKey.contains(column) ? "key" : rows.getInt("NULLABLE") == DatabaseMetaData.columnNullable ? "null" : "not null";
-				columns.add(column + " " + rows.getString("TYPE_NAME").toUpperCase(Locale.ROOT) + "(" + rows.getInt("COLUMN_SIZE") + ") " + nullability);
+				columns.add(column + " " + rows.getString("TYPE_NAME").toUpperCase(Locale.ROOT) + "(" + rows.getInt("COLUMN_SIZE") + ") " + nullability
+						+ defaultOf(rows.getString("COLUMN_DEF")));
 			}
 		}
 		if (columns.isEmpty()) throw new IllegalStateException("Table " + table + " does not exist");
@@ -116,6 +133,16 @@ public record SchemaSnapshot(Map<String, Table> tables) {
 		return new Table(columns, primaryKey, indexes, foreignKeys);
 	}
 
+	/**
+	 * Describes a column's default as the database reports it, or nothing for a column without one.
+	 * MariaDB reports {@code NULL} for a nullable column without a default, which is no default.
+	 */
+	private static String defaultOf(String reported) {
+		if (reported == null || reported.equalsIgnoreCase("NULL")) return "";
+
+		return " default " + reported;
+	}
+
 	private static String deleteRule(short rule) {
 		return switch (rule) {
 			case DatabaseMetaData.importedKeyCascade -> "cascade";
@@ -132,7 +159,8 @@ public record SchemaSnapshot(Map<String, Table> tables) {
 	/**
 	 * One table of a snapshot.
 	 *
-	 * @param columns     each column as {@code name TYPE(size) nullability}, in table order
+	 * @param columns     each column as {@code name TYPE(size) nullability}, followed by
+	 *                    {@code default value} when it has a default, in table order
 	 * @param primaryKey  the primary key columns, in key order
 	 * @param indexes     each index as its columns, prefixed with {@code unique} when it is
 	 * @param foreignKeys each foreign key column as {@code column -> table.column rule}

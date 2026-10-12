@@ -26,7 +26,7 @@ The journeys are split into suites. Each suite is a JUnit tag on the test classe
 | Suite | Task | Packages | Covers |
 | --- | --- | --- | --- |
 | `join` | `anvilJoinTest` | `join`, `entrypoint`, `routing`, `restriction` | getting a player in: registration, login, premium detection, hostnames and routing targets |
-| `account` | `anvilAccountTest` | `credential`, `verification`, `recognition`, `security` | an account once it exists: password changes, two-factor verification, recognised sessions, protection against abuse |
+| `account` | `anvilAccountTest` | `credential`, `verification`, `recognition`, `security`, `dialogs` | an account once it exists: password changes, two-factor verification, recognised sessions, protection against abuse |
 | `identity` | `anvilIdentityTest` | `username`, `identity` | usernames and their conflicts, unique ids, reservations |
 | `operations` | `anvilOperationsTest` | `administration`, `migration`, `startup`, `database`, `example` | reloads, migrations, startup, database backends, the examples |
 | `cluster` | `anvilClusterTest` | `cluster` | two proxies sharing a database; needs Docker |
@@ -201,13 +201,13 @@ Identica accepts each code once, the confirming code included, so a journey that
 
 ## The examples
 
-Every test proxy installs the example provider from `examples/provider` next to the official ones, disabled unless the test enables it with `providers = Provider.EXAMPLE`. `@Identica(addon = true)` also installs the example addon from `examples/addon`, a separate Velocity plugin that holds back chat and commands until a player has authenticated. The tests under `example` keep both working against the current API.
+Every test proxy installs the example provider from `examples/provider` next to the official ones, disabled unless the test enables it with `providers = Provider.EXAMPLE`. `@Identica(addons = Addon.EXAMPLE)` also installs the example addon from `examples/addon`, a separate Velocity plugin that holds back chat and commands until a player has authenticated. The tests under `example` keep both working against the current API.
 
 Text that belongs to no configuration file, such as an addon's own message or a chat line, is matched as plain text. `.chat(message)` sends a chat message, `.seesText(text)` waits for a message containing the text, and `.doesNotSeeText(text)` expects none to arrive. `Administrator.seesOnConsole(texts...)` expects a console line containing every text since the administrator's previous command, such as what an addon logs when it reacts to a reload:
 
 ```java
 @Test
-@Identica(providers = Provider.EXAMPLE, addon = true)
+@Identica(providers = Provider.EXAMPLE, addons = Addon.EXAMPLE)
 void holdsBackChat(ScenarioContext anvil) {
 	Journey.offline(anvil, "Alice").join()
 			.on(AUTH)
@@ -217,3 +217,25 @@ void holdsBackChat(ScenarioContext anvil) {
 			.seesText("Log in before you chat.");
 }
 ```
+
+
+## The dialogs addon
+
+`@Identica(addons = Addon.DIALOGS)` installs the official dialogs addon from `addons/dialogs` together with PacketEvents, which it needs on Velocity. A journey answers its dialogs as a player does: `.seesDialog(id)` waits for the dialog whose file in the addon's `dialogs/` is named `id`, matching its title and body, and `.presses(button, inputs)` fills inputs and presses a button named through that file. `.dialogShows(message)` expects the dialog to show a configured Identica message, such as the answer to a wrong password, and `.hasNoDialog()` expects no dialog open:
+
+```java
+@Test
+@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, autoSelectSingleProvider = true, addons = Addon.DIALOGS)
+void logsInThroughTheDialog(ScenarioContext anvil) {
+	Journey.offline(anvil, "Alice").join()
+			.on(AUTH)
+			.seesDialog("register")
+			.presses(dialog -> dialog.getActions().getFirst(), Map.of("password", PASSWORD));
+}
+```
+
+`.seesNoDialog()` expects that no dialog was shown since the previous dialog expectation, such as for a step a rule keeps in chat.
+
+`ProxyConfiguration.editGenerated(anvil, Addon.DIALOGS, path, type, change)` changes a file the addon generated on the running proxy through its own models, such as `RulesDocument` for `rules.yml` or `DialogDocument` for a dialog; `generated` reads one and `putGenerated` adds one, such as a dialog of your own. `Administrator.reloads()` makes the addon read them again.
+
+Test backends run Minecraft 1.21.11 and every journey's client the same version, so every client has dialogs. `@Identica(minecraft = MinecraftVersion.V1_21_1)` runs the backends and clients on 1.21.1 instead, a client from before dialogs.

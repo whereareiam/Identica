@@ -1,6 +1,7 @@
 package me.whereareiam.identica.testing.fixture;
 
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
+import me.whereareiam.identica.testing.journey.Journey;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -9,7 +10,9 @@ import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -48,6 +51,30 @@ public final class Authenticator {
 	 */
 	public static Authenticator of(String secret) {
 		return new Authenticator(decode(secret), 6);
+	}
+
+	/**
+	 * Enrolls the authenticator-app verification as a player does in chat: adds the secret Identica shows to an app,
+	 * confirms it with the app's code and saves the recovery codes. The player stands where Identica takes their
+	 * commands, such as on {@code lobby}.
+	 *
+	 * @param player the player, logged in
+	 * @return the app holding the player's secret, and the recovery codes Identica showed
+	 */
+	public static Enrollment enroll(Journey player) {
+		Authenticator app = of(player.command("2fa enroll totp")
+				.sees(m -> m.verification().getMethods().getTotp().getPending())
+				.reads("secret"));
+		List<String> recoveryCodes = Arrays.asList(player.command("2fa enroll confirm " + app.code())
+				.sees(m -> m.verification().getCommands().getConfirm().getRecoveryCodes().getBody())
+				.reads("entries")
+				.split("\\s+"));
+
+		player.command("2fa enroll confirm saved")
+				.sees(m -> m.verification().getCommands().getConfirm().getEnabled())
+				.sees(m -> m.verification().getCommands().getConfirm().getAutoSelected());
+
+		return new Enrollment(app, recoveryCodes);
 	}
 
 	/**
@@ -138,6 +165,15 @@ public final class Authenticator {
 
 	private String format(int code) {
 		return String.format(Locale.ROOT, "%0" + digits + "d", code);
+	}
+
+	/**
+	 * An enrolled authenticator app and the recovery codes Identica showed with it.
+	 *
+	 * @param app the app holding the player's secret
+	 * @param recoveryCodes the recovery codes, in the order Identica showed them
+	 */
+	public record Enrollment(Authenticator app, List<String> recoveryCodes) {
 	}
 
 	/**

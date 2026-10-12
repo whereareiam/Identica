@@ -18,10 +18,11 @@ import me.whereareiam.anvil.api.type.ProcessLifetime;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Builds the network Identica runs in: Velocity proxies with the packaged plugin, the official providers and the
- * example provider, optionally the example addon, an auth
+ * example provider, optionally addons, an auth
  * server where players stay during authentication and registration steps, and a lobby they reach afterwards.
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -56,16 +57,24 @@ public final class IdenticaNetwork {
 	 * @param sessionServer session server the proxies verify online players against
 	 */
 	public static AnvilScenario velocity(String name, Map<String, ProxyConfiguration> proxies, URI sessionServer) {
-		return velocity(name, proxies, Map.of(), sessionServer, false);
+		return velocity(name, proxies, Map.of(), sessionServer, Set.of());
 	}
 
 	/**
-	 * Builds a network of Velocity proxies, each of which also runs the example addon when asked to.
+	 * Builds a network of Velocity proxies, each of which also runs the given addons, with backends of a Minecraft
+	 * version.
 	 *
-	 * @param addon whether every proxy runs the example addon next to Identica
+	 * @param addons addons every proxy runs next to Identica
+	 * @param minecraft version of the backends, and of the clients that join them
 	 */
-	public static AnvilScenario velocity(String name, Map<String, ProxyConfiguration> proxies, URI sessionServer, boolean addon) {
-		return velocity(name, proxies, Map.of(), sessionServer, addon);
+	public static AnvilScenario velocity(
+			String name,
+			Map<String, ProxyConfiguration> proxies,
+			URI sessionServer,
+			Set<Addon> addons,
+			MinecraftVersion minecraft
+	) {
+		return velocity(name, proxies, Map.of(), sessionServer, addons, minecraft);
 	}
 
 	/**
@@ -80,7 +89,18 @@ public final class IdenticaNetwork {
 			Map<String, ProxyConfiguration> proxies,
 			Map<String, String> stepServers,
 			URI sessionServer,
-			boolean addon
+			Set<Addon> addons
+	) {
+		return velocity(name, proxies, stepServers, sessionServer, addons, MinecraftVersion.V1_21_11);
+	}
+
+	private static AnvilScenario velocity(
+			String name,
+			Map<String, ProxyConfiguration> proxies,
+			Map<String, String> stepServers,
+			URI sessionServer,
+			Set<Addon> addons,
+			MinecraftVersion minecraft
 	) {
 		AnvilScenario.AnvilScenarioBuilder scenario = AnvilScenario.builder()
 				.name(name)
@@ -88,14 +108,14 @@ public final class IdenticaNetwork {
 		proxies.keySet().stream()
 				.map(proxy -> stepServers.getOrDefault(proxy, AUTH))
 				.distinct()
-				.forEach(server -> scenario.server(backend(server).build()));
-		scenario.server(backend(LOBBY).build());
+				.forEach(server -> scenario.server(backend(server, minecraft).build()));
+		scenario.server(backend(LOBBY, minecraft).build());
 
 		boolean closed = proxies.values().stream().anyMatch(configuration -> configuration.routesTo(CLOSED));
 		if (closed)
 			scenario.server(closedBackend());
 		proxies.forEach((proxy, configuration) -> scenario.proxy(
-				proxy(proxy, configuration, stepServers.getOrDefault(proxy, AUTH), sessionServer, addon, closed)));
+				proxy(proxy, configuration, stepServers.getOrDefault(proxy, AUTH), sessionServer, addons, closed)));
 
 		return scenario.build();
 	}
@@ -105,7 +125,7 @@ public final class IdenticaNetwork {
 			ProxyConfiguration configuration,
 			String stepServer,
 			URI sessionServer,
-			boolean addon,
+			Set<Addon> addons,
 			boolean closed
 	) {
 		WorkspacePlan.WorkspacePlanBuilder workspace = WorkspacePlan.builder()
@@ -115,8 +135,8 @@ public final class IdenticaNetwork {
 				.asset(artifact("example-provider", Path.of(DATA, "providers", "example.jar")))
 				.cache(libraries("identica-libraries", Path.of(DATA, ".libraries")))
 				.cache(libraries("identica-provider-libraries", Path.of(DATA, "providers", ".libraries")));
-		if (addon)
-			workspace.asset(artifact("example-addon", Path.of("plugins", "identica-example-addon.jar")));
+		for (Addon addon : addons)
+			addon.getPlugins().forEach(plugin -> workspace.asset(artifact(plugin.artifact(), plugin.target())));
 		configuration.files().forEach((file, content) -> workspace.asset(WorkspaceAsset.builder()
 				.group("identica-configuration")
 				.source(AssetSource.text(content))
@@ -154,11 +174,11 @@ public final class IdenticaNetwork {
 	 * A backend only has to be there for players to stand on, so it keeps running for the test run and serves one
 	 * network after another instead of starting for every test.
 	 */
-	private static MinecraftServer.MinecraftServerBuilder backend(String name) {
+	private static MinecraftServer.MinecraftServerBuilder backend(String name, MinecraftVersion minecraft) {
 		return MinecraftServer.builder()
 				.name(name)
 				.platform(Platforms.PAPER)
-				.distribution(Distribution.remote("1.21.11", "132"))
+				.distribution(Distribution.remote(minecraft.getVersion(), minecraft.getPaperBuild()))
 				.memoryMegabytes(768)
 				.lifetime(ProcessLifetime.ENGINE);
 	}
@@ -168,7 +188,7 @@ public final class IdenticaNetwork {
 	 * refuses a player who is not on it.
 	 */
 	private static MinecraftServer closedBackend() {
-		return backend(CLOSED)
+		return backend(CLOSED, MinecraftVersion.V1_21_11)
 				.setting("white-list", "true")
 				.setting("enforce-whitelist", "true")
 				.build();

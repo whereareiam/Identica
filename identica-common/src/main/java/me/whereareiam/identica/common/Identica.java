@@ -22,7 +22,6 @@ import me.whereareiam.identica.event.lifecycle.IdenticaReadyEvent;
 import me.whereareiam.identica.event.lifecycle.IdenticaShutdownEvent;
 import me.whereareiam.identica.listener.ListenerRegistrar;
 import me.whereareiam.identica.logging.Logger;
-import me.whereareiam.identica.logging.LoggingHelper;
 import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.type.event.EventOrder;
 
@@ -44,8 +43,6 @@ public class Identica implements EventListener {
 	}
 
 	public void bootstrap() {
-		Logger.init(injector.getInstance(LoggingHelper.class));
-
 		ConfigInitializer.initialize(injector);
 		injector.getInstance(DatabaseService.class);
 

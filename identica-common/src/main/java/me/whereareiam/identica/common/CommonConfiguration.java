@@ -28,6 +28,8 @@ import me.whereareiam.identica.common.routing.RoutingConfiguration;
 import me.whereareiam.identica.config.ConfigurationTypeResolver;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.logging.BannerContributor;
+import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.logging.LoggingHelper;
 import me.whereareiam.identica.util.EventUtil;
 import me.whereareiam.keystone.serializer.SerializerEngine;
 import me.whereareiam.strata.Strata;
@@ -87,11 +89,17 @@ public class CommonConfiguration extends AbstractModule {
 	 * Brings the data directory up to date before the shared Configura instance is installed, and
 	 * with it before any document is loaded. A failed migration fails the injector, so Identica does
 	 * not start on a directory it could not upgrade.
+	 * <p>
+	 * Identica's {@link Logger} is handed its platform backend right after, once the settings that
+	 * hold the log level can be read. This runs while the injector is created and before its eager
+	 * singletons, so what they log on start-up, such as the database opening and installing its
+	 * schema, reaches the proxy console.
 	 */
 	@Inject
-	void initializeConfigura(Configura configura, Strata strata) {
+	void initializeConfiguraAndLogger(Configura configura, Strata strata, LoggingHelper loggingHelper) {
 		strata.migrate();
 		Config.setConfigured(configura);
+		Logger.init(loggingHelper);
 	}
 
 	@Provides

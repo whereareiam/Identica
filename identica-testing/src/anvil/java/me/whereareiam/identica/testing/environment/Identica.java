@@ -76,11 +76,16 @@ public @interface Identica {
 	Database database() default Database.SQLITE;
 
 	/**
-	 * Whether the proxy also runs the example addon, which holds back chat and commands until a player has
-	 * authenticated and holds the players of {@link IdenticaNetwork#HOLD_HOST} and {@link IdenticaNetwork#ASK_HOST} at
-	 * its checkpoints. On BungeeCord, the addon runs only its checkpoints.
+	 * Addons the proxy runs next to Identica. The example addon holds back chat and commands on Velocity until a player
+	 * has authenticated, and on both platforms holds the players of {@link IdenticaNetwork#HOLD_HOST} and
+	 * {@link IdenticaNetwork#ASK_HOST} at its checkpoints.
 	 */
-	boolean addon() default false;
+	Addon[] addons() default {};
+
+	/**
+	 * Minecraft version of the backends and of the players' clients.
+	 */
+	MinecraftVersion minecraft() default MinecraftVersion.V1_21_11;
 
 	/**
 	 * Changes to the proxy's configuration files that the other attributes do not cover, applied in order. Each

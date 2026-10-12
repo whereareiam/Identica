@@ -1,5 +1,6 @@
 package me.whereareiam.identica.adapter.database.integration;
 
+import me.whereareiam.identica.adapter.database.testing.DatabaseContainers;
 import me.whereareiam.identica.adapter.database.testing.DatabaseFixture;
 import me.whereareiam.identica.adapter.database.testing.H2DatabaseFixture;
 import me.whereareiam.identica.adapter.database.testing.MariaDbDatabaseFixture;
@@ -20,13 +21,13 @@ import java.util.stream.Stream;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 abstract class DatabaseIntegrationTestBase {
 	@Container
-static PostgreSQLContainer postgresContainer = new PostgreSQLContainer("postgres:18.1")
+static PostgreSQLContainer postgresContainer = DatabaseContainers.postgres("postgres:18.1")
 			.withDatabaseName("identica")
 			.withUsername("identica")
 			.withPassword("identica");
 
 	@Container
-static MariaDBContainer mariaDbContainer = new MariaDBContainer("mariadb:12")
+static MariaDBContainer mariaDbContainer = DatabaseContainers.mariadb("mariadb:12")
 			.withDatabaseName("identica")
 			.withUsername("identica")
 			.withPassword("identica");

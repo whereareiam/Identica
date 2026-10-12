@@ -2,6 +2,7 @@ package me.whereareiam.identica.adapter.database.integration;
 
 import com.zaxxer.hikari.HikariDataSource;
 import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
+import me.whereareiam.identica.adapter.database.testing.DatabaseContainers;
 import me.whereareiam.identica.adapter.database.connection.DataSourceFactory;
 import me.whereareiam.identica.adapter.database.connection.UnsupportedDatabaseServerException;
 import me.whereareiam.identica.database.schema.AccountTable;
@@ -34,14 +35,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Testcontainers(disabledWithoutDocker = true)
 @DisplayName("MySQL server requirement")
 class MysqlServerRequirementIntegrationTest {
-	// Identica reaches MySQL through the MariaDB driver, which signs in with the native password plugin.
 	@Container
-	static MySQLContainer oldest = new MySQLContainer("mysql:8.0.19")
-			.withCommand("--default-authentication-plugin=mysql_native_password");
+	static MySQLContainer oldest = DatabaseContainers.mysql("mysql:8.0.19");
 
 	@Container
-	static MySQLContainer tooOld = new MySQLContainer("mysql:8.0.18")
-			.withCommand("--default-authentication-plugin=mysql_native_password");
+	static MySQLContainer tooOld = DatabaseContainers.mysql("mysql:8.0.18");
 
 	@TempDir
 	Path dataPath;

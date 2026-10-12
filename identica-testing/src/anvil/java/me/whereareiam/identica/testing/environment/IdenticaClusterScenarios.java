@@ -5,6 +5,7 @@ import me.whereareiam.anvil.api.model.scenario.AnvilScenario;
 import me.whereareiam.anvil.environment.yggdrasil.YggdrasilMock;
 import me.whereareiam.anvil.integration.junit.AnvilScenarioFactory;
 import me.whereareiam.anvil.integration.junit.ScenarioResources;
+import me.whereareiam.identica.adapter.database.testing.DatabaseContainers;
 import me.whereareiam.identica.common.config.defaults.ReplicationDefaults;
 import me.whereareiam.identica.model.config.Replication;
 import me.whereareiam.identica.model.config.persistence.external.PostgresPersistence;
@@ -32,7 +33,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * and Redis containers, so they stop with the network.
  */
 public final class IdenticaClusterScenarios implements AnvilScenarioFactory<IdenticaCluster> {
-	private static final DockerImageName POSTGRES = DockerImageName.parse("postgres:17-alpine");
 	private static final DockerImageName REDIS = DockerImageName.parse("redis:7.2-alpine");
 
 	@Override
@@ -40,7 +40,7 @@ public final class IdenticaClusterScenarios implements AnvilScenarioFactory<Iden
 		assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "An Identica cluster needs Docker for its database and Redis");
 
 		YggdrasilMock yggdrasil = resources.own(YggdrasilMock.start());
-		PostgreSQLContainer database = resources.own(started(new PostgreSQLContainer(POSTGRES)));
+		PostgreSQLContainer database = resources.own(started(DatabaseContainers.postgres("postgres:17-alpine")));
 		RedisContainer redis = cluster.replication() ? resources.own(started(new RedisContainer(REDIS))) : null;
 
 		Map<String, ProxyConfiguration> proxies = new LinkedHashMap<>();

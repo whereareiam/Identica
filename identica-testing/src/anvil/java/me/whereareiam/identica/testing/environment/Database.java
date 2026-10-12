@@ -1,12 +1,12 @@
 package me.whereareiam.identica.testing.environment;
 
 import me.whereareiam.anvil.integration.junit.ScenarioResources;
+import me.whereareiam.identica.adapter.database.testing.DatabaseContainers;
 import me.whereareiam.identica.model.config.persistence.Persistence;
 import me.whereareiam.identica.model.config.persistence.SqlitePersistence;
 import me.whereareiam.identica.model.config.persistence.external.MysqlPersistence;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.mariadb.MariaDBContainer;
-import org.testcontainers.utility.DockerImageName;
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -26,7 +26,7 @@ public enum Database {
 		@Override
 		Persistence persistence(ScenarioResources resources) {
 			assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "A MariaDB database needs Docker");
-			MariaDBContainer container = resources.own(new MariaDBContainer(DockerImageName.parse("mariadb:12")));
+			MariaDBContainer container = resources.own(DatabaseContainers.mariadb("mariadb:12"));
 			container.start();
 
 			MysqlPersistence persistence = new MysqlPersistence();

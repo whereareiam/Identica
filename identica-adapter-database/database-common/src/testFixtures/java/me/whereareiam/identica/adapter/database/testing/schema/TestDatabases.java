@@ -1,5 +1,6 @@
 package me.whereareiam.identica.adapter.database.testing.schema;
 
+import me.whereareiam.identica.adapter.database.testing.DatabaseContainers;
 import me.whereareiam.identica.model.config.persistence.H2Persistence;
 import me.whereareiam.identica.model.config.persistence.Persistence;
 import me.whereareiam.identica.model.config.persistence.SqlitePersistence;
@@ -32,11 +33,9 @@ import java.util.stream.Stream;
 public final class TestDatabases {
 	private static final AtomicInteger H2_NAMES = new AtomicInteger();
 
-	private static final Lazy<PostgreSQLContainer> POSTGRES = new Lazy<>(() -> new PostgreSQLContainer("postgres:18.1"));
-	private static final Lazy<MariaDBContainer> MARIADB = new Lazy<>(() -> new MariaDBContainer("mariadb:12"));
-	// Identica reaches MySQL through the MariaDB driver, which signs in with the native password plugin.
-	private static final Lazy<MySQLContainer> MYSQL = new Lazy<>(() -> new MySQLContainer("mysql:8.0")
-			.withCommand("--default-authentication-plugin=mysql_native_password"));
+	private static final Lazy<PostgreSQLContainer> POSTGRES = new Lazy<>(() -> DatabaseContainers.postgres("postgres:18.1"));
+	private static final Lazy<MariaDBContainer> MARIADB = new Lazy<>(() -> DatabaseContainers.mariadb("mariadb:12"));
+	private static final Lazy<MySQLContainer> MYSQL = new Lazy<>(() -> DatabaseContainers.mysql("mysql:8.0"));
 
 	private TestDatabases() {
 	}

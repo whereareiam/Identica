@@ -1,6 +1,7 @@
 package me.whereareiam.identica.testing.example;
 
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
+import me.whereareiam.identica.testing.environment.Addon;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.journey.Administrator;
@@ -18,7 +19,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY;
 @Tag("operations")
 class AddonDatabaseTest {
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, addon = true)
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, addons = Addon.EXAMPLE)
 	void anAddonInstallsItsSchemaAndReadsBackARow(ScenarioContext anvil) {
 		Administrator.at(anvil, PROXY)
 				.seesOnConsole("Example addon read note: hello from the addon");

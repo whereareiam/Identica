@@ -7,10 +7,16 @@ import me.whereareiam.anvil.api.player.SimulatedPlayer;
 import me.whereareiam.anvil.api.process.ProcessConsole;
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.anvil.api.type.DisconnectCause;
+import me.whereareiam.anvil.capability.dialogs.Dialogs;
+import me.whereareiam.anvil.capability.dialogs.model.dialog.DialogButton;
+import me.whereareiam.anvil.capability.dialogs.model.dialog.ShownDialog;
 import me.whereareiam.anvil.capability.messages.Messages;
 import me.whereareiam.anvil.capability.messages.model.ReceivedMessage;
 import me.whereareiam.anvil.capability.server.Server;
 import me.whereareiam.anvil.capability.session.Session;
+import me.whereareiam.identica.addon.dialogs.model.Dialog;
+import me.whereareiam.identica.addon.dialogs.model.DialogAction;
+import me.whereareiam.identica.testing.environment.Addon;
 import me.whereareiam.identica.testing.environment.IdenticaNetwork;
 import me.whereareiam.identica.testing.environment.Provider;
 
@@ -20,6 +26,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -49,6 +56,7 @@ public final class Journey {
 	private final Server server;
 	private final ProcessConsole proxy;
 	private final IdenticaMessages configured;
+	private final AddonDialogs addonDialogs;
 	private final long created;
 
 	private String playedAs;
@@ -59,6 +67,9 @@ public final class Journey {
 	private int connections;
 	private String matched = "";
 	private MessageText matchedMessage;
+	private int dialogsRead;
+	private me.whereareiam.anvil.capability.dialogs.model.dialog.Dialog shownDialog;
+	private Dialog configuredDialog;
 
 	private Journey(ScenarioContext anvil, SimulatedPlayer player, String name, String address, String proxy) {
 		this.name = name;
@@ -72,6 +83,7 @@ public final class Journey {
 		this.server = player.capability(Server.class);
 		this.proxy = anvil.processes().proxy(proxy).console();
 		this.configured = new IdenticaMessages(anvil.processes().proxy(proxy).workDirectory().resolve(IdenticaNetwork.DATA));
+		this.addonDialogs = new AddonDialogs(anvil.processes().proxy(proxy).workDirectory().resolve(Addon.DIALOGS_DATA));
 		this.console = this.proxy.checkpoint();
 		this.created = console;
 		this.read = messages.checkpoint();
@@ -353,6 +365,97 @@ public final class Journey {
 	public Journey playsAs(String username) {
 		assertEquals(username, identity().getObserved().getUsername(), name + " must play as " + username);
 		return this;
+	}
+
+	/**
+	 * Expects a dialog of the dialogs addon, shown after the previous dialog expectation, with the configured
+	 * dialog's title and every line of text of its body; a line that only holds a placeholder, such as
+	 * {@code {message}}, matches anything.
+	 *
+	 * <pre>{@code
+	 * player.seesDialog("register").presses(dialog -> dialog.getActions().getFirst(), Map.of("password", PASSWORD));
+	 * }</pre>
+	 *
+	 * @param id the dialog's ID, the name of its file in the addon's {@code dialogs/}
+	 */
+	public Journey seesDialog(String id) {
+		Dialog expected = addonDialogs.dialog(id);
+		MessageText title = new MessageText(expected.getTitle());
+		MessageText body = new MessageText(expected.getBody());
+		try {
+			ShownDialog shown = dialogs().shown(dialog -> title.in(dialog.getTitle()) && body.in(String.join("\n", dialog.getBody())),
+					dialogsRead, TIMEOUT);
+			dialogsRead = shown.getCheckpoint();
+			shownDialog = shown.getDialog();
+			configuredDialog = expected;
+		} catch (IllegalStateException timeout) {
+			fail(name + " was not shown the dialog " + id + "; shown: " + dialogs().history(), timeout);
+		}
+		return this;
+	}
+
+	/**
+	 * Expects the dialog matched by the previous {@link #seesDialog} to show a configured message as well, such as
+	 * Identica's answer to a wrong password.
+	 */
+	public Journey dialogShows(Function<IdenticaMessages, ?> message) {
+		MessageText expected = text(message);
+		String body = String.join("\n", openDialog().getBody());
+		assertTrue(expected.in(body), name + " must read " + expected + " in the dialog: " + body);
+		return this;
+	}
+
+	/**
+	 * Fills inputs of the dialog matched by the previous {@link #seesDialog} and presses one of its buttons, named
+	 * through the configured dialog. The next dialog expectation only considers dialogs shown after the press.
+	 *
+	 * @param button selects the button from the configured dialog
+	 * @param inputs values by input key
+	 */
+	public Journey presses(Function<Dialog, DialogAction> button, Map<String, String> inputs) {
+		var shown = openDialog();
+		MessageText label = new MessageText(button.apply(configuredDialog).getLabel());
+		String pressed = shown.getButtons().stream()
+				.map(DialogButton::getLabel)
+				.filter(label::in)
+				.findFirst()
+				.orElseGet(() -> fail(name + "'s dialog has no button " + label + "; buttons: " + shown.getButtons()));
+		dialogsRead = dialogs().checkpoint();
+		dialogs().press(pressed, inputs);
+		return this;
+	}
+
+	/**
+	 * Presses a button of the dialog matched by the previous {@link #seesDialog} with every input at its initial
+	 * value.
+	 */
+	public Journey presses(Function<Dialog, DialogAction> button) {
+		return presses(button, Map.of());
+	}
+
+	/**
+	 * Expects that the player has no dialog open, after giving the proxy time to close it.
+	 */
+	public Journey hasNoDialog() {
+		dialogs().closed(TIMEOUT);
+		return this;
+	}
+
+	/**
+	 * Expects that no dialog has been shown since the previous dialog expectation, after giving it time to.
+	 */
+	public Journey seesNoDialog() {
+		dialogs().notShown(dialog -> true, dialogsRead, SETTLE);
+		return this;
+	}
+
+	private Dialogs dialogs() {
+		return player.capability(Dialogs.class);
+	}
+
+	private me.whereareiam.anvil.capability.dialogs.model.dialog.Dialog openDialog() {
+		if (shownDialog == null) throw new IllegalStateException(name + " has not seen a dialog yet");
+		return shownDialog;
 	}
 
 	/**

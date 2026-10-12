@@ -32,7 +32,7 @@ public final class IdenticaScenarios implements AnvilScenarioFactory<Identica> {
 			instantiate(change).accept(proxy);
 
 		return IdenticaNetwork.velocity(name(identica, enabled), Map.of(IdenticaNetwork.PROXY, proxy), yggdrasil.sessionServer(),
-				identica.addon());
+				Set.copyOf(Arrays.asList(identica.addons())));
 	}
 
 	static Consumer<ProxyConfiguration> instantiate(Class<? extends Consumer<ProxyConfiguration>> change) {
@@ -52,7 +52,7 @@ public final class IdenticaScenarios implements AnvilScenarioFactory<Identica> {
 				identica.autoSelectSingleProvider() ? "autoselect" : "choice",
 				routing(identica.step(), identica.complete()),
 				identica.database().name(),
-				identica.addon() ? "addon" : "",
+				Arrays.stream(identica.addons()).map(addon -> addon.name() + "-addon").sorted().collect(Collectors.joining("+")),
 				Arrays.stream(identica.configure()).map(Class::getSimpleName).collect(Collectors.joining("+")))
 				.replaceAll("-+$", "").toLowerCase(Locale.ROOT);
 	}

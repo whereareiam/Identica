@@ -37,6 +37,7 @@ cloud-minecraft-extras = "dev-2ac9f72"
 # platform api
 bungeecord = "26.1-R0.1-SNAPSHOT"
 velocity = "3.5.0-SNAPSHOT"
+packetevents = "2.14.0"
 
 # database
 jdbi = "3.51.0"
@@ -111,6 +112,9 @@ cloud-minecraft-extras = { group = "me.whereareiam", name = "cloud-minecraft-ext
 # platform api
 bungeecord = { group = "net.md-5", name = "bungeecord-api", version.ref = "bungeecord" }
 velocity = { group = "com.velocitypowered", name = "velocity-api", version.ref = "velocity" }
+packetevents-api = { group = "com.github.retrooper", name = "packetevents-api", version.ref = "packetevents" }
+# PacketEvents' Velocity plugin jar, a GitHub release asset; see the ivy repository in settings.gradle.kts
+packetevents-velocity-plugin = { group = "retrooper", name = "packetevents", version.ref = "packetevents" }
 
 # database
 jdbi-core = { group = "org.jdbi", name = "jdbi3-core", version.ref = "jdbi" }

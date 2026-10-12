@@ -1,0 +1,47 @@
+<ContentTabs items={["GitHub Releases", "GitHub Development Builds", "Modrinth Releases"]}>
+  <ContentTab value="GitHub Releases">
+    Use [GitHub releases](https://github.com/whereareiam/Identica/releases) when you want stable published versions.
+
+    Download flow:
+
+    1. Open the [releases page](https://github.com/whereareiam/Identica/releases).
+    2. Open the release version you want to install.
+    3. Expand the release assets if they are collapsed.
+    4. Choose one installation style:
+
+    - download `Identica-BUNDLE-<version>.jar` if you want one runtime jar that can run on either supported proxy platform
+    - download `Identica-PLATFORMS-<version>.zip` if you want the platform-specific runtime jars instead
+    - also download `Identica-Credential-<version>.jar`
+    - also download `Identica-Premium-<version>.jar`
+  </ContentTab>
+  <ContentTab value="GitHub Development Builds">
+    Use [Development builds](https://github.com/whereareiam/Identica/actions/workflows/development.yml) when you want a build of the `dev` branch that is newer than the latest release. A maintainer starts them, so not every commit has one.
+
+    Download flow:
+
+    1. Open the [Development build workflow page](https://github.com/whereareiam/Identica/actions/workflows/development.yml).
+    2. Open the newest successful run for the `dev` branch.
+    3. Scroll to the artifacts section of that workflow run.
+    4. Download the artifact named `identica-plugins-dev-<commit>`.
+    5. Extract the downloaded archive.
+    6. Choose one installation style from the extracted files:
+
+    - use `Identica-BUNDLE-dev-<commit>.jar` if you want one runtime jar that can run on either supported proxy platform
+    - extract `Identica-PLATFORMS-dev-<commit>.zip` if you want the platform-specific runtime jars instead
+    - use `Identica-Credential-dev-<commit>.jar`
+    - use `Identica-Premium-dev-<commit>.jar`
+  </ContentTab>
+  <ContentTab value="Modrinth Releases">
+    Use Modrinth when you want release downloads from the project pages:
+
+    - [Identica](https://modrinth.com/plugin/identica)
+    - [Identica Premium Provider](https://modrinth.com/plugin/identica-premium-provider)
+    - [Identica Credential Provider](https://modrinth.com/plugin/identica-credential-provider)
+
+    Download flow:
+
+    1. Open each project page.
+    2. Open the versions/files list for the version you want.
+    3. Download matching released versions of all three artifacts before continuing.
+  </ContentTab>
+</ContentTabs>

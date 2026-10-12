@@ -1,0 +1,10 @@
+It is usually not a good idea to use the same target for both step routing and completion routing.
+In most cases, step targets should point to an authentication or transition destination, while completion should point to the place where the player is actually meant to end up.
+
+On both Velocity and BungeeCord, these `target` values are backend server names from your proxy configuration.
+
+If you want, you can still balance those requests across multiple backend servers, but that is not a feature of Identica itself.
+Identica only asks the proxy to route a player to the target you configured.
+
+Load balancing or target rewriting belongs to an external plugin.
+For example, a balancer plugin such as `PlayerBalancer` on Velocity can intercept a request for `auth-1` and redirect the player to another server such as `auth-3` according to its own rules.

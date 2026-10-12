@@ -1,0 +1,17 @@
+Do not stop at the first successful startup.
+After the baseline works, walk through the generated configuration and the rest of the docs so you understand what the plugin will do in your network.
+
+Some defaults are intentionally strict.
+For example, credential requirements may be stronger than what your players are used to, so review them before treating the setup as final.
+
+<Callout type="error" title="Protect the authentication flow">
+  Because Identica is an identity plugin, it does not try to own every command or routing behavior on the server. That is why it is strongly recommended to use a command filter or blocker for commands that could let players escape the authentication flow before they finish it.
+
+  Examples of dangerous behavior can include:
+
+  - switching servers before authentication is complete
+  - using commands that move the player into the real server environment too early
+  - reaching systems that should only be available after authentication
+
+  Many networks handle that with a separate blocker or filter plugin. Identica does not treat that as core identity-plugin functionality.
+</Callout>

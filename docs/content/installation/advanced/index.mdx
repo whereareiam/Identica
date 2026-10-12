@@ -10,8 +10,7 @@ In the current implementation, that shared state is provided through Redis.
 ## Scope
 
 This guide covers the advanced installation needs around shared state, restart continuity, and routing.
-Use the [Providers overview](../../providers/index.md) to see the full set of providers you can install and use.
-Those broader provider choices are not covered by this installation page.
+<Include src="../_partials/provider-scope.mdx" />
 
 ## What this path assumes
 
@@ -29,53 +28,7 @@ If multiple runtimes will share the same replicated state, keep them on the same
 
 ### Download the artifacts [step]
 
-<ContentTabs items={["GitHub Releases", "GitHub Development Builds", "Modrinth Releases"]}>
-  <ContentTab value="GitHub Releases">
-    Use [GitHub releases](https://github.com/whereareiam/Identica/releases) when you want stable published versions.
-
-    Download flow:
-
-    1. Open the [releases page](https://github.com/whereareiam/Identica/releases).
-    2. Open the release version you want to install.
-    3. Expand the release assets if they are collapsed.
-    4. Choose one installation style:
-
-    - download `Identica-BUNDLE-<version>.jar` if you want one runtime jar that can run on either supported proxy platform
-    - download `Identica-PLATFORMS-<version>.zip` if you want the platform-specific runtime jars instead
-    - also download `Identica-Credential-<version>.jar`
-    - also download `Identica-Premium-<version>.jar`
-  </ContentTab>
-  <ContentTab value="GitHub Development Builds">
-    Use [Development builds](https://github.com/whereareiam/Identica/actions/workflows/development.yml) when you want a build of the `dev` branch that is newer than the latest release. A maintainer starts them, so not every commit has one.
-
-    Download flow:
-
-    1. Open the [Development build workflow page](https://github.com/whereareiam/Identica/actions/workflows/development.yml).
-    2. Open the newest successful run for the `dev` branch.
-    3. Scroll to the artifacts section of that workflow run.
-    4. Download the artifact named `identica-plugins-dev-<commit>`.
-    5. Extract the downloaded archive.
-    6. Choose one installation style from the extracted files:
-
-    - use `Identica-BUNDLE-dev-<commit>.jar` if you want one runtime jar that can run on either supported proxy platform
-    - extract `Identica-PLATFORMS-dev-<commit>.zip` if you want the platform-specific runtime jars instead
-    - use `Identica-Credential-dev-<commit>.jar`
-    - use `Identica-Premium-dev-<commit>.jar`
-  </ContentTab>
-  <ContentTab value="Modrinth Releases">
-    Use Modrinth when you want release downloads from the project pages:
-
-    - [Identica](https://modrinth.com/plugin/identica)
-    - [Identica Premium Provider](https://modrinth.com/plugin/identica-premium-provider)
-    - [Identica Credential Provider](https://modrinth.com/plugin/identica-credential-provider)
-
-    Download flow:
-
-    1. Open each project page.
-    2. Open the versions/files list for the version you want.
-    3. Download matching released versions of all three artifacts before continuing.
-  </ContentTab>
-</ContentTabs>
+<Include src="../_partials/download-artifacts.mdx" />
 
 ### Place the runtime and provider jars [step]
 
@@ -86,17 +39,7 @@ If multiple runtimes will share the same replicated state, keep them on the same
 Start the platform once so Identica can create its initial files and folders.
 This first boot is only meant to let the plugin prepare its default configuration layout before you begin the shared-state setup.
 
-<Include src="../_partials/startup-warning.mdx" />
-
-If everything is fine, Identica will print its welcome message or banner after startup finishes.
-
-<Include src="../_partials/startup-failure.mdx" />
-
-Once that first boot has completed and the files were created, stop the proxy cleanly before editing the generated configuration.
-
-<Include src="../_partials/platform-first-boot.mdx" />
-
-<Include src="../_partials/feature-configuration.mdx" />
+<Include src="../_partials/first-boot.mdx" />
 
 ### Enable and order the providers [step]
 
@@ -150,240 +93,106 @@ If you need environment-specific naming, decide it before the rollout and then k
 Open `routing` and align targets with the backend names that actually exist.
 The default values are examples only.
 
-It is usually not a good idea to use the same target for both step routing and completion routing.
-In most cases, step targets should point to an authentication or transition destination, while completion should point to the place where the player is actually meant to end up.
+<Include src="../_partials/routing-targets.mdx" />
 
-<ContentTabs items={["Velocity", "BungeeCord"]}>
-  <ContentTab value="Velocity">
-    In Velocity, these `target` values are backend server names from your proxy configuration.
+For a segmented topology, a good baseline looks like this:
 
-    If you want, you can still balance those requests across multiple backend servers, but that is not a feature of Identica itself.
-    Identica only asks Velocity to route a player to the target you configured.
+```yaml
+defaults:
+  step:
+    target: auth
+  complete:
+    target: lobby
+scenarios:
+  registration:
+    step:
+      target: registration
+  migration:
+    step:
+      target: migration
+```
 
-    Load balancing or target rewriting belongs to an external plugin.
-    For example, a balancer plugin such as `PlayerBalancer` can intercept a request for `auth-1` and redirect the player to another server such as `auth-3` according to its own rules.
+Use your real server names, not the names shown here.
+Generated routing config leaves `scenarios` empty; add scenario entries only when a scenario needs to differ from `defaults`.
+If one step needs exceptional routing, use a step override instead of changing the whole scenario:
 
-    For a segmented topology, a good baseline looks like this:
+```yaml
+scenarios:
+  registration:
+    overrides:
+      steps:
+        your-step-id:
+          target: auth
+```
 
-    ```yaml
-    defaults:
-      step:
-        target: auth
-      complete:
-        target: lobby
-    scenarios:
-      registration:
-        step:
-          target: registration
-      migration:
-        step:
-          target: migration
-    ```
+That keeps the normal scenario route stable while still letting one specific step land somewhere else.
 
-    Use your real server names, not the names shown here.
-    Generated routing config leaves `scenarios` empty; add scenario entries only when a scenario needs to differ from `defaults`.
-    If one step needs exceptional routing, use a step override instead of changing the whole scenario:
+If you want something closer to a real advanced setup, you can also configure retries and more specific targets.
+A practical example looks like this:
 
-    ```yaml
-    scenarios:
-      registration:
-        overrides:
-          steps:
-            your-step-id:
-              target: auth
-    ```
+```yaml
+defaults:
+  step:
+    target: auth
+    attempts:
+      mode: RETRY_ONCE
+      maxAttempts: 2
+      retryDelay: 1s
+      consumeOnReached: false
+      consumeOnExhausted: true
+  complete:
+    target: lobby
+    attempts:
+      mode: NONE
+      maxAttempts: 1
+      retryDelay: 0s
+      consumeOnReached: true
+      consumeOnExhausted: true
+scenarios:
+  registration:
+    step:
+      target: register
+      attempts:
+        mode: RETRY_ONCE
+        maxAttempts: 2
+        retryDelay: 1s
+        consumeOnReached: false
+        consumeOnExhausted: true
+    complete:
+      target: lobby
+    overrides:
+      steps:
+        provider-selection:
+          target: register-fallback
+  migration:
+    step:
+      target: migrate
+      attempts:
+        mode: RETRY_ONCE
+        maxAttempts: 3
+        retryDelay: 2s
+        consumeOnReached: false
+        consumeOnExhausted: true
+    complete:
+      target: survival
+```
 
-    That keeps the normal scenario route stable while still letting one specific step land somewhere else.
+In that example:
 
-    If you want something closer to a real advanced setup, you can also configure retries and more specific targets.
-    A practical example looks like this:
+- `authentication`, `registration`, and `migration` each use their own step target
+- completion sends the player to the place they should end up after the flow is done
+- retries are enabled for step routing where temporary target issues are more likely
+- one registration step is overridden to a different server without changing the whole scenario
 
-    ```yaml
-    defaults:
-      step:
-        target: auth
-        attempts:
-          mode: RETRY_ONCE
-          maxAttempts: 2
-          retryDelay: 1s
-          consumeOnReached: false
-          consumeOnExhausted: true
-      complete:
-        target: lobby
-        attempts:
-          mode: NONE
-          maxAttempts: 1
-          retryDelay: 0s
-          consumeOnReached: true
-          consumeOnExhausted: true
-    scenarios:
-      registration:
-        step:
-          target: register
-          attempts:
-            mode: RETRY_ONCE
-            maxAttempts: 2
-            retryDelay: 1s
-            consumeOnReached: false
-            consumeOnExhausted: true
-        complete:
-          target: lobby
-        overrides:
-          steps:
-            provider-selection:
-              target: register-fallback
-      migration:
-        step:
-          target: migrate
-          attempts:
-            mode: RETRY_ONCE
-            maxAttempts: 3
-            retryDelay: 2s
-            consumeOnReached: false
-            consumeOnExhausted: true
-        complete:
-          target: survival
-    ```
+Use this kind of setup when different parts of the flow really do belong on different backend servers.
+If your network is simpler, keep the routing simpler too.
 
-    In that example:
-
-    - `authentication`, `registration`, and `migration` each use their own step target
-    - completion sends the player to the place they should end up after the flow is done
-    - retries are enabled for step routing where temporary target issues are more likely
-    - one registration step is overridden to a different server without changing the whole scenario
-
-    Use this kind of setup when different parts of the flow really do belong on different backend servers.
-    If your network is simpler, keep the routing simpler too.
-
-    If your hosting panel limits how many separate backend servers you can run, a lightweight limbo server can help.
-    One example is [PicoLimbo](https://picolimbo.quozul.dev/about/introduction.html), which can run with Velocity and gives you a virtual routing destination hosted through the proxy side instead of requiring another full gameplay server.
-  </ContentTab>
-  <ContentTab value="BungeeCord">
-    In BungeeCord, these `target` values are backend server names from your proxy configuration.
-
-    If you want, you can still balance those requests across multiple backend servers, but that is not a feature of Identica itself.
-    Identica only asks BungeeCord to route a player to the target you configured.
-
-    For a segmented topology, a good baseline looks like this:
-
-    ```yaml
-    defaults:
-      step:
-        target: auth
-      complete:
-        target: lobby
-    scenarios:
-      registration:
-        step:
-          target: registration
-      migration:
-        step:
-          target: migration
-    ```
-
-    Use your real server names, not the names shown here.
-    Generated routing config leaves `scenarios` empty; add scenario entries only when a scenario needs to differ from `defaults`.
-    If one step needs exceptional routing, use a step override instead of changing the whole scenario:
-
-    ```yaml
-    scenarios:
-      registration:
-        overrides:
-          steps:
-            your-step-id:
-              target: auth
-    ```
-
-    That keeps the normal scenario route stable while still letting one specific step land somewhere else.
-
-    If you want something closer to a real advanced setup, you can also configure retries and more specific targets.
-    A practical example looks like this:
-
-    ```yaml
-    defaults:
-      step:
-        target: auth
-        attempts:
-          mode: RETRY_ONCE
-          maxAttempts: 2
-          retryDelay: 1s
-          consumeOnReached: false
-          consumeOnExhausted: true
-      complete:
-        target: lobby
-        attempts:
-          mode: NONE
-          maxAttempts: 1
-          retryDelay: 0s
-          consumeOnReached: true
-          consumeOnExhausted: true
-    scenarios:
-      registration:
-        step:
-          target: register
-          attempts:
-            mode: RETRY_ONCE
-            maxAttempts: 2
-            retryDelay: 1s
-            consumeOnReached: false
-            consumeOnExhausted: true
-        complete:
-          target: lobby
-        overrides:
-          steps:
-            provider-selection:
-              target: register-fallback
-      migration:
-        step:
-          target: migrate
-          attempts:
-            mode: RETRY_ONCE
-            maxAttempts: 3
-            retryDelay: 2s
-            consumeOnReached: false
-            consumeOnExhausted: true
-        complete:
-          target: survival
-    ```
-
-    In that example:
-
-    - `authentication`, `registration`, and `migration` each use their own step target
-    - completion sends the player to the place they should end up after the flow is done
-    - retries are enabled for step routing where temporary target issues are more likely
-    - one registration step is overridden to a different server without changing the whole scenario
-
-    Use this kind of setup when different parts of the flow really do belong on different backend servers.
-    If your network is simpler, keep the routing simpler too.
-  </ContentTab>
-</ContentTabs>
+<Include src="../_partials/limbo-server.mdx" />
 
 ### Review security and refine the setup [step]
 
-Do not stop at the first successful startup.
-After the baseline works, walk through the generated configuration and the rest of the docs so you understand what the plugin will do in your network.
-
-Some defaults are intentionally strict.
-For example, credential requirements may be stronger than what your players are used to, so review them before treating the setup as final.
-
-<Callout type="error" title="Protect the authentication flow">
-  Because Identica is an identity plugin, it does not try to own every command or routing behavior on the server. That is why it is strongly recommended to use a command filter or blocker for commands that could let players escape the authentication flow before they finish it.
-
-  Examples of dangerous behavior can include:
-
-  - switching servers before authentication is complete
-  - using commands that move the player into the real server environment too early
-  - reaching systems that should only be available after authentication
-
-  Many networks handle that with a separate blocker or filter plugin. Identica does not treat that as core identity-plugin functionality.
-</Callout>
+<Include src="../_partials/review-security.mdx" />
 
 ### Get help or report issues [step]
 
-If you find a bug, need support, or want a feature, we are happy to help:
-
-- [GitHub issues and pull requests](https://github.com/whereareiam/Identica)
-- [Discord](https://discord.arcadeya.com)
-
-Critical fixes are usually handled quickly.
-Less critical improvements may be prioritized later.
+<Include src="../_partials/get-help.mdx" />

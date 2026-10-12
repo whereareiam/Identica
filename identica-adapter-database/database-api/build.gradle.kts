@@ -7,8 +7,10 @@ group = "me.whereareiam.identica"
 dependencies {
     api(projects.identicaApi)
 
-    // Schemas are Dialectica tables and Strata migrations; Identica provides both at runtime.
+    // Schemas are Dialectica tables and Strata migrations, and rows are read through Dialectica's entity access;
+    // Identica provides all of them at runtime.
     compileOnlyApi(libs.dialectica)
+    compileOnlyApi(libs.dialectica.adapter.jdbi)
     compileOnlyApi(libs.strata.adapter.database)
 }
 

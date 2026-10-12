@@ -5,11 +5,13 @@ import com.velocitypowered.api.plugin.Dependency;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.ProxyServer;
 import me.whereareiam.identica.IdenticaAPI;
+import me.whereareiam.identica.example.addon.notes.Notes;
 import org.slf4j.Logger;
 
 /**
  * Holds back chat and commands until a player has authenticated, the way an addon such as a chat or command
- * blocker would. It declares Identica as a dependency, so Velocity loads Identica first.
+ * blocker would, and keeps notes in a table of its own in Identica's database. It declares Identica as a dependency,
+ * so Velocity loads Identica first.
  */
 @Plugin(
 		id = "identica-example-addon",
@@ -39,6 +41,7 @@ public final class ExampleAddon {
 		identica.getEventManager().register(allowedCommands);
 
 		proxy.getEventManager().register(this, new AuthenticationGuard(identica.getPendingScenarioService(), allowedCommands));
+		Notes.open(identica).greet(logger);
 		logger.info("Example addon enabled");
 	}
 }

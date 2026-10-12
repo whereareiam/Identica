@@ -51,12 +51,7 @@ dependencies {
 }
 
 extensions.configure<AttacheExtension>("attache") {
-    library(libs.dialectica.bundle) {
-        relocate("me{}whereareiam{}dialectica", "me.whereareiam.identica.library.dialectica")
-    }
-
     library(libs.dialectica.adapter.jdbi) {
-        relocate("me{}whereareiam{}dialectica", "me.whereareiam.identica.library.dialectica")
         relocate("org{}jdbi", "me.whereareiam.identica.library.jdbi")
         relocate("io{}leangen{}geantyref", "me.whereareiam.identica.library.geantyref")
         // Dialectica comes from the bundle, in the version Identica declares.
@@ -64,23 +59,12 @@ extensions.configure<AttacheExtension>("attache") {
         excludeTransitive("me.whereareiam", "dialectica-common")
     }
 
-    library(libs.strata) {
-        relocate("me{}whereareiam{}strata", "me.whereareiam.identica.library.strata")
-    }
-
-    library(libs.strata.adapter.database) {
-        relocate("me{}whereareiam{}strata", "me.whereareiam.identica.library.strata")
-    }
-
     library(libs.strata.adapter.database.jdbi) {
-        relocate("me{}whereareiam{}strata", "me.whereareiam.identica.library.strata")
         relocate("org{}jdbi", "me.whereareiam.identica.library.jdbi")
         relocate("io{}leangen{}geantyref", "me.whereareiam.identica.library.geantyref")
     }
 
     library(libs.strata.adapter.database.dialectica) {
-        relocate("me{}whereareiam{}strata", "me.whereareiam.identica.library.strata")
-        relocate("me{}whereareiam{}dialectica", "me.whereareiam.identica.library.dialectica")
         // Dialectica comes from the bundle, in the version Identica declares.
         excludeTransitive("me.whereareiam", "dialectica")
         excludeTransitive("me.whereareiam", "dialectica-api")

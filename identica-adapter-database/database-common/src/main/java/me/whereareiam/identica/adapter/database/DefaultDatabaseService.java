@@ -7,7 +7,9 @@ import com.google.inject.name.Named;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.AccessLevel;
 import lombok.Getter;
+import me.whereareiam.dialectica.Dialectica;
 import me.whereareiam.dialectica.adapter.jdbi.DialecticaPlugin;
+import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.config.LoggerConfig;
 import me.whereareiam.identica.adapter.database.connection.DataSourceFactory;
 import me.whereareiam.identica.adapter.database.connection.DatabaseServerRequirement;
@@ -29,9 +31,10 @@ import java.nio.file.Path;
 /**
  * Identica's database, opened in {@link StartupPhase#PERSISTENCE}: opens the connection the {@code persistence}
  * document configures, refuses a server older than {@link DatabaseServerRequirement} allows, installs the core
- * schema, and provides access to Jdbi and the {@link DatabaseSchemaInstaller} that installs the other owners'
- * schemas on it. The Jdbi speaks the database's Dialectica dialect, so entities and the UUIDs and booleans of
- * hand-written queries are stored the way the schema declares them. It closes the connection when Identica stops.
+ * schema, and provides Jdbi, Dialectica's access to the rows of entities, and the {@link DatabaseSchemaInstaller}
+ * that installs the other owners' schemas on it. The Jdbi speaks the database's Dialectica dialect, so entities and
+ * the UUIDs and booleans of hand-written queries are stored the way the schema declares them. It closes the
+ * connection when Identica stops.
  */
 @Getter
 @Singleton
@@ -115,5 +118,13 @@ public class DefaultDatabaseService implements DatabaseService, RuntimeLifecycle
 	@Override
 	public boolean isInitialized() {
 		return jdbi != null;
+	}
+
+	@Override
+	public <T> @NotNull EntityAccess<T> access(@NotNull Class<T> entityType) {
+		if (!isInitialized())
+			throw new IllegalStateException("The database is not open yet; it opens in the persistence phase of the startup");
+
+		return EntityAccess.of(jdbi, Dialectica.entity(entityType));
 	}
 }

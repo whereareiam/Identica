@@ -12,5 +12,6 @@ dependencies {
     compileOnly(libs.dialectica.adapter.jdbi)
 
     testImplementation(projects.identicaAdapterDatabaseApi)
+    testImplementation(libs.dialectica.adapter.jdbi)
     testImplementation(libs.jdbi.core)
 }

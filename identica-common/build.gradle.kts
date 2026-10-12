@@ -29,12 +29,7 @@ dependencies {
 }
 
 extensions.configure<AttacheExtension>("attache") {
-    library(libs.strata) {
-        relocate("me{}whereareiam{}strata", "me.whereareiam.identica.library.strata")
-    }
-
     library(libs.strata.adapter.configura) {
-        relocate("me{}whereareiam{}strata", "me.whereareiam.identica.library.strata")
         relocate("com{}fasterxml{}jackson", "me.whereareiam.identica.library.jackson")
         relocate("org{}yaml{}snakeyaml", "me.whereareiam.identica.library.snakeyaml")
     }

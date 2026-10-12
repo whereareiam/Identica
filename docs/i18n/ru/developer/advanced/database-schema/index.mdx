@@ -1,7 +1,7 @@
 ---
 title: Схемы базы данных
 description: Как аддон объявляет свои таблицы в базе данных Identica и обновляет их между версиями.
-sourceHash: d163ca54548131475c113634ed30311ea1b45a7f
+sourceHash: c5649a18d36766d96d55fba7f36516061ad6a636
 ---
 
 Аддон, который хранит данные в базе данных Identica, объявляет свои таблицы как `DatabaseSchema` и устанавливает их через `SchemaInstaller` — оба интерфейса входят в API базы данных Identica. На новой установке Identica создаёт таблицы, на существующей — выполняет миграции аддона, а в таблице `strata_history` записывает, до какой версии дошла каждая схема. Прокси с общей базой данных устанавливают схему один раз: первый берёт блокировку, а остальные ждут его.
@@ -17,26 +17,20 @@ sourceHash: d163ca54548131475c113634ed30311ea1b45a7f
 
 ## Зависимости [#dependencies]
 
-Контракты базы данных находятся в `me.whereareiam.identica:database-api`, рядом с `me.whereareiam.identica:api`. Таблицы объявляются аннотациями [Dialectica](https://github.com/whereareiam/Dialectica), а миграции — это миграции [Strata](https://github.com/whereareiam/strata). Identica предоставляет все эти библиотеки во время работы, поэтому подключайте их только для компиляции:
+Контракты базы данных находятся в `me.whereareiam.identica:database-api`, рядом с `me.whereareiam.identica:api`. Таблицы объявляются аннотациями [Dialectica](https://github.com/whereareiam/Dialectica), строки читаются и записываются через `EntityAccess` из Dialectica, а миграции — это миграции [Strata](https://github.com/whereareiam/strata). Identica предоставляет все эти библиотеки во время работы, поэтому подключайте их только для компиляции:
 
 ```kotlin
 dependencies {
     compileOnly("me.whereareiam.identica:api:<version>")
     compileOnly("me.whereareiam.identica:database-api:<version>")
     compileOnly("me.whereareiam:dialectica:3.1.0")
+    compileOnly("me.whereareiam:dialectica-adapter-jdbi:3.1.0")
     compileOnly("me.whereareiam:strata-adapter-database:3.1.1")
     compileOnly("me.whereareiam:strata-adapter-database-dialectica:3.1.1")
 }
 ```
 
-Identica перемещает (relocate) обе библиотеки. Поэтому при сборке своего jar-файла аддон точно так же перемещает свои ссылки на них, не включая сами библиотеки в jar-файл, — так же, как это делают собственные провайдеры Identica. С Shadow это выглядит так:
-
-```kotlin
-tasks.shadowJar {
-    relocate("me.whereareiam.dialectica", "me.whereareiam.identica.library.dialectica")
-    relocate("me.whereareiam.strata", "me.whereareiam.identica.library.strata")
-}
-```
+Identica загружает Dialectica и Strata под их собственными именами пакетов и делит их со своими аддонами, поэтому обычный jar-файл аддона использует их как есть: он не включает их в себя и не перемещает (relocate). Собственный Jdbi аддону не нужен — Jdbi Identica остаётся внутри плагина.
 
 ## Объявление таблиц [#declaring-the-tables]
 
@@ -99,7 +93,7 @@ public final class NotesSchema implements DatabaseSchema {
 Устанавливайте схему при загрузке аддона, до того как он начнёт читать или записывать свои таблицы:
 
 ```java
-IdenticaAPI.getService(SchemaInstaller.class).install(new NotesSchema());
+identica.findService(SchemaInstaller.class).orElseThrow().install(new NotesSchema());
 ```
 
 Провайдер вместо этого привязывает свои схемы в собственном модуле, и Identica устанавливает их при загрузке провайдера:
@@ -109,6 +103,20 @@ Multibinder.newSetBinder(binder(), DatabaseSchema.class).addBinding().to(NotesSc
 ```
 
 Установка отклоняет схему, если потоки, от которых она зависит, ещё не установлены, а повторная установка той же схемы ничего не меняет. Схема, которую не удаётся привести к актуальному состоянию, выбрасывает `MigrationException` из Strata; в этом случае аддон не должен продолжать работу со своими таблицами.
+
+## Чтение и запись строк [#reading-and-writing-rows]
+
+`DatabaseService` выдаёт для сущности `EntityAccess` из Dialectica. Он работает на соединении Identica и говорит на диалекте её базы данных, поэтому столбцы хранятся так, как их объявляет схема:
+
+```java
+DatabaseService database = identica.findService(DatabaseService.class).orElseThrow();
+EntityAccess<NoteEntity> notes = database.access(NoteEntity.class);
+
+notes.upsert(new NoteEntity("first", uniqueId, "Remember the milk", null));
+Optional<NoteEntity> note = notes.find("first");
+```
+
+`EntityAccess` вставляет строки (`insert`, `upsert`), изменяет (`update`), находит (`find`) и удаляет (`delete`) их по первичному ключу. Каждая операция описана в [README Dialectica](https://github.com/whereareiam/Dialectica#reading-and-writing-entities-with-jdbi).
 
 ## Последующие изменения таблиц [#changing-the-tables-later]
 
@@ -144,7 +152,7 @@ public @NotNull OptionalInt baseline(@NotNull DatabaseContext database, int late
 ## Где уместен SQL [#where-sql-belongs]
 
 - Структура таблиц, их столбцов и индексов всегда объявляется через Dialectica — при создании, изменении и удалении: сущности описывают текущий вид, а миграция меняет структуру изменениями схемы Dialectica.
-- Во время работы аддон читает и записывает свои строки через `EntityAccess` из Dialectica. Написанный вручную запрос Jdbi нужен только для того, чего `EntityAccess` не умеет, и он отображает строки через маппер сущности, `@RegisterDialecticaMapper`.
+- Во время работы аддон читает и записывает свои строки через `EntityAccess` из Dialectica. Написанные вручную запросы не входят в API для аддонов: Jdbi Identica остаётся внутри плагина, где собственные модули Identica используют его для того, чего `EntityAccess` не умеет.
 - Разовый шаг с данными внутри миграции, который переносит или преобразует строки прежней структуры, может быть обычным SQL. Миграция описывает один неизменный шаг от точно известной прежней структуры и потом никогда не меняется, поэтому её SQL не следует за сущностями.
 
 Такой шаг с данными:

@@ -16,26 +16,20 @@ Every owner of tables has its own schema, called a stream:
 
 ## Dependencies
 
-The database contracts are in `me.whereareiam.identica:database-api`, next to `me.whereareiam.identica:api`. Tables are declared with [Dialectica](https://github.com/whereareiam/Dialectica) annotations, and migrations are [Strata](https://github.com/whereareiam/strata) migrations. Identica provides all of them at runtime, so compile against them:
+The database contracts are in `me.whereareiam.identica:database-api`, next to `me.whereareiam.identica:api`. Tables are declared with [Dialectica](https://github.com/whereareiam/Dialectica) annotations, rows are read and written through Dialectica's `EntityAccess`, and migrations are [Strata](https://github.com/whereareiam/strata) migrations. Identica provides all of them at runtime, so compile against them:
 
 ```kotlin
 dependencies {
     compileOnly("me.whereareiam.identica:api:<version>")
     compileOnly("me.whereareiam.identica:database-api:<version>")
     compileOnly("me.whereareiam:dialectica:3.1.0")
+    compileOnly("me.whereareiam:dialectica-adapter-jdbi:3.1.0")
     compileOnly("me.whereareiam:strata-adapter-database:3.1.1")
     compileOnly("me.whereareiam:strata-adapter-database-dialectica:3.1.1")
 }
 ```
 
-Identica relocates both libraries. An add-on therefore relocates its references to them the same way when it builds its jar, without bundling the libraries, as Identica's own providers do. With Shadow:
-
-```kotlin
-tasks.shadowJar {
-    relocate("me.whereareiam.dialectica", "me.whereareiam.identica.library.dialectica")
-    relocate("me.whereareiam.strata", "me.whereareiam.identica.library.strata")
-}
-```
+Identica loads Dialectica and Strata under their own package names and shares them with its add-ons, so the add-on's plain jar uses them as they are: it neither bundles nor relocates them. The add-on needs no Jdbi of its own; Identica keeps its Jdbi inside the plugin.
 
 ## Declaring the tables
 
@@ -98,7 +92,7 @@ A stream name is made of lowercase segments separated by slashes and never chang
 Install the schema when the add-on loads, before it reads or writes its tables:
 
 ```java
-IdenticaAPI.getService(SchemaInstaller.class).install(new NotesSchema());
+identica.findService(SchemaInstaller.class).orElseThrow().install(new NotesSchema());
 ```
 
 A provider binds its schemas in its own module instead, and Identica installs them when it loads the provider:
@@ -108,6 +102,20 @@ Multibinder.newSetBinder(binder(), DatabaseSchema.class).addBinding().to(NotesSc
 ```
 
 Installing refuses a schema whose required streams are not installed yet, and installing the same schema again changes nothing. A schema that cannot be brought up to date throws Strata's `MigrationException`; the add-on must not continue on its tables then.
+
+## Reading and writing rows
+
+The `DatabaseService` hands out Dialectica's `EntityAccess` for an entity. It works on Identica's connection and speaks the database's dialect, so the columns are stored the way the schema declares them:
+
+```java
+DatabaseService database = identica.findService(DatabaseService.class).orElseThrow();
+EntityAccess<NoteEntity> notes = database.access(NoteEntity.class);
+
+notes.upsert(new NoteEntity("first", uniqueId, "Remember the milk", null));
+Optional<NoteEntity> note = notes.find("first");
+```
+
+`EntityAccess` inserts, upserts, updates, finds and deletes rows by their primary key. The [Dialectica README](https://github.com/whereareiam/Dialectica#reading-and-writing-entities-with-jdbi) describes each operation.
 
 ## Changing the tables later
 
@@ -143,7 +151,7 @@ public @NotNull OptionalInt baseline(@NotNull DatabaseContext database, int late
 ## Where SQL belongs
 
 - The structure of the tables, their columns and indexes, is always declared with Dialectica, whether it is created, altered or dropped: the entities describe the current form, and a migration changes the structure through Dialectica schema changes.
-- At runtime, the add-on reads and writes its rows through Dialectica's `EntityAccess`. A hand-written Jdbi query is only for what `EntityAccess` does not cover, and it maps rows through the entity mapper, `@RegisterDialecticaMapper`.
+- At runtime, the add-on reads and writes its rows through Dialectica's `EntityAccess`. Hand-written queries are not part of the add-on API: Identica's Jdbi stays inside the plugin, where Identica's own modules use it for what `EntityAccess` does not cover.
 - A one-time data step inside a migration, which moves or transforms the rows of a past layout, may be plain SQL. A migration describes one fixed step from an exact past layout and never changes afterwards, so its SQL does not follow the entities.
 
 Such a data step:

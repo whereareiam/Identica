@@ -24,9 +24,6 @@ public final class StatisticsErrors {
 			"Access denied for user|password authentication failed|Wrong user name or password"
 	);
 
-	private StatisticsErrors() {
-	}
-
 	/**
 	 * Returns the policy of Identica's error reports.
 	 *

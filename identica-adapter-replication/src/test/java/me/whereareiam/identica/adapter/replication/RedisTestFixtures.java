@@ -9,9 +9,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 public final class RedisTestFixtures {
-	private RedisTestFixtures() {
-	}
-
 	public static Replication enabledReplication(String host, int port) {
 		Replication replication = new Replication();
 		replication.setEnabled(true);

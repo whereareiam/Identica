@@ -32,9 +32,6 @@ import java.util.Locale;
 public final class EarlierInstallation {
 	private static final String SEPARATOR = "-- statement";
 
-	private EarlierInstallation() {
-	}
-
 	/**
 	 * Creates a layout in the given test database.
 	 *

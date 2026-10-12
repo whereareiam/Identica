@@ -37,9 +37,6 @@ public final class TestDatabases {
 	private static final Lazy<MariaDBContainer> MARIADB = new Lazy<>(() -> DatabaseContainers.mariadb("mariadb:12"));
 	private static final Lazy<MySQLContainer> MYSQL = new Lazy<>(() -> DatabaseContainers.mysql("mysql:8.0"));
 
-	private TestDatabases() {
-	}
-
 	/**
 	 * Returns every database available to this run.
 	 */

@@ -15,7 +15,4 @@ public final class AccountTable {
 
 	/** Its primary key column: the account's unique id. */
 	public static final String KEY = "unique_id";
-
-	private AccountTable() {
-	}
 }

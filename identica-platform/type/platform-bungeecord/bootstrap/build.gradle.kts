@@ -9,8 +9,15 @@ platform {
 }
 
 dependencies {
+    testImplementation(libs.jdbi.core)
+    testImplementation(libs.jdbi.sqlobject)
+    testImplementation(libs.dialectica.bundle)
+    testImplementation(libs.dialectica.adapter.jdbi)
+    testImplementation(projects.identicaAdapterDatabaseApi)
+    testImplementation(libs.commandant)
     testImplementation(libs.bungeecord)
     testImplementation(libs.cloud.bungee)
+    testImplementation(libs.adventure.platform.bungeecord)
 
     implementation(projects.platformBungeecordApi)
     implementation(libs.statistica.platform.bungeecord) {
@@ -29,6 +36,8 @@ dependencies {
     testRuntimeOnly(libs.strata)
     testRuntimeOnly(libs.strata.adapter.configura)
     testRuntimeOnly(libs.strata.adapter.database)
+    testRuntimeOnly(libs.jedis)
+    testRuntimeOnly(libs.hikaricp)
 }
 
 tasks.processResources {

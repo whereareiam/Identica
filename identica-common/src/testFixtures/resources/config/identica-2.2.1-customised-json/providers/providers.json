@@ -1,0 +1,120 @@
+{
+  "_version": 1,
+  "conflicts": {
+    "username": {
+      "pairs": [
+        {
+          "providers": [
+            "premium",
+            "credential"
+          ],
+          "force": true,
+          "resolvers": [
+            {
+              "id": "format_display",
+              "parameters": {
+                "format": {
+                  "pattern": "{username}-{incomingProvider}"
+                },
+                "target": "joiner"
+              }
+            }
+          ]
+        },
+        {
+          "providers": [
+            "credential",
+            "example"
+          ],
+          "force": false,
+          "resolvers": [
+            {
+              "id": "format_display",
+              "parameters": {
+                "format": {
+                  "pattern": "{username}~"
+                },
+                "target": "existing"
+              }
+            }
+          ]
+        }
+      ],
+      "default": {
+        "providers": [ ],
+        "force": true,
+        "resolvers": [
+          {
+            "id": "format_display",
+            "parameters": {
+              "format": {
+                "pattern": "{username}+"
+              },
+              "target": "joiner"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "providers": [
+    {
+      "id": "credential",
+      "displayName": "Login",
+      "enabled": true,
+      "priority": 60,
+      "overrides": {
+        "allowRecognitionOnUntrustedIp": true,
+        "sessionConcurrencyPolicy": "ALLOW_MULTIPLE",
+        "recognition": {
+          "enabled": false,
+          "signals": [
+            "IP"
+          ]
+        }
+      },
+      "verification": {
+        "enabled": true,
+        "required": false,
+        "unavailableSelectionPolicy": "CLEAR_SELECTION",
+        "methods": [
+          {
+            "id": "totp",
+            "enabled": true,
+            "priority": 90,
+            "unavailableSelectionPolicy": "KEEP_LOCKED"
+          }
+        ]
+      },
+      "entrypoints": [ ]
+    },
+    {
+      "id": "premium",
+      "displayName": "Mojang",
+      "enabled": false,
+      "priority": 40,
+      "overrides": {
+        "allowRecognitionOnUntrustedIp": false,
+        "recognition": {
+          "signals": [ ]
+        }
+      },
+      "verification": {
+        "enabled": false,
+        "required": true,
+        "unavailableSelectionPolicy": "KEEP_LOCKED",
+        "methods": [
+          {
+            "id": "totp",
+            "enabled": true,
+            "priority": 100,
+            "unavailableSelectionPolicy": "KEEP_LOCKED"
+          }
+        ]
+      },
+      "entrypoints": [
+        "premium.example.net"
+      ]
+    }
+  ]
+}

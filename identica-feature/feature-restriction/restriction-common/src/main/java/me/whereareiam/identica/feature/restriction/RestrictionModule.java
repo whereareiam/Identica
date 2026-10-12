@@ -3,15 +3,20 @@ package me.whereareiam.identica.feature.restriction;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Named;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.configura.Configura;
 import me.whereareiam.identica.feature.restriction.config.RestrictionSettings;
+import me.whereareiam.identica.feature.restriction.config.migration.RestrictionConfigMigrations;
 import me.whereareiam.identica.feature.restriction.config.provider.RestrictionSettingsProvider;
 import me.whereareiam.identica.feature.restriction.registry.DefaultRestrictionSignalRegistry;
 import me.whereareiam.identica.feature.restriction.registry.DefaultRestrictionTypeRegistry;
 import me.whereareiam.identica.feature.restriction.registry.RestrictionSignalRegistry;
 import me.whereareiam.identica.feature.restriction.registry.type.RestrictionTypeRegistry;
 import me.whereareiam.identica.feature.restriction.registry.type.RestrictionTypeResolverRegistry;
+import me.whereareiam.strata.MigrationStream;
+import me.whereareiam.strata.adapter.configura.ConfigContext;
 
 import java.nio.file.Path;
 
@@ -35,5 +40,14 @@ public class RestrictionModule extends AbstractModule {
 	@Named("restrictionFeaturePath")
 	Path provideRestrictionFeaturePath() {
 		return restrictionFeaturePath;
+	}
+
+	/**
+	 * Adds this feature's configuration migrations to those Identica runs before any document is read.
+	 */
+	@ProvidesIntoSet
+	@Singleton
+	MigrationStream<ConfigContext> restrictionConfigMigrations(Configura configura, @Named("dataPath") Path dataPath) {
+		return RestrictionConfigMigrations.on(configura, dataPath);
 	}
 }

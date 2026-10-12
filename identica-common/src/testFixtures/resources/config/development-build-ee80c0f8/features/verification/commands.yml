@@ -1,0 +1,126 @@
+commands:
+  verification-enroll-confirm:
+    enabled: true
+    aliases:
+      - "2fa enroll confirm"
+    permission: ""
+    description: "Confirm pending verification enrollment"
+    usage: "{alias} <input>"
+    arguments:
+      input: "Code or saved"
+    hide: true
+    cooldown:
+      enabled: false
+      duration: 0
+      group: "default"
+  verification-enroll-cancel:
+    enabled: true
+    aliases:
+      - "2fa enroll cancel"
+    permission: ""
+    description: "Cancel pending verification enrollment"
+    usage: "{alias}"
+    arguments: {}
+    hide: true
+    cooldown:
+      enabled: false
+      duration: 0
+      group: "default"
+  verification-confirm:
+    enabled: true
+    aliases:
+      - "2fa confirm"
+    permission: ""
+    description: "Confirm a pending verification challenge"
+    usage: "{alias} <input>"
+    arguments:
+      input: "Verification code"
+    hide: true
+    cooldown:
+      enabled: false
+      duration: 0
+      group: "default"
+  verification-status:
+    enabled: true
+    aliases:
+      - "2fa status"
+    permission: ""
+    description: "Show verification status"
+    usage: "{alias}"
+    arguments: {}
+    hide: false
+    cooldown:
+      enabled: false
+      duration: 0
+      group: "default"
+  verification-use:
+    enabled: true
+    aliases:
+      - "2fa use"
+    permission: ""
+    description: "Select a verification method for a provider"
+    usage: "{alias} <provider> <method>"
+    arguments:
+      provider: "Provider id"
+      method: "Method id"
+    hide: false
+    cooldown:
+      enabled: false
+      duration: 0
+      group: "default"
+  verification-enroll:
+    enabled: true
+    aliases:
+      - "2fa enroll"
+    permission: ""
+    description: "Start verification method enrollment"
+    usage: "{alias} <method>"
+    arguments:
+      method: "Method id"
+    hide: false
+    cooldown:
+      enabled: false
+      duration: 0
+      group: "default"
+  verification-disable:
+    enabled: true
+    aliases:
+      - "2fa disable"
+    permission: ""
+    description: "Disable an enrolled verification method"
+    usage: "{alias} <method>"
+    arguments:
+      method: "Method id"
+    hide: false
+    cooldown:
+      enabled: false
+      duration: 0
+      group: "default"
+  admin-verification-reset:
+    enabled: true
+    aliases:
+      - "identica admin 2fa reset"
+    permission: "identica.admin.2fa.reset"
+    description: "Reset verification state for a player"
+    usage: "{alias} <target> [provider]"
+    arguments:
+      target: "Player/UUID"
+      provider: "Provider id"
+    hide: false
+    cooldown:
+      enabled: false
+      duration: 0
+      group: "default"
+  verification:
+    enabled: true
+    aliases:
+      - "2fa"
+    permission: ""
+    description: "Verification methods"
+    usage: "{alias}"
+    arguments: {}
+    hide: true
+    cooldown:
+      enabled: false
+      duration: 0
+      group: "default"

@@ -1,0 +1,18 @@
+defaults:
+  step:
+    target: ""
+    attempts:
+      mode: "RETRY_ONCE"
+      maxAttempts: 1
+      retryDelay: "0m"
+      consumeOnReached: false
+      consumeOnExhausted: true
+  complete:
+    target: ""
+    attempts:
+      mode: "NONE"
+      maxAttempts: 1
+      retryDelay: "0m"
+      consumeOnReached: true
+      consumeOnExhausted: true
+scenarios: {}

@@ -1,0 +1,51 @@
+_version: 1
+providers:
+  - id: "credential"
+    displayName: "CR"
+    enabled: true
+    priority: 50
+    overrides:
+      recognition:
+        signals: []
+        eligibility:
+          allowOnUntrustedIp: false
+    joinRestriction:
+      enabled: false
+      allow:
+        - "RECOGNIZED"
+        - "LINKED"
+    verification:
+      enabled: true
+      required: false
+      unavailableSelectionPolicy: "KEEP_LOCKED"
+      methods:
+        - id: "totp"
+          enabled: true
+          priority: 100
+          unavailableSelectionPolicy: "KEEP_LOCKED"
+    entrypoints:
+      - "credential.arcadeya.com"
+  - id: "premium"
+    displayName: "PR"
+    enabled: true
+    priority: 100
+    overrides:
+      recognition:
+        signals: []
+        eligibility:
+          allowOnUntrustedIp: false
+    joinRestriction:
+      enabled: false
+      allow:
+        - "RECOGNIZED"
+    verification:
+      enabled: true
+      required: false
+      unavailableSelectionPolicy: "KEEP_LOCKED"
+      methods:
+        - id: "totp"
+          enabled: true
+          priority: 100
+          unavailableSelectionPolicy: "KEEP_LOCKED"
+    entrypoints:
+      - "premium.arcadeya.com"

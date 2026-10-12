@@ -3,6 +3,10 @@ package me.whereareiam.identica.testing.upgrade;
 import me.whereareiam.anvil.api.process.ProcessConsole;
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.identica.adapter.database.testing.schema.EarlierInstallation;
+import me.whereareiam.identica.common.config.testing.EarlierConfiguration;
+import me.whereareiam.identica.feature.verification.model.config.VerificationSettings;
+import me.whereareiam.identica.model.config.Engine;
+import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
@@ -26,16 +30,21 @@ import java.util.function.Consumer;
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * A proxy starts on the SQLite database an installation of Identica 2.2.1 left, upgrades it, and its players
- * keep their accounts. The configuration files are those of this version, since their upgrade is not part of
- * this journey. Upgrade journeys run through {@code anvilUpgradeTest}, not with the other journeys.
+ * A proxy starts on what an installation of Identica 2.2.1 left, upgrades it, and its players keep their accounts:
+ * the SQLite database, with the configuration files of this version, and then the database together with the
+ * configuration directory of a 2.2.1 installation whose operator changed its settings. Upgrade journeys run through
+ * {@code anvilUpgradeTest}, not with the other journeys.
  */
 @Tag("upgrade")
 class Release221UpgradeTest {
 	/** The password the 2.2.1 database holds a bcrypt hash of for Upgrader. */
 	private static final String PASSWORD = "Upgrade-221";
+
+	/** The line the customised 2.2.1 directory adds to each of its messages. */
+	private static final String CUSTOMISED = "[customised]";
 
 	@Test
 	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Release221Database.class)
@@ -59,29 +68,89 @@ class Release221UpgradeTest {
 				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody());
 	}
 
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Release221Directory.class)
+	void startsOnACustomised221DirectoryWithItsSettings(ScenarioContext anvil) {
+		// The operator's settings reached their places: its timeouts and its texts, and its completion server.
+		Engine engine = ProxyConfiguration.generated(anvil, "engine.yml", Engine.class);
+		assertEquals(Duration.ofMinutes(7), engine.getBehavior().getHandshakeInstructionTtl());
+		assertEquals(Duration.ofMinutes(9), engine.getBehavior().getBridgeTtl());
+		VerificationSettings verification = ProxyConfiguration.generated(anvil, "features/verification/settings.yml", VerificationSettings.class);
+		assertEquals(8, verification.getTotp().getDigits());
+		Messages messages = ProxyConfiguration.generated(anvil, "messages.yml", Messages.class);
+		assertEquals(CUSTOMISED, last(messages.getScenarios().getRegistration().getRouting().getMissingServer()));
+
+		Journey.offline(anvil, "Upgrader").join()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody())
+				.leave();
+
+		// The registration scenario selects the only provider on its own, as the operator set in 2.2.1.
+		Journey.offline(anvil, "Newcomer").join()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt());
+	}
+
+	private static String last(List<String> lines) {
+		return lines.get(lines.size() - 1);
+	}
+
 	/**
-	 * Places the SQLite database of a 2.2.1 installation, built from the layouts schema tests upgrade, in the
-	 * proxy's data directory.
+	 * Builds the SQLite database of a 2.2.1 installation from the layouts schema tests upgrade.
+	 */
+	private static Path release221Database() {
+		try {
+			Path directory = Files.createTempDirectory("identica-2.2.1-");
+			directory.toFile().deleteOnExit();
+			Path database = directory.resolve("identica.db");
+			database.toFile().deleteOnExit();
+			try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + database)) {
+				for (String owner : List.of("account", "verification", "credential"))
+					EarlierInstallation.create(connection, DatabaseType.SQLITE, "identica-2.2.1/" + owner);
+			}
+
+			return database;
+		} catch (IOException failure) {
+			throw new UncheckedIOException(failure);
+		} catch (SQLException failure) {
+			throw new IllegalStateException("Could not build the 2.2.1 database", failure);
+		}
+	}
+
+	/**
+	 * Places the SQLite database of a 2.2.1 installation in the proxy's data directory.
 	 */
 	private static final class Release221Database implements Consumer<ProxyConfiguration> {
 		@Override
 		public void accept(ProxyConfiguration proxy) {
-			try {
-				Path directory = Files.createTempDirectory("identica-2.2.1-");
-				directory.toFile().deleteOnExit();
-				Path database = directory.resolve("identica.db");
-				database.toFile().deleteOnExit();
-				try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + database)) {
-					for (String owner : List.of("account", "verification", "credential"))
-						EarlierInstallation.create(connection, DatabaseType.SQLITE, "identica-2.2.1/" + owner);
-				}
+			proxy.seed("identica.db", release221Database());
+		}
+	}
 
-				proxy.seed("identica.db", database);
+	/**
+	 * Places the database and the configuration directory of a customised 2.2.1 installation in the proxy's data
+	 * directory, in place of the files this version's test network writes.
+	 */
+	private static final class Release221Directory implements Consumer<ProxyConfiguration> {
+		@Override
+		public void accept(ProxyConfiguration proxy) {
+			proxy.seed("identica.db", release221Database());
+			try {
+				Path directory = Files.createTempDirectory("identica-2.2.1-config-");
+				directory.toFile().deleteOnExit();
+				EarlierConfiguration.copy(EarlierConfiguration.RELEASE_221_CUSTOMISED, directory);
+				for (String file : EarlierConfiguration.files(EarlierConfiguration.RELEASE_221_CUSTOMISED)) {
+					proxy.omit(file);
+					proxy.seed(file, directory.resolve(file));
+				}
 			} catch (IOException failure) {
 				throw new UncheckedIOException(failure);
-			} catch (SQLException failure) {
-				throw new IllegalStateException("Could not build the 2.2.1 database", failure);
 			}
+			for (String file : List.of("engine.yml", "routing.yml"))
+				proxy.omit(file);
 		}
 	}
 }

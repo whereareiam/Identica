@@ -1,0 +1,127 @@
+{
+  "_version": 1,
+  "level": 3,
+  "connection": {
+    "handshakeInstructionTtl": "7m",
+    "attemptTtl": "8m",
+    "reservationTtl": "20m",
+    "prepareStateTtl": "9m",
+    "uniqueIdMode": "OFFLINE",
+    "routing": {
+      "defaults": {
+        "step": {
+          "target": "auth",
+          "attempts": {
+            "mode": "RETRY_LIMITED",
+            "maxAttempts": 3,
+            "retryDelay": "1s",
+            "consumeOnReached": true,
+            "consumeOnExhausted": false
+          }
+        },
+        "complete": {
+          "target": "lobby",
+          "attempts": {
+            "mode": "RETRY_ONCE",
+            "maxAttempts": 2,
+            "retryDelay": "2s",
+            "consumeOnReached": false,
+            "consumeOnExhausted": false
+          }
+        }
+      },
+      "scenarios": { }
+    },
+    "sessions": {
+      "concurrencyPolicy": "REJECT_NEW",
+      "activeTtl": "6h",
+      "recognition": {
+        "enabled": true,
+        "validity": "6h",
+        "defaultSignals": [
+          "USERNAME",
+          "IP"
+        ],
+        "untrustedIps": {
+          "enabled": false,
+          "entries": [
+            "10.0.0.0/8"
+          ]
+        }
+      }
+    },
+    "scenarios": {
+      "authentication": {
+        "pipelineTtl": "4m",
+        "advanceLockTtl": "3s",
+        "allowResume": true,
+        "journeyMode": "INTERACTIVE",
+        "journeyPolicy": "STRICT",
+        "pipelineConcurrencyPolicy": "REPLACE_EXISTING"
+      },
+      "registration": {
+        "pipelineTtl": "4m",
+        "advanceLockTtl": "3s",
+        "allowResume": true,
+        "journeyMode": "INTERACTIVE",
+        "journeyPolicy": "STRICT",
+        "pipelineConcurrencyPolicy": "REPLACE_EXISTING",
+        "autoSelectSingleProvider": true
+      },
+      "migration": {
+        "pipelineTtl": "4m",
+        "advanceLockTtl": "3s",
+        "allowResume": false,
+        "journeyMode": "INTERACTIVE",
+        "journeyPolicy": "STRICT"
+      }
+    },
+    "sentinels": {
+      "resumeSpam": {
+        "enabled": true,
+        "maxAttempts": 5,
+        "lockout": {
+          "enabled": false,
+          "duration": "1m"
+        },
+        "warning": {
+          "enabled": true,
+          "thresholdPercentage": 50
+        },
+        "active": true
+      }
+    }
+  },
+  "listeners": {
+    "events": {
+      "com.velocitypowered.api.event.connection.PreLoginEvent": {
+        "register": true,
+        "priority": "NORMAL"
+      },
+      "com.velocitypowered.api.event.player.GameProfileRequestEvent": {
+        "register": true,
+        "priority": "NORMAL"
+      },
+      "com.velocitypowered.api.event.connection.LoginEvent": {
+        "register": true,
+        "priority": "NORMAL"
+      },
+      "com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent": {
+        "register": true,
+        "priority": "HIGH"
+      },
+      "com.velocitypowered.api.event.player.ServerPreConnectEvent": {
+        "register": true,
+        "priority": "HIGH"
+      },
+      "com.velocitypowered.api.event.player.ServerPostConnectEvent": {
+        "register": true,
+        "priority": "LOW"
+      },
+      "com.velocitypowered.api.event.connection.DisconnectEvent": {
+        "register": true,
+        "priority": "NORMAL"
+      }
+    }
+  }
+}

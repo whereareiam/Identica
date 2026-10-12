@@ -1,0 +1,34 @@
+_version: 1
+commands:
+  premium-cancel:
+    enabled: true
+    aliases:
+      - "premium cancel"
+    permission: ""
+    description: "Cancel premium migration"
+    usage: "{alias}"
+    arguments: {}
+    hide: true
+  premium:
+    enabled: true
+    aliases:
+      - "premium"
+    permission: ""
+    description: "Premium account migration"
+    usage: "{alias}"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments: {}
+    hide: false
+  premium-confirm:
+    enabled: true
+    aliases:
+      - "premium confirm"
+    permission: ""
+    description: "Confirm premium migration"
+    usage: "{alias} [input]"
+    arguments:
+      input: "Code"
+    hide: true

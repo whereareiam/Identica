@@ -1,0 +1,31 @@
+_version: 2
+level: 2
+identity:
+  uniqueIdMode: "RANDOM"
+  reservationTtl: "15m"
+sessions:
+  concurrencyPolicy: "REPLACE_EXISTING"
+  heartbeatTimeout: "30s"
+listeners:
+  events:
+    com.velocitypowered.api.event.connection.PreLoginEvent:
+      register: true
+      priority: "NORMAL"
+    com.velocitypowered.api.event.player.GameProfileRequestEvent:
+      register: true
+      priority: "NORMAL"
+    com.velocitypowered.api.event.connection.LoginEvent:
+      register: true
+      priority: "NORMAL"
+    com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent:
+      register: true
+      priority: "HIGH"
+    com.velocitypowered.api.event.player.ServerPreConnectEvent:
+      register: true
+      priority: "HIGH"
+    com.velocitypowered.api.event.player.ServerPostConnectEvent:
+      register: true
+      priority: "NORMAL"
+    com.velocitypowered.api.event.connection.DisconnectEvent:
+      register: true
+      priority: "NORMAL"

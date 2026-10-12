@@ -1,0 +1,102 @@
+_version: 1
+level: 2
+connection:
+  handshakeInstructionTtl: "10m"
+  attemptTtl: "10m"
+  reservationTtl: "15m"
+  prepareStateTtl: "10m"
+  uniqueIdMode: "RANDOM"
+  routing:
+    defaults:
+      step:
+        target: "auth"
+        attempts:
+          mode: "RETRY_ONCE"
+          maxAttempts: 1
+          retryDelay: "0m"
+          consumeOnReached: false
+          consumeOnExhausted: true
+      complete:
+        target: "survival"
+        attempts:
+          mode: "NONE"
+          maxAttempts: 1
+          retryDelay: "0m"
+          consumeOnReached: true
+          consumeOnExhausted: true
+    scenarios: {}
+  sessions:
+    concurrencyPolicy: "REPLACE_EXISTING"
+    activeTtl: "12h"
+    recognition:
+      enabled: false
+      validity: "12h"
+      defaultSignals:
+        - "USERNAME"
+        - "IP"
+        - "VIRTUAL_HOST"
+      eligibility:
+        untrustedIps:
+          enabled: true
+          entries:
+            - "127.0.0.1"
+            - "::1"
+            - "10.0.0.0/8"
+            - "172.16.0.0/12"
+            - "192.168.0.0/16"
+  scenarios:
+    authentication:
+      pipelineTtl: "5m"
+      advanceLockTtl: "5s"
+      allowResume: true
+      journeyMode: "SEAMLESS"
+      journeyPolicy: "PREFER"
+      pipelineConcurrencyPolicy: "DENY_NEW"
+    registration:
+      pipelineTtl: "5m"
+      advanceLockTtl: "5s"
+      allowResume: true
+      journeyMode: "SEAMLESS"
+      journeyPolicy: "PREFER"
+      pipelineConcurrencyPolicy: "DENY_NEW"
+      autoSelectSingleProvider: false
+    migration:
+      pipelineTtl: "5m"
+      advanceLockTtl: "5s"
+      allowResume: true
+      journeyMode: "INTERACTIVE"
+      journeyPolicy: "PREFER"
+  sentinels:
+    resumeSpam:
+      enabled: false
+      maxAttempts: 10
+      lockout:
+        enabled: true
+        duration: "30s"
+      warning:
+        enabled: false
+        thresholdPercentage: 0
+      active: false
+listeners:
+  events:
+    com.velocitypowered.api.event.connection.PreLoginEvent:
+      register: true
+      priority: "NORMAL"
+    com.velocitypowered.api.event.player.GameProfileRequestEvent:
+      register: true
+      priority: "NORMAL"
+    com.velocitypowered.api.event.connection.LoginEvent:
+      register: true
+      priority: "NORMAL"
+    com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent:
+      register: true
+      priority: "HIGH"
+    com.velocitypowered.api.event.player.ServerPreConnectEvent:
+      register: true
+      priority: "HIGH"
+    com.velocitypowered.api.event.player.ServerPostConnectEvent:
+      register: true
+      priority: "NORMAL"
+    com.velocitypowered.api.event.connection.DisconnectEvent:
+      register: true
+      priority: "NORMAL"

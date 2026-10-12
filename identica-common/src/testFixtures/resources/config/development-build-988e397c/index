@@ -1,0 +1,8 @@
+commands.yml
+messages.yml
+persistence.yml
+providers/providers.yml
+replication.yml
+settings.yml
+type=YAML
+verification.yml

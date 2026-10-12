@@ -1,0 +1,89 @@
+_version: 1
+methods:
+  totp:
+    pending:
+      - " "
+      - " <green><bold>Identica</bold>"
+      - " "
+      - "  <white>Scan or enter this TOTP secret:</white>"
+      - "   <gray>{secret}</gray>"
+      - " "
+      - "  <click:open_url:'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={uriEncoded}'><green>[OPEN QR CODE]</green></click>"
+      - " "
+      - "  <white>Use <yellow>/2fa enroll confirm</yellow> <gray>[Code]</gray> to continue.</white>"
+      - " "
+commands:
+  playerOnly: "{prefix}<white>This command can only be used by a player.</white>"
+  notAllowed: "{prefix}<white>This verification action is not allowed.</white>"
+  status:
+    body:
+      - " "
+      - " <green><bold>Identica</bold>"
+      - "  <white>Here you can see all enrolled 2FA methods</white>"
+      - "  <white>and to which providers they are assigned.</white>"
+      - " "
+      - "  <white>Enrolled methods:</white>"
+      - "{enrollments}"
+      - " "
+      - "  <white>Provider selections:</white>"
+      - "{selections}"
+      - " "
+    enrollmentEntry:
+      format: "  <dark_gray>▪</dark_gray> <aqua>{methodDisplayName}</aqua> <gray>[{enabledAt}]</gray>"
+      emptyFormat: "  <dark_gray>▪</dark_gray> <aqua>{methodDisplayName}</aqua>"
+    selectionEntry:
+      format: "  <dark_gray>▪</dark_gray> <white>{provider}</white>: <green>{methodDisplayName}</green>"
+      emptyFormat: "  <dark_gray>▪</dark_gray> <white>{provider}</white>"
+    emptyEnrollments: "  <dark_gray>▪</dark_gray> <gray>No enrolled methods</gray>"
+    emptySelections: "  <dark_gray>▪</dark_gray> <gray>No provider selections</gray>"
+  enroll:
+    unknownMethod: "{prefix}<white>Unknown verification method <gray>{methodDisplayName}</gray>.</white>"
+    alreadyEnrolled: "{prefix}<white>Method <gray>{methodDisplayName}</gray> is already enrolled.</white>"
+  confirm:
+    noPending: "{prefix}<white>No pending verification action.</white>"
+    invalidCode: "{prefix}<white>Invalid verification code.</white>"
+    protectedActionSelectionRequired: "{prefix}<white>Select a verification method for your current provider before continuing.</white>"
+    protectedActionSessionRequired: "{prefix}<white>You must have an <red>active session</red> to confirm this protected action.</white>"
+    methodUnavailable: "{prefix}<white>Method <gray>{methodDisplayName}</gray> is not available for <gray>{provider}</gray>.</white>"
+    enabled: "{prefix}<white>Verification method <green>{methodDisplayName}</green> enabled.</white>"
+    autoSelected: "{prefix}<white>Verification method <green>{methodDisplayName}</green> was automatically selected for <gray>{provider}</gray>.</white>"
+    recoveryCodes:
+      layout: "TWO_COLUMN"
+      body:
+        - " "
+        - " <green><bold>Identica</bold>"
+        - "  <white>Use these recovery codes if you lose access</white>"
+        - "  <white>to your authenticator application.</white>"
+        - " "
+        - "  <white>Store them in a safe place before continuing:</white>"
+        - "{entries}"
+        - " "
+        - "  <click:run_command:/2fa enroll confirm saved><green>[CONFIRM]</green></click>  <click:run_command:/2fa enroll cancel><red>[CANCEL]</red></click>"
+        - " "
+      singleColumnEntry:
+        format: "   <gray>{code}</gray>"
+        emptyFormat: "   <gray>{code}</gray>"
+      twoColumnEntry:
+        format: "   <gray>{left}</gray>  <gray>{right}</gray>"
+        emptyFormat: "   <gray>{left}</gray>"
+      empty: "   <red>No recovery codes generated</red>"
+  use:
+    providerNotFound: "{prefix}<white>Unknown provider <gray>{provider}</gray>.</white>"
+    providerUnsupported: "{prefix}<white>Provider <gray>{provider}</gray> does not support verification.</white>"
+    providerVerificationDisabled: "{prefix}<white>Verification is disabled for <gray>{provider}</gray>.</white>"
+    methodNotEnrolled: "{prefix}<white>Method <gray>{methodDisplayName}</gray> is not enrolled.</white>"
+    methodDisabledForProvider: "{prefix}<white>Method <gray>{methodDisplayName}</gray> is not enabled for <gray>{provider}</gray>.</white>"
+    alreadySelected: "{prefix}<white><green>{methodDisplayName}</green> is already selected for <gray>{provider}</gray>.</white>"
+    updated: "{prefix}<white><green>{methodDisplayName}</green> selected for <gray>{provider}</gray>.</white>"
+  disable:
+    methodNotEnrolled: "{prefix}<white>Method <gray>{methodDisplayName}</gray> is not enrolled.</white>"
+    protectedPrompt: "{prefix}<white>Confirm the code from your authenticator with <yellow>/2fa confirm</yellow> <gray>[Code]</gray> to disable <gray>{methodDisplayName}</gray>.</white>"
+    disabled: "{prefix}<white>Verification method <red>{methodDisplayName}</red> disabled.</white>"
+  cancel:
+    noPending: "{prefix}<white>No pending verification action.</white>"
+    cancelled: "{prefix}<white>Pending verification enrollment cancelled.</white>"
+    cancelledProtectedAction: "{prefix}<white>Pending protected action cancelled.</white>"
+  admin:
+    reset:
+      targetNotFound: "{prefix}<white>No account found for <gray>{target}</gray>.</white>"
+      completed: "{prefix}<white>Verification state reset for <gray>{target}</gray>.</white>"

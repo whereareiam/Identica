@@ -1,0 +1,30 @@
+_version: 1
+enabled: false
+serverId: "upgrade-proxy"
+redis:
+  host: "redis.internal"
+  port: 6380
+  password: ""
+  ssl: true
+  timeout: 5000
+  channels:
+    accountUpdates: "network:accounts"
+    sessions: "network:sessions"
+    conflicts: "network:conflicts"
+    events: "network:events"
+cache:
+  reservations: "network:reservation"
+  instructions: "network:handshake-instructions"
+  delivery:
+    requests: "network:delivery:requests"
+    connectionIndex: "network:delivery:index:connection"
+    accountIndex: "network:delivery:index:account"
+  sessions:
+    user: "network:sessions:user"
+    session: "network:sessions:session"
+    subject: "network:sessions:subject"
+    recognition:
+      snapshot: "network:session-recognition:snapshot"
+  pipelineState: "network:pipeline-state"
+  attempts: "network:provider-attempts"
+  sentinels: "network:sentinels"

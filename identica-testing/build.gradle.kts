@@ -21,7 +21,8 @@ dependencies {
 	anvilImplementation(projects.identicaApi)
 	anvilImplementation(projects.exampleProvider)
 	anvilImplementation(projects.identicaCommon)
-	// The databases earlier versions of Identica left, which upgrade journeys start from.
+	// The configuration directories and databases earlier versions of Identica left, which upgrade journeys start from.
+	anvilImplementation(testFixtures(projects.identicaCommon))
 	anvilImplementation(testFixtures(projects.identicaAdapterDatabaseCommon))
 	anvilImplementation(testFixtures(projects.providerCredentialDatabase))
 	anvilImplementation(testFixtures(projects.featureVerificationDatabase))

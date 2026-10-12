@@ -1,0 +1,347 @@
+commands:
+  admin-session-info:
+    enabled: true
+    aliases:
+      - "admin session info"
+    permission: "identica.admin.sessions.info"
+    description: "Show session details"
+    usage: "{command} {alias} <target>"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments:
+      target: "Player/UUID"
+    hide: false
+  admin-delete-cancel:
+    enabled: true
+    aliases:
+      - "admin delete cancel"
+    permission: "identica.admin.delete"
+    description: "Cancel account delete"
+    usage: "{command} {alias}"
+    arguments: {}
+    hide: true
+    cooldown:
+      enabled: false
+      duration: 0
+      group: "default"
+  admin-clear-confirm:
+    enabled: true
+    aliases:
+      - "admin clear confirm"
+    permission: "identica.admin.clear"
+    description: "Confirm account clear"
+    usage: "{command} {alias}"
+    arguments: {}
+    hide: true
+    cooldown:
+      enabled: false
+      duration: 0
+      group: "default"
+  admin-clear-cancel:
+    enabled: true
+    aliases:
+      - "admin clear cancel"
+    permission: "identica.admin.clear"
+    description: "Cancel account clear"
+    usage: "{command} {alias}"
+    arguments: {}
+    hide: true
+    cooldown:
+      enabled: false
+      duration: 0
+      group: "default"
+  migration-cancel:
+    enabled: true
+    aliases:
+      - "migration cancel"
+    permission: "identica.admin.migration.cancel"
+    description: "Cancel provider migration for a player"
+    usage: "{command} {alias} <target>"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments:
+      target: "Player/UUID"
+    hide: false
+  admin-reservation-info:
+    enabled: true
+    aliases:
+      - "admin reservation info"
+    permission: "identica.admin.reservation"
+    description: "Show the UUID reserved for a username"
+    usage: "{command} {alias} <username>"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments:
+      username: "Username"
+    hide: false
+  admin:
+    enabled: true
+    aliases:
+      - "admin"
+    permission: "identica.admin"
+    description: "Admin commands"
+    usage: "{command} {alias}"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments: {}
+    hide: false
+  main:
+    enabled: true
+    aliases:
+      - "identica"
+      - "auth"
+    permission: ""
+    description: "Main command"
+    usage: "{alias}"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments: {}
+    hide: true
+  admin-delete-confirm:
+    enabled: true
+    aliases:
+      - "admin delete confirm"
+    permission: "identica.admin.delete"
+    description: "Confirm account delete"
+    usage: "{command} {alias}"
+    arguments: {}
+    hide: true
+    cooldown:
+      enabled: false
+      duration: 0
+      group: "default"
+  availability-username:
+    enabled: true
+    aliases:
+      - "availability username"
+    permission: ""
+    description: "Check username availability"
+    usage: "{command} {alias} <username>"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments:
+      username: "Username"
+    hide: false
+  admin-session:
+    enabled: true
+    aliases:
+      - "admin session"
+    permission: "identica.admin.sessions"
+    description: "List active sessions"
+    usage: "{command} {alias} [page]"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments:
+      page: "Page"
+    hide: true
+  migration-drop:
+    enabled: true
+    aliases:
+      - "migration drop"
+    permission: "identica.admin.migration.drop"
+    description: "Drop provider link for a player"
+    usage: "{command} {alias} <target> <provider>"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments:
+      provider: "Provider id"
+      target: "Player/UUID"
+    hide: false
+  help:
+    enabled: true
+    aliases:
+      - "help"
+    permission: ""
+    description: "Help command"
+    usage: "{command} {alias} [page]"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments:
+      page: "Page"
+    hide: false
+  admin-reservation-delete:
+    enabled: true
+    aliases:
+      - "admin reservation delete"
+    permission: "identica.admin.reservation"
+    description: "Delete the reservation of a username"
+    usage: "{command} {alias} <username>"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments:
+      username: "Username"
+    hide: false
+  admin-delete:
+    enabled: true
+    aliases:
+      - "admin delete"
+    permission: "identica.admin.delete"
+    description: "Delete account data and UUID"
+    usage: "{command} {alias} <target>"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments:
+      target: "Player/UUID"
+    hide: false
+  migration-primary:
+    enabled: true
+    aliases:
+      - "migration primary"
+    permission: "identica.admin.migration.primary"
+    description: "Set primary provider for a player"
+    usage: "{command} {alias} <target> <provider>"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments:
+      provider: "Provider id"
+      target: "Player/UUID"
+    hide: false
+  admin-reload:
+    enabled: true
+    aliases:
+      - "admin reload"
+    permission: "identica.admin"
+    description: "Reload command"
+    usage: "{command} {alias}"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments: {}
+    hide: false
+  admin-session-list:
+    enabled: true
+    aliases:
+      - "admin session list"
+    permission: "identica.admin.sessions"
+    description: "List active sessions"
+    usage: "{command} {alias} [page]"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments:
+      page: "Page"
+    hide: false
+  migration-list:
+    enabled: true
+    aliases:
+      - "migration list"
+    permission: "identica.admin.migration.list"
+    description: "List provider links for a player"
+    usage: "{command} {alias} <target>"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments:
+      target: "Player/UUID"
+    hide: false
+  enroll:
+    enabled: true
+    aliases:
+      - "enroll"
+    permission: ""
+    description: "Select authentication eligibility"
+    usage: "{command} {alias} <eligibility>"
+    arguments:
+      eligibility: "Provider id"
+    hide: true
+    cooldown:
+      enabled: false
+      duration: 0
+      group: "default"
+  admin-clear:
+    enabled: true
+    aliases:
+      - "admin clear"
+    permission: "identica.admin.clear"
+    description: "Clear account data while preserving UUID"
+    usage: "{command} {alias} <target>"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments:
+      target: "Player/UUID"
+    hide: false
+  admin-reservation-set:
+    enabled: true
+    aliases:
+      - "admin reservation set"
+    permission: "identica.admin.reservation"
+    description: "Reserve a UUID for a username"
+    usage: "{command} {alias} <username> <uniqueId>"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments:
+      username: "Username"
+      uniqueId: "UUID"
+    hide: false
+  admin-session-end:
+    enabled: true
+    aliases:
+      - "admin session end"
+    permission: "identica.admin.sessions.end"
+    description: "End an active session"
+    usage: "{command} {alias} <target>"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments:
+      target: "Player/UUID"
+    hide: false
+  migration-start:
+    enabled: true
+    aliases:
+      - "migration start"
+    permission: "identica.admin.migration.start"
+    description: "Start provider migration for a player"
+    usage: "{command} {alias} <target> <provider>"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments:
+      provider: "Provider id"
+      target: "Player/UUID"
+    hide: false
+behavior:
+  help:
+    sortAlphabetically: true
+  suggestions:
+    playerLimit: 25
+  clear:
+    confirmTtl: "1m"
+  sessions:
+    listPageSize: 7
+  migration:
+    confirmTtl: "1m"
+  useBrigadier: false

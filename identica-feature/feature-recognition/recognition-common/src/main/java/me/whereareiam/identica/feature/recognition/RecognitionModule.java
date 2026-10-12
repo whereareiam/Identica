@@ -3,9 +3,12 @@ package me.whereareiam.identica.feature.recognition;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Named;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.configura.Configura;
 import me.whereareiam.identica.feature.recognition.config.RecognitionSettings;
+import me.whereareiam.identica.feature.recognition.config.migration.RecognitionConfigMigrations;
 import me.whereareiam.identica.feature.recognition.config.provider.RecognitionProvidersProvider;
 import me.whereareiam.identica.feature.recognition.config.provider.RecognitionSettingsProvider;
 import me.whereareiam.identica.feature.recognition.eligibility.DefaultRecognitionEligibilityRegistry;
@@ -18,6 +21,8 @@ import me.whereareiam.identica.feature.recognition.store.DefaultRecognizedConnec
 import me.whereareiam.identica.feature.recognition.store.DefaultSessionRecognitionStore;
 import me.whereareiam.identica.feature.recognition.store.RecognizedConnectionStore;
 import me.whereareiam.identica.feature.recognition.store.SessionRecognitionStore;
+import me.whereareiam.strata.MigrationStream;
+import me.whereareiam.strata.adapter.configura.ConfigContext;
 
 import java.nio.file.Path;
 
@@ -49,5 +54,14 @@ public class RecognitionModule extends AbstractModule {
 	@Named("recognitionFeaturePath")
 	Path provideRecognitionFeaturePath() {
 		return recognitionFeaturePath;
+	}
+
+	/**
+	 * Adds this feature's configuration migrations to those Identica runs before any document is read.
+	 */
+	@ProvidesIntoSet
+	@Singleton
+	MigrationStream<ConfigContext> recognitionConfigMigrations(Configura configura, @Named("dataPath") Path dataPath) {
+		return RecognitionConfigMigrations.on(configura, dataPath);
 	}
 }

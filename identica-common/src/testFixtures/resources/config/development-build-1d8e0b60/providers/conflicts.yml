@@ -1,0 +1,23 @@
+_version: 1
+rules:
+  username:
+    pairs:
+      - providers:
+          - "premium"
+          - "credential"
+        force: false
+        resolvers:
+          - id: "format_display"
+            parameters:
+              format:
+                pattern: "{username}_{incomingProvider}"
+              target: "joiner"
+    default:
+      providers: []
+      force: false
+      resolvers:
+        - id: "format_display"
+          parameters:
+            format:
+              pattern: "{username}*"
+            target: "joiner"

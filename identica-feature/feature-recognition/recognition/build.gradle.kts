@@ -14,6 +14,8 @@ dependencies {
     testImplementation(projects.identicaEngine)
     testImplementation(libs.cloud.core)
     testImplementation(libs.commandant)
+    // The features' configuration migrations, which their modules register, are Strata migrations.
+    testImplementation(libs.strata.adapter.configura)
 }
 
 toolkitPublish {

@@ -1,0 +1,40 @@
+_version: 1
+pipeline:
+  prepare:
+    failed:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>Unable to prepare authoritative username.</white>"
+      - "<white>Please contact a server administrator.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+  identity:
+    synchronizationFailed:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>Unable to synchronize username.</white>"
+      - "<white>Please contact a server administrator.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+  policy:
+    persistenceFailed:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>Unable to persist username changes.</white>"
+      - "<white>Please contact a server administrator.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+    conflictDenied:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>That username is currently unavailable.</white>"
+      - "<white>Please contact a server administrator if this looks wrong.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+    entrypointRequired:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>This username is already active through another provider.</white>"
+      - "<white>Use the correct entrypoint for <green>{existingProvider}</green> or <green>{incomingProvider}</green>.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"

@@ -41,6 +41,8 @@ Verification's global provider policy is `defaults` in `features/verification/se
 
 Protected actions evaluate verification for the current session's provider. A target provider's settings must not bypass the source session's verification policy.
 
+A feature upgrades its own documents with a Strata migration stream of its own, `identica/feature/<id>/config`: a `ConfiguraTarget` on the data directory that keeps its version in the feature's `settings`, and its numbered migrations. Its module adds the stream to the set of `MigrationStream<ConfigContext>`, for example with a `@ProvidesIntoSet` method, and Identica runs the core's stream and then every feature's in one Strata run before any document is read. A value a feature takes over from a core document, such as `connection.sentinels` of 2.2.1's settings, is moved and removed by the feature's migration; the core leaves those sections alone. Write the moves so that they only fill empty places and do nothing when the value is gone: a migration finds what to do by the sections that are there.
+
 ## Implementation ownership
 
 `identica-feature` composes the built-in implementations explicitly through `BuiltinFeatures`. There is no feature directory scanner, separate feature installation, or build-time feature selector. Feature module jars are build dependencies compiled into the final plugin.

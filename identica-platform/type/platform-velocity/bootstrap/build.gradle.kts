@@ -17,6 +17,8 @@ dependencies {
     testImplementation(libs.commandant)
     testImplementation(libs.velocity)
     testImplementation(libs.cloud.velocity)
+    // Identica keeps the version of each configuration migration stream through Strata's Configura feature.
+    testImplementation(libs.strata.adapter.configura)
 
     implementation(projects.platformVelocityApi)
     implementation(libs.statistica.platform.velocity) {

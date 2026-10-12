@@ -1,0 +1,535 @@
+{
+  "_version": 1,
+  "commands": {
+    "verification-confirm": {
+      "enabled": true,
+      "aliases": [
+        "2fa confirm"
+      ],
+      "permission": "identica.custom",
+      "description": "Confirm a pending verification challenge [customised]",
+      "usage": "{alias} <input>",
+      "arguments": {
+        "input": "Verification code [customised]"
+      },
+      "hide": false
+    },
+    "migration-cancel": {
+      "enabled": true,
+      "aliases": [
+        "migration cancel"
+      ],
+      "permission": "identica.admin.migration.cancel.custom",
+      "description": "Cancel provider migration for a player [customised]",
+      "usage": "{command} {alias} <target>",
+      "cooldown": {
+        "enabled": true,
+        "duration": 7,
+        "group": "custom"
+      },
+      "arguments": {
+        "target": "Player/UUID [customised]"
+      },
+      "hide": true
+    },
+    "verification-status": {
+      "enabled": true,
+      "aliases": [
+        "2fa status"
+      ],
+      "permission": "identica.custom",
+      "description": "Show verification status [customised]",
+      "usage": "{alias}",
+      "arguments": { },
+      "hide": true
+    },
+    "admin-reservation-info": {
+      "enabled": true,
+      "aliases": [
+        "admin reservation info"
+      ],
+      "permission": "identica.admin.reservation.custom",
+      "description": "Show an account reservation [customised]",
+      "usage": "{command} {alias} <key>",
+      "cooldown": {
+        "enabled": true,
+        "duration": 7,
+        "group": "custom"
+      },
+      "arguments": {
+        "key": "Reservation key [customised]"
+      },
+      "hide": true
+    },
+    "admin": {
+      "enabled": true,
+      "aliases": [
+        "admin"
+      ],
+      "permission": "identica.admin.custom",
+      "description": "Admin commands [customised]",
+      "usage": "{command} {alias}",
+      "cooldown": {
+        "enabled": true,
+        "duration": 7,
+        "group": "custom"
+      },
+      "arguments": { },
+      "hide": true
+    },
+    "main": {
+      "enabled": true,
+      "aliases": [
+        "identica",
+        "auth"
+      ],
+      "permission": "identica.custom",
+      "description": "Main command [customised]",
+      "usage": "{alias}",
+      "cooldown": {
+        "enabled": true,
+        "duration": 7,
+        "group": "custom"
+      },
+      "arguments": { },
+      "hide": false
+    },
+    "availability-username": {
+      "enabled": true,
+      "aliases": [
+        "availability username"
+      ],
+      "permission": "identica.custom",
+      "description": "Check username availability [customised]",
+      "usage": "{command} {alias} <username>",
+      "cooldown": {
+        "enabled": true,
+        "duration": 7,
+        "group": "custom"
+      },
+      "arguments": {
+        "username": "Username [customised]"
+      },
+      "hide": true
+    },
+    "verification-disable": {
+      "enabled": true,
+      "aliases": [
+        "2fa disable"
+      ],
+      "permission": "identica.custom",
+      "description": "Disable an enrolled verification method [customised]",
+      "usage": "{alias} <method>",
+      "arguments": {
+        "method": "Method id [customised]"
+      },
+      "hide": true
+    },
+    "admin-session": {
+      "enabled": true,
+      "aliases": [
+        "admin session"
+      ],
+      "permission": "identica.admin.sessions.custom",
+      "description": "List active sessions [customised]",
+      "usage": "{command} {alias} [page]",
+      "cooldown": {
+        "enabled": true,
+        "duration": 7,
+        "group": "custom"
+      },
+      "arguments": {
+        "page": "Page [customised]"
+      },
+      "hide": false
+    },
+    "admin-reload": {
+      "enabled": true,
+      "aliases": [
+        "admin reload"
+      ],
+      "permission": "identica.admin.custom",
+      "description": "Reload command [customised]",
+      "usage": "{command} {alias}",
+      "cooldown": {
+        "enabled": true,
+        "duration": 7,
+        "group": "custom"
+      },
+      "arguments": { },
+      "hide": true
+    },
+    "admin-session-list": {
+      "enabled": true,
+      "aliases": [
+        "admin session list"
+      ],
+      "permission": "identica.admin.sessions.custom",
+      "description": "List active sessions [customised]",
+      "usage": "{command} {alias} [page]",
+      "cooldown": {
+        "enabled": true,
+        "duration": 7,
+        "group": "custom"
+      },
+      "arguments": {
+        "page": "Page [customised]"
+      },
+      "hide": true
+    },
+    "migration-list": {
+      "enabled": true,
+      "aliases": [
+        "migration list"
+      ],
+      "permission": "identica.admin.migration.list.custom",
+      "description": "List provider links for a player [customised]",
+      "usage": "{command} {alias} <target>",
+      "cooldown": {
+        "enabled": true,
+        "duration": 7,
+        "group": "custom"
+      },
+      "arguments": {
+        "target": "Player/UUID [customised]"
+      },
+      "hide": true
+    },
+    "verification": {
+      "enabled": true,
+      "aliases": [
+        "2fa",
+        "twofactor"
+      ],
+      "permission": "identica.custom",
+      "description": "Verification methods [customised]",
+      "usage": "{alias}",
+      "arguments": { },
+      "hide": false
+    },
+    "admin-reservation-set": {
+      "enabled": true,
+      "aliases": [
+        "admin reservation set"
+      ],
+      "permission": "identica.admin.reservation.custom",
+      "description": "Create or update an account reservation [customised]",
+      "usage": "{command} {alias} <key> <uniqueId>",
+      "cooldown": {
+        "enabled": true,
+        "duration": 7,
+        "group": "custom"
+      },
+      "arguments": {
+        "uniqueId": "UUID [customised]",
+        "key": "Reservation key [customised]"
+      },
+      "hide": true
+    },
+    "admin-session-info": {
+      "enabled": true,
+      "aliases": [
+        "admin session info"
+      ],
+      "permission": "identica.admin.sessions.info.custom",
+      "description": "Show session details [customised]",
+      "usage": "{command} {alias} <target>",
+      "cooldown": {
+        "enabled": true,
+        "duration": 7,
+        "group": "custom"
+      },
+      "arguments": {
+        "target": "Player/UUID [customised]"
+      },
+      "hide": true
+    },
+    "admin-delete-cancel": {
+      "enabled": true,
+      "aliases": [
+        "admin delete cancel"
+      ],
+      "permission": "identica.custom",
+      "description": "Cancel account delete [customised]",
+      "usage": "{command} {alias}",
+      "arguments": { },
+      "hide": false
+    },
+    "admin-clear-confirm": {
+      "enabled": true,
+      "aliases": [
+        "admin clear confirm"
+      ],
+      "permission": "identica.custom",
+      "description": "Confirm account clear [customised]",
+      "usage": "{command} {alias}",
+      "arguments": { },
+      "hide": false
+    },
+    "admin-clear-cancel": {
+      "enabled": true,
+      "aliases": [
+        "admin clear cancel"
+      ],
+      "permission": "identica.custom",
+      "description": "Cancel account clear [customised]",
+      "usage": "{command} {alias}",
+      "arguments": { },
+      "hide": false
+    },
+    "verification-use": {
+      "enabled": true,
+      "aliases": [
+        "2fa use"
+      ],
+      "permission": "identica.custom",
+      "description": "Select a verification method for a provider [customised]",
+      "usage": "{alias} <provider> <method>",
+      "arguments": {
+        "provider": "Provider id [customised]",
+        "method": "Method id [customised]"
+      },
+      "hide": true
+    },
+    "admin-delete-confirm": {
+      "enabled": true,
+      "aliases": [
+        "admin delete confirm"
+      ],
+      "permission": "identica.custom",
+      "description": "Confirm account delete [customised]",
+      "usage": "{command} {alias}",
+      "arguments": { },
+      "hide": false
+    },
+    "verification-enroll": {
+      "enabled": true,
+      "aliases": [
+        "2fa enroll"
+      ],
+      "permission": "identica.custom",
+      "description": "Start verification method enrollment [customised]",
+      "usage": "{alias} <method>",
+      "arguments": {
+        "method": "Method id [customised]"
+      },
+      "hide": true
+    },
+    "admin-verification-reset": {
+      "enabled": true,
+      "aliases": [
+        "admin 2fa reset"
+      ],
+      "permission": "identica.admin.2fa.reset.custom",
+      "description": "Reset verification state for a player [customised]",
+      "usage": "{command} {alias} <target> [provider]",
+      "arguments": {
+        "target": "Player/UUID [customised]",
+        "provider": "Provider id [customised]"
+      },
+      "hide": true
+    },
+    "migration-drop": {
+      "enabled": true,
+      "aliases": [
+        "migration drop"
+      ],
+      "permission": "identica.admin.migration.drop.custom",
+      "description": "Drop provider link for a player [customised]",
+      "usage": "{command} {alias} <target> <provider>",
+      "cooldown": {
+        "enabled": true,
+        "duration": 7,
+        "group": "custom"
+      },
+      "arguments": {
+        "target": "Player/UUID [customised]",
+        "provider": "Provider id [customised]"
+      },
+      "hide": true
+    },
+    "help": {
+      "enabled": true,
+      "aliases": [
+        "help"
+      ],
+      "permission": "identica.custom",
+      "description": "Help command [customised]",
+      "usage": "{command} {alias} [page]",
+      "cooldown": {
+        "enabled": true,
+        "duration": 7,
+        "group": "custom"
+      },
+      "arguments": {
+        "page": "Page [customised]"
+      },
+      "hide": true
+    },
+    "verification-enroll-confirm": {
+      "enabled": true,
+      "aliases": [
+        "2fa enroll confirm"
+      ],
+      "permission": "identica.custom",
+      "description": "Confirm pending verification enrollment [customised]",
+      "usage": "{alias} <input>",
+      "arguments": {
+        "input": "Code or saved [customised]"
+      },
+      "hide": false
+    },
+    "verification-enroll-cancel": {
+      "enabled": true,
+      "aliases": [
+        "2fa enroll cancel"
+      ],
+      "permission": "identica.custom",
+      "description": "Cancel pending verification enrollment [customised]",
+      "usage": "{alias}",
+      "arguments": { },
+      "hide": false
+    },
+    "admin-reservation-delete": {
+      "enabled": true,
+      "aliases": [
+        "admin reservation delete"
+      ],
+      "permission": "identica.admin.reservation.custom",
+      "description": "Delete an account reservation [customised]",
+      "usage": "{command} {alias} <key>",
+      "cooldown": {
+        "enabled": true,
+        "duration": 7,
+        "group": "custom"
+      },
+      "arguments": {
+        "key": "Reservation key [customised]"
+      },
+      "hide": true
+    },
+    "admin-delete": {
+      "enabled": true,
+      "aliases": [
+        "admin delete"
+      ],
+      "permission": "identica.admin.delete.custom",
+      "description": "Delete account data and UUID [customised]",
+      "usage": "{command} {alias} <target>",
+      "cooldown": {
+        "enabled": true,
+        "duration": 7,
+        "group": "custom"
+      },
+      "arguments": {
+        "target": "Player/UUID [customised]"
+      },
+      "hide": true
+    },
+    "migration-primary": {
+      "enabled": true,
+      "aliases": [
+        "migration primary"
+      ],
+      "permission": "identica.admin.migration.primary.custom",
+      "description": "Set primary provider for a player [customised]",
+      "usage": "{command} {alias} <target> <provider>",
+      "cooldown": {
+        "enabled": true,
+        "duration": 7,
+        "group": "custom"
+      },
+      "arguments": {
+        "target": "Player/UUID [customised]",
+        "provider": "Provider id [customised]"
+      },
+      "hide": true
+    },
+    "enroll": {
+      "enabled": true,
+      "aliases": [
+        "enroll"
+      ],
+      "permission": "identica.custom",
+      "description": "Select authentication eligibility [customised]",
+      "usage": "{command} {alias} <eligibility>",
+      "arguments": {
+        "eligibility": "Provider id [customised]"
+      },
+      "hide": false
+    },
+    "admin-clear": {
+      "enabled": true,
+      "aliases": [
+        "admin clear"
+      ],
+      "permission": "identica.admin.clear.custom",
+      "description": "Clear account data while preserving UUID [customised]",
+      "usage": "{command} {alias} <target>",
+      "cooldown": {
+        "enabled": true,
+        "duration": 7,
+        "group": "custom"
+      },
+      "arguments": {
+        "target": "Player/UUID [customised]"
+      },
+      "hide": true
+    },
+    "admin-session-end": {
+      "enabled": true,
+      "aliases": [
+        "admin session end"
+      ],
+      "permission": "identica.admin.sessions.end.custom",
+      "description": "End an active session [customised]",
+      "usage": "{command} {alias} <target>",
+      "cooldown": {
+        "enabled": true,
+        "duration": 7,
+        "group": "custom"
+      },
+      "arguments": {
+        "target": "Player/UUID [customised]"
+      },
+      "hide": true
+    },
+    "migration-start": {
+      "enabled": true,
+      "aliases": [
+        "migration start"
+      ],
+      "permission": "identica.admin.migration.start.custom",
+      "description": "Start provider migration for a player [customised]",
+      "usage": "{command} {alias} <target> <provider>",
+      "cooldown": {
+        "enabled": true,
+        "duration": 7,
+        "group": "custom"
+      },
+      "arguments": {
+        "target": "Player/UUID [customised]",
+        "provider": "Provider id [customised]"
+      },
+      "hide": true
+    }
+  },
+  "behavior": {
+    "help": {
+      "sortAlphabetically": true
+    },
+    "suggestions": {
+      "playerLimit": 25
+    },
+    "clear": {
+      "confirmTtl": "1m"
+    },
+    "sessions": {
+      "listPageSize": 7
+    },
+    "migration": {
+      "confirmTtl": "1m"
+    },
+    "useBrigadier": false
+  }
+}

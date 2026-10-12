@@ -1,0 +1,17 @@
+_version: 1
+autoSelectCurrentProvider: false
+challengeTtl: "3m"
+enrollmentTtl: "15m"
+totp:
+  displayName: "Authenticator"
+  issuer: "Network"
+  labelFormat: "{player} on {providerId}"
+  digits: 8
+  period: "60s"
+  allowedPastWindows: 2
+  allowedFutureWindows: 0
+  recoveryCodes:
+    enabled: false
+    amount: 6
+    length: 12
+    groupSize: 3

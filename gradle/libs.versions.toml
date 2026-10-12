@@ -16,7 +16,7 @@ configura = "2.0.1"
 commandant = "dev-642fe14"
 keystone = "dev-790a33e"
 dialectica = "4.0.0"
-strata = "3.1.1"
+strata = "3.2.0"
 
 guice = "7.0.0"
 annotations = "26.0.1"

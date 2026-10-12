@@ -5,7 +5,9 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Key;
 import com.google.inject.TypeLiteral;
+import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
+import me.whereareiam.configura.Configura;
 import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.Reloadable;
 import me.whereareiam.identica.event.EventManager;
@@ -20,16 +22,16 @@ import me.whereareiam.identica.feature.recognition.config.provider.RecognitionSe
 import me.whereareiam.identica.feature.recognition.eligibility.RecognitionEligibilityRegistry;
 import me.whereareiam.identica.feature.recognition.model.SessionRecognitionSnapshot;
 import me.whereareiam.identica.feature.recognition.pipeline.RecognitionAppliedLifecycle;
-import me.whereareiam.identica.model.config.Replication;
-import me.whereareiam.identica.replication.ReplicationSystem;
-import me.whereareiam.identica.replication.cache.ReplicatedCache;
-import me.whereareiam.identica.replication.cache.base.ReplicationCacheBuilder;
 import me.whereareiam.identica.feature.recognition.type.RecognitionSignal;
 import me.whereareiam.identica.feature.restriction.RestrictionService;
 import me.whereareiam.identica.feature.restriction.registry.RestrictionSignalRegistry;
+import me.whereareiam.identica.model.config.Replication;
 import me.whereareiam.identica.model.config.provider.Providers;
 import me.whereareiam.identica.pipeline.extension.PipelineExtensionRegistry;
 import me.whereareiam.identica.provider.ProviderManager;
+import me.whereareiam.identica.replication.ReplicationSystem;
+import me.whereareiam.identica.replication.cache.ReplicatedCache;
+import me.whereareiam.identica.replication.cache.base.ReplicationCacheBuilder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -75,6 +77,9 @@ class RecognitionFeatureTest {
 			@Override
 			protected void configure() {
 				bind(new TypeLiteral<Registry<Reloadable>>() {}).toInstance(reloadables);
+				// The core's, which the feature's configuration migrations are declared with
+				bind(Path.class).annotatedWith(Names.named("dataPath")).toInstance(featuresPath.getParent());
+				bind(Configura.class).toInstance(mock(Configura.class));
 				bind(FeatureRegistry.class).toInstance(features);
 				bind(EventManager.class).toInstance(events);
 				bind(PipelineExtensionRegistry.class).toInstance(pipelines);

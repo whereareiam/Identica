@@ -1,0 +1,43 @@
+commands:
+  admin-provider-restriction-join-enable:
+    enabled: true
+    aliases:
+      - "admin provider restriction join enable"
+    permission: "identica.admin.provider.restriction"
+    description: "Enable configured provider join restriction"
+    usage: "{command} {alias} <provider>"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments:
+      provider: "Provider id"
+    hide: false
+  admin-provider-restriction-join-disable:
+    enabled: true
+    aliases:
+      - "admin provider restriction join disable"
+    permission: "identica.admin.provider.restriction"
+    description: "Disable runtime provider join restriction"
+    usage: "{command} {alias} <provider>"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments:
+      provider: "Provider id"
+    hide: false
+  admin-provider-restriction-join-status:
+    enabled: true
+    aliases:
+      - "admin provider restriction join status"
+    permission: "identica.admin.provider.restriction"
+    description: "Show provider join restriction status"
+    usage: "{command} {alias} [provider]"
+    cooldown:
+      enabled: true
+      duration: 2
+      group: "global"
+    arguments:
+      provider: "Provider id"
+    hide: false

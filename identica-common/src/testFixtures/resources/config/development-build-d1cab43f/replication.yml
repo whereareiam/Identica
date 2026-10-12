@@ -1,0 +1,31 @@
+_version: 1
+enabled: false
+serverId: "b1c19530-007d-44fe-a57a-990eb7f4ee90"
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+  ssl: false
+  timeout: 0
+  channels:
+    accountUpdates: "identica:accounts"
+    sessions: "identica:sessions"
+    conflicts: "identica:conflicts"
+    events: "identica:events"
+cache:
+  reservations: "identica:reservation"
+  instructions: "identica:handshake-instructions"
+  providerJoinRestrictions: "identica:provider-join-restrictions"
+  delivery:
+    requests: "identica:delivery:requests"
+    connectionIndex: "identica:delivery:index:connection"
+    accountIndex: "identica:delivery:index:account"
+  sessions:
+    user: "identica:sessions:user"
+    session: "identica:sessions:session"
+    subject: "identica:sessions:subject"
+    recognition:
+      snapshot: "identica:session-recognition:snapshot"
+  pipelineState: "identica:pipeline-state"
+  attempts: "identica:provider-attempts"
+  sentinels: "identica:sentinels"

@@ -5,11 +5,12 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Key;
 import com.google.inject.TypeLiteral;
+import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
+import me.whereareiam.configura.Configura;
 import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.Reloadable;
 import me.whereareiam.identica.command.CommandService;
-import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.feature.FeatureContext;
 import me.whereareiam.identica.feature.FeatureProviderContext;
@@ -28,18 +29,19 @@ import me.whereareiam.identica.feature.restriction.join.JoinRestrictionFeature;
 import me.whereareiam.identica.feature.restriction.join.JoinRestrictionType;
 import me.whereareiam.identica.feature.restriction.join.config.JoinRestrictionCommands;
 import me.whereareiam.identica.feature.restriction.join.config.JoinRestrictionMessages;
+import me.whereareiam.identica.feature.restriction.join.config.JoinRestrictionSettings;
 import me.whereareiam.identica.feature.restriction.join.config.defaults.JoinRestrictionCommandsDefaults;
 import me.whereareiam.identica.feature.restriction.join.config.provider.JoinRestrictionCommandsProvider;
 import me.whereareiam.identica.feature.restriction.join.config.provider.JoinRestrictionMessagesProvider;
 import me.whereareiam.identica.feature.restriction.join.config.provider.JoinRestrictionProvidersProvider;
+import me.whereareiam.identica.feature.restriction.join.config.provider.JoinRestrictionSettingsProvider;
 import me.whereareiam.identica.feature.restriction.registry.RestrictionSignalRegistry;
 import me.whereareiam.identica.feature.restriction.registry.type.RestrictionTypeRegistry;
 import me.whereareiam.identica.feature.restriction.registry.type.RestrictionTypeResolverRegistry;
-import me.whereareiam.identica.feature.restriction.join.config.JoinRestrictionSettings;
-import me.whereareiam.identica.feature.restriction.join.config.provider.JoinRestrictionSettingsProvider;
 import me.whereareiam.identica.model.config.Replication;
 import me.whereareiam.identica.model.config.provider.Providers;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
+import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.pipeline.extension.PipelineExtensionRegistry;
 import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.provider.ProviderOperations;
@@ -94,6 +96,9 @@ class RecognitionJoinCompositionTest {
 			@Override
 			protected void configure() {
 				bind(new TypeLiteral<Registry<Reloadable>>() {}).toInstance(reloadables);
+				// The core's, which the feature's configuration migrations are declared with
+				bind(Path.class).annotatedWith(Names.named("dataPath")).toInstance(featuresPath.getParent());
+				bind(Configura.class).toInstance(mock(Configura.class));
 				bind(FeatureRegistry.class).toInstance(features);
 				bind(EventManager.class).toInstance(mock(EventManager.class));
 				bind(PipelineExtensionRegistry.class).toInstance(pipelines);

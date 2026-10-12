@@ -1,7 +1,7 @@
 ---
 title: Живые тесты
 description: Запуск и написание прохождений игрока для собранного плагина на настоящем прокси.
-sourceHash: 1d11e5297df438c01a8eeea798e1ca76359c261a
+sourceHash: 6b3d16223ad8f2ba4a58238dd2fc225cd99a5db3
 ---
 
 Модуль `identica-testing` запускает собранный плагин и провайдеры на настоящем прокси Velocity с бэкенд-серверами Paper и проводит через них симулированных игроков с помощью [Anvil](https://github.com/whereareiam/anvil). Модульные тесты остаются в своих модулях, а эти тесты проверяют то, что видит игрок при входе на сервер.
@@ -31,6 +31,8 @@ sourceHash: 1d11e5297df438c01a8eeea798e1ca76359c261a
 ```shell
 ./gradlew :identica-testing:anvilUpgradeTest
 ```
+
+Такой сценарий размещает прежние файлы через `ProxyConfiguration.seed`. Базы данных берутся из `EarlierInstallation` в тестовых фикстурах владельца каждой схемы, а папки конфигурации — из `EarlierConfiguration` в тестовых фикстурах `identica-common`, где перечислены структуры 2.2.1 и сборок для разработки. Сценарий, который размещает папку конфигурации, исключает документы, которые тестовая сеть иначе записала бы в структуре этой версии.
 
 `./gradlew :identica-testing:anvil` запускает `anvilTest` и все наборы. `anvilScenarios` перечисляет сценарии, `anvilRun --scenario=<name>` запускает один из них, чтобы осмотреться, а `anvilLogin --account=<id>` и `anvilLogout --account=<id>` управляют аккаунтами, под которыми входит Anvil.
 

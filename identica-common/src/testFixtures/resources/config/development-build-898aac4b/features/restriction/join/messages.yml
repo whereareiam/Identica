@@ -1,0 +1,39 @@
+denied:
+  - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+  - ""
+  - "<white>{providerName} is temporarily unavailable.</white>"
+  - "<white>Allowed joins currently require: <green>{allow}</green>.</white>"
+  - "<white>If you think this is a mistake, contact a server administrator.</white>"
+  - ""
+  - "<dark_gray>discord.arcadeya.com"
+commands:
+  enabled: "{prefix}<white>Enabled provider restriction for <gold>{providerName}</gold> <gray>({providerId})</gray> with <green>{allow}</green> allowed.</white>"
+  disabled: "{prefix}<white>Disabled provider restriction for <gold>{providerName}</gold> <gray>({providerId})</gray>.</white>"
+  enableFailed: "{prefix}<white>Could not enable provider restriction for <gray>{provider}</gray>.</white>"
+  providerNotFound: "{prefix}<white>Unknown provider <gray>{provider}</gray>.</white>"
+  status:
+    notFound: "{prefix}<white>Unknown provider <gray>{provider}</gray>.</white>"
+    body:
+      - " "
+      - " <green><bold>Identica</bold>"
+      - " "
+      - "  <white>Provider restriction for <gold>{providerName}</gold> <gray>({providerId})</gray></white>"
+      - " "
+      - "  <white>Runtime active:</white> <gray>{active}</gray>"
+      - "  <white>Allow:</white> <gray>{allow}</gray>"
+      - " "
+    labels:
+      enabled: "<green>Enabled</green>"
+      disabled: "<red>Disabled</red>"
+    list:
+      body:
+        - " "
+        - " <green><bold>Identica</bold>"
+        - " "
+        - "  <white>Provider restriction status:</white>"
+        - "{entries}"
+        - " "
+      empty: "{prefix}<white>No providers available.</white>"
+      entries:
+        populated: "   <dark_gray>▪</dark_gray> <white>{providerName}:</white> {status}\n     <gray>[{allow}]</gray>"
+        empty: "   <dark_gray>▪</dark_gray> <white>{providerName}:</white> {status}"

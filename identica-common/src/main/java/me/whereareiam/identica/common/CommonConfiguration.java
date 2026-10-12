@@ -9,7 +9,7 @@ import me.whereareiam.configura.Configura;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.common.config.ConfigBindings;
-import me.whereareiam.identica.common.config.ConfigMigrations;
+import me.whereareiam.identica.common.config.migration.ConfigMigrations;
 import me.whereareiam.identica.common.config.ConfigurationLifecycle;
 import me.whereareiam.identica.common.config.IdenticaModule;
 import me.whereareiam.identica.common.config.resolver.FileSystemConfigurationTypeResolver;
@@ -33,12 +33,14 @@ import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
 import me.whereareiam.identica.logging.BannerContributor;
 import me.whereareiam.identica.util.EventUtil;
 import me.whereareiam.keystone.serializer.SerializerEngine;
+import me.whereareiam.strata.MigrationStream;
 import me.whereareiam.strata.Strata;
+import me.whereareiam.strata.adapter.configura.ConfigContext;
 import me.whereareiam.strata.adapter.configura.StrataFeature;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.file.Path;
-import java.util.List;
+import java.util.Set;
 
 @RequiredArgsConstructor
 public class CommonConfiguration extends AbstractModule {
@@ -58,6 +60,9 @@ public class CommonConfiguration extends AbstractModule {
 		bind(ConfigurationTypeResolver.class)
 				.to(FileSystemConfigurationTypeResolver.class)
 				.asEagerSingleton();
+
+		// The configuration migrations of the other owners of documents, which the features add to
+		Multibinder.newSetBinder(binder(), new TypeLiteral<MigrationStream<ConfigContext>>() {});
 
 		install(new ConfigBindings());
 		install(new RegistryConfiguration());
@@ -91,8 +96,8 @@ public class CommonConfiguration extends AbstractModule {
 
 	@Provides
 	@Singleton
-	@NotNull Strata provideStrata(Configura configura, @Named("dataPath") Path dataPath) {
-		return new Strata(List.of(ConfigMigrations.on(configura, dataPath)));
+	@NotNull Strata provideStrata(Configura configura, @Named("dataPath") Path dataPath, Set<MigrationStream<ConfigContext>> owners) {
+		return new Strata(ConfigMigrations.inOrder(ConfigMigrations.on(configura, dataPath), owners));
 	}
 
 	@Provides

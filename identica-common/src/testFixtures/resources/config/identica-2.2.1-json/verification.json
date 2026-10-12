@@ -1,0 +1,21 @@
+{
+  "_version": 1,
+  "autoSelectCurrentProvider": true,
+  "challengeTtl": "2m",
+  "enrollmentTtl": "10m",
+  "totp": {
+    "displayName": "Authenticator App",
+    "issuer": "Identica",
+    "labelFormat": "{player}@{providerId}",
+    "digits": 6,
+    "period": "30s",
+    "allowedPastWindows": 1,
+    "allowedFutureWindows": 1,
+    "recoveryCodes": {
+      "enabled": true,
+      "amount": 8,
+      "length": 10,
+      "groupSize": 4
+    }
+  }
+}

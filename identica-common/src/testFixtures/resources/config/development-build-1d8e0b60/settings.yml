@@ -1,0 +1,58 @@
+_version: 1
+level: 2
+identity:
+  uniqueIdMode: "RANDOM"
+  reservationTtl: "15m"
+sessions:
+  recognition:
+    enabled: false
+    defaultSignals:
+      - "USERNAME"
+      - "IP"
+      - "VIRTUAL_HOST"
+    eligibility:
+      untrustedIps:
+        enabled: true
+        entries:
+          - "127.0.0.1"
+          - "::1"
+          - "10.0.0.0/8"
+          - "172.16.0.0/12"
+          - "192.168.0.0/16"
+    validity: "12h"
+  concurrencyPolicy: "REPLACE_EXISTING"
+  activeTtl: "12h"
+sentinels:
+  resumeSpam:
+    enabled: false
+    maxAttempts: 10
+    lockout:
+      enabled: true
+      duration: "30s"
+    warning:
+      enabled: true
+      thresholdPercentage: 0
+    active: false
+listeners:
+  events:
+    com.velocitypowered.api.event.connection.PreLoginEvent:
+      register: true
+      priority: "NORMAL"
+    com.velocitypowered.api.event.player.GameProfileRequestEvent:
+      register: true
+      priority: "NORMAL"
+    com.velocitypowered.api.event.connection.LoginEvent:
+      register: true
+      priority: "NORMAL"
+    com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent:
+      register: true
+      priority: "HIGH"
+    com.velocitypowered.api.event.player.ServerPreConnectEvent:
+      register: true
+      priority: "HIGH"
+    com.velocitypowered.api.event.player.ServerPostConnectEvent:
+      register: true
+      priority: "NORMAL"
+    com.velocitypowered.api.event.connection.DisconnectEvent:
+      register: true
+      priority: "NORMAL"

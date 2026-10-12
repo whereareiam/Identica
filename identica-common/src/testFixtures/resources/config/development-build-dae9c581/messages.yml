@@ -1,0 +1,858 @@
+_version: 1
+prefix: "<green>Identica</green> <dark_gray>| "
+format:
+  temporal:
+    date: "dd.MM.yyyy"
+    dateTime: "dd.MM.yyyy HH:mm:ss"
+commands:
+  currentSessionRequired: "{prefix}<white>You must have an <red>active session</red> to use this command.</white>"
+  exceptions:
+    noPermission: "{prefix}<white>You don't have \"<gray>{content}</gray>\" permission to use this command.</white>"
+    executionError: "{prefix}<white>An error occurred while executing the command:</white> <gray>{content}</gray>"
+    invalidSyntax: "{prefix}<white>Invalid syntax, please use:</white> <gray>/{content}</gray>"
+    invalidSyntaxBoolean: "{prefix}<white>You tried to use <gray>{content}</gray> as a boolean, but it's not a valid value, please use <green>true</green> or <red>false</red>.</white>"
+    invalidSyntaxNumber: "{prefix}<white>You tried to use <gray>{content}</gray> as a number, but it's not a valid value, please use a valid number.</white>"
+    invalidSyntaxString: "{prefix}<white>You tried to use <gray>{content}</gray> as a string, but it's not a valid value, please use a valid string.</white>"
+    invalidSender: "{prefix}<white>You cannot execute this command from this context.</white>"
+  pagination:
+    showPaginationIfOnePage: false
+    format: "\n {previous}<white>Pagination</white> <gray>[{current}/{max}]</gray>{next} \n"
+    showPreviousEvenIfFirst: false
+    previousTagFormat: "<red><click:run_command:/identica help {previousPage}>«</red> "
+    showNextEvenIfLast: false
+    nextTagFormat: " <green><click:run_command:/identica help {nextPage}>»</green>"
+  help:
+    format:
+      - " "
+      - " <green><bold>Identica</bold> <white>Command help"
+      - " "
+      - "{commands}"
+      - "{pagination}"
+    commandFormat: "  <yellow>/{command}{arguments}</yellow> <dark_gray>- <white>{description}"
+    noCommands: "  <red>No commands found</red>"
+    argumentFormat:
+      argument: "<gray>[{argument}]</gray>"
+      optionalArgument: "<gray>({argument})</gray>"
+    commandsPerPage: 7
+  enroll:
+    noPending: "{prefix}<white>No pending enrollment available.</white>"
+    completed: "{prefix}<white>Enrollment completed.</white>"
+  availability:
+    username:
+      free: "{prefix}<white>Username <gray>{username}</gray> is available.</white>"
+      taken: "{prefix}<white>Username <gray>{username}</gray> is already taken.</white>"
+  migration:
+    list:
+      body:
+        - " "
+        - " <green><bold>Identica</bold>"
+        - " "
+        - "  <white>Provider links for <aqua>{target}</aqua>:</white>"
+        - "{entries}"
+        - " "
+      entry:
+        format: "  <dark_gray>▪</dark_gray> <white>{providerName}</white> <gray>({providerId})</gray> <green>{primary}</green>"
+        emptyFormat: "  <dark_gray>▪</dark_gray> <white>{providerId}</white>"
+    links:
+      noLinks: "{prefix}<white>No provider links found for <gray>{target}</gray>.</white>"
+      notLinked: "{prefix}<white><gold>{provider}</gold> is not linked for <gray>{target}</gray>.</white>"
+    start:
+      pendingExists: "{prefix}<white>Migration already pending for <gray>{target}</gray>.</white>"
+      started: "{prefix}<white>Migration started for <gray>{target}</gray> to <gold>{provider}</gold>.</white>"
+      providerUnsupported: "{prefix}<white><gold>{provider}</gold> does not support migration.</white>"
+      providerUnavailable: "{prefix}<white><gold>{provider}</gold> is currently unavailable for migration.</white>"
+    cancel:
+      cancelled: "{prefix}<white>Migration cancelled for <gray>{target}</gray>.</white>"
+      noPending: "{prefix}<white>No pending migration for <gray>{target}</gray>.</white>"
+    primary:
+      set: "{prefix}<white>Primary provider set to <gold>{provider}</gold> for <gray>{target}</gray>.</white>"
+      alreadyPrimary: "{prefix}<white><gold>{provider}</gold> is already primary for <gray>{target}</gray>.</white>"
+    drop:
+      dropped: "{prefix}<white>Dropped <gold>{provider}</gold> for <gray>{target}</gray>.</white>"
+      primaryDenied: "{prefix}<white>Cannot drop primary provider. Change primary first.</white>"
+      lastLinkDenied: "{prefix}<white>Cannot drop the only provider link.</white>"
+    targetNotFound: "{prefix}<white>No account found for <gray>{target}</gray>.</white>"
+    locked: "{prefix}<white>Username is not available. Migration is locked.</white>"
+  reload:
+    success: "{prefix}<white>Configuration reloaded <green>successfully</green>!"
+    error: "{prefix}<white>An <red>error occurred</red> while reloading: <gray>{error}</gray>"
+  admin:
+    clear:
+      confirm:
+        - " "
+        - " <green><bold>Identica</bold>"
+        - " "
+        - "  <white>Clear request for <aqua>{target}</aqua></white>"
+        - "  <white>Scope: <aqua>{scope}</aqua></white>"
+        - "  <white>UUID: <gray>{uniqueId}</gray></white>"
+        - " "
+        - "  <click:run_command:/identica admin clear confirm><green>[CONFIRM]</green></click>       <click:run_command:/identica admin clear cancel><red>[CANCEL]</red></click>"
+        - " "
+      noPending: "{prefix}<white>No pending clear request.</white>"
+      expired: "{prefix}<white>Clear request expired, please run the command again.</white>"
+      cancelled: "{prefix}<white>Clear request cancelled.</white>"
+      notFound: "{prefix}<white>No account found for <gray>{target}</gray>.</white>"
+      multiple:
+        body:
+          - " "
+          - " <green><bold>Identica</bold>"
+          - " "
+          - "  <white>Found <gray>{count}</gray> accounts for</white>"
+          - "  <white>username <gray>{target}</gray></white>"
+          - " "
+          - "  <white>Matches:</white>"
+          - "{entries}"
+          - " "
+        entry:
+          format: "  <click:run_command:/{command} {uniqueId}>▪ <gray>{uniqueId}</gray>: <green>{username}</green></click>"
+          emptyFormat: "  <click:run_command:/{command} {uniqueId}>▪ <gray>{uniqueId}</gray></click>"
+      success: "{prefix}<white>Cleared <gold>{scope}</gold> for <gray>{uniqueId}</gray>.</white>"
+      error: "{prefix}<white>An <red>error occurred</red> while clearing: <gray>{error}</gray></white>"
+      disconnect:
+        - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+        - ""
+        - "<white>Your session has been cleared.</white>"
+        - "<white>Please rejoin to continue.</white>"
+        - ""
+        - "<dark_gray>discord.arcadeya.com"
+    delete:
+      confirm:
+        - " "
+        - " <green><bold>Identica</bold>"
+        - " "
+        - "  <white>Delete request for <aqua>{target}</aqua></white>"
+        - "  <white>UUID: <gray>{uniqueId}</gray></white>"
+        - " "
+        - "  <click:run_command:/identica admin delete confirm><green>[CONFIRM]</green></click>       <click:run_command:/identica admin delete cancel><red>[CANCEL]</red></click>"
+        - " "
+      noPending: "{prefix}<white>No pending delete request.</white>"
+      expired: "{prefix}<white>Delete request expired, please run the command again.</white>"
+      cancelled: "{prefix}<white>Delete request cancelled.</white>"
+      notFound: "{prefix}<white>No account found for <gray>{target}</gray>.</white>"
+      multiple:
+        body:
+          - " "
+          - " <green><bold>Identica</bold>"
+          - " "
+          - "  <white>Found <gray>{count}</gray> accounts for</white>"
+          - "  <white>username <gray>{target}</gray></white>"
+          - " "
+          - "  <white>Matches:</white>"
+          - "{entries}"
+          - " "
+        entry:
+          format: "  <click:run_command:/{command} {uniqueId}>▪ <gray>{uniqueId}</gray>: <green>{username}</green></click>"
+          emptyFormat: "  <click:run_command:/{command} {uniqueId}>▪ <gray>{uniqueId}</gray></click>"
+      success: "{prefix}<white>Deleted account <gray>{uniqueId}</gray>.</white>"
+      error: "{prefix}<white>An <red>error occurred</red> while deleting: <gray>{error}</gray></white>"
+      disconnect:
+        - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+        - ""
+        - "<white>Your account has been deleted.</white>"
+        - "<white>Please rejoin to continue.</white>"
+        - ""
+        - "<dark_gray>discord.arcadeya.com"
+    reservation:
+      set: "{prefix}<white>Reserved <gray>{key}</gray> for <gray>{uniqueId}</gray>.</white>"
+      info: "{prefix}<white>Reservation <gray>{key}</gray> points to <gray>{uniqueId}</gray>.</white>"
+      deleted: "{prefix}<white>Deleted reservation <gray>{key}</gray>.</white>"
+      notFound: "{prefix}<white>No reservation found for <gray>{key}</gray>.</white>"
+      invalidKey: "{prefix}<white>Invalid reservation key <gray>{key}</gray>.</white>"
+    sessions:
+      unknown: "unknown"
+      status:
+        body:
+          - " "
+          - " <green><bold>Identica</bold>"
+          - " "
+          - "  <white>Session information for <aqua>{username}</aqua></white>"
+          - " "
+          - "  <gray>Information:</gray>"
+          - "   <white>UUID: <gray>{uniqueId}</gray></white>"
+          - "   <white>Subject: <gray>{subject}</gray></white>"
+          - "   <white>Session: <gray>{session}</gray></white>"
+          - " "
+          - "   <white>Provider: <gray>{eligibility}</gray></white>"
+          - "   <white>IP: <gray>{ip}</gray></white>"
+          - " "
+          - "   <white>Created: <gray>{created}</gray></white>"
+          - " "
+          - "  <gray>Username:</gray>"
+          - "   <white>Original: <gray>{original}</gray></white>"
+          - "   <white>Effective: <gray>{effective}</gray></white>"
+          - " "
+        notFound: "{prefix}<white>No active session found for <gray>{target}</gray>.</white>"
+      end:
+        ended: "{prefix}<white>Ended session for <gray>{username}</gray> [<gray>{uniqueId}</gray>].</white>"
+        notFound: "{prefix}<white>No active session found for <gray>{target}</gray>.</white>"
+        disconnect:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Your session was ended.</white>"
+          - "<white>Please rejoin to continue.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+      multiple:
+        body:
+          - " "
+          - " <green><bold>Identica</bold>"
+          - " "
+          - "  <white>Found <gray>{count}</gray> sessions for</white>"
+          - "  <white>username <gray>{target}</gray></white>"
+          - " "
+          - "  <white>Matches:</white>"
+          - "{entries}"
+          - " "
+        entry:
+          format: "  <click:run_command:/{command} {uniqueId}>▪ <gray>{uniqueId}</gray>: <green>{username}</green></click>"
+          emptyFormat: "  <click:run_command:/{command} {uniqueId}>▪ <gray>{uniqueId}</gray></click>"
+      list:
+        body:
+          - " "
+          - " <green><bold>Identica</bold>"
+          - " "
+          - "  <white>Active sessions:</white>"
+          - "{entries}"
+          - " "
+        entry:
+          format: "   <dark_gray>▪</dark_gray> <gray><click:run_command:/identica admin session info {uniqueId}>[{uniqueId}]</click></gray>\n     <white>Provider: <green>{eligibility} <gray>| <white>Username: <green>{username}"
+          emptyFormat: "  <dark_gray>▪</dark_gray> <gray><click:run_command:/identica admin session info {uniqueId}>[{uniqueId}]</click></gray>"
+        empty: "{prefix}<white>No active sessions.</white>"
+providers:
+  noProvidersAvailable:
+    - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+    - ""
+    - "<white>No providers available, if this issue persists"
+    - "<white>Please contact a server administrator.</white>"
+    - ""
+    - "<dark_gray>discord.arcadeya.com"
+  noProvidersMatched:
+    - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+    - ""
+    - "<white>No providers matched, if this issue persists"
+    - "<white>Please contact a server administrator.</white>"
+    - ""
+    - "<dark_gray>discord.arcadeya.com"
+engine:
+  concurrentLoginKick:
+    - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+    - ""
+    - "<white>Your session was interrupted.</white>"
+    - "<white>Logged in from another location.</white>"
+    - ""
+    - "<dark_gray>discord.arcadeya.com"
+  resumeSentineled:
+    - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+    - ""
+    - "<white>Too many resume attempts.</white>"
+    - "<white>Please try again in <green>{seconds}s</green>.</white>"
+    - ""
+    - "<dark_gray>discord.arcadeya.com"
+  journey:
+    stage:
+      noCompletion:
+        - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+        - ""
+        - "<white>Journey stage pipeline incomplete.</white>"
+        - "<white>Please contact a server administrator.</white>"
+        - ""
+        - "<dark_gray>discord.arcadeya.com"
+    step:
+      noStatus:
+        - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+        - ""
+        - "<white>Journey step returned no status.</white>"
+        - "<white>Please contact a server administrator.</white>"
+        - ""
+        - "<dark_gray>discord.arcadeya.com"
+      enrollment:
+        body:
+          - " "
+          - " <green><bold>Identica</bold>"
+          - "  <white>Select an authentication method for account</white>"
+          - "  <white>It can be changed later on.</white>"
+          - " "
+          - "  <gray>Available providers:</gray>"
+          - "{entries}"
+          - " "
+        entryFormat:
+          format: "   <dark_gray><click:run_command:/identica enroll {providerId}>▪ <gray>[{providerName}]:</gray> <white>{description}</click>"
+          emptyFormat: "   <dark_gray><click:run_command:/identica enroll {providerId}>▪ <gray>[{providerName}]:</gray></click>"
+        empty:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>No providers available for this account.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        descriptions:
+          premium: "Use Minecraft account for registration."
+          credential: "Register using password."
+  prepare:
+    handshakeDenied:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>Connection handshake was denied.</white>"
+      - "<white>Please contact a server administrator.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+    errors:
+      preparePolicyMissing:
+        - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+        - ""
+        - "<white>Unable to evaluate prepare policy.</white>"
+        - "<white>Please contact a server administrator.</white>"
+        - ""
+        - "<dark_gray>discord.arcadeya.com"
+routing:
+  missingServer:
+    - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+    - ""
+    - "<white>No target server available for routing</white>"
+    - "<white>Please contact a server administrator.</white>"
+    - ""
+    - "<dark_gray>discord.arcadeya.com"
+scenarios:
+  authentication:
+    pipelineKick:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>Authentication is already in progress.</white>"
+      - "<white>Please contact a server administrator.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+    pipelineExpired:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>Your time for authentication ran out.</white>"
+      - "<white>Reconnect to try again.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+    advanceBusy:
+      chat: "{prefix}<white>Please wait, processing your request.</white>"
+      kick:
+        - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+        - ""
+        - "<white>Your previous request is still processing.</white>"
+        - "<white>Please try again in a moment.</white>"
+        - ""
+        - "<dark_gray>discord.arcadeya.com"
+    noCompletionPipeline:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>Authentication pipeline incomplete.</white>"
+      - "<white>Please contact a server administrator.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+    routing:
+      missingServer:
+        - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+        - ""
+        - "<white>No target server available for routing</white>"
+        - "<white>Please contact a server administrator.</white>"
+        - ""
+        - "<dark_gray>discord.arcadeya.com"
+    errors:
+      preparationMissingContext:
+        - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+        - ""
+        - "<white>Connection setup did not produce a context.</white>"
+        - "<white>Please contact a server administrator.</white>"
+        - ""
+        - "<dark_gray>discord.arcadeya.com"
+      finalizeMissingResult:
+        - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+        - ""
+        - "<white>Finalization did not return a result.</white>"
+        - "<white>Please contact a server administrator.</white>"
+        - ""
+        - "<dark_gray>discord.arcadeya.com"
+      identity:
+        groupMissingResult:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Authentication journey could not continue.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        profileMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Unable to load provider profile.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        replicationMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Unable to synchronize username.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        accountMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Account data is missing.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        provider:
+          validationMissing:
+            - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+            - ""
+            - "<white>Unable to validate provider.</white>"
+            - "<white>Please contact a server administrator.</white>"
+            - ""
+            - "<dark_gray>discord.arcadeya.com"
+          linkMissing:
+            - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+            - ""
+            - "<white>Unable to link provider.</white>"
+            - "<white>Please contact a server administrator.</white>"
+            - ""
+            - "<dark_gray>discord.arcadeya.com"
+      policy:
+        groupMissingResult:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Authentication journey could not continue.</white>"
+          - "<white>Policy stage did not return a result.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        accountReviewMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Unable to review account.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        ensureNewAccountMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Unable to verify account status.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        accountCreationMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Unable to create account.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+      session:
+        groupMissingResult:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Authentication journey could not continue.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        buildMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Unable to build a session.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+      journey:
+        missingResult:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Journey did not return a result.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        missingContext:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Journey could not start.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        missingPlan:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Journey could not start.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+    authenticationFailed:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>Authentication could not be completed.</white>"
+      - "<white>Please contact a server administrator.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+    sessionBuildFailed:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>Unable to establish your session.</white>"
+      - "<white>Please contact a server administrator.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+    conflictEntrypointRequired:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>Username conflict detected.</white>"
+      - "<white>Please join using the correct entrypoint:</white>"
+      - "<white><gold>{incomingProvider}</gold>: <green>{incomingHost}</green></white>"
+      - "<white><gold>{existingProvider}</gold>: <green>{existingHost}</green></white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+  registration:
+    pipelineKick:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>Registration is already in progress.</white>"
+      - "<white>Please contact a server administrator.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+    pipelineExpired:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>Your time for registration ran out.</white>"
+      - "<white>Reconnect to try again.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+    advanceBusy:
+      chat: "{prefix}<white>Please wait, processing your request.</white>"
+      kick:
+        - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+        - ""
+        - "<white>Your previous request is still processing.</white>"
+        - "<white>Please try again in a moment.</white>"
+        - ""
+        - "<dark_gray>discord.arcadeya.com"
+    noCompletionPipeline:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>Registration pipeline incomplete.</white>"
+      - "<white>Please contact a server administrator.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+    routing:
+      missingServer:
+        - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+        - ""
+        - "<white>No target server available for routing</white>"
+        - "<white>Please contact a server administrator.</white>"
+        - ""
+        - "<dark_gray>discord.arcadeya.com"
+    errors:
+      preparationMissingContext:
+        - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+        - ""
+        - "<white>Connection setup did not produce a context.</white>"
+        - "<white>Please contact a server administrator.</white>"
+        - ""
+        - "<dark_gray>discord.arcadeya.com"
+      finalizeMissingResult:
+        - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+        - ""
+        - "<white>Finalization did not return a result.</white>"
+        - "<white>Please contact a server administrator.</white>"
+        - ""
+        - "<dark_gray>discord.arcadeya.com"
+      identity:
+        groupMissingResult:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Registration journey could not continue.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        profileMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Unable to load provider profile.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        replicationMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Unable to synchronize username.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        accountMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Account data is missing.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        provider:
+          validationMissing:
+            - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+            - ""
+            - "<white>Unable to validate provider.</white>"
+            - "<white>Please contact a server administrator.</white>"
+            - ""
+            - "<dark_gray>discord.arcadeya.com"
+          linkMissing:
+            - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+            - ""
+            - "<white>Unable to link provider.</white>"
+            - "<white>Please contact a server administrator.</white>"
+            - ""
+            - "<dark_gray>discord.arcadeya.com"
+      policy:
+        groupMissingResult:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Registration journey could not continue.</white>"
+          - "<white>Policy stage did not return a result.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        accountReviewMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Unable to review account.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        ensureNewAccountMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Unable to verify account status.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        accountCreationMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Unable to create account.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+      session:
+        groupMissingResult:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Registration journey could not continue.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        buildMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Unable to build a session.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+      journey:
+        missingResult:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Journey did not return a result.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        missingContext:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Journey could not start.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        missingPlan:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Journey could not start.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+    registrationFailed:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>Registration could not be completed.</white>"
+      - "<white>Please contact a server administrator.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+    accountAlreadyExists:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>An account for this identity already exists.</white>"
+      - "<white>Please contact a server administrator.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+  migration:
+    pipelineKick:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>Migration is already in progress.</white>"
+      - "<white>Please contact a server administrator.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+    pipelineExpired:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>Your time for migration ran out.</white>"
+      - "<white>Reconnect to try again.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+    advanceBusy:
+      chat: "{prefix}<white>Please wait, processing your request.</white>"
+      kick:
+        - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+        - ""
+        - "<white>Your previous request is still processing.</white>"
+        - "<white>Please try again in a moment.</white>"
+        - ""
+        - "<dark_gray>discord.arcadeya.com"
+    noCompletionPipeline:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>Migration pipeline incomplete.</white>"
+      - "<white>Please contact a server administrator.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+    routing:
+      missingServer:
+        - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+        - ""
+        - "<white>No target server available for routing</white>"
+        - "<white>Please contact a server administrator.</white>"
+        - ""
+        - "<dark_gray>discord.arcadeya.com"
+    errors:
+      preparationMissingContext:
+        - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+        - ""
+        - "<white>Connection setup did not produce a context.</white>"
+        - "<white>Please contact a server administrator.</white>"
+        - ""
+        - "<dark_gray>discord.arcadeya.com"
+      finalizeMissingResult:
+        - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+        - ""
+        - "<white>Finalization did not return a result.</white>"
+        - "<white>Please contact a server administrator.</white>"
+        - ""
+        - "<dark_gray>discord.arcadeya.com"
+      identity:
+        groupMissingResult:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Migration journey could not continue.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        profileMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Unable to load provider profile.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        replicationMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Unable to synchronize username.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        accountMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Account data is missing.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        provider:
+          validationMissing:
+            - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+            - ""
+            - "<white>Unable to validate provider.</white>"
+            - "<white>Please contact a server administrator.</white>"
+            - ""
+            - "<dark_gray>discord.arcadeya.com"
+          linkMissing:
+            - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+            - ""
+            - "<white>Unable to link provider.</white>"
+            - "<white>Please contact a server administrator.</white>"
+            - ""
+            - "<dark_gray>discord.arcadeya.com"
+      policy:
+        groupMissingResult:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Migration journey could not continue.</white>"
+          - "<white>Policy stage did not return a result.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        accountReviewMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Unable to review account.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        ensureNewAccountMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Unable to verify account status.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        accountCreationMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Unable to create account.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+      session:
+        groupMissingResult:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Migration journey could not continue.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        buildMissing:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Unable to build a session.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+      journey:
+        missingResult:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Journey did not return a result.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        missingContext:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Journey could not start.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+        missingPlan:
+          - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+          - ""
+          - "<white>Journey could not start.</white>"
+          - "<white>Please contact a server administrator.</white>"
+          - ""
+          - "<dark_gray>discord.arcadeya.com"
+    migrationFailed:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>Migration could not be completed.</white>"
+      - "<white>Please contact a server administrator.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+    cancelled:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>Your pending migration was cancelled.</white>"
+      - "<white>You are still using your previous login provider.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"

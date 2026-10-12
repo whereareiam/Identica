@@ -1,9 +1,13 @@
 package me.whereareiam.identica.feature.verification;
 
 import com.google.inject.AbstractModule;
+import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
+import com.google.inject.multibindings.ProvidesIntoSet;
+import com.google.inject.name.Named;
 import com.google.inject.name.Names;
+import me.whereareiam.configura.Configura;
 import me.whereareiam.identica.feature.verification.challenge.VerificationChallengeStore;
 import me.whereareiam.identica.feature.verification.command.VerificationCommandRegistrar;
 import me.whereareiam.identica.feature.verification.command.executor.VerificationCommand;
@@ -13,6 +17,7 @@ import me.whereareiam.identica.feature.verification.command.executor.Verificatio
 import me.whereareiam.identica.feature.verification.command.executor.admin.VerificationResetCommand;
 import me.whereareiam.identica.feature.verification.config.VerificationCommands;
 import me.whereareiam.identica.feature.verification.config.VerificationMessages;
+import me.whereareiam.identica.feature.verification.config.migration.VerificationConfigMigrations;
 import me.whereareiam.identica.feature.verification.config.provider.VerificationCommandsProvider;
 import me.whereareiam.identica.feature.verification.config.provider.VerificationMessagesProvider;
 import me.whereareiam.identica.feature.verification.config.provider.VerificationSettingsProvider;
@@ -20,6 +25,10 @@ import me.whereareiam.identica.feature.verification.enrollment.VerificationEnrol
 import me.whereareiam.identica.feature.verification.model.config.VerificationSettings;
 import me.whereareiam.identica.feature.verification.type.totp.TotpClock;
 import me.whereareiam.identica.feature.verification.type.totp.TotpVerificationMethod;
+import me.whereareiam.strata.MigrationStream;
+import me.whereareiam.strata.adapter.configura.ConfigContext;
+
+import java.nio.file.Path;
 
 import java.time.InstantSource;
 
@@ -50,5 +59,14 @@ public class VerificationCommonConfiguration extends AbstractModule {
 		commands.addBinding().to(VerificationResetCommand.class);
 
 		bind(VerificationCommandRegistrar.class).in(com.google.inject.Singleton.class);
+	}
+
+	/**
+	 * Adds this feature's configuration migrations to those Identica runs before any document is read.
+	 */
+	@ProvidesIntoSet
+	@Singleton
+	MigrationStream<ConfigContext> verificationConfigMigrations(Configura configura, @Named("dataPath") Path dataPath) {
+		return VerificationConfigMigrations.on(configura, dataPath);
 	}
 }

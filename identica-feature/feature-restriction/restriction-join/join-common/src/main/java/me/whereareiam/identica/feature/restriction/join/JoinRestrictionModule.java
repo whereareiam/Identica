@@ -3,20 +3,25 @@ package me.whereareiam.identica.feature.restriction.join;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Named;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.configura.Configura;
 import me.whereareiam.identica.feature.restriction.join.command.JoinRestrictionCommand;
 import me.whereareiam.identica.feature.restriction.join.config.JoinRestrictionCommands;
 import me.whereareiam.identica.feature.restriction.join.config.JoinRestrictionMessages;
 import me.whereareiam.identica.feature.restriction.join.config.JoinRestrictionSettings;
-import me.whereareiam.identica.feature.restriction.join.config.provider.JoinRestrictionSettingsProvider;
+import me.whereareiam.identica.feature.restriction.join.config.migration.JoinRestrictionConfigMigrations;
 import me.whereareiam.identica.feature.restriction.join.config.provider.JoinRestrictionCommandsProvider;
 import me.whereareiam.identica.feature.restriction.join.config.provider.JoinRestrictionMessagesProvider;
 import me.whereareiam.identica.feature.restriction.join.config.provider.JoinRestrictionProvidersProvider;
+import me.whereareiam.identica.feature.restriction.join.config.provider.JoinRestrictionSettingsProvider;
 import me.whereareiam.identica.feature.restriction.join.pipeline.JoinPipelineExtension;
 import me.whereareiam.identica.feature.restriction.join.pipeline.prepare.group.policy.phase.ApplyJoinRestrictionPhase;
 import me.whereareiam.identica.feature.restriction.join.pipeline.scenario.type.authentication.group.identity.phase.EnforceAuthenticationJoinRestrictionPhase;
 import me.whereareiam.identica.feature.restriction.join.pipeline.scenario.type.registration.group.identity.phase.EnforceRegistrationJoinRestrictionPhase;
+import me.whereareiam.strata.MigrationStream;
+import me.whereareiam.strata.adapter.configura.ConfigContext;
 
 import java.nio.file.Path;
 import java.util.Set;
@@ -68,5 +73,14 @@ public class JoinRestrictionModule extends AbstractModule {
 	@Named("joinRestrictionCommandInstances")
 	Set<Object> provideJoinRestrictionCommandInstances(JoinRestrictionCommand command) {
 		return Set.of(command);
+	}
+
+	/**
+	 * Adds this feature's configuration migrations to those Identica runs before any document is read.
+	 */
+	@ProvidesIntoSet
+	@Singleton
+	MigrationStream<ConfigContext> joinRestrictionConfigMigrations(Configura configura, @Named("dataPath") Path dataPath) {
+		return JoinRestrictionConfigMigrations.on(configura, dataPath);
 	}
 }

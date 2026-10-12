@@ -1,0 +1,10 @@
+_version: 1
+lookup:
+  profileEndpoint: "https://api.mojang.com/users/profiles/minecraft/%s"
+  timeout: "3s"
+  cacheTtl: "5m"
+replication:
+  cache:
+    profile: "premium-resolver"
+    profileSnapshot: "premium-profile-snapshot"
+profileSnapshotTtl: "10m"

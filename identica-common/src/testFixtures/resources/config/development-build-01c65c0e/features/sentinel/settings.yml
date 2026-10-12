@@ -1,0 +1,14 @@
+_version: 1
+sentinels:
+  resumeSpam:
+    enabled: false
+    maxAttempts: 10
+    lockout:
+      enabled: true
+      duration: "30s"
+    warning:
+      enabled: true
+      thresholdPercentage: 0
+    active: false
+cache:
+  sentinels: "identica:sentinels"

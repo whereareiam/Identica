@@ -37,7 +37,9 @@ A document that cannot be read keeps the values it had, and the other documents 
 
 ## Configuration version
 
-The settings document starts with `_version`. Identica uses it to upgrade the data directory when a new release changes the layout of a document, and it refuses to start on a directory written by a newer release. Do not edit or remove it, and keep it when you copy your configuration to another server.
+The settings document starts with `_version`, and so does the `settings` document of each feature under `features/`, which counts the upgrades of that feature's documents. Identica uses them to upgrade the data directory when a new release changes the layout of a document, and it refuses to start on a directory written by a newer release. Do not edit or remove them, and keep them when you copy your configuration to another server.
+
+Identica upgrades the data directories of Identica 2.2.1 and of the 3.0.0 development builds on their first start with this version. Every setting, message and command you changed moves to the place this version reads it from, and what has no place any more is removed. The documents of a provider, below `providers/` next to its jar, are not upgraded: a setting there whose name or place changed falls back to its default.
 
 Before an upgrade changes a file, the file is copied to `.strata/backup/` in the data directory. Identica never reads these copies, so the `.strata` folder can be deleted at any time.
 

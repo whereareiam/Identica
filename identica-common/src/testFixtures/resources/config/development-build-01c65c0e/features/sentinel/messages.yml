@@ -1,0 +1,9 @@
+_version: 1
+resumeSpam:
+  denied:
+    - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+    - ""
+    - "<white>Too many resume attempts.</white>"
+    - "<white>Please try again in <green>{seconds}s</green>.</white>"
+    - ""
+    - "<dark_gray>discord.arcadeya.com"

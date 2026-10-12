@@ -1,0 +1,16 @@
+_version: 1
+behavior:
+  attemptTtl: "10m"
+providers:
+  - id: "credential"
+    displayName: "Credential"
+    enabled: true
+    priority: 50
+    entrypoints:
+      - "credential.arcadeya.com"
+  - id: "premium"
+    displayName: "Premium"
+    enabled: true
+    priority: 100
+    entrypoints:
+      - "premium.arcadeya.com"

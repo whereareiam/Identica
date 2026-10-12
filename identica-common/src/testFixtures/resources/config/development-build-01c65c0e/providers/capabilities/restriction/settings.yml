@@ -1,0 +1,4 @@
+_version: 1
+toggleTtl: "365d"
+replication:
+  toggleNamespace: "identica:restriction:toggle"

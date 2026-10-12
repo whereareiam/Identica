@@ -11,6 +11,7 @@ import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
 import me.whereareiam.configura.Config;
 import me.whereareiam.configura.Configura;
+import me.whereareiam.strata.adapter.configura.StrataFeature;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.dialectica.adapter.jdbi.DialecticaPlugin;
 import me.whereareiam.dialectica.dialect.h2.H2Dialect;
@@ -107,7 +108,7 @@ class BundledFeatureCompositionTest {
 	@BeforeEach
 	void configureRealDocumentsAndBoundaryRegistrations() {
 		previousConfiguration = Config.configured();
-		Config.setConfigured(Config.builder().format(Format.YAML).module(new IdenticaModule()).build());
+		Config.setConfigured(Config.builder().format(Format.YAML).module(new IdenticaModule()).feature(new StrataFeature()).build());
 		doAnswer(invocation -> {
 			assertTrue(listeners.add(invocation.getArgument(0)), "Listener registered twice");
 			return null;
@@ -268,6 +269,7 @@ class BundledFeatureCompositionTest {
 		protected void configure() {
 			bind(Path.class).annotatedWith(Names.named("dataPath")).toInstance(dataPath);
 			bind(Path.class).annotatedWith(Names.named("providersPath")).toInstance(dataPath.resolve("providers"));
+			bind(Configura.class).toInstance(Config.configured());
 			bind(new TypeLiteral<Registry<Reloadable>>() {}).toInstance(reloadables);
 			bind(EventManager.class).toInstance(events);
 			bind(PipelineExtensionRegistry.class).toInstance(pipelines);

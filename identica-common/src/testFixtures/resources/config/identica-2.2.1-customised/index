@@ -1,0 +1,11 @@
+commands.yml
+messages.yml
+persistence.yml
+providers/Credential/commands.yml
+providers/Credential/messages.yml
+providers/Credential/settings.yml
+providers/providers.yml
+replication.yml
+settings.yml
+type=YAML
+verification.yml

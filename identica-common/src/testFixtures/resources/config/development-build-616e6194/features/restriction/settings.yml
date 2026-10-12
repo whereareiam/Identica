@@ -1,0 +1,4 @@
+enabled: true
+toggleTtl: "365d"
+replication:
+  toggleNamespace: "identica:restriction:toggle"

@@ -1,0 +1,11 @@
+commands.json
+messages.json
+persistence.json
+providers/Credential/commands.json
+providers/Credential/messages.json
+providers/Credential/settings.json
+providers/providers.json
+replication.json
+settings.json
+type=JSON
+verification.json

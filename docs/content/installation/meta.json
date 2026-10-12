@@ -3,7 +3,6 @@
   "pages": [
     "index",
     "normal",
-    "advanced",
-    "feature-migration"
+    "advanced"
   ]
 }

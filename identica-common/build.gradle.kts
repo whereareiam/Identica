@@ -2,6 +2,7 @@ import me.whereareiam.attache.plugin.gradle.extension.AttacheExtension
 
 plugins {
     id("module-java")
+    `java-test-fixtures`
     alias(libs.plugins.attache)
 }
 
@@ -20,6 +21,13 @@ dependencies {
     compileOnly(projects.identicaAdapterDatabaseApi)
     compileOnly(libs.strata)
     compileOnly(libs.strata.adapter.configura)
+
+    // A data directory under test, and the configuration directories earlier versions of Identica left, for the
+    // configuration migrations of the core and of the features.
+    testFixturesApi(projects.identicaApi)
+    testFixturesApi(libs.configura)
+    testFixturesApi(libs.strata)
+    testFixturesApi(libs.strata.adapter.configura)
 
     testImplementation(projects.identicaAdapterDatabaseApi)
     testImplementation(libs.keystone)

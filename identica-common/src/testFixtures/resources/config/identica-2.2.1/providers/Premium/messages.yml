@@ -1,0 +1,99 @@
+_version: 1
+verification:
+  rejoin:
+    - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+    - ""
+    - "<white>Please rejoin to verify your premium account."
+    - ""
+    - "<gray>If you don't have a premium account, you'll be"
+    - "<gray>asked to choose a different provider next time."
+    - ""
+    - "<dark_gray>discord.arcadeya.com"
+  authentication:
+    prompt:
+      - " "
+      - " <green><bold>Identica</bold>"
+      - " "
+      - "  <white>Verification required for your account.</white>"
+      - "  <white>Use <yellow>/2fa confirm</yellow> <gray>[Code]</gray> to continue.</white>"
+      - " "
+    invalid: "{prefix}<white>Invalid verification <red>code</red>.</white>"
+    required: "{prefix}<white>A verification method is <red>required</red> before login.</white>"
+    unavailable: "{prefix}<white>Your selected verification method is <red>unavailable</red>.</white>"
+completion:
+  session:
+    title:
+      title: "<gold><bold>Session Restored</bold></gold>"
+      subtitle: "<dark_gray>Your premium session was reused.</dark_gray>"
+    body:
+      - " "
+      - " <green><bold>Identica</bold>"
+      - " "
+      - "  <white>Welcome back, <green>{player}</green>.</white>"
+      - "  <white>Your existing <gold>premium session</gold> was reused.</white>"
+      - " "
+      - "  <gray>No new verification was required.</gray>"
+      - " "
+  authentication:
+    title:
+      title: "<gold><bold>Verified</bold></gold>"
+      subtitle: "<dark_gray>You were authenticated.</dark_gray>"
+    body:
+      - " "
+      - " <green><bold>Identica</bold>"
+      - " "
+      - "  <white>Welcome back, <green>{player}</green>.</white>"
+      - "  <white>You were authenticated <gold>via premium provider</gold>.</white>"
+      - " "
+      - "  <gray>Enjoy your session.</gray>"
+      - " "
+  registration:
+    title:
+      title: "<gold><bold>Registered</bold></gold>"
+      subtitle: "<dark_gray>Your premium account is ready.</dark_gray>"
+    body:
+      - " "
+      - " <green><bold>Identica</bold>"
+      - " "
+      - "  <white>Welcome, <green>{player}</green>.</white>"
+      - "  <white>Your account was registered <gold>via premium provider</gold>.</white>"
+      - " "
+      - "  <gray>Your premium account will be used for future logins.</gray>"
+      - " "
+  migration:
+    title:
+      title: "<gold><bold>Migrated</bold></gold>"
+      subtitle: "<dark_gray>Premium migration completed.</dark_gray>"
+    body:
+      - " "
+      - " <green><bold>Identica</bold>"
+      - " "
+      - "  <white>Premium provider migration <green>completed</green>.</white>"
+      - "  <white>Your account now authenticates <gold>via premium provider</gold>.</white>"
+      - " "
+      - "  <gray>Rejoin with your licensed Minecraft account from now on.</gray>"
+      - " "
+commands:
+  premium:
+    confirm:
+      - " "
+      - " <green><bold>Identica</bold>"
+      - "  <white>You are about to switch to a <gold>licensed Minecraft account</gold>.</white>"
+      - "  <white>After this, you will log in with that licensed account.</white>"
+      - " "
+      - "  <yellow>/premium confirm</yellow> <dark_gray>- <white>Continue migration</white>"
+      - "  <yellow>/premium cancel</yellow> <dark_gray>- <white>Cancel migration</white>"
+      - " "
+    confirmed:
+      - "<green>ɪᴅᴇɴᴛɪᴄᴀ"
+      - ""
+      - "<white>Please rejoin the server to proceed with</white>"
+      - "<white>migration to the premium provider.</white>"
+      - ""
+      - "<dark_gray>discord.arcadeya.com"
+    verificationRequired: "{prefix}<white>Confirm your verification code with <yellow>/premium confirm</yellow> <gray>[Code]</gray> before starting premium migration.</white>"
+    cancelled: "{prefix}<white>Premium migration cancelled.</white>"
+    expired: "{prefix}<white>Premium migration request expired.</white>"
+    noPending: "{prefix}<white>No pending premium migration.</white>"
+    pendingExists: "{prefix}<white>Premium migration already pending.</white>"
+    alreadyPrimary: "{prefix}<white>Premium is already your primary provider.</white>"

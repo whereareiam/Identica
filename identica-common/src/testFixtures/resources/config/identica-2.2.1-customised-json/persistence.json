@@ -1,0 +1,13 @@
+{
+  "_version": 1,
+  "type": "SQLITE",
+  "hikari": {
+    "poolName": "Upgraded",
+    "maximumPoolSize": 4,
+    "minimumIdle": 1,
+    "connectionTimeout": 20000,
+    "idleTimeout": 300000,
+    "maxLifetime": 900000
+  },
+  "file": "identica.db"
+}

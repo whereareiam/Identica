@@ -18,8 +18,10 @@ import java.nio.file.Path;
 
 /**
  * Prepares the data directory and loads Identica's configuration: creates the directories, brings the documents
- * of an older installation up to date through {@link ConfigMigrations}, installs the shared Configura instance and
- * loads every document in {@link ConfigLoadOrder}. A failed migration stops the startup, so Identica does not run
+ * of an older installation up to date through the core's and every feature's
+ * {@link me.whereareiam.identica.common.config.migration.ConfigMigrations configuration migrations}, in one run
+ * before any document is read, installs the shared Configura instance and loads every document in
+ * {@link ConfigLoadOrder}. A failed migration stops the startup, so Identica does not run
  * on a directory it could not upgrade.
  */
 public final class ConfigurationLifecycle implements RuntimeLifecycle {

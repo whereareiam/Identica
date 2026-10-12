@@ -1,0 +1,11 @@
+commands.yml
+engine.yml
+messages.yml
+persistence.yml
+providers/conflicts.yml
+providers/providers.yml
+replication.yml
+routing.yml
+settings.yml
+type=YAML
+verification.yml

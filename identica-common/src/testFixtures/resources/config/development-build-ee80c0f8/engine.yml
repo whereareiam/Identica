@@ -1,0 +1,22 @@
+behavior:
+  bridgeTtl: "10m"
+  handshakeInstructionTtl: "10m"
+scenarios:
+  authentication:
+    allowResume: true
+    pipelineTtl: "5m"
+    journeyMode: "SEAMLESS"
+    journeyPolicy: "PREFER"
+    pipelineConcurrencyPolicy: "DENY_NEW"
+  registration:
+    allowResume: true
+    autoSelectSingleProvider: false
+    pipelineTtl: "5m"
+    journeyMode: "SEAMLESS"
+    journeyPolicy: "PREFER"
+    pipelineConcurrencyPolicy: "DENY_NEW"
+  migration:
+    allowResume: true
+    pipelineTtl: "5m"
+    journeyMode: "INTERACTIVE"
+    journeyPolicy: "PREFER"

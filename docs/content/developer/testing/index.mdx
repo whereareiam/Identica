@@ -31,6 +31,8 @@ Journeys that start a proxy on what an earlier version of Identica left, such as
 ./gradlew :identica-testing:anvilUpgradeTest
 ```
 
+Such a journey places the earlier files with `ProxyConfiguration.seed`. The databases come from `EarlierInstallation`, in the test fixtures of each schema's owner, and the configuration directories from `EarlierConfiguration`, in the test fixtures of `identica-common`, which lists the layouts of 2.2.1 and of the development builds. A journey that seeds a configuration directory omits the documents the test network would otherwise write in this version's layout.
+
 `./gradlew :identica-testing:anvil` runs `anvilTest` and every suite. `anvilScenarios` lists the scenarios, `anvilRun --scenario=<name>` starts one to look around in, and `anvilLogin --account=<id>` and `anvilLogout --account=<id>` manage the accounts Anvil signs in with.
 
 When a test fails, its network is kept under `identica-testing/build/anvil/<scenario>/<run>/`. Each process folder holds an `anvil-console.log`, and Identica's debug logging is enabled in every test network.

@@ -1,0 +1,24 @@
+_version: 1
+rules:
+  username:
+    cases:
+      - when:
+          providers:
+            - "premium"
+            - "credential"
+        force: false
+        resolvers:
+          - id: "format_display"
+            parameters:
+              format:
+                pattern: "{username}_{incomingProvider}"
+              target: "joiner"
+    default:
+      when: {}
+      force: false
+      resolvers:
+        - id: "format_display"
+          parameters:
+            format:
+              pattern: "{username}*"
+            target: "joiner"

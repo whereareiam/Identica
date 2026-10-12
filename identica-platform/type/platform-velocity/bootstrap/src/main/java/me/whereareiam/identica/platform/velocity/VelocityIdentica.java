@@ -85,7 +85,7 @@ public class VelocityIdentica {
 		List<Module> modules = new ArrayList<>(List.of(
 				new CommonConfiguration(dataPath),
 				new EngineConfiguration(),
-				new VelocityConfiguration(proxyServer, this, pluginContainer, dataPath, logger),
+				new VelocityConfiguration(proxyServer, this, pluginContainer, dataPath, logger, libraryManager),
 				new CommandConfiguration(),
 				new DatabaseConfiguration(),
 				new ReplicationConfiguration()

@@ -53,7 +53,7 @@ public class BungeeCordIdentica extends Plugin {
 		List<Module> modules = new ArrayList<>(List.of(
 				new CommonConfiguration(getDataFolder().toPath()),
 				new EngineConfiguration(),
-				new BungeeCordConfiguration(getProxy(), this, getDataFolder().toPath(), audiences),
+				new BungeeCordConfiguration(getProxy(), this, getDataFolder().toPath(), audiences, libraryManager),
 				new CommandConfiguration(),
 				new DatabaseConfiguration(),
 				new ReplicationConfiguration()

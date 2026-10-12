@@ -1,3 +1,3 @@
 <Callout type="warning" title="First startup can look stuck">
-  On the first startup, Identica downloads its required libraries, so the server may not print anything new for a while and can feel stuck even though the download is still in progress. This can be fast or slow depending on the internet connection, and the server must have internet access and be able to reach Cloudflare-protected sites.
+  On the first startup, Identica downloads its required libraries, among them the driver of the configured database, so the server may not print anything new for a while and can feel stuck even though the download is still in progress. This can be fast or slow depending on the internet connection, and the server must have internet access and be able to reach Cloudflare-protected sites. The first startup after switching to another database type downloads that database's driver the same way.
 </Callout>

@@ -1,6 +1,7 @@
 package me.whereareiam.identica.adapter.database.integration;
 
 import com.zaxxer.hikari.HikariDataSource;
+import me.whereareiam.attache.LibraryManager;
 import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
 import me.whereareiam.identica.adapter.database.testing.DatabaseContainers;
 import me.whereareiam.identica.adapter.database.connection.DataSourceFactory;
@@ -28,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 /**
  * Opens Identica on the oldest MySQL it supports and on the release before it.
@@ -49,7 +51,7 @@ class MysqlServerRequirementIntegrationTest {
 	void opensOldestSupportedMysql() throws SQLException {
 		MysqlPersistence persistence = persistence(oldest);
 
-		DefaultDatabaseService database = new DefaultDatabaseService(() -> persistence, dataPath);
+		DefaultDatabaseService database = new DefaultDatabaseService(() -> persistence, dataPath, mock(LibraryManager.class));
 		database.initialize();
 		try {
 			assertTrue(database.isInitialized());
@@ -67,7 +69,7 @@ class MysqlServerRequirementIntegrationTest {
 		List<String> severe = new ArrayList<>();
 		Logger.init(severeLines(severe));
 
-		DefaultDatabaseService database = new DefaultDatabaseService(() -> persistence, dataPath);
+		DefaultDatabaseService database = new DefaultDatabaseService(() -> persistence, dataPath, mock(LibraryManager.class));
 		UnsupportedDatabaseServerException refusal;
 		try {
 			refusal = assertThrows(UnsupportedDatabaseServerException.class, database::initialize);

@@ -2,6 +2,7 @@ package me.whereareiam.identica.platform.bungeecord;
 
 import com.google.inject.Guice;
 import com.google.inject.Module;
+import me.whereareiam.attache.LibraryManager;
 import me.whereareiam.identica.adapter.command.CommandConfiguration;
 import me.whereareiam.identica.adapter.database.DatabaseConfiguration;
 import me.whereareiam.identica.adapter.replication.ReplicationConfiguration;
@@ -55,7 +56,8 @@ class BungeeCordInjectorTest {
 							proxyServer,
 							plugin,
 							dataPath,
-							mock(BungeeAudiences.class)
+							mock(BungeeAudiences.class),
+							mock(LibraryManager.class)
 					),
 					new CommandConfiguration(),
 					new DatabaseConfiguration(),

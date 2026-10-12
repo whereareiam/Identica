@@ -1,6 +1,7 @@
 package me.whereareiam.identica.adapter.database.testing.schema;
 
 import com.zaxxer.hikari.HikariDataSource;
+import me.whereareiam.attache.LibraryManager;
 import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
 import me.whereareiam.identica.adapter.database.connection.DataSourceFactory;
 import me.whereareiam.identica.model.config.persistence.Persistence;
@@ -13,6 +14,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.SQLException;
+
+import static org.mockito.Mockito.mock;
 
 /**
  * A database that schema tests run against. {@link #reset()} empties it before a test; the test
@@ -81,7 +84,7 @@ public abstract class TestDatabase {
 	 */
 	public DefaultDatabaseService open() {
 		Persistence persistence = requirePersistence();
-		DefaultDatabaseService database = new DefaultDatabaseService(() -> persistence, dataPath);
+		DefaultDatabaseService database = new DefaultDatabaseService(() -> persistence, dataPath, mock(LibraryManager.class));
 		database.initialize();
 		return database;
 	}

@@ -3,6 +3,7 @@ package me.whereareiam.identica.platform.bungeecord;
 import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.OptionalBinder;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.attache.LibraryManager;
 import me.whereareiam.identica.integration.statistics.StatisticsConfiguration;
 import me.whereareiam.identica.integration.statistics.StatisticsPlatform;
 import me.whereareiam.identica.platform.common.PlatformConfiguration;
@@ -36,10 +37,12 @@ public class BungeeCordConfiguration extends PlatformConfiguration<BungeeCordHan
 	private final BungeeCordIdentica plugin;
 	private final Path dataPath;
 	private final BungeeAudiences audiences;
+	private final LibraryManager libraryManager;
 
 	@Override
 	protected void configurePlatform() {
 		bind(Path.class).toInstance(dataPath);
+		bind(LibraryManager.class).toInstance(libraryManager);
 		bind(ProxyServer.class).toInstance(proxyServer);
 		bind(PluginManager.class).toInstance(proxyServer.getPluginManager());
 		bind(BungeeCordIdentica.class).toInstance(plugin);

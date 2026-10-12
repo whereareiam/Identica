@@ -5,6 +5,7 @@ import com.google.inject.Module;
 import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
+import me.whereareiam.attache.LibraryManager;
 import me.whereareiam.identica.adapter.command.CommandConfiguration;
 import me.whereareiam.identica.adapter.database.DatabaseConfiguration;
 import me.whereareiam.identica.adapter.replication.ReplicationConfiguration;
@@ -47,7 +48,8 @@ class VelocityInjectorTest {
 							mock(VelocityIdentica.class),
 							mock(PluginContainer.class, RETURNS_DEEP_STUBS),
 							dataPath,
-							mock(Logger.class)
+							mock(Logger.class),
+							mock(LibraryManager.class)
 					),
 					new CommandConfiguration(),
 					new DatabaseConfiguration(),

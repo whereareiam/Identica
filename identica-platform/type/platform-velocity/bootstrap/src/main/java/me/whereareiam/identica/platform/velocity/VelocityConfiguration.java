@@ -6,6 +6,7 @@ import com.velocitypowered.api.event.EventManager;
 import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.proxy.ProxyServer;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.attache.LibraryManager;
 import me.whereareiam.identica.integration.statistics.StatisticsConfiguration;
 import me.whereareiam.identica.integration.statistics.StatisticsPlatform;
 import me.whereareiam.identica.platform.common.PlatformConfiguration;
@@ -38,6 +39,7 @@ public class VelocityConfiguration extends PlatformConfiguration<VelocityHandsha
 	private final PluginContainer pluginContainer;
 	private final Path dataPath;
 	private final Logger logger;
+	private final LibraryManager libraryManager;
 
 	@Override
 	protected void configurePlatform() {
@@ -47,6 +49,7 @@ public class VelocityConfiguration extends PlatformConfiguration<VelocityHandsha
 		bind(VelocityIdentica.class).toInstance(plugin);
 		bind(PluginContainer.class).toInstance(pluginContainer);
 		bind(Logger.class).toInstance(logger);
+		bind(LibraryManager.class).toInstance(libraryManager);
 		bind(LoggingHelper.class).to(VelocityLoggingHelper.class);
 		bind(ListenerRegistrar.class).to(VelocityListenerRegistrar.class);
 

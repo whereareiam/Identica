@@ -1,5 +1,6 @@
 package me.whereareiam.identica.adapter.database.testing;
 
+import me.whereareiam.attache.LibraryManager;
 import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
 import me.whereareiam.identica.model.config.persistence.Persistence;
 import org.jdbi.v3.core.Jdbi;
@@ -7,6 +8,8 @@ import org.jdbi.v3.core.Jdbi;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+
+import static org.mockito.Mockito.mock;
 
 public abstract class AbstractDatabaseFixture implements DatabaseFixture {
 	private DefaultDatabaseService databaseService;
@@ -21,7 +24,7 @@ public abstract class AbstractDatabaseFixture implements DatabaseFixture {
 		try {
 			dataPath = Files.createTempDirectory("identica-test-");
 			Persistence persistence = createPersistence(dataPath);
-			databaseService = new DefaultDatabaseService(() -> persistence, dataPath);
+			databaseService = new DefaultDatabaseService(() -> persistence, dataPath, mock(LibraryManager.class));
 			databaseService.initialize();
 			jdbi = databaseService.getJdbi();
 			started = true;

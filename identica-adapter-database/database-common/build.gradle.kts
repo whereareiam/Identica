@@ -18,10 +18,6 @@ dependencies {
     attache(libs.jdbi.core)
     attache(libs.jdbi.sqlobject)
     attache(libs.hikaricp)
-    attache(libs.postgresql)
-    attache(libs.mariadb)
-    attache(libs.sqlite)
-    attache(libs.h2)
 
     compileOnly(libs.strata)
     compileOnly(libs.strata.adapter.database)
@@ -45,6 +41,7 @@ dependencies {
     // Testcontainers waits for a MySQL container through MySQL's own driver; Identica uses MariaDB's.
     testFixturesRuntimeOnly(libs.mysql)
     testFixturesApi(libs.junit.jupiter)
+    testFixturesImplementation(libs.attache.common)
     testFixturesImplementation(libs.guice)
     testFixturesImplementation(libs.mockito.core)
     testFixturesImplementation(libs.annotations)
@@ -81,15 +78,28 @@ extensions.configure<AttacheExtension>("attache") {
         relocate("io{}leangen{}geantyref", "me.whereareiam.identica.library.geantyref")
     }
 
-    library(libs.postgresql) {
-        excludeTransitive("com.github.waffle", "waffle-jna")
-        excludeTransitive("net.java.dev.jna", "jna")
-        excludeTransitive("net.java.dev.jna", "jna-platform")
+    // One group per DatabaseType, named in lower case: only the configured database's driver is downloaded.
+    group("postgres") {
+        library(libs.postgresql) {
+            excludeTransitive("com.github.waffle", "waffle-jna")
+            excludeTransitive("net.java.dev.jna", "jna")
+            excludeTransitive("net.java.dev.jna", "jna-platform")
+        }
     }
 
-    library(libs.mariadb) {
-        excludeTransitive("com.github.waffle", "waffle-jna")
-        excludeTransitive("net.java.dev.jna", "jna")
-        excludeTransitive("net.java.dev.jna", "jna-platform")
+    group("mysql") {
+        library(libs.mariadb) {
+            excludeTransitive("com.github.waffle", "waffle-jna")
+            excludeTransitive("net.java.dev.jna", "jna")
+            excludeTransitive("net.java.dev.jna", "jna-platform")
+        }
+    }
+
+    group("sqlite") {
+        library(libs.sqlite)
+    }
+
+    group("h2") {
+        library(libs.h2)
     }
 }

@@ -2,6 +2,7 @@ package me.whereareiam.identica.testing.environment;
 
 import me.whereareiam.anvil.integration.junit.ScenarioResources;
 import me.whereareiam.identica.adapter.database.testing.DatabaseContainers;
+import me.whereareiam.identica.model.config.persistence.H2Persistence;
 import me.whereareiam.identica.model.config.persistence.Persistence;
 import me.whereareiam.identica.model.config.persistence.SqlitePersistence;
 import me.whereareiam.identica.model.config.persistence.external.MysqlPersistence;
@@ -19,6 +20,13 @@ public enum Database {
 		@Override
 		Persistence persistence(ScenarioResources resources) {
 			return new SqlitePersistence();
+		}
+	},
+	/** The H2 file in Identica's data directory, as {@code persistence.yml} names it by default. */
+	H2 {
+		@Override
+		Persistence persistence(ScenarioResources resources) {
+			return new H2Persistence();
 		}
 	},
 	/** A MariaDB server in a container that stops with the network, through Identica's MySQL backend; needs Docker. */

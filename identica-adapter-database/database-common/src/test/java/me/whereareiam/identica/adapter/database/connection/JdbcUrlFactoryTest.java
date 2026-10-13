@@ -60,7 +60,30 @@ class JdbcUrlFactoryTest {
 
 		String url = JdbcUrlFactory.create(persistence, dataPath);
 
-		assertEquals("jdbc:h2:file:" + dataPath.resolve("identica") + ";MODE=PostgreSQL", url);
+		assertEquals("jdbc:h2:file:" + dataPath.resolve("identica").toAbsolutePath() + ";MODE=PostgreSQL", url);
+	}
+
+	@DisplayName("Gives H2 an absolute path for a file in a relative data directory")
+	@Test
+	void h2ResolvesTheFileToAnAbsolutePath() {
+		Path dataPath = Path.of("plugins", "identica");
+		H2Persistence persistence = new H2Persistence();
+
+		String url = JdbcUrlFactory.create(persistence, dataPath);
+
+		assertEquals("jdbc:h2:file:" + dataPath.toAbsolutePath().resolve("identica"), url);
+	}
+
+	@DisplayName("Keeps an absolute H2 file as configured")
+	@Test
+	void h2KeepsAnAbsoluteFile() {
+		Path file = Path.of("srv", "identica").toAbsolutePath();
+		H2Persistence persistence = new H2Persistence();
+		persistence.setFile(file.toString());
+
+		String url = JdbcUrlFactory.create(persistence, Path.of("plugins", "identica"));
+
+		assertEquals("jdbc:h2:file:" + file, url);
 	}
 
 	@DisplayName("Formats the external PostgreSQL JDBC URL")

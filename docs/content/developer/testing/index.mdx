@@ -154,7 +154,7 @@ void registersOnTheLobbyWithoutAnyRouting(ScenarioContext anvil) {
 }
 ```
 
-`database` picks where the proxy stores its accounts: `Database.SQLITE`, the default, or `Database.MARIADB`, a MariaDB server in a container that stops with the network, reached through Identica's MySQL backend. A test on MariaDB needs Docker and is skipped without it.
+`database` picks where the proxy stores its accounts: `Database.SQLITE`, the default, `Database.H2`, the H2 file in Identica's data directory, or `Database.MARIADB`, a MariaDB server in a container that stops with the network, reached through Identica's MySQL backend. A test on MariaDB needs Docker and is skipped without it.
 
 Every test proxy forces the hostname `IdenticaNetwork.LOBBY_HOST` to `lobby`; every journey that names no hostname joins through one without a forced host.
 

@@ -43,8 +43,8 @@ If you only change `type` without letting the plugin boot again, the file struct
     - Current default: `"identica"`
     - Affects: the H2 database target
 
-    If the value starts with `mem:`, `tcp:`, `ssl:`, or `file:`, Identica treats it as a direct H2 target.
-    Otherwise it is treated as a file path relative to the plugin data directory.
+    If the value starts with `mem:`, `tcp:`, `ssl:`, or `file:`, Identica treats it as a direct H2 target and passes it to H2 unchanged; H2 refuses a `file:` path relative to the working directory, so such a path must be absolute or start with `./` or `~/`.
+    Otherwise it is treated as a file path relative to the plugin data directory, and Identica gives H2 its absolute path.
 
     #### options
 

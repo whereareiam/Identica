@@ -48,6 +48,10 @@ public final class JdbcUrlFactory {
 		return "jdbc:sqlite:" + dataPath.resolve(file);
 	}
 
+	/**
+	 * A file inside the data directory is given to H2 as an absolute path, because H2 refuses a file path that is
+	 * relative to the working directory and platforms hand plugins a relative data directory.
+	 */
 	private static String createH2Url(Persistence persistence, Path dataPath) {
 		if (!(persistence instanceof H2Persistence h2))
 			throw new IllegalArgumentException("Expected H2 persistence for " + persistence.getType());
@@ -57,7 +61,7 @@ public final class JdbcUrlFactory {
 				? file
 				: isDirectH2Target(file)
 				? "jdbc:h2:" + file
-				: "jdbc:h2:file:" + dataPath.resolve(file);
+				: "jdbc:h2:file:" + dataPath.resolve(file).toAbsolutePath();
 
 		String options = h2.getOptions();
 		if (options.isBlank()) return baseUrl;

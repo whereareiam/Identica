@@ -10,6 +10,7 @@ import me.whereareiam.identica.feature.restriction.join.config.JoinRestrictionMe
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelMessages;
 import me.whereareiam.identica.feature.verification.config.VerificationMessages;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.config.UsernameMessages;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
 
@@ -36,6 +37,13 @@ public final class IdenticaMessages {
 	 */
 	public Messages identica() {
 		return read("messages.yml", Messages.class);
+	}
+
+	/**
+	 * Returns Identica's username messages, such as the refusal of a username another account holds.
+	 */
+	public UsernameMessages username() {
+		return read("identity/username/messages.yml", UsernameMessages.class);
 	}
 
 	/**

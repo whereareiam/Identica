@@ -25,7 +25,7 @@ class UsernameSchemaIntegrationTest extends DatabaseIntegrationTestBase {
 	@MethodSource("fixtures")
 	void createsTables(DatabaseFixture fixture) {
 		fixture.useHandle(handle -> {
-			handle.createQuery("SELECT COUNT(*) FROM identica_account_username_state").mapTo(Long.class).one();
+			handle.createQuery("SELECT COUNT(*) FROM identica_account_usernames").mapTo(Long.class).one();
 			handle.createQuery("SELECT COUNT(*) FROM " + HISTORY_TABLE).mapTo(Long.class).one();
 		});
 	}

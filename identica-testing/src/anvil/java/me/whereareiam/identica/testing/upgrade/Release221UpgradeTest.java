@@ -10,6 +10,7 @@ import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
+import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.DatabaseType;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
@@ -43,6 +44,9 @@ class Release221UpgradeTest {
 	/** The password the 2.2.1 database holds a bcrypt hash of for Upgrader. */
 	private static final String PASSWORD = "Upgrade-221";
 
+	/** The passphrase of the example provider, which the 2.2.1 database links Dave and dave to. */
+	private static final String PASSPHRASE = "OpenSesame";
+
 	/** The line the customised 2.2.1 directory adds to each of its messages. */
 	private static final String CUSTOMISED = "[customised]";
 
@@ -52,6 +56,7 @@ class Release221UpgradeTest {
 		// The usernames move to their own tables, and the migration history 2.x kept for the credential tables goes.
 		ProcessConsole console = anvil.processes().proxy(PROXY).console();
 		console.await("Database schema identica/account: applied 1 username-layout", 0, Duration.ofSeconds(5));
+		console.await("Database schema identica/account: applied 2 username-table", 0, Duration.ofSeconds(5));
 		console.await("Database schema identica/provider/credential: applied 2 legacy-migration-history", 0, Duration.ofSeconds(5));
 
 		Journey.offline(anvil, "Upgrader").join()
@@ -92,6 +97,27 @@ class Release221UpgradeTest {
 		Journey.offline(anvil, "Newcomer").join()
 				.on(AUTH)
 				.sees(m -> m.credential().getScenario().getRegistration().getPrompt());
+	}
+
+	/**
+	 * The 2.2.1 database holds Dave and dave, two accounts of one username in two cases. Dave, the older, holds the
+	 * username; both go on logging in through their own provider links, and the console names them at every start.
+	 */
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.EXAMPLE, configure = Release221Database.class)
+	void keepsLoggingInBothAccountsOfAUsername221HeldInTwoCases(ScenarioContext anvil) {
+		ProcessConsole console = anvil.processes().proxy(PROXY).console();
+		console.await("Duplicate usernames: dave", 0, Duration.ofSeconds(5));
+
+		for (String username : List.of("Dave", "dave"))
+			Journey.offline(anvil, username).join()
+					.on(AUTH)
+					.sees(m -> m.example().getPrompt())
+					.command("passphrase " + PASSPHRASE)
+					.on(LOBBY)
+					.leave();
+
+		Administrator.at(anvil, PROXY).findsDuplicateUsername("dave");
 	}
 
 	private static String last(List<String> lines) {

@@ -5,11 +5,10 @@ import me.whereareiam.dialectica.Dialectica;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
 import me.whereareiam.identica.adapter.database.account.DefaultAccountPersistenceService;
-import me.whereareiam.identica.adapter.database.entity.account.AccountEntity;
 import me.whereareiam.identica.adapter.database.entity.account.AccountProviderLinkEntity;
 import me.whereareiam.identica.adapter.database.provider.DefaultProviderLinkPersistenceService;
-import me.whereareiam.identica.adapter.database.repository.account.AccountRepository;
 import me.whereareiam.identica.adapter.database.repository.provider.ProviderLinkRepository;
+import me.whereareiam.identica.adapter.database.testing.PersistenceServices;
 import me.whereareiam.identica.adapter.database.testing.TestDataFactory;
 import me.whereareiam.identica.adapter.database.testing.schema.TestDatabase;
 import me.whereareiam.identica.event.EventManager;
@@ -27,6 +26,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -128,13 +128,21 @@ class StoredValueCompatibilityIntegrationTest {
 	private static void writeAsBefore(Jdbi jdbi, UUID uniqueId, String username) {
 		jdbi.useHandle(handle -> {
 			handle.createUpdate("""
-							INSERT INTO identica_accounts (unique_id, username, created_at, last_seen_at)
-							VALUES (:uniqueId, :username, :createdAt, :lastSeenAt)
+							INSERT INTO identica_accounts (unique_id, created_at, last_seen_at)
+							VALUES (:uniqueId, :createdAt, :lastSeenAt)
+							""")
+					.bind("uniqueId", uniqueId)
+					.bind("createdAt", TestDataFactory.CREATED_AT)
+					.bind("lastSeenAt", TestDataFactory.LAST_SEEN_AT)
+					.execute();
+			handle.createUpdate("""
+							INSERT INTO identica_account_usernames (unique_id, username, username_key, source, provider_id, changed_at)
+							VALUES (:uniqueId, :username, :usernameKey, 'provider', NULL, :changedAt)
 							""")
 					.bind("uniqueId", uniqueId)
 					.bind("username", username)
-					.bind("createdAt", TestDataFactory.CREATED_AT)
-					.bind("lastSeenAt", TestDataFactory.LAST_SEEN_AT)
+					.bind("usernameKey", username.toLowerCase(Locale.ROOT))
+					.bind("changedAt", TestDataFactory.CREATED_AT)
 					.execute();
 			handle.createUpdate("""
 							INSERT INTO identica_provider_links (
@@ -170,11 +178,7 @@ class StoredValueCompatibilityIntegrationTest {
 	}
 
 	private static DefaultAccountPersistenceService accounts(Jdbi jdbi) {
-		return new DefaultAccountPersistenceService(
-				Providers.of(EntityAccess.of(jdbi, Dialectica.entity(AccountEntity.class))),
-				Providers.of(jdbi.onDemand(AccountRepository.class)),
-				Mockito.mock(EventManager.class)
-		);
+		return PersistenceServices.accounts(jdbi);
 	}
 
 	private static DefaultProviderLinkPersistenceService links(Jdbi jdbi) {

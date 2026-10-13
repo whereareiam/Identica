@@ -1,7 +1,7 @@
 package me.whereareiam.identica.engine.pipeline.username;
 
-import me.whereareiam.identica.persistence.username.AccountUsernameStatePersistenceService;
-import me.whereareiam.identica.model.identity.username.AccountUsernameState;
+import me.whereareiam.identica.persistence.username.AccountUsernamePersistenceService;
+import me.whereareiam.identica.model.identity.username.AccountUsername;
 import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import me.whereareiam.identica.model.identity.Account;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
@@ -29,7 +29,7 @@ class AbstractUsernamePhaseTest {
 		assertTrue(descriptor.getSupportedFeatureIds().isEmpty());
 		ProviderManager manager = mock(ProviderManager.class);
 		when(manager.getProviders()).thenReturn(List.of(InternalProvider.builder().descriptor(descriptor).state(me.whereareiam.identica.type.provider.ProviderState.ENABLED).build()));
-		var persistence = mock(AccountUsernameStatePersistenceService.class);
+		var persistence = mock(AccountUsernamePersistenceService.class);
 		UUID id = UUID.randomUUID();
 		when(persistence.find(id)).thenReturn(Optional.empty());
 		var phase = new AbstractUsernamePhase(manager, persistence) {};
@@ -39,7 +39,7 @@ class AbstractUsernamePhaseTest {
 		assertTrue(phase.synchronize(account, link, profile));
 		assertEquals("VerifiedName", account.getUsername());
 		account.setUsername("ManualName");
-		when(persistence.find(id)).thenReturn(Optional.of(AccountUsernameState.builder().uniqueId(id).source(AccountUsernameSource.MANUAL).build()));
+		when(persistence.find(id)).thenReturn(Optional.of(AccountUsername.builder().uniqueId(id).username("Player").source(AccountUsernameSource.MANUAL).build()));
 		assertFalse(phase.synchronize(account, link, profile));
 		assertEquals("ManualName", account.getUsername());
 		descriptor.setTraits(Set.of());

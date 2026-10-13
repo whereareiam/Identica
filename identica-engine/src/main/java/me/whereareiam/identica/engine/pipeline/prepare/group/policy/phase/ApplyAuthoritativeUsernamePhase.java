@@ -13,7 +13,7 @@ import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.prepare.PrepareGroupState;
 import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.identity.username.UsernameConflictHandler;
-import me.whereareiam.identica.persistence.username.AccountUsernameStatePersistenceService;
+import me.whereareiam.identica.persistence.username.AccountUsernamePersistenceService;
 import me.whereareiam.identica.model.config.UsernameMessages;
 import me.whereareiam.identica.model.identity.username.UsernameConflictResult;
 import me.whereareiam.identica.model.identity.username.UsernameConflictSubject;
@@ -31,11 +31,11 @@ public class ApplyAuthoritativeUsernamePhase extends AbstractUsernamePhase imple
 	@Inject
 	public ApplyAuthoritativeUsernamePhase(
 			ProviderManager providerManager,
-			AccountUsernameStatePersistenceService statePersistenceService,
+			AccountUsernamePersistenceService usernamePersistenceService,
 			UsernameConflictHandler conflictHandler,
 			Provider<UsernameMessages> messagesProvider
 	) {
-		super(providerManager, statePersistenceService);
+		super(providerManager, usernamePersistenceService);
 		this.conflictHandler = conflictHandler;
 		this.messagesProvider = messagesProvider;
 	}

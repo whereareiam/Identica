@@ -216,6 +216,31 @@ public class MessagesCommandDefaults {
 		return sessions;
 	}
 
+	private Messages.Commands.Admin.Username username() {
+		Messages.Commands.Admin.Username.Duplicates duplicates = new Messages.Commands.Admin.Username.Duplicates();
+		duplicates.setBody(List.of(
+				" ",
+				" <green><bold>Identica</bold>",
+				" ",
+				"  <white>Usernames shared by several accounts: <gray>{count}</gray></white>",
+				"{entries}",
+				" ",
+				"  <gray>Each account still logs in through its own provider.</gray>",
+				"  <gray>To leave a username to one account, delete the others</gray>",
+				"  <gray>with <white>/identica admin delete</white> and their UUID.</gray>",
+				" "
+		));
+		duplicates.setGroup("   <dark_gray>▪</dark_gray> <green>{username}</green> <gray>({count} accounts)</gray>");
+		duplicates.setEntry("     <gray><click:run_command:/identica admin delete {uniqueId}>[{uniqueId}]</click></gray> <white>{username}</white>\n"
+				+ "       <white>Providers: <green>{providers}</green> <gray>| <white>Last seen: <green>{lastSeen}");
+		duplicates.setEmpty("{prefix}<white>No two accounts share a username.</white>");
+
+		Messages.Commands.Admin.Username username = new Messages.Commands.Admin.Username();
+		username.setDuplicates(duplicates);
+
+		return username;
+	}
+
 	private void applyReload(Messages.Commands commands) {
 		Messages.Commands.Reload reload = new Messages.Commands.Reload();
 		reload.setSuccess("{prefix}<white>Configuration reloaded <green>successfully</green>!");
@@ -335,6 +360,7 @@ public class MessagesCommandDefaults {
 
 		admin.setDelete(delete);
 		admin.setReservation(reservation);
+		admin.setUsername(username());
 		commands.setAdmin(admin);
 	}
 

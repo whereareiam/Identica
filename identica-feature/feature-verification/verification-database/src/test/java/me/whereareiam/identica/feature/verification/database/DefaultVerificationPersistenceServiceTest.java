@@ -210,7 +210,7 @@ class DefaultVerificationPersistenceServiceTest {
 			databaseService.getSchemaInstaller().install(new VerificationSchema());
 			Jdbi jdbi = databaseService.getJdbi();
 			UUID uniqueId = UUID.randomUUID();
-			jdbi.useHandle(handle -> handle.createUpdate("INSERT INTO identica_accounts (unique_id, username, created_at, last_seen_at) VALUES (:uniqueId, 'Alice', 1, 1)")
+			jdbi.useHandle(handle -> handle.createUpdate("INSERT INTO identica_accounts (unique_id, created_at, last_seen_at) VALUES (:uniqueId, 1, 1)")
 					.bind("uniqueId", uniqueId)
 					.execute());
 

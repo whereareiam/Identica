@@ -6,12 +6,11 @@ import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.dialectica.exception.KeyConflictException;
 import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
 import me.whereareiam.identica.adapter.database.account.DefaultAccountPersistenceService;
-import me.whereareiam.identica.adapter.database.entity.account.AccountEntity;
 import me.whereareiam.identica.adapter.database.entity.account.AccountProviderLinkEntity;
 import me.whereareiam.identica.adapter.database.provider.DefaultProviderLinkPersistenceService;
-import me.whereareiam.identica.adapter.database.repository.account.AccountRepository;
 import me.whereareiam.identica.adapter.database.repository.provider.ProviderLinkRepository;
 import me.whereareiam.identica.adapter.database.testing.SimultaneousCalls;
+import me.whereareiam.identica.adapter.database.testing.PersistenceServices;
 import me.whereareiam.identica.adapter.database.testing.TestDataFactory;
 import me.whereareiam.identica.adapter.database.testing.schema.TestDatabase;
 import me.whereareiam.identica.event.EventManager;
@@ -141,11 +140,7 @@ class ProviderLinkUpsertIntegrationTest {
 		DefaultDatabaseService service = database.open();
 		try {
 			Jdbi jdbi = service.getJdbi();
-			DefaultAccountPersistenceService accountService = new DefaultAccountPersistenceService(
-					Providers.of(EntityAccess.of(jdbi, Dialectica.entity(AccountEntity.class))),
-					Providers.of(jdbi.onDemand(AccountRepository.class)),
-					Mockito.mock(EventManager.class)
-			);
+			DefaultAccountPersistenceService accountService = PersistenceServices.accounts(jdbi);
 			List<UUID> accounts = new ArrayList<>();
 			for (int index = 0; index < count; index++) {
 				UUID uniqueId = UUID.randomUUID();

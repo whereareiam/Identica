@@ -49,6 +49,14 @@ public class UsernameMessagesDefaults implements DefaultsProvider<UsernameMessag
 				"",
 				"<dark_gray>discord.arcadeya.com"
 		));
+		policy.setTaken(List.of(
+				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
+				"",
+				"<white>The username <green>{username}</green> is already taken.</white>",
+				"<white>Please join with another username.</white>",
+				"",
+				"<dark_gray>discord.arcadeya.com"
+		));
 		policy.setEntrypointRequired(List.of(
 				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
 				"",

@@ -9,6 +9,22 @@ This is mandatory identity behavior, not a toggleable feature. Synchronization a
 
 Messages live under `identity/username/messages`.
 
+## Unique usernames
+
+Usernames are unique without regard to case, as Minecraft usernames are: while an account holds `Alice`, no other player can register `alice` or `ALICE`.
+
+- A provider without `ProviderTrait.AUTHORITATIVE_USERNAME`, such as Credential, lets its players choose their usernames. A player who registers a username another account holds in any case is refused with `pipeline.policy.taken` before the provider asks them for anything.
+- A provider with the trait, such as Premium, vouches for the username of its players, so they are never refused. A Premium player whose username a Credential account holds in another case gets an account of their own that shares the username.
+- When a provider with the trait reports that an account was renamed to a username another account holds, the account keeps its username until that username is free again.
+
+Accounts that share a username keep logging in through their own provider links. They come from a provider with the trait, or from a database that held both before usernames were unique; when the database is upgraded, the oldest account of each username holds it. Each start warns in the console about every username several accounts share, naming its accounts with their unique ids, providers and last logins:
+
+```text
+Duplicate usernames: steve is shared by steve (…, providers credential, last seen …), Steve (…, providers premium, last seen …). …
+```
+
+`/identica admin username duplicates` lists the same accounts. To leave a username to one account, delete the others with `/identica admin delete <uuid>`.
+
 ## Conflicts
 
 This subsystem contributes the built-in `username` conflict type.
@@ -234,6 +250,14 @@ Username pipeline messages live in `identity/username/messages` and apply across
 - Takes: a list of message lines
 - Current default: a built-in username synchronization failure message
 - Affects: the message shown when the feature cannot synchronize the account username
+
+### pipeline.policy.taken
+
+- Takes: a list of message lines
+- Current default: a built-in message naming the taken username
+- Affects: the message a player is refused with when they register a username another account holds in any case
+
+The `{username}` placeholder is replaced with the username the player joined with.
 
 ### pipeline.policy.entrypointRequired
 

@@ -15,7 +15,8 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 
 /**
- * Loads the username documents and registers the username conflict type, undoing both on shutdown.
+ * Loads the username documents and registers the username conflict type, undoing both on shutdown, and warns about
+ * usernames that several accounts share.
  */
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public final class UsernameLifecycle implements RuntimeLifecycle {
@@ -24,6 +25,7 @@ public final class UsernameLifecycle implements RuntimeLifecycle {
 	private final UsernameMessagesProvider messagesProvider;
 	private final ConflictService conflicts;
 	private final UsernameConflictType conflictType;
+	private final UsernameDuplicateWarning duplicateWarning;
 	private final Deque<Runnable> cleanup = new ArrayDeque<>();
 
 	@Override
@@ -38,6 +40,7 @@ public final class UsernameLifecycle implements RuntimeLifecycle {
 		conflictsProvider.get();
 		cleanup.addFirst(() -> conflicts.unregister(conflictType));
 		conflicts.register(conflictType);
+		duplicateWarning.warn();
 	}
 
 	@Override

@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @DisplayName("Schema Constraints")
 class SchemaConstraintsIntegrationTest extends DatabaseIntegrationTestBase {
-	@DisplayName("Deleting an account cascades to provider links and profiles")
+	@DisplayName("Deleting an account cascades to its username, provider links and profiles")
 	@ParameterizedTest(name = "{0}")
 	@MethodSource("fixtures")
 	void cascadesDeletesFromAccounts(DatabaseFixture fixture) {
@@ -21,9 +21,8 @@ class SchemaConstraintsIntegrationTest extends DatabaseIntegrationTestBase {
 
 		fixture.useHandle(handle -> {
 			handle.execute(
-					"INSERT INTO identica_accounts (unique_id, username, created_at, last_seen_at) VALUES (?, ?, ?, ?)",
+					"INSERT INTO identica_accounts (unique_id, created_at, last_seen_at) VALUES (?, ?, ?)",
 					uniqueId,
-					"Player",
 					1L,
 					2L
 			);
@@ -43,6 +42,16 @@ class SchemaConstraintsIntegrationTest extends DatabaseIntegrationTestBase {
 					"profileUser"
 			);
 
+			handle.execute(
+					"INSERT INTO identica_account_usernames (unique_id, username, username_key, source, provider_id, changed_at) VALUES (?, ?, ?, ?, ?, ?)",
+					uniqueId,
+					"Player",
+					"player",
+					"provider",
+					null,
+					1L
+			);
+
 			handle.execute("DELETE FROM identica_accounts WHERE unique_id = ?", uniqueId);
 
 			Long links = handle.createQuery("SELECT COUNT(*) FROM identica_provider_links")
@@ -52,8 +61,13 @@ class SchemaConstraintsIntegrationTest extends DatabaseIntegrationTestBase {
 					.mapTo(Long.class)
 					.one();
 
+			Long usernames = handle.createQuery("SELECT COUNT(*) FROM identica_account_usernames")
+					.mapTo(Long.class)
+					.one();
+
 			assertEquals(0L, links);
 			assertEquals(0L, profiles);
+			assertEquals(0L, usernames);
 		});
 	}
 
@@ -66,9 +80,8 @@ class SchemaConstraintsIntegrationTest extends DatabaseIntegrationTestBase {
 
 		fixture.useHandle(handle -> {
 			handle.execute(
-					"INSERT INTO identica_accounts (unique_id, username, created_at, last_seen_at) VALUES (?, ?, ?, ?)",
+					"INSERT INTO identica_accounts (unique_id, created_at, last_seen_at) VALUES (?, ?, ?)",
 					uniqueId,
-					"Player",
 					1L,
 					2L
 			);

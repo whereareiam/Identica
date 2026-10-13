@@ -5,6 +5,8 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import me.whereareiam.identica.persistence.AccountPersistenceService;
 import me.whereareiam.identica.event.EventManager;
+import me.whereareiam.identica.model.identity.Account;
+import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.config.UsernameMessages;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
@@ -12,8 +14,7 @@ import me.whereareiam.identica.pipeline.PipelinePhase;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.scenario.type.migration.IdentityState;
 import me.whereareiam.identica.provider.ProviderManager;
-import me.whereareiam.identica.persistence.username.AccountUsernameHistoryPersistenceService;
-import me.whereareiam.identica.persistence.username.AccountUsernameStatePersistenceService;
+import me.whereareiam.identica.persistence.username.AccountUsernamePersistenceService;
 import me.whereareiam.identica.event.identity.UsernameChangedEvent;
 import me.whereareiam.identica.model.identity.username.AccountUsernameHistoryEntry;
 import me.whereareiam.identica.engine.pipeline.username.AbstractUsernamePhase;
@@ -27,22 +28,19 @@ import java.util.concurrent.CompletionStage;
 @Singleton
 public class SynchronizeMigrationUsernamePhase extends AbstractUsernamePhase implements PipelinePhase<IdentityState> {
 	private final AccountPersistenceService accountPersistenceService;
-	private final AccountUsernameHistoryPersistenceService historyPersistenceService;
 	private final EventManager eventManager;
 	private final Provider<UsernameMessages> messagesProvider;
 
 	@Inject
 	public SynchronizeMigrationUsernamePhase(
 			ProviderManager providerManager,
-			AccountUsernameStatePersistenceService statePersistenceService,
+			AccountUsernamePersistenceService usernamePersistenceService,
 			AccountPersistenceService accountPersistenceService,
-			AccountUsernameHistoryPersistenceService historyPersistenceService,
 			EventManager eventManager,
 			Provider<UsernameMessages> messagesProvider
 	) {
-		super(providerManager, statePersistenceService);
+		super(providerManager, usernamePersistenceService);
 		this.accountPersistenceService = accountPersistenceService;
-		this.historyPersistenceService = historyPersistenceService;
 		this.eventManager = eventManager;
 		this.messagesProvider = messagesProvider;
 	}
@@ -79,28 +77,38 @@ public class SynchronizeMigrationUsernamePhase extends AbstractUsernamePhase imp
 
 		String previousUsername = state.getAccount().getUsername();
 		boolean changed = synchronize(state.getAccount(), state.getLink(), state.getProfile());
+		if (changed && !applyUsernameChange(state, previousUsername)) state.getAccount().setUsername(previousUsername);
 		state.getContext().getIdentity().setUsername(state.getAccount().getUsername());
 		saveSource(state.getAccount().getUniqueId(), AccountUsernameSource.PROVIDER);
 
-		if (changed) applyUsernameChange(state, previousUsername);
 		return CompletableFuture.completedFuture(PhaseResult.pass(state));
 	}
 
-	private void applyUsernameChange(@NotNull IdentityState state, @NotNull String previousUsername) {
-		accountPersistenceService.updateUsername(state.getAccount().getUniqueId(), state.getAccount().getUsername());
-		historyPersistenceService.record(AccountUsernameHistoryEntry.builder()
-				.uniqueId(state.getAccount().getUniqueId())
-				.providerId(state.getLink().getProviderId())
+	/**
+	 * Renames the account to the username its provider reports, unless another account holds that username.
+	 *
+	 * @return whether the account was renamed
+	 */
+	private boolean applyUsernameChange(@NotNull IdentityState state, @NotNull String previousUsername) {
+		Account account = state.getAccount();
+		String providerId = state.getLink().getProviderId();
+		if (isHeldByAnother(accountPersistenceService, account.getUniqueId(), account.getUsername())) {
+			Logger.warn("Account %s keeps the username %s: its provider %s renamed it to %s, which another account holds",
+					account.getUniqueId(), previousUsername, providerId, account.getUsername());
+			return false;
+		}
+
+		boolean renamed = usernamePersistenceService.rename(AccountUsernameHistoryEntry.builder()
+				.uniqueId(account.getUniqueId())
+				.providerId(providerId)
 				.oldUsername(previousUsername)
-				.newUsername(state.getAccount().getUsername())
+				.newUsername(account.getUsername())
 				.source(AccountUsernameSource.PROVIDER)
 				.changedAt(System.currentTimeMillis())
 				.build());
-		eventManager.call(new UsernameChangedEvent(
-				state.getAccount().getUniqueId(),
-				previousUsername,
-				state.getAccount().getUsername(),
-				state.getLink().getProviderId()
-		));
+		if (!renamed) return false;
+
+		eventManager.call(new UsernameChangedEvent(account.getUniqueId(), previousUsername, account.getUsername(), providerId));
+		return true;
 	}
 }

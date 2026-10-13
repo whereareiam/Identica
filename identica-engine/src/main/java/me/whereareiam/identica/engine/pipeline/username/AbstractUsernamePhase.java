@@ -8,8 +8,9 @@ import me.whereareiam.identica.model.identity.provider.AccountProviderProfile;
 import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
 import me.whereareiam.identica.provider.ProviderManager;
-import me.whereareiam.identica.persistence.username.AccountUsernameStatePersistenceService;
-import me.whereareiam.identica.model.identity.username.AccountUsernameState;
+import me.whereareiam.identica.model.identity.username.AccountUsername;
+import me.whereareiam.identica.persistence.AccountPersistenceService;
+import me.whereareiam.identica.persistence.username.AccountUsernamePersistenceService;
 import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import me.whereareiam.identica.type.provider.ProviderTrait;
 import org.jetbrains.annotations.NotNull;
@@ -21,20 +22,35 @@ import java.util.UUID;
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
 public abstract class AbstractUsernamePhase {
 	private final ProviderManager providerManager;
-	private final AccountUsernameStatePersistenceService statePersistenceService;
+	protected final AccountUsernamePersistenceService usernamePersistenceService;
 
 	protected @NotNull AccountUsernameSource resolveSource(@Nullable UUID uniqueId) {
 		if (uniqueId == null) return AccountUsernameSource.PROVIDER;
 
-		return statePersistenceService.find(uniqueId)
-				.map(AccountUsernameState::getSource)
+		return usernamePersistenceService.find(uniqueId)
+				.map(AccountUsername::getSource)
 				.orElse(AccountUsernameSource.PROVIDER);
 	}
 
 	protected void saveSource(@Nullable UUID uniqueId, @NotNull AccountUsernameSource source) {
 		if (uniqueId == null) return;
 
-		statePersistenceService.save(uniqueId, source);
+		usernamePersistenceService.setSource(uniqueId, source);
+	}
+
+	/**
+	 * Tells whether an account other than the given one holds a username without regard to case, which a rename
+	 * must not take from it.
+	 */
+	protected static boolean isHeldByAnother(
+			@NotNull AccountPersistenceService accounts,
+			@NotNull UUID uniqueId,
+			@Nullable String username
+	) {
+		if (username == null || username.isBlank()) return false;
+
+		return accounts.findByUsername(username).stream()
+				.anyMatch(holder -> !holder.getUniqueId().equals(uniqueId));
 	}
 
 	protected boolean synchronize(

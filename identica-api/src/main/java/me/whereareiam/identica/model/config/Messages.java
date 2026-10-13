@@ -209,6 +209,7 @@ public class Messages implements MessageDocument {
 			private @NotNull Delete delete;
 			private @NotNull Reservation reservation;
 			private @NotNull Sessions sessions;
+			private @NotNull Username username;
 
 			@Getter
 			@Setter
@@ -353,6 +354,55 @@ public class Messages implements MessageDocument {
 				private @NotNull String deleted;
 				private @NotNull String notFound;
 				private @NotNull String invalidKey;
+			}
+
+			/**
+			 * Messages of the username admin commands.
+			 */
+			@Getter
+			@Setter
+			@ToString
+			public static class Username {
+				private @NotNull Duplicates duplicates;
+
+				/**
+				 * Messages of the listing of accounts that share a username without regard to case.
+				 */
+				@Getter
+				@Setter
+				@ToString
+				public static class Duplicates {
+					/**
+					 * Lines of the listing.
+					 * Placeholders:
+					 * - {entries}
+					 * - {count}: the number of shared usernames
+					 */
+					private @NotNull List<String> body;
+
+					/**
+					 * Line that starts the accounts of one shared username.
+					 * Placeholders:
+					 * - {username}: the shared username in lower case
+					 * - {count}: the number of accounts
+					 */
+					private @NotNull String group;
+
+					/**
+					 * Line of one account of a shared username.
+					 * Placeholders:
+					 * - {username}
+					 * - {uniqueId}
+					 * - {providers}: the providers the account is linked to
+					 * - {lastSeen}
+					 */
+					private @NotNull String entry;
+
+					/**
+					 * Message shown when no two accounts share a username.
+					 */
+					private @NotNull String empty;
+				}
 			}
 
 			@Getter

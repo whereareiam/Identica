@@ -1,5 +1,11 @@
 package me.whereareiam.identica.adapter.database.schema;
 
+import me.whereareiam.dialectica.Dialectica;
+import me.whereareiam.dialectica.schema.ColumnDefinition;
+import me.whereareiam.dialectica.schema.TableDefinition;
+import me.whereareiam.dialectica.schema.change.AddColumn;
+import me.whereareiam.dialectica.schema.change.CreateTable;
+import me.whereareiam.dialectica.schema.type.ColumnType;
 import me.whereareiam.identica.adapter.database.testing.schema.DatabaseSchemaContract;
 import me.whereareiam.identica.adapter.database.testing.schema.EarlierInstallation;
 import me.whereareiam.identica.adapter.database.testing.schema.SchemaSnapshot;
@@ -20,9 +26,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.OptionalInt;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -33,6 +43,8 @@ class AccountSchemaTest extends DatabaseSchemaContract {
 	private static final String ACCOUNT = "'00000000-0000-0000-0000-000000000001'";
 	private static final String RELEASE = "identica-2.2.1/account";
 	private static final String DEVELOPMENT_BUILD = "development-build/account";
+	private static final String USERNAMES = "identica_account_usernames";
+	private static final String STATE = "identica_account_username_state";
 
 	private static final String UPGRADER = "dfe90880-73a1-3a0e-a7e7-8cda1bb6cb69";
 	private static final String ALICE = "10920508-d5d8-3eed-93d2-92f193afe7d7";
@@ -67,9 +79,36 @@ class AccountSchemaTest extends DatabaseSchemaContract {
 				"identica_provider_links",
 				"identica_provider_profiles",
 				"identica_account_reservations",
-				"identica_account_username_state",
+				USERNAMES,
 				"identica_account_username_history"
 		);
+	}
+
+	/**
+	 * Development builds kept the username in the accounts and its source in a username state.
+	 */
+	@Override
+	protected List<String> developmentBuildTables() {
+		return List.of(
+				"identica_accounts",
+				"identica_provider_links",
+				"identica_provider_profiles",
+				"identica_account_reservations",
+				STATE,
+				"identica_account_username_history"
+		);
+	}
+
+	/**
+	 * Every account of a development build gets a username, and the states merge into them.
+	 */
+	@Override
+	protected Map<String, Long> upgradedRows(Map<String, Long> developmentBuild) {
+		Map<String, Long> rows = new LinkedHashMap<>(developmentBuild);
+		rows.remove(STATE);
+		rows.put(USERNAMES, developmentBuild.get("identica_accounts"));
+
+		return rows;
 	}
 
 	@Override
@@ -86,10 +125,30 @@ class AccountSchemaTest extends DatabaseSchemaContract {
 
 	/**
 	 * Development builds left the username history index out on SQLite; the username layout adds it.
+	 * The username table takes the username from the accounts and replaces the username state, whose
+	 * key, reference to the account and column types it shares, as each database's metadata
+	 * describes them; its key is unique.
 	 */
 	@Override
 	protected SchemaSnapshot upgraded(TestDatabase database, SchemaSnapshot developmentBuild) {
-		return developmentBuild.withIndex("identica_account_username_history", "unique_id", "changed_at");
+		SchemaSnapshot.Table state = developmentBuild.tables().get(STATE);
+		String username = developmentBuild.column("identica_accounts", "username");
+		String varchar = username.substring("username ".length(), username.lastIndexOf(" not null"));
+		List<String> columns = List.of(
+				developmentBuild.column(STATE, "unique_id"),
+				username,
+				"username_key " + varchar + " null",
+				developmentBuild.column(STATE, "source"),
+				"provider_id " + varchar + " null",
+				developmentBuild.column(STATE, "updated_at").replaceFirst("^updated_at", "changed_at")
+		);
+		Set<String> indexes = new TreeSet<>(state.indexes());
+		indexes.add("unique username_key");
+
+		return developmentBuild.withIndex("identica_account_username_history", "unique_id", "changed_at")
+				.withoutColumn("identica_accounts", "username")
+				.withoutTable(STATE)
+				.withTable(USERNAMES, new SchemaSnapshot.Table(columns, state.primaryKey(), indexes, state.foreignKeys()));
 	}
 
 	/**
@@ -118,7 +177,7 @@ class AccountSchemaTest extends DatabaseSchemaContract {
 		install(database);
 
 		assertEquals(expected, database.connect(SchemaSnapshot::everyTable));
-		assertEquals(List.of("1 username-layout"), history(database));
+		assertEquals(List.of("1 username-layout", "2 username-table"), history(database));
 	}
 
 	@ParameterizedTest(name = "{0}")
@@ -132,26 +191,32 @@ class AccountSchemaTest extends DatabaseSchemaContract {
 
 		long after = System.currentTimeMillis();
 		assertEquals(Stream.of(
-				ALICE + " Alice 1000 2000",
-				BOB + " Bob 1100 null",
-				CAROL + " Carol null null",
-				DAVE + " Dave 1200 2200",
-				UPGRADER + " Upgrader 1000 2000",
-				LOWERCASE_DAVE + " dave 1300 2300"
-		).sorted().toList(), rows(database, "SELECT unique_id, username, created_at, last_seen_at FROM identica_accounts").stream().sorted().toList());
+				ALICE + " 1000 2000",
+				BOB + " 1100 null",
+				CAROL + " null null",
+				DAVE + " 1200 2200",
+				UPGRADER + " 1000 2000",
+				LOWERCASE_DAVE + " 1300 2300"
+		).sorted().toList(), rows(database, "SELECT unique_id, created_at, last_seen_at FROM identica_accounts").stream().sorted().toList());
 		assertEquals(4, count(database, "identica_provider_links"));
 		assertEquals(4, count(database, "identica_provider_profiles"));
 		assertEquals(1, count(database, "identica_account_reservations"));
 
-		// An account that follows its provider has no state; the others keep their source.
-		List<String> states = rows(database, "SELECT unique_id, source, updated_at FROM identica_account_username_state ORDER BY source, updated_at");
-		assertEquals(3, states.size(), states.toString());
-		assertEquals(BOB + " manual 1100", states.get(0));
-		assertEquals(LOWERCASE_DAVE + " manual 2300", states.get(1));
-		String[] carol = states.get(2).split(" ");
-		assertEquals(CAROL + " system", carol[0] + " " + carol[1]);
-		long updatedAt = Long.parseLong(carol[2]);
-		assertTrue(updatedAt >= before && updatedAt <= after, "Carol's state was never seen, so it dates from the upgrade");
+		// Each username keeps its source and the time it was last seen to change; an account without a
+		// source follows its provider. Dave is older than dave, so Dave holds the username, and dave
+		// goes on without a key.
+		List<String> usernames = rows(database, "SELECT unique_id, username, username_key, source, provider_id, changed_at FROM identica_account_usernames ORDER BY unique_id");
+		assertEquals(Stream.of(
+				ALICE + " Alice alice provider null 2000",
+				BOB + " Bob bob manual null 1100",
+				DAVE + " Dave dave provider null 2200",
+				UPGRADER + " Upgrader upgrader provider null 2000",
+				LOWERCASE_DAVE + " dave null manual null 2300"
+		).sorted().toList(), usernames.stream().filter(row -> !row.startsWith(CAROL)).sorted().toList());
+		String[] carol = usernames.stream().filter(row -> row.startsWith(CAROL)).findFirst().orElseThrow().split(" ");
+		assertEquals(CAROL + " Carol carol system null", String.join(" ", List.of(carol).subList(0, 5)));
+		long changedAt = Long.parseLong(carol[5]);
+		assertTrue(changedAt >= before && changedAt <= after, "Carol's username was never seen, so it dates from the upgrade");
 
 		// The history of the deleted account stays behind.
 		assertEquals(List.of(
@@ -201,8 +266,79 @@ class AccountSchemaTest extends DatabaseSchemaContract {
 
 		install(database);
 
-		assertEquals(3, count(database, "identica_account_username_state"));
+		assertEquals(List.of("manual", "manual", "system"), rows(database, "SELECT source FROM identica_account_usernames WHERE source <> 'provider' ORDER BY source"));
 		assertEquals(3, count(database, "identica_account_username_history"));
+	}
+
+	/**
+	 * Of the accounts that share a username without regard to case, the oldest holds it, and one of
+	 * unknown age comes after every other. Usernames are lowered as Java lowers them, also outside
+	 * ASCII, where SQLite's {@code LOWER} leaves letters as they are.
+	 */
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
+	void givesASharedUsernameToItsOldestAccount(TestDatabase database) {
+		database.reset();
+		EarlierInstallation.create(database, DEVELOPMENT_BUILD);
+		insert(database,
+				account(1, "Ärger", "2000"),
+				account(2, "äRGER", "1000"),
+				account(3, "Zed", "NULL"),
+				account(4, "zed", "3000"),
+				account(5, "ZED", "3000"),
+				account(6, "Solo", "NULL"));
+
+		install(database);
+
+		assertEquals(List.of(
+				uniqueId(1) + " null",
+				uniqueId(2) + " ärger",
+				uniqueId(3) + " null",
+				uniqueId(4) + " zed",
+				uniqueId(5) + " null",
+				uniqueId(6) + " solo"
+		), rows(database, "SELECT unique_id, username_key FROM identica_account_usernames ORDER BY unique_id"));
+	}
+
+	/**
+	 * DDL commits on its own on MySQL, MariaDB and H2, so moving the usernames may stop after their
+	 * table was filled, while the old column and the username state still exist; running it again
+	 * writes every username anew from them and then drops them.
+	 */
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
+	void finishesAMoveOfTheUsernamesThatStoppedHalfway(TestDatabase database) {
+		SchemaSnapshot expected = newInstallation(database);
+		database.reset();
+		EarlierInstallation.create(database, RELEASE);
+		install(database);
+		database.connect(connection -> {
+			Dialectica.on(connection).apply(
+					new AddColumn("identica_accounts", ColumnDefinition.builder("username", ColumnType.varchar(64)).build()),
+					new CreateTable(TableDefinition.builder(STATE)
+							.column(ColumnDefinition.builder("unique_id", ColumnType.uuid()).notNull().build())
+							.column(ColumnDefinition.builder("source", ColumnType.varchar(32)).notNull().build())
+							.column(ColumnDefinition.builder("updated_at", ColumnType.bigint()).notNull().build())
+							.primaryKey("unique_id")
+							.build())
+			);
+			try (Statement statement = connection.createStatement()) {
+				statement.execute("UPDATE identica_accounts SET username = (SELECT u.username FROM identica_account_usernames u WHERE u.unique_id = identica_accounts.unique_id)");
+				statement.execute("INSERT INTO " + STATE + " (unique_id, source, updated_at) VALUES ('" + LOWERCASE_DAVE + "', 'manual', 2300)");
+				statement.execute("UPDATE identica_account_usernames SET username_key = NULL, source = 'system' WHERE unique_id = '" + DAVE + "'");
+				statement.execute("DELETE FROM identica_account_usernames WHERE unique_id = '" + LOWERCASE_DAVE + "'");
+				statement.execute("DELETE FROM strata_history WHERE stream = 'identica/account' AND version = 2");
+			}
+			if (!connection.getAutoCommit()) connection.commit();
+			return null;
+		});
+
+		install(database);
+
+		assertEquals(expected, database.connect(SchemaSnapshot::everyTable));
+		assertEquals(List.of("1 username-layout", "2 username-table"), history(database));
+		assertEquals(Stream.of(DAVE + " dave provider", LOWERCASE_DAVE + " null manual").sorted().toList(), rows(database,
+				"SELECT unique_id, username_key, source FROM identica_account_usernames WHERE username IN ('Dave', 'dave')").stream().sorted().toList());
 	}
 
 	@Test
@@ -227,6 +363,25 @@ class AccountSchemaTest extends DatabaseSchemaContract {
 			state.add(rows(database, "SELECT * FROM " + table + " ORDER BY 1, 2"));
 
 		return state;
+	}
+
+	private static String uniqueId(int account) {
+		return "00000000-0000-0000-0000-00000000000" + account;
+	}
+
+	private static String account(int account, String username, String createdAt) {
+		return "INSERT INTO identica_accounts (unique_id, username, created_at, last_seen_at) VALUES ('"
+				+ uniqueId(account) + "', '" + username + "', " + createdAt + ", NULL)";
+	}
+
+	private static void insert(TestDatabase database, String... statements) {
+		database.connect(connection -> {
+			try (Statement statement = connection.createStatement()) {
+				for (String sql : statements) statement.execute(sql);
+			}
+			if (!connection.getAutoCommit()) connection.commit();
+			return null;
+		});
 	}
 
 	private static long count(TestDatabase database, String table) {

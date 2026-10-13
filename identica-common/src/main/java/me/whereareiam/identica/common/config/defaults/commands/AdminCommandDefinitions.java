@@ -31,6 +31,7 @@ public class AdminCommandDefinitions implements CommandDefinitions {
 		registerDelete(registry);
 		registerReservation(registry);
 		registerSessions(registry);
+		registerUsername(registry);
 	}
 
 	private void registerClear(Registry registry) {
@@ -121,6 +122,17 @@ public class AdminCommandDefinitions implements CommandDefinitions {
 				.description("Delete the reservation of a username")
 				.usage("{command} {alias} <username>")
 				.arguments(Map.of("username", "Username"))
+				.cooldown(globalCooldown())
+				.build());
+	}
+
+	private void registerUsername(Registry registry) {
+		registry.register("admin-username-duplicates", CommandDefinition.builder()
+				.enabled(true)
+				.aliases(List.of("admin username duplicates"))
+				.permission("identica.admin.username")
+				.description("List usernames shared by several accounts")
+				.usage("{command} {alias}")
 				.cooldown(globalCooldown())
 				.build());
 	}

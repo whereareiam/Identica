@@ -97,6 +97,13 @@ public class UsernameMessages implements MessageDocument {
 			 */
 			private @NotNull List<String> conflictDenied;
 			/**
+			 * Message lines shown when a player registers a username that another account holds without regard to case,
+			 * through a provider that does not vouch for its usernames.
+			 *
+			 * @return configured message lines
+			 */
+			private @NotNull List<String> taken;
+			/**
 			 * Message lines requesting an entrypoint, supporting incomingProvider, existingProvider, incomingHost, and existingHost placeholders.
 			 *
 			 * @return configured message lines

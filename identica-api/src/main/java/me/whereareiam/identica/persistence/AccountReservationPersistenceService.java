@@ -3,6 +3,7 @@ package me.whereareiam.identica.persistence;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,7 +22,7 @@ public interface AccountReservationPersistenceService {
 	static @Nullable String usernameKey(@Nullable String username) {
 		if (username == null || username.isBlank()) return null;
 
-		return "username:" + username.trim().toLowerCase();
+		return "username:" + username.trim().toLowerCase(Locale.ROOT);
 	}
 
 	/**

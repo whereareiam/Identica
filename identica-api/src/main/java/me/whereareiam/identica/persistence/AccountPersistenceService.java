@@ -21,7 +21,9 @@ public interface AccountPersistenceService {
 	@NotNull Optional<Account> findByUniqueId(@NotNull UUID uniqueId);
 
 	/**
-	 * Find accounts by username.
+	 * Find accounts by username, without regard to case. Usernames are unique without regard to case, but
+	 * accounts from before that rule, and accounts of a provider that vouches for its usernames, may share one,
+	 * so every one of them is returned.
 	 *
 	 * @param username account username
 	 * @return matching accounts
@@ -36,10 +38,12 @@ public interface AccountPersistenceService {
 	long count();
 
 	/**
-	 * Create a new account record.
+	 * Create a new account record, with its username following its provider. The username is unique without regard
+	 * to case; when an older account holds it already, the new account shares it with that account.
 	 *
 	 * @param account account to create
 	 * @return created account
+	 * @see me.whereareiam.identica.persistence.username.AccountUsernamePersistenceService
 	 */
 	@NotNull Account create(@NotNull Account account);
 
@@ -50,14 +54,6 @@ public interface AccountPersistenceService {
 	 * @param lastSeenAt epoch millis
 	 */
 	void updateLastSeen(@NotNull UUID uniqueId, long lastSeenAt);
-
-	/**
-	 * Update the username for an account.
-	 *
-	 * @param uniqueId account id
-	 * @param username new username
-	 */
-	void updateUsername(@NotNull UUID uniqueId, @NotNull String username);
 
 	/**
 	 * Delete an account record.

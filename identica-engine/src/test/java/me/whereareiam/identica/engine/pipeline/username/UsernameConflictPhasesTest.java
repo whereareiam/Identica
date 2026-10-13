@@ -21,7 +21,7 @@ import me.whereareiam.identica.pipeline.state.prepare.PrepareGroupState;
 import me.whereareiam.identica.pipeline.state.scenario.type.registration.PolicyState;
 import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.identity.username.UsernameConflictHandler;
-import me.whereareiam.identica.persistence.username.AccountUsernameStatePersistenceService;
+import me.whereareiam.identica.persistence.username.AccountUsernamePersistenceService;
 import me.whereareiam.identica.model.config.UsernameMessages;
 import me.whereareiam.identica.model.identity.username.UsernameConflictResult;
 import me.whereareiam.identica.engine.pipeline.prepare.group.policy.phase.ApplyAuthoritativeUsernamePhase;
@@ -57,7 +57,7 @@ class UsernameConflictPhasesTest {
 
 		ApplyAuthoritativeUsernamePhase phase = new ApplyAuthoritativeUsernamePhase(
 				providerManager(),
-				statePersistenceService(),
+				usernamePersistenceService(),
 				conflictHandler,
 				this::messages
 		);
@@ -79,7 +79,7 @@ class UsernameConflictPhasesTest {
 	@Test
 	void preparePhaseSkipsNonparticipatingAuthority() {
 		UsernameConflictHandler conflictHandler = mock(UsernameConflictHandler.class);
-		AccountUsernameStatePersistenceService persistence = statePersistenceService();
+		AccountUsernamePersistenceService persistence = usernamePersistenceService();
 		ApplyAuthoritativeUsernamePhase phase = new ApplyAuthoritativeUsernamePhase(
 				providerManager(false), persistence, conflictHandler, this::messages
 		);
@@ -103,7 +103,7 @@ class UsernameConflictPhasesTest {
 	@DisplayName("Username authority without the trait does not create a scenario snapshot")
 	@Test
 	void authenticationSynchronizationSkipsNonparticipatingAuthority() {
-		AccountUsernameStatePersistenceService persistence = statePersistenceService();
+		AccountUsernamePersistenceService persistence = usernamePersistenceService();
 		var phase = new me.whereareiam.identica.engine.pipeline.scenario.type.authentication.group.identity.phase.SynchronizeAuthenticationUsernamePhase(
 				providerManager(false), persistence, this::messages
 		);
@@ -134,7 +134,7 @@ class UsernameConflictPhasesTest {
 	@Test
 	void synchronizationFailureUsesUsernameMessages() {
 		var phase = new me.whereareiam.identica.engine.pipeline.scenario.type.authentication.group.identity.phase.SynchronizeAuthenticationUsernamePhase(
-				providerManager(), statePersistenceService(), this::messages
+				providerManager(), usernamePersistenceService(), this::messages
 		);
 		var state = new me.whereareiam.identica.pipeline.state.scenario.type.authentication.IdentityState();
 		state.setResult(PipelineResult.complete());
@@ -254,8 +254,8 @@ class UsernameConflictPhasesTest {
 		return service;
 	}
 
-	private AccountUsernameStatePersistenceService statePersistenceService() {
-		AccountUsernameStatePersistenceService service = mock(AccountUsernameStatePersistenceService.class);
+	private AccountUsernamePersistenceService usernamePersistenceService() {
+		AccountUsernamePersistenceService service = mock(AccountUsernamePersistenceService.class);
 		when(service.find(any())).thenReturn(Optional.empty());
 		return service;
 	}

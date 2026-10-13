@@ -139,6 +139,26 @@ public final class Administrator {
 		return this;
 	}
 
+	/**
+	 * Lists the usernames several accounts share and expects the proxy to name the given one, in lower case.
+	 */
+	public Administrator findsDuplicateUsername(String username) {
+		run("identica admin username duplicates", filled(duplicates().getGroup(), Map.of("username", username)));
+		return this;
+	}
+
+	/**
+	 * Lists the usernames several accounts share and expects the proxy to find none.
+	 */
+	public Administrator findsNoDuplicateUsernames() {
+		run("identica admin username duplicates", duplicates().getEmpty());
+		return this;
+	}
+
+	private Messages.Commands.Admin.Username.Duplicates duplicates() {
+		return configured.identica().getCommands().getAdmin().getUsername().getDuplicates();
+	}
+
 	private Messages.Commands.Admin.Reservation reservation() {
 		return configured.identica().getCommands().getAdmin().getReservation();
 	}

@@ -106,6 +106,7 @@ public class DefaultCommandService implements CommandService, RuntimeLifecycle {
 				injector.getInstance(DeleteCommand.class),
 				injector.getInstance(ReservationCommand.class),
 				injector.getInstance(SessionsCommand.class),
+				injector.getInstance(UsernameCommand.class),
 				injector.getInstance(EnrollCommand.class),
 				injector.getInstance(MigrationCommand.class),
 				injector.getInstance(AvailabilityCommand.class)

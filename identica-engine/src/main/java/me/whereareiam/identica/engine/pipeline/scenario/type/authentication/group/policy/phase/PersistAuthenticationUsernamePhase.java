@@ -9,8 +9,7 @@ import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.scenario.type.authentication.PolicyState;
 import me.whereareiam.identica.provider.ProviderManager;
-import me.whereareiam.identica.persistence.username.AccountUsernameHistoryPersistenceService;
-import me.whereareiam.identica.persistence.username.AccountUsernameStatePersistenceService;
+import me.whereareiam.identica.persistence.username.AccountUsernamePersistenceService;
 import me.whereareiam.identica.engine.pipeline.username.AbstractPersistUsernamePhase;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -20,12 +19,11 @@ public class PersistAuthenticationUsernamePhase extends AbstractPersistUsernameP
 	@Inject
 	public PersistAuthenticationUsernamePhase(
 			ProviderManager providerManager,
-			AccountUsernameStatePersistenceService statePersistenceService,
+			AccountUsernamePersistenceService usernamePersistenceService,
 			AccountPersistenceService accountPersistenceService,
-			AccountUsernameHistoryPersistenceService historyPersistenceService,
 			EventManager eventManager
 	) {
-		super(providerManager, statePersistenceService, accountPersistenceService, historyPersistenceService, eventManager);
+		super(providerManager, usernamePersistenceService, accountPersistenceService, eventManager);
 	}
 
 	@Override

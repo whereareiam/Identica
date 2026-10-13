@@ -12,7 +12,7 @@ import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.state.AbstractGroupState;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.provider.ProviderManager;
-import me.whereareiam.identica.persistence.username.AccountUsernameStatePersistenceService;
+import me.whereareiam.identica.persistence.username.AccountUsernamePersistenceService;
 import me.whereareiam.identica.pipeline.state.scenario.shared.item.UsernameStateItem;
 import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import me.whereareiam.identica.type.pipeline.PipelineStatus;
@@ -27,10 +27,10 @@ public abstract class AbstractSynchronizeUsernamePhase<S extends AbstractGroupSt
 
 	protected AbstractSynchronizeUsernamePhase(
 			@NotNull ProviderManager providerManager,
-			@NotNull AccountUsernameStatePersistenceService statePersistenceService,
+			@NotNull AccountUsernamePersistenceService usernamePersistenceService,
 			@NotNull Provider<UsernameMessages> messagesProvider
 	) {
-		super(providerManager, statePersistenceService);
+		super(providerManager, usernamePersistenceService);
 		this.messagesProvider = messagesProvider;
 	}
 

@@ -1,21 +1,15 @@
 package me.whereareiam.identica.adapter.database.integration;
 
-import com.google.inject.util.Providers;
-import me.whereareiam.dialectica.Dialectica;
-import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
 import me.whereareiam.identica.adapter.database.account.DefaultAccountPersistenceService;
-import me.whereareiam.identica.adapter.database.entity.account.AccountEntity;
-import me.whereareiam.identica.adapter.database.repository.account.AccountRepository;
+import me.whereareiam.identica.adapter.database.testing.PersistenceServices;
 import me.whereareiam.identica.adapter.database.testing.TestDataFactory;
 import me.whereareiam.identica.adapter.database.testing.schema.TestDatabase;
-import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.model.identity.Account;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.Mockito;
 
 import java.util.UUID;
 
@@ -39,21 +33,6 @@ class AccountUpdateIntegrationTest {
 		});
 	}
 
-	@DisplayName("Changes the username of one account and nothing else")
-	@ParameterizedTest(name = "{0}")
-	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
-	void updatesUsername(TestDatabase database) {
-		withAccounts(database, (accounts, alice, bob) -> {
-			accounts.updateUsername(alice, "Alicia");
-
-			Account updated = accounts.findByUniqueId(alice).orElseThrow();
-			assertEquals("Alicia", updated.getUsername());
-			assertEquals(TestDataFactory.CREATED_AT, updated.getCreatedAt());
-			assertEquals(TestDataFactory.LAST_SEEN_AT, updated.getLastSeenAt());
-			assertEquals("Bob", accounts.findByUniqueId(bob).orElseThrow().getUsername());
-		});
-	}
-
 	@DisplayName("Creates no account when updating one that does not exist")
 	@ParameterizedTest(name = "{0}")
 	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
@@ -62,7 +41,6 @@ class AccountUpdateIntegrationTest {
 			UUID missing = UUID.randomUUID();
 
 			accounts.updateLastSeen(missing, 5_000L);
-			accounts.updateUsername(missing, "Nobody");
 
 			assertTrue(accounts.findByUniqueId(missing).isEmpty());
 			assertEquals(2L, accounts.count());
@@ -74,11 +52,7 @@ class AccountUpdateIntegrationTest {
 		DefaultDatabaseService service = database.open();
 		try {
 			Jdbi jdbi = service.getJdbi();
-			DefaultAccountPersistenceService accounts = new DefaultAccountPersistenceService(
-					Providers.of(EntityAccess.of(jdbi, Dialectica.entity(AccountEntity.class))),
-					Providers.of(jdbi.onDemand(AccountRepository.class)),
-					Mockito.mock(EventManager.class)
-			);
+			DefaultAccountPersistenceService accounts = PersistenceServices.accounts(jdbi);
 			UUID alice = UUID.randomUUID();
 			UUID bob = UUID.randomUUID();
 			accounts.create(TestDataFactory.account(alice, "Alice"));

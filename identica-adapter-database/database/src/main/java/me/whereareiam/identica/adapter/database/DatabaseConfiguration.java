@@ -12,16 +12,17 @@ import me.whereareiam.identica.adapter.database.entity.account.AccountEntity;
 import me.whereareiam.identica.adapter.database.entity.account.AccountProviderLinkEntity;
 import me.whereareiam.identica.adapter.database.entity.account.AccountProviderProfileEntity;
 import me.whereareiam.identica.adapter.database.entity.account.AccountReservationEntity;
+import me.whereareiam.identica.adapter.database.entity.username.UsernameEntity;
 import me.whereareiam.identica.adapter.database.entity.username.UsernameHistoryEntity;
-import me.whereareiam.identica.adapter.database.entity.username.UsernameStateEntity;
 import me.whereareiam.identica.adapter.database.provider.DefaultProviderLinkPersistenceService;
 import me.whereareiam.identica.adapter.database.provider.DefaultProviderProfilePersistenceService;
 import me.whereareiam.identica.adapter.database.repository.account.AccountRepository;
 import me.whereareiam.identica.adapter.database.repository.account.AccountReservationRepository;
 import me.whereareiam.identica.adapter.database.repository.provider.ProviderLinkRepository;
 import me.whereareiam.identica.adapter.database.repository.username.UsernameHistoryRepository;
-import me.whereareiam.identica.adapter.database.username.DefaultAccountUsernameHistoryPersistenceService;
-import me.whereareiam.identica.adapter.database.username.DefaultAccountUsernameStatePersistenceService;
+import me.whereareiam.identica.adapter.database.repository.username.UsernameRepository;
+import me.whereareiam.identica.adapter.database.username.DefaultAccountUsernameDuplicatePersistenceService;
+import me.whereareiam.identica.adapter.database.username.DefaultAccountUsernamePersistenceService;
 import me.whereareiam.identica.persistence.AccountPersistenceService;
 import me.whereareiam.identica.persistence.AccountReservationPersistenceService;
 import me.whereareiam.identica.database.DatabaseService;
@@ -29,8 +30,8 @@ import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceServi
 import me.whereareiam.identica.persistence.provider.ProviderProfilePersistenceService;
 import me.whereareiam.identica.database.schema.SchemaInstaller;
 import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
-import me.whereareiam.identica.persistence.username.AccountUsernameHistoryPersistenceService;
-import me.whereareiam.identica.persistence.username.AccountUsernameStatePersistenceService;
+import me.whereareiam.identica.persistence.username.AccountUsernameDuplicatePersistenceService;
+import me.whereareiam.identica.persistence.username.AccountUsernamePersistenceService;
 import org.jdbi.v3.core.Jdbi;
 
 import javax.sql.DataSource;
@@ -45,8 +46,8 @@ public class DatabaseConfiguration extends AbstractModule {
 		bind(AccountReservationPersistenceService.class).to(DefaultAccountReservationPersistenceService.class).asEagerSingleton();
 		bind(ProviderLinkPersistenceService.class).to(DefaultProviderLinkPersistenceService.class).asEagerSingleton();
 		bind(ProviderProfilePersistenceService.class).to(DefaultProviderProfilePersistenceService.class).asEagerSingleton();
-		bind(AccountUsernameStatePersistenceService.class).to(DefaultAccountUsernameStatePersistenceService.class).asEagerSingleton();
-		bind(AccountUsernameHistoryPersistenceService.class).to(DefaultAccountUsernameHistoryPersistenceService.class).asEagerSingleton();
+		bind(AccountUsernamePersistenceService.class).to(DefaultAccountUsernamePersistenceService.class).asEagerSingleton();
+		bind(AccountUsernameDuplicatePersistenceService.class).to(DefaultAccountUsernameDuplicatePersistenceService.class).asEagerSingleton();
 	}
 
 	@Provides
@@ -86,8 +87,8 @@ public class DatabaseConfiguration extends AbstractModule {
 
 	@Provides
 	@Singleton
-	public EntityAccess<UsernameStateEntity> provideUsernameStates(Jdbi jdbi) {
-		return EntityAccess.of(jdbi, Dialectica.entity(UsernameStateEntity.class));
+	public EntityAccess<UsernameEntity> provideUsernames(Jdbi jdbi) {
+		return EntityAccess.of(jdbi, Dialectica.entity(UsernameEntity.class));
 	}
 
 	@Provides
@@ -112,6 +113,12 @@ public class DatabaseConfiguration extends AbstractModule {
 	@Singleton
 	public ProviderLinkRepository provideProviderLinkRepository(Jdbi jdbi) {
 		return jdbi.onDemand(ProviderLinkRepository.class);
+	}
+
+	@Provides
+	@Singleton
+	public UsernameRepository provideUsernameRepository(Jdbi jdbi) {
+		return jdbi.onDemand(UsernameRepository.class);
 	}
 
 	@Provides

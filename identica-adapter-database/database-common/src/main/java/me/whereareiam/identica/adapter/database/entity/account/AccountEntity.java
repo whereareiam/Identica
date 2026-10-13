@@ -6,13 +6,15 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import me.whereareiam.dialectica.entity.annotation.Id;
-import me.whereareiam.dialectica.entity.annotation.Length;
 import me.whereareiam.dialectica.entity.annotation.Nullable;
 import me.whereareiam.dialectica.entity.annotation.Table;
 import me.whereareiam.identica.database.schema.AccountTable;
 
 import java.util.UUID;
 
+/**
+ * An account; its username is a {@link me.whereareiam.identica.adapter.database.entity.username.UsernameEntity}.
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,8 +24,6 @@ import java.util.UUID;
 public class AccountEntity {
 	@Id
 	private UUID uniqueId;
-	@Length(64)
-	private String username;
 	@Nullable
 	private Long createdAt;
 	@Nullable

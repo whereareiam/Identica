@@ -70,6 +70,50 @@ public record SchemaSnapshot(Map<String, Table> tables) {
 	}
 
 	/**
+	 * Returns this snapshot with a table added or replaced, as if it had been created.
+	 */
+	public SchemaSnapshot withTable(String name, Table table) {
+		Map<String, Table> changed = new TreeMap<>(tables);
+		changed.put(name, table);
+
+		return new SchemaSnapshot(changed);
+	}
+
+	/**
+	 * Returns this snapshot without a table, as if it had been dropped.
+	 */
+	public SchemaSnapshot withoutTable(String name) {
+		Map<String, Table> changed = new TreeMap<>(tables);
+		changed.remove(name);
+
+		return new SchemaSnapshot(changed);
+	}
+
+	/**
+	 * Returns this snapshot without a column of a table, as if it had been dropped.
+	 */
+	public SchemaSnapshot withoutColumn(String table, String column) {
+		Map<String, Table> changed = new TreeMap<>(tables);
+		Table described = changed.get(table);
+		List<String> columns = described.columns().stream()
+				.filter(name -> !name.startsWith(column + " "))
+				.toList();
+		changed.put(table, new Table(columns, described.primaryKey(), described.indexes(), described.foreignKeys()));
+
+		return new SchemaSnapshot(changed);
+	}
+
+	/**
+	 * Returns the description of a column of a table, as {@code name TYPE(size) nullability}.
+	 */
+	public String column(String table, String column) {
+		return tables.get(table).columns().stream()
+				.filter(described -> described.startsWith(column + " "))
+				.findFirst()
+				.orElseThrow(() -> new IllegalArgumentException(table + " has no column " + column));
+	}
+
+	/**
 	 * Returns this snapshot with a column appended to a table, as if it had been added.
 	 *
 	 * @param column the column as {@code name TYPE(size) nullability}, followed by

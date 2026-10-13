@@ -27,6 +27,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 public abstract class DatabaseSchemaContract {
 	private static final String HISTORY = "strata_history";
+	private static final String LEGACY_USERNAME_STATE = "identica_account_username_state";
+	private static final String USERNAMES = "identica_account_usernames";
 
 	/**
 	 * Returns the schema under test.
@@ -51,6 +53,35 @@ public abstract class DatabaseSchemaContract {
 	 * Returns the tables of this schema.
 	 */
 	protected abstract List<String> tables();
+
+	/**
+	 * Returns the tables of this schema that the last development build created, when they differ from
+	 * {@link #tables()} because a migration adds or drops a table.
+	 */
+	protected List<String> developmentBuildTables() {
+		return tables();
+	}
+
+	/**
+	 * Returns the names of every table a new installation has, given those of the last development
+	 * build, when a migration adds or drops a table. The core schema, which every schema requires,
+	 * merged the username state of development builds into the usernames table.
+	 */
+	protected Set<String> upgradedTableNames(Set<String> developmentBuild) {
+		Set<String> tables = new TreeSet<>(developmentBuild);
+		if (tables.remove(LEGACY_USERNAME_STATE)) tables.add(USERNAMES);
+
+		return tables;
+	}
+
+	/**
+	 * Returns how many rows each table of this schema holds once the migrations ran on a development
+	 * build with {@link #rows()}, given the counts of the development build's tables, when a migration
+	 * moves rows to another table.
+	 */
+	protected Map<String, Long> upgradedRows(Map<String, Long> developmentBuild) {
+		return developmentBuild;
+	}
 
 	/**
 	 * Returns statements that fill the tables of a development build with rows.
@@ -80,7 +111,7 @@ public abstract class DatabaseSchemaContract {
 	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
 	void createsTheTablesOfADevelopmentBuildOnANewDatabase(TestDatabase database) {
 		SchemaSnapshot expected = created(database, developmentBuildSnapshot(database));
-		Set<String> tables = new TreeSet<>(database.connect(SchemaSnapshot::tableNames));
+		Set<String> tables = new TreeSet<>(upgradedTableNames(database.connect(SchemaSnapshot::tableNames)));
 		tables.add(HISTORY);
 		database.reset();
 
@@ -116,14 +147,14 @@ public abstract class DatabaseSchemaContract {
 				for (String row : rows()) statement.execute(row);
 			}
 			if (!connection.getAutoCommit()) connection.commit();
-			return counts(connection);
+			return counts(connection, developmentBuildTables());
 		});
 
 		install(database);
 
 		database.connect(connection -> {
 			assertEquals(upgraded(database, developmentBuild), SchemaSnapshot.of(connection, tables()));
-			assertEquals(rows, counts(connection));
+			assertEquals(upgradedRows(rows), counts(connection, tables()));
 			int baseline = developmentBuildVersion();
 			List<String> expected = new ArrayList<>();
 			if (baseline > 0) expected.add(baseline + " baseline");
@@ -139,7 +170,7 @@ public abstract class DatabaseSchemaContract {
 		database.reset();
 		developmentBuild().forEach(layout -> EarlierInstallation.create(database, layout));
 
-		return database.connect(connection -> SchemaSnapshot.of(connection, tables()));
+		return database.connect(connection -> SchemaSnapshot.of(connection, developmentBuildTables()));
 	}
 
 	/**
@@ -189,10 +220,10 @@ public abstract class DatabaseSchemaContract {
 		return entries;
 	}
 
-	private Map<String, Long> counts(Connection connection) throws SQLException {
+	private Map<String, Long> counts(Connection connection, List<String> tables) throws SQLException {
 		Map<String, Long> counts = new LinkedHashMap<>();
 		try (Statement statement = connection.createStatement()) {
-			for (String table : tables())
+			for (String table : tables)
 				try (ResultSet rows = statement.executeQuery("SELECT COUNT(*) FROM " + table)) {
 					rows.next();
 					counts.put(table, rows.getLong(1));

@@ -11,7 +11,7 @@ import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.scenario.type.registration.IdentityState;
 import me.whereareiam.identica.provider.ProviderManager;
-import me.whereareiam.identica.persistence.username.AccountUsernameStatePersistenceService;
+import me.whereareiam.identica.persistence.username.AccountUsernamePersistenceService;
 import me.whereareiam.identica.engine.pipeline.username.AbstractSynchronizeUsernamePhase;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -21,10 +21,10 @@ public class SynchronizeRegistrationUsernamePhase extends AbstractSynchronizeUse
 	@Inject
 	public SynchronizeRegistrationUsernamePhase(
 			ProviderManager providerManager,
-			AccountUsernameStatePersistenceService statePersistenceService,
+			AccountUsernamePersistenceService usernamePersistenceService,
 			Provider<UsernameMessages> messagesProvider
 	) {
-		super(providerManager, statePersistenceService, messagesProvider);
+		super(providerManager, usernamePersistenceService, messagesProvider);
 	}
 
 	@Override

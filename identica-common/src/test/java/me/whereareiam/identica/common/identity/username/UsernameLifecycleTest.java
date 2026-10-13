@@ -19,8 +19,9 @@ class UsernameLifecycleTest {
 	private final UsernameMessagesProvider messagesProvider = mock(UsernameMessagesProvider.class);
 	private final ConflictService conflicts = mock(ConflictService.class);
 	private final UsernameConflictType conflictType = mock(UsernameConflictType.class);
+	private final UsernameDuplicateWarning duplicateWarning = mock(UsernameDuplicateWarning.class);
 	private final UsernameLifecycle lifecycle =
-			new UsernameLifecycle(reloadables, conflictsProvider, messagesProvider, conflicts, conflictType);
+			new UsernameLifecycle(reloadables, conflictsProvider, messagesProvider, conflicts, conflictType, duplicateWarning);
 
 	@Test
 	@DisplayName("Loads the conflict rules and registers the username conflict type")
@@ -31,6 +32,14 @@ class UsernameLifecycleTest {
 		order.verify(conflictsProvider).get();
 		order.verify(conflicts).register(conflictType);
 		verifyNoInteractions(reloadables);
+	}
+
+	@Test
+	@DisplayName("Warns about usernames that several accounts share")
+	void initializeWarnsAboutDuplicateUsernames() {
+		lifecycle.initialize();
+
+		verify(duplicateWarning).warn();
 	}
 
 	@Test

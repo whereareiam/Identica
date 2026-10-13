@@ -252,6 +252,16 @@ One or two sentences about the release.
 
 ---
 
+## Upgrade Paths
+
+An installation is upgraded by migration streams: `identica/config` and each feature's config stream, and one database stream per owner (see `docs/content/developer/advanced/database-schema`).
+
+- 3.0.x upgrades configuration directories and databases of 2.2.1 and of published 3.0.0 development builds. These paths exist for 3.0.x only.
+- 3.1.0 removes them: the steps and baselines for 2.2.1 and development-build layouts, the 2.2.1 defaults table of the provider-entry migration, and their fixtures and upgrade journeys. Strata then refuses an older installation with "upgrade through an older build first", and the 3.1.0 release notes say that 3.0.x must be started once first.
+- Each later release keeps upgrade paths only from the previous minor release unless a decision says otherwise; write new steps so they can be dropped the same way.
+
+---
+
 ## Documentation Rules
 
 - When changing features, behavior, configuration, installation, provider flows, or other user-visible behavior, update the relevant documentation in the same work.

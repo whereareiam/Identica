@@ -4,17 +4,14 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.persistence.AccountPersistenceService;
 import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
-import me.whereareiam.identica.event.EventManager;
-import me.whereareiam.identica.event.scenario.migration.MigrationRequiredEvent;
-import me.whereareiam.identica.event.scenario.migration.MigrationResolvedEvent;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
-import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.config.Commands;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
@@ -25,23 +22,18 @@ import me.whereareiam.identica.model.delivery.DeliveryTarget;
 import me.whereareiam.identica.model.identity.Account;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.migration.MigrationContext;
+import me.whereareiam.identica.model.migration.MigrationJourney;
 import me.whereareiam.identica.model.migration.PendingMigration;
 import me.whereareiam.identica.model.migration.operation.*;
 import me.whereareiam.identica.model.pipeline.journey.JourneyPlan;
-import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
-import me.whereareiam.identica.model.pipeline.migration.MigrationPendingState;
 import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.pipeline.journey.registry.type.MigrationJourneyRegistry;
-import me.whereareiam.identica.pipeline.state.PipelineState;
-import me.whereareiam.identica.pipeline.state.PipelineStateReference;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.provider.migration.MigrationPrecheckContext;
 import me.whereareiam.identica.provider.migration.MigrationPrecheckResult;
 import me.whereareiam.identica.provider.migration.ProviderMigrationPrecheck;
 import me.whereareiam.identica.service.DeliveryService;
 import me.whereareiam.identica.service.MigrationService;
-import me.whereareiam.identica.type.ScenarioResolution;
 import me.whereareiam.identica.type.messaging.DeliveryCheckpoint;
 import me.whereareiam.identica.type.messaging.DeliverySemantics;
 import me.whereareiam.identica.type.messaging.DeliverySource;
@@ -49,7 +41,6 @@ import me.whereareiam.identica.type.migration.MigrationCancelScope;
 import me.whereareiam.identica.type.migration.MigrationInitiator;
 import me.whereareiam.identica.type.migration.MigrationResultStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -67,13 +58,12 @@ public class DefaultMigrationService implements MigrationService {
 
 	private final ProviderLinkPersistenceService providerLinkPersistenceService;
 	private final AccountPersistenceService accountPersistenceService;
-	private final PipelineStateStore pipelineStateStore;
+	private final ConnectionCoordinator connectionCoordinator;
 
 	private final SessionService sessionService;
 	private final IdentityService identityService;
 
 	private final DeliveryService deliveryService;
-	private final EventManager eventManager;
 
 	private final Provider<Engine> engineProvider;
 	private final Provider<Providers> providersProvider;
@@ -174,8 +164,9 @@ public class DefaultMigrationService implements MigrationService {
 
 		String kickMessage = resolveKickMessage(confirm.getKickMessage(), precheck);
 
-		boolean stored = storePendingMigration(pendingMigration, accountUniqueId);
-		if (!stored) return result(MigrationResultStatus.FAILED, null);
+		MigrationResultStatus started = startJourney(pendingMigration, accountUniqueId);
+		if (started == MigrationResultStatus.PENDING_EXISTS) pending.remove(connectionUniqueId);
+		if (started != MigrationResultStatus.STARTED) return result(started, null);
 
 		closeSession(accountUniqueId);
 		disconnect(connectionUniqueId, kickMessage);
@@ -225,9 +216,8 @@ public class DefaultMigrationService implements MigrationService {
 
 		String kickMessage = resolveKickMessage(start.getKickMessage(), precheck);
 
-		boolean stored = storePendingMigration(pendingMigration, accountUniqueId);
-		if (!stored)
-			return result(MigrationResultStatus.FAILED, null);
+		MigrationResultStatus started = startJourney(pendingMigration, accountUniqueId);
+		if (started != MigrationResultStatus.STARTED) return result(started, null);
 
 		closeSession(accountUniqueId);
 		disconnect(connectionUniqueId, kickMessage);
@@ -247,18 +237,12 @@ public class DefaultMigrationService implements MigrationService {
 		}
 
 		if (scope == MigrationCancelScope.PENDING || scope == MigrationCancelScope.ALL) {
-			PipelineStateReference reference = PipelineStateReference.builder()
-					.connectionUniqueId(connectionUniqueId)
-					.build();
-			PipelineState stored = pipelineStateStore.find(reference).orElse(null);
-			if (stored != null && stored.has(MigrationPendingState.KEY)) {
-				queueCancelledNotice(resolvePendingAccountUniqueId(stored), stored);
-				MigrationContext context = (MigrationContext) stored.getScenario(PipelineType.MIGRATION);
-				UUID resolvedConnectionUniqueId = context != null ? context.getConnectionUniqueId() : null;
-				if (context != null && resolvedConnectionUniqueId != null) {
-					eventManager.call(new MigrationResolvedEvent(context, ScenarioResolution.CANCELLED, false));
-				}
-				pipelineStateStore.clear(reference);
+			PendingMigration cancelled = connectionCoordinator.cancelMigrationJourney(connectionUniqueId)
+					.toCompletableFuture()
+					.join()
+					.orElse(null);
+			if (cancelled != null) {
+				queueCancelledNotice(cancelled.getUniqueId());
 				removed = true;
 			}
 		}
@@ -268,49 +252,24 @@ public class DefaultMigrationService implements MigrationService {
 				: result(MigrationResultStatus.NO_PENDING, null);
 	}
 
-	private boolean storePendingMigration(@NotNull PendingConfirmationMigration pendingMigration, @NotNull UUID accountUniqueId) {
-		long ttlMs = engineProvider.get().getScenarios().getMigration().pipelineTtlMillis();
-		if (ttlMs <= 0) return false;
-
-		JourneyMode journeyMode = engineProvider.get().getScenarios().getMigration().getJourneyMode();
-		MigrationContext context = MigrationContext.builder()
+	/**
+	 * Starts the migration journey in the connection's turn, which also finds a journey another command started in
+	 * the meantime.
+	 */
+	private @NotNull MigrationResultStatus startJourney(
+			@NotNull PendingConfirmationMigration pendingMigration,
+			@NotNull UUID accountUniqueId
+	) {
+		return connectionCoordinator.startMigrationJourney(MigrationJourney.builder()
 				.connectionUniqueId(pendingMigration.connectionUniqueId())
-				.identity(new ConnectionIdentity(
-						accountUniqueId,
-						nonNull(pendingMigration.username()),
-						pendingMigration.ip()
-				))
+				.accountUniqueId(accountUniqueId)
+				.username(pendingMigration.username())
+				.ip(pendingMigration.ip())
 				.targetProviderId(pendingMigration.targetProviderId())
-				.build();
-
-		PipelineState pipelineState = PipelineState.initial();
-		pipelineState.setPipelineType(PipelineType.MIGRATION);
-		pipelineState.setScenario(context);
-		pipelineState.put(MigrationPendingState.KEY, new MigrationPendingState(
-				pendingMigration.targetProviderId(),
-				pendingMigration.requestedAt(),
-				pendingMigration.initiator(),
-				pendingMigration.initiatorUniqueId()
-		), ttlMs);
-		pipelineState.put(JourneyStateItem.KEY, new JourneyStateItem(journeyMode, null, 0), ttlMs);
-
-		PipelineStateReference reference = PipelineStateReference.from(context);
-		pipelineStateStore.save(reference, pipelineState, ttlMs);
-		UUID connectionUniqueId = context.getConnectionUniqueId();
-		if (connectionUniqueId != null) {
-			eventManager.call(new MigrationRequiredEvent(context, false, System.currentTimeMillis() + ttlMs, journeyMode));
-		}
-		Logger.debug(
-				"Stored migration pending connection=%s identica=%s target=%s username=%s ip=%s journeyMode=%s",
-				pendingMigration.connectionUniqueId(),
-				accountUniqueId,
-				pendingMigration.targetProviderId(),
-				pendingMigration.username(),
-				pendingMigration.ip(),
-				journeyMode
-		);
-
-		return true;
+				.requestedAt(pendingMigration.requestedAt())
+				.initiator(pendingMigration.initiator())
+				.initiatorUniqueId(pendingMigration.initiatorUniqueId())
+				.build()).toCompletableFuture().join();
 	}
 
 	private @Nullable MigrationResult validateTargetProvider(@NotNull PendingConfirmationMigration pendingMigration) {
@@ -525,58 +484,11 @@ public class DefaultMigrationService implements MigrationService {
 	}
 
 	private @Nullable PendingMigration findStartedPendingMigration(@NotNull UUID connectionUniqueId) {
-		PipelineStateReference reference = PipelineStateReference.builder()
-				.connectionUniqueId(connectionUniqueId)
-				.build();
-		PipelineState state = pipelineStateStore.find(reference).orElse(null);
-		if (state == null) {
-			Logger.debug("Migration pending lookup missed connection=%s", connectionUniqueId);
-			return null;
-		}
-
-		MigrationPendingState pendingState = state.get(MigrationPendingState.KEY).orElse(null);
-		if (pendingState == null) {
-			Logger.debug(
-					"Migration pending lookup found state without pending marker connection=%s pipeline=%s",
-					connectionUniqueId,
-					state.getPipelineType()
-			);
-			return null;
-		}
-
-		MigrationContext context = (MigrationContext) state.getScenario(PipelineType.MIGRATION);
-		UUID uniqueId = null;
-		UUID storedConnectionUniqueId = connectionUniqueId;
-		String targetProviderId = pendingState.getTargetProviderId();
-		if (context != null) {
-			if (context.getConnectionUniqueId() != null)
-				storedConnectionUniqueId = context.getConnectionUniqueId();
-			targetProviderId = context.getTargetProviderId();
-			uniqueId = context.getIdentity().getAccountUniqueId();
-		}
-		Logger.debug(
-				"Migration pending lookup found connection=%s storedConnection=%s identica=%s target=%s",
-				connectionUniqueId,
-				storedConnectionUniqueId,
-				uniqueId,
-				targetProviderId
-		);
-
-		return PendingMigration.builder()
-				.uniqueId(uniqueId)
-				.connectionUniqueId(storedConnectionUniqueId)
-				.targetProviderId(targetProviderId)
-				.requestedAt(pendingState.getRequestedAt())
-				.initiator(pendingState.getInitiator())
-				.initiatorUniqueId(pendingState.getInitiatorUniqueId())
-				.phase(PendingMigration.Phase.STARTED)
-				.build();
+		return connectionCoordinator.findMigrationJourney(connectionUniqueId).toCompletableFuture().join().orElse(null);
 	}
 
-	private void queueCancelledNotice(@Nullable UUID accountUniqueId, @Nullable PipelineState state) {
-		if (accountUniqueId == null || state == null) return;
-		if (state.getPipelineType() != PipelineType.MIGRATION) return;
-		if (state.get(MigrationPendingState.KEY).isEmpty()) return;
+	private void queueCancelledNotice(@Nullable UUID accountUniqueId) {
+		if (accountUniqueId == null) return;
 
         deliveryService.queue(DeliveryRequest.builder()
 				.id(UUID.randomUUID())
@@ -592,15 +504,6 @@ public class DefaultMigrationService implements MigrationService {
 				.createdAt(System.currentTimeMillis())
 				.updatedAt(System.currentTimeMillis())
 				.build());
-	}
-
-	private @Nullable UUID resolvePendingAccountUniqueId(@Nullable PipelineState state) {
-		if (state == null) return null;
-
-		MigrationContext context = (MigrationContext) state.getScenario(PipelineType.MIGRATION);
-		if (context != null && context.getAccountUniqueId() != null) return context.getAccountUniqueId();
-
-		return null;
 	}
 
 	private @NotNull String resolveMigrationCancelledMessage() {

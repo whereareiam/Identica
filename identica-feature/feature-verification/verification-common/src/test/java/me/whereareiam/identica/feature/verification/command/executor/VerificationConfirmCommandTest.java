@@ -3,12 +3,17 @@ package me.whereareiam.identica.feature.verification.command.executor;
 import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.feature.verification.VerificationService;
+import me.whereareiam.identica.feature.verification.challenge.VerificationChallengeStore;
 import me.whereareiam.identica.feature.verification.config.VerificationMessages;
-import me.whereareiam.identica.feature.verification.model.config.VerificationSettings;
+import me.whereareiam.identica.feature.verification.model.VerificationDisablePendingState;
+import me.whereareiam.identica.feature.verification.model.VerificationDisableResult;
+import me.whereareiam.identica.feature.verification.model.challenge.VerificationChallengeResult;
 import me.whereareiam.identica.feature.verification.model.resolution.VerificationCodeAttempt;
+import me.whereareiam.identica.feature.verification.type.status.VerificationChallengeStatus;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.request.AdvanceRequest;
@@ -17,8 +22,6 @@ import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.pipeline.state.PipelineInput;
 import me.whereareiam.identica.pipeline.state.PipelineState;
-import me.whereareiam.identica.pipeline.state.PipelineStateReference;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.keystone.model.SerializerContent;
 import me.whereareiam.keystone.serializer.SerializerEngine;
@@ -53,7 +56,9 @@ class VerificationConfirmCommandTest {
 
 	private final UUID accountUniqueId = UUID.randomUUID();
 	private final Identity identity = mock(Identity.class);
-	private final PipelineStateStore states = mock(PipelineStateStore.class);
+	private final VerificationChallengeStore challenges = mock(VerificationChallengeStore.class);
+	private final SessionService sessions = mock(SessionService.class);
+	private final VerificationResultRenderer renderer = mock(VerificationResultRenderer.class);
 	private final VerificationService verification = mock(VerificationService.class);
 	private final ConnectionCoordinator coordinator = mock(ConnectionCoordinator.class);
 
@@ -69,7 +74,7 @@ class VerificationConfirmCommandTest {
 	void connectedPlayer() {
 		when(identity.getAccountUniqueId()).thenReturn(accountUniqueId);
 		when(identity.getConnectionUniqueId()).thenReturn(UUID.randomUUID());
-		when(states.find(any(PipelineStateReference.class))).thenReturn(Optional.empty());
+		when(challenges.findPendingDisable(any())).thenReturn(Optional.empty());
 	}
 
 	static Stream<ConnectionDecision> denials() {
@@ -132,6 +137,28 @@ class VerificationConfirmCommandTest {
 		verify(identity).sendMessage(Component.text(NO_PENDING));
 	}
 
+	@DisplayName("Confirms the method the account asked to disable, kept apart from the pipeline state")
+	@Test
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	void confirmsThePendingDisableOfTheAccount() {
+		when(challenges.findPendingDisable(accountUniqueId))
+				.thenReturn(Optional.of(new VerificationDisablePendingState("totp", 1234L)));
+		when(sessions.findByUniqueId(accountUniqueId))
+				.thenReturn(CompletableFuture.completedFuture(Optional.of(Session.builder().uniqueId(accountUniqueId).providerId("credential").build())));
+		VerificationChallengeResult verified = VerificationChallengeResult.builder()
+				.status(VerificationChallengeStatus.VERIFIED)
+				.build();
+		when(verification.submitChallenge(eq(accountUniqueId), eq("credential"), eq("disable-method"), any())).thenReturn(verified);
+		VerificationDisableResult disabled = mock(VerificationDisableResult.class);
+		when(verification.disableMethod(accountUniqueId, "totp")).thenReturn(disabled);
+
+		confirm("123456");
+
+		verify(challenges).clearPendingDisable(accountUniqueId);
+		verify(renderer).presentDisableResult(identity, disabled);
+		verify(coordinator, never()).advance(any());
+	}
+
 	private void answers(ConnectionDecision decision) {
 		when(coordinator.advance(any())).thenReturn(CompletableFuture.completedFuture(decision));
 	}
@@ -147,12 +174,11 @@ class VerificationConfirmCommandTest {
 		new VerificationConfirmCommand(
 				Messages::new,
 				() -> messages,
-				VerificationSettings::new,
 				verification,
-				states,
+				challenges,
 				coordinator,
-				mock(VerificationResultRenderer.class),
-				mock(SessionService.class)
+				renderer,
+				sessions
 		).confirm(identity, code);
 	}
 

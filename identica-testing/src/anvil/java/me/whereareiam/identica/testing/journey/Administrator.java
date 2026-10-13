@@ -200,6 +200,45 @@ public final class Administrator {
 	}
 
 	/**
+	 * Moves a player's account to another provider and expects the move to start. An online player is disconnected
+	 * and meets the move when joining again.
+	 */
+	public Administrator startsMigrationOf(String username, Provider provider) {
+		run("identica migration start " + username + " " + provider.getId(),
+				filled(migration().getStart().getStarted(), Map.of("target", username, "provider", provider.getId())));
+		return this;
+	}
+
+	/**
+	 * Tries to move a player's account to another provider and expects Identica to find a move already started.
+	 */
+	public Administrator findsMigrationAlreadyStartedOf(String username, Provider provider) {
+		run("identica migration start " + username + " " + provider.getId(),
+				filled(migration().getStart().getPendingExists(), Map.of("target", username)));
+		return this;
+	}
+
+	/**
+	 * Cancels a player's started move and expects Identica to confirm it.
+	 */
+	public Administrator cancelsMigrationOf(String username) {
+		run("identica migration cancel " + username, filled(migration().getCancel().getCancelled(), Map.of("target", username)));
+		return this;
+	}
+
+	/**
+	 * Tries to cancel a player's move and expects Identica to find none.
+	 */
+	public Administrator findsNoMigrationToCancelOf(String username) {
+		run("identica migration cancel " + username, filled(migration().getCancel().getNoPending(), Map.of("target", username)));
+		return this;
+	}
+
+	private Messages.Commands.Migration migration() {
+		return configured.identica().getCommands().getMigration();
+	}
+
+	/**
 	 * Reloads Identica's configuration and expects it to succeed.
 	 */
 	public Administrator reloads() {

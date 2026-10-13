@@ -1,14 +1,11 @@
 package me.whereareiam.identica.common.migration;
 
 import com.google.inject.Provider;
+import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.common.config.defaults.EngineDefaults;
 import me.whereareiam.identica.persistence.AccountPersistenceService;
 import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
-import me.whereareiam.identica.event.EventManager;
-import me.whereareiam.identica.event.scenario.migration.MigrationRequiredEvent;
-import me.whereareiam.identica.event.scenario.migration.MigrationResolvedEvent;
 import me.whereareiam.identica.identity.IdentityService;
-import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.model.config.Commands;
 import me.whereareiam.identica.model.config.Engine;
@@ -17,7 +14,9 @@ import me.whereareiam.identica.model.config.provider.Providers;
 import me.whereareiam.identica.model.identity.Account;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.migration.MigrationContext;
+import me.whereareiam.identica.model.migration.MigrationJourney;
 import me.whereareiam.identica.model.migration.PendingMigration;
+import me.whereareiam.identica.model.migration.operation.MigrationCancel;
 import me.whereareiam.identica.model.migration.operation.MigrationConfirm;
 import me.whereareiam.identica.model.migration.operation.MigrationRequest;
 import me.whereareiam.identica.model.migration.operation.MigrationResult;
@@ -26,18 +25,14 @@ import me.whereareiam.identica.model.pipeline.journey.JourneyPlan;
 import me.whereareiam.identica.model.pipeline.journey.stage.JourneyStage;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.JourneyStep;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
-import me.whereareiam.identica.model.pipeline.migration.MigrationPendingState;
 import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.journey.registry.type.MigrationJourneyRegistry;
 import me.whereareiam.identica.pipeline.journey.step.Step;
-import me.whereareiam.identica.pipeline.state.PipelineState;
-import me.whereareiam.identica.pipeline.state.PipelineStateReference;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.service.DeliveryService;
-import me.whereareiam.identica.type.ScenarioResolution;
+import me.whereareiam.identica.type.migration.MigrationCancelScope;
 import me.whereareiam.identica.type.migration.MigrationInitiator;
 import me.whereareiam.identica.type.migration.MigrationResultStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
@@ -46,6 +41,7 @@ import me.whereareiam.identica.type.pipeline.journey.StageType;
 import me.whereareiam.identica.type.pipeline.journey.step.StepContextRequirement;
 import me.whereareiam.identica.type.provider.ProviderState;
 import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -69,8 +65,8 @@ class DefaultMigrationServiceTest {
 	private ProviderLinkPersistenceService providerLinkPersistenceService;
 	@Mock
 	private AccountPersistenceService accountPersistenceService;
-	@Mock
-	private PipelineStateStore pipelineStateStore;
+	@Mock(strictness = Mock.Strictness.LENIENT)
+	private ConnectionCoordinator connectionCoordinator;
 	@Mock
 	private SessionService sessionService;
 	@Mock
@@ -78,14 +74,21 @@ class DefaultMigrationServiceTest {
 	@Mock
 	private DeliveryService deliveryService;
 	@Mock
-	private EventManager eventManager;
-	@Mock
 	private MigrationJourneyRegistry migrationJourneyRegistry;
+
+	@BeforeEach
+	void noJourneyStartedYet() {
+		when(connectionCoordinator.findMigrationJourney(any(UUID.class)))
+				.thenReturn(CompletableFuture.completedFuture(Optional.empty()));
+		when(connectionCoordinator.cancelMigrationJourney(any(UUID.class)))
+				.thenReturn(CompletableFuture.completedFuture(Optional.empty()));
+		when(connectionCoordinator.startMigrationJourney(any(MigrationJourney.class)))
+				.thenReturn(CompletableFuture.completedFuture(MigrationResultStatus.STARTED));
+	}
 
 	@DisplayName("Denies migration when the requested username is still occupied")
 	@Test
 	void deniesMigrationWhenUsernameNotFree() {
-		doReturn(Optional.empty()).when(pipelineStateStore).find(any(PipelineStateReference.class));
 		mockAvailableProviders("provider");
 
 		Account existing = Account.builder()
@@ -128,7 +131,6 @@ class DefaultMigrationServiceTest {
 	@DisplayName("Stores account and connection identifiers in separate pending-migration fields")
 	@Test
 	void requestStoresAccountAndConnectionIdsInTheirOwnFields() {
-		doReturn(Optional.empty()).when(pipelineStateStore).find(any(PipelineStateReference.class));
 		mockAvailableProviders("premium");
 		when(providerLinkPersistenceService.findByUniqueIdAndProviderId(any(UUID.class), any(String.class)))
 				.thenReturn(Optional.empty());
@@ -156,47 +158,25 @@ class DefaultMigrationServiceTest {
 		assertEquals(PendingMigration.Phase.CONFIRMATION, pendingMigration.getPhase());
 	}
 
-	@DisplayName("Rebuilds pending migration details from an active migration pipeline state")
+	@DisplayName("Reports the started migration journey the connection's turn finds")
 	@Test
-	void findPendingMigrationReturnsStartedMigrationFromPipelineState() {
+	void findPendingMigrationReturnsTheStartedJourney() {
 		UUID connectionUniqueId = UUID.randomUUID();
-		UUID accountUniqueId = UUID.randomUUID();
-		UUID initiatorUniqueId = UUID.randomUUID();
-
-		PipelineState pipelineState = PipelineState.initial();
-		pipelineState.setPipelineType(PipelineType.MIGRATION);
-		pipelineState.setScenario(MigrationContext.builder()
+		PendingMigration started = PendingMigration.builder()
+				.uniqueId(UUID.randomUUID())
 				.connectionUniqueId(connectionUniqueId)
-				.identity(new ConnectionIdentity(accountUniqueId, "PlayerOne", "127.0.0.1"))
 				.targetProviderId("premium")
-				.build());
-		pipelineState.put(MigrationPendingState.KEY, new MigrationPendingState(
-				"premium",
-				1234L,
-				MigrationInitiator.ADMIN,
-				initiatorUniqueId
-		), Duration.ofMinutes(5).toMillis());
+				.phase(PendingMigration.Phase.STARTED)
+				.build();
+		when(connectionCoordinator.findMigrationJourney(connectionUniqueId))
+				.thenReturn(CompletableFuture.completedFuture(Optional.of(started)));
 
-		doReturn(Optional.of(pipelineState)).when(pipelineStateStore).find(any(PipelineStateReference.class));
-
-		DefaultMigrationService service = service();
-
-		PendingMigration pendingMigration = service.findPendingMigration(connectionUniqueId).orElse(null);
-
-		assertNotNull(pendingMigration);
-		assertEquals(accountUniqueId, pendingMigration.getUniqueId());
-		assertEquals(connectionUniqueId, pendingMigration.getConnectionUniqueId());
-		assertEquals("premium", pendingMigration.getTargetProviderId());
-		assertEquals(1234L, pendingMigration.getRequestedAt());
-		assertEquals(MigrationInitiator.ADMIN, pendingMigration.getInitiator());
-		assertEquals(initiatorUniqueId, pendingMigration.getInitiatorUniqueId());
-		assertEquals(PendingMigration.Phase.STARTED, pendingMigration.getPhase());
+		assertSame(started, service().findPendingMigration(connectionUniqueId).orElseThrow());
 	}
 
 	@DisplayName("Starts migration even when the target provider is already linked")
 	@Test
 	void confirmStoresPendingMigrationEvenWhenTargetProviderAlreadyLinked() {
-		doReturn(Optional.empty()).when(pipelineStateStore).find(any(PipelineStateReference.class));
 		mockAvailableProviders("credential");
 		when(accountPersistenceService.findByUsername("PlayerOne")).thenReturn(List.of());
 		when(providerLinkPersistenceService.findByUniqueIdAndProviderId(any(UUID.class), any(String.class)))
@@ -228,19 +208,16 @@ class DefaultMigrationServiceTest {
 				.build());
 
 		assertEquals(MigrationResultStatus.STARTED, confirmed.getStatus());
-		verify(pipelineStateStore).save(any(PipelineStateReference.class), any(PipelineState.class), anyLong());
 		verify(providerLinkPersistenceService, never()).setPrimaryExclusive(any(UUID.class), any(String.class));
-		verify(eventManager).call(argThat(event ->
-				event instanceof MigrationRequiredEvent requiredEvent
-						&& connectionUniqueId.equals(requiredEvent.getConnectionUniqueId())
-						&& accountUniqueId.equals(requiredEvent.getAccountUniqueId())
+		verify(connectionCoordinator).startMigrationJourney(argThat(journey ->
+				connectionUniqueId.equals(journey.getConnectionUniqueId())
+						&& accountUniqueId.equals(journey.getAccountUniqueId())
 		));
 	}
 
-	@DisplayName("Stores pending migration without precomputing a provider subject")
+	@DisplayName("Starts the confirmed journey with what the player asked for")
 	@Test
-	void confirmStoresPendingMigrationWithoutProviderContext() {
-		doReturn(Optional.empty()).when(pipelineStateStore).find(any(PipelineStateReference.class));
+	void confirmStartsTheRequestedJourney() {
 		mockAvailableProviders("credential");
 		when(accountPersistenceService.findByUsername("PlayerOne")).thenReturn(List.of());
 		when(providerLinkPersistenceService.findByUniqueIdAndProviderId(any(UUID.class), any(String.class)))
@@ -267,14 +244,11 @@ class DefaultMigrationServiceTest {
 
 		assertEquals(MigrationResultStatus.STARTED, confirmed.getStatus());
 
-		@SuppressWarnings("unchecked")
-		org.mockito.ArgumentCaptor<PipelineState> stateCaptor = org.mockito.ArgumentCaptor.forClass(PipelineState.class);
-		verify(pipelineStateStore).save(any(PipelineStateReference.class), stateCaptor.capture(), anyLong());
-
-		MigrationContext stored = (MigrationContext) stateCaptor.getValue().getScenario(PipelineType.MIGRATION);
-		assertNotNull(stored);
-		assertNull(stored.getProvider());
-		assertEquals("credential", stored.getTargetProviderId());
+		verify(connectionCoordinator).startMigrationJourney(argThat(journey ->
+				"credential".equals(journey.getTargetProviderId())
+						&& "PlayerOne".equals(journey.getUsername())
+						&& "127.0.0.1".equals(journey.getIp())
+		));
 	}
 
 	@DisplayName("Queues a next-join notice when a started migration is cancelled")
@@ -282,47 +256,46 @@ class DefaultMigrationServiceTest {
 	void cancelPendingMigrationQueuesNextJoinNotice() {
 		UUID connectionUniqueId = UUID.randomUUID();
 		UUID accountUniqueId = UUID.randomUUID();
+		when(connectionCoordinator.cancelMigrationJourney(connectionUniqueId))
+				.thenReturn(CompletableFuture.completedFuture(Optional.of(startedJourney(connectionUniqueId, accountUniqueId))));
 
-		PipelineState pipelineState = PipelineState.initial();
-		pipelineState.setPipelineType(PipelineType.MIGRATION);
-		pipelineState.setScenario(MigrationContext.builder()
+		MigrationResult result = service().cancel(MigrationCancel.builder()
 				.connectionUniqueId(connectionUniqueId)
-				.identity(new ConnectionIdentity(accountUniqueId, "PlayerOne", "127.0.0.1"))
-				.targetProviderId("premium")
-				.build());
-		pipelineState.put(MigrationPendingState.KEY, new MigrationPendingState(
-				"premium",
-				1234L,
-				MigrationInitiator.USER,
-				connectionUniqueId
-		), 1_000L);
-
-		doReturn(Optional.of(pipelineState)).when(pipelineStateStore).find(any(PipelineStateReference.class));
-
-		DefaultMigrationService service = service();
-
-		MigrationResult result = service.cancel(me.whereareiam.identica.model.migration.operation.MigrationCancel.builder()
-				.connectionUniqueId(connectionUniqueId)
-				.scope(me.whereareiam.identica.type.migration.MigrationCancelScope.PENDING)
+				.scope(MigrationCancelScope.PENDING)
 				.build());
 
 		assertEquals(MigrationResultStatus.CANCELLED, result.getStatus());
 		verify(deliveryService).queue(argThat(request ->
-                accountUniqueId.equals(request.getTarget().getAccountUniqueId()) && request.getPayload().getChatMessage() != null
+				accountUniqueId.equals(request.getTarget().getAccountUniqueId()) && request.getPayload().getChatMessage() != null
 		));
-		verify(eventManager).call(argThat(event ->
-				event instanceof MigrationResolvedEvent resolvedEvent
-						&& connectionUniqueId.equals(resolvedEvent.getConnectionUniqueId())
-						&& accountUniqueId.equals(resolvedEvent.getAccountUniqueId())
-						&& resolvedEvent.getReason() == ScenarioResolution.CANCELLED
-						&& !resolvedEvent.isSessionOpened()
-		));
+	}
+
+	@DisplayName("Does not start a journey over one the connection's turn finds, though the store looked empty before")
+	@Test
+	void startDoesNotReplaceAJourneyFoundInTheConnectionsTurn() {
+		mockAvailableProviders("premium");
+		when(accountPersistenceService.findByUsername("PlayerOne")).thenReturn(List.of());
+		when(providerLinkPersistenceService.findByUniqueIdAndProviderId(any(UUID.class), any(String.class)))
+				.thenReturn(Optional.empty());
+		when(connectionCoordinator.startMigrationJourney(any(MigrationJourney.class)))
+				.thenReturn(CompletableFuture.completedFuture(MigrationResultStatus.PENDING_EXISTS));
+
+		UUID uniqueId = UUID.randomUUID();
+		MigrationResult result = service().start(MigrationStart.builder()
+				.uniqueId(uniqueId)
+				.connectionUniqueId(uniqueId)
+				.username("PlayerOne")
+				.targetProviderId("premium")
+				.build());
+
+		assertEquals(MigrationResultStatus.PENDING_EXISTS, result.getStatus());
+		verify(sessionService, never()).close(any(UUID.class));
+		verify(identityService, never()).findByConnectionUniqueId(any(UUID.class));
 	}
 
 	@DisplayName("Rejects request when the target provider is unknown")
 	@Test
 	void requestRejectsUnknownTargetProvider() {
-		doReturn(Optional.empty()).when(pipelineStateStore).find(any(PipelineStateReference.class));
 		when(providerManager.getProviders()).thenReturn(List.of());
 
 		DefaultMigrationService service = service();
@@ -341,7 +314,6 @@ class DefaultMigrationServiceTest {
 	@DisplayName("Rejects request when the target provider is configured but unavailable")
 	@Test
 	void requestRejectsUnavailableTargetProvider() {
-		doReturn(Optional.empty()).when(pipelineStateStore).find(any(PipelineStateReference.class));
 		when(providerManager.getProviders()).thenReturn(List.of());
 
 		DefaultMigrationService service = service(() -> providers(providerEntry("premium", false)), this::commands, this::messages);
@@ -380,7 +352,6 @@ class DefaultMigrationServiceTest {
 	@DisplayName("Confirm rejects and clears pending migration when target provider becomes unavailable")
 	@Test
 	void confirmRejectsUnavailableTargetProviderBeforeStoringPendingMigration() {
-		doReturn(Optional.empty()).when(pipelineStateStore).find(any(PipelineStateReference.class));
 		when(providerManager.getProviders()).thenReturn(List.of(provider("premium")), List.of());
 		when(migrationJourneyRegistry.resolvePlan(any(MigrationContext.class), eq(PipelineType.MIGRATION), any(JourneyMode.class), eq("premium")))
 				.thenReturn(journeyPlanWithProviderSteps());
@@ -406,7 +377,7 @@ class DefaultMigrationServiceTest {
 
 		assertEquals(MigrationResultStatus.PROVIDER_UNAVAILABLE, confirmed.getStatus());
 		assertTrue(service.findPendingMigration(connectionUniqueId).isEmpty());
-		verify(pipelineStateStore, never()).save(any(PipelineStateReference.class), any(PipelineState.class), anyLong());
+		verify(connectionCoordinator, never()).startMigrationJourney(any(MigrationJourney.class));
 	}
 
 	private DefaultMigrationService service() {
@@ -423,16 +394,24 @@ class DefaultMigrationServiceTest {
 					migrationJourneyRegistry,
 					providerLinkPersistenceService,
 					accountPersistenceService,
-					pipelineStateStore,
+					connectionCoordinator,
 					sessionService,
 					identityService,
 					deliveryService,
-					eventManager,
 					this::engine,
 					providersProvider,
 					commandsProvider,
 				messagesProvider
 		);
+	}
+
+	private static PendingMigration startedJourney(UUID connectionUniqueId, UUID accountUniqueId) {
+		return PendingMigration.builder()
+				.uniqueId(accountUniqueId)
+				.connectionUniqueId(connectionUniqueId)
+				.targetProviderId("premium")
+				.phase(PendingMigration.Phase.STARTED)
+				.build();
 	}
 
 	private void mockAvailableProviders(String... providerIds) {

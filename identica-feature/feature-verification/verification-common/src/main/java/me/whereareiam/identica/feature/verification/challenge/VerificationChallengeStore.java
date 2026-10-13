@@ -3,6 +3,7 @@ package me.whereareiam.identica.feature.verification.challenge;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
+import me.whereareiam.identica.feature.verification.model.VerificationDisablePendingState;
 import me.whereareiam.identica.feature.verification.model.challenge.PendingVerificationChallenge;
 import me.whereareiam.identica.feature.verification.model.config.VerificationSettings;
 import me.whereareiam.identica.replication.ReplicationSystem;
@@ -18,10 +19,12 @@ public class VerificationChallengeStore {
 	private static final String RECORD_NAMESPACE = "verification:challenge:records";
 	private static final String ACTIVE_NAMESPACE = "verification:challenge:active";
 	private static final String VERIFIED_NAMESPACE = "verification:challenge:verified";
+	private static final String PENDING_DISABLE_NAMESPACE = "verification:disable:pending";
 
 	private final LocalCache<PendingVerificationChallenge> records;
 	private final LocalCache<String> active;
 	private final LocalCache<String> verified;
+	private final LocalCache<VerificationDisablePendingState> pendingDisables;
 	private final Provider<VerificationSettings> verificationProvider;
 
 	@Inject
@@ -32,6 +35,7 @@ public class VerificationChallengeStore {
 		this.records = replicationSystem.cache(RECORD_NAMESPACE).local();
 		this.active = replicationSystem.cache(ACTIVE_NAMESPACE).local();
 		this.verified = replicationSystem.cache(VERIFIED_NAMESPACE).local();
+		this.pendingDisables = replicationSystem.cache(PENDING_DISABLE_NAMESPACE).local();
 		this.verificationProvider = verificationProvider;
 	}
 
@@ -69,10 +73,27 @@ public class VerificationChallengeStore {
 		return verified.consume(key(uniqueId, providerId, purpose)).join().isPresent();
 	}
 
+	/**
+	 * Keeps the method an account asked to disable until a code confirms it, as long as the challenge that asks for
+	 * the code. The account has no journey, so this stays out of the pipeline state, which journeys own.
+	 */
+	public void putPendingDisable(@NotNull UUID uniqueId, @NotNull VerificationDisablePendingState pending) {
+		pendingDisables.put(uniqueId.toString(), pending, ttlMs()).join();
+	}
+
+	public @NotNull Optional<VerificationDisablePendingState> findPendingDisable(@NotNull UUID uniqueId) {
+		return pendingDisables.get(uniqueId.toString()).join();
+	}
+
+	public void clearPendingDisable(@NotNull UUID uniqueId) {
+		pendingDisables.consume(uniqueId.toString()).join();
+	}
+
 	public void clearAll() {
 		clearCache(records);
 		clearCache(active);
 		clearCache(verified);
+		clearCache(pendingDisables);
 	}
 
 	private void clearCache(LocalCache<?> cache) {

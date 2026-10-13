@@ -6,9 +6,12 @@ import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.request.AdvanceRequest;
 import me.whereareiam.identica.model.auth.request.ConnectionRequest;
 import me.whereareiam.identica.model.auth.request.ResumeRequest;
+import me.whereareiam.identica.model.migration.MigrationJourney;
+import me.whereareiam.identica.model.migration.PendingMigration;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
 import me.whereareiam.identica.pipeline.prepare.PrepareStateStore;
+import me.whereareiam.identica.type.migration.MigrationResultStatus;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -77,6 +81,21 @@ class ProfileRewriteProcessorTest {
 
 		@Override
 		public @NotNull CompletableFuture<ConnectionDecision> advance(@NotNull AdvanceRequest request) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public @NotNull CompletionStage<MigrationResultStatus> startMigrationJourney(@NotNull MigrationJourney journey) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public @NotNull CompletionStage<Optional<PendingMigration>> cancelMigrationJourney(@NotNull UUID connectionUniqueId) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public @NotNull CompletionStage<Optional<PendingMigration>> findMigrationJourney(@NotNull UUID connectionUniqueId) {
 			throw new UnsupportedOperationException();
 		}
 

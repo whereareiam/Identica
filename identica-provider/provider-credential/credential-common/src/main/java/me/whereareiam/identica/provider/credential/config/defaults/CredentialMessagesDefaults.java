@@ -104,7 +104,6 @@ public class CredentialMessagesDefaults implements DefaultsProvider<CredentialMe
 		));
 		CredentialMessages.Scenario.Migration.Verification.Status migrationVerificationStatus = new CredentialMessages.Scenario.Migration.Verification.Status();
 		migrationVerificationStatus.setInvalid("{prefix}<white>Your current password is <red>invalid</red>.</white>");
-		migrationVerificationStatus.setNoPending("{prefix}<white>No pending credential migration verification.</white>");
 		migrationVerification.setStatus(migrationVerificationStatus);
 		migration.setVerification(migrationVerification);
 

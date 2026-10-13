@@ -73,7 +73,6 @@ public class CredentialMessages implements MessageDocument {
 				@ToString
 				public static class Status {
 					private String invalid;
-					private String noPending;
 				}
 			}
 

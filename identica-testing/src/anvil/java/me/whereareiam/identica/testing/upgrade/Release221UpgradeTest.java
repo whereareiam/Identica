@@ -7,6 +7,7 @@ import me.whereareiam.identica.common.config.testing.EarlierConfiguration;
 import me.whereareiam.identica.feature.verification.model.config.VerificationSettings;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
@@ -84,6 +85,12 @@ class Release221UpgradeTest {
 		assertEquals(8, verification.getTotp().getDigits());
 		Messages messages = ProxyConfiguration.generated(anvil, "messages.yml", Messages.class);
 		assertEquals(CUSTOMISED, last(messages.getScenarios().getRegistration().getRouting().getMissingServer()));
+		// Credential's messages of 2.2.1 still name a message this version no longer has; the rest of the file loads.
+		CredentialMessages credential = ProxyConfiguration.generated(anvil, "providers/Credential/messages.yml", CredentialMessages.class);
+		assertEquals(
+				"{prefix}<white>Your current password is <red>invalid</red>.</white>",
+				credential.getScenario().getMigration().getVerification().getStatus().getInvalid()
+		);
 
 		Journey.offline(anvil, "Upgrader").join()
 				.on(AUTH)

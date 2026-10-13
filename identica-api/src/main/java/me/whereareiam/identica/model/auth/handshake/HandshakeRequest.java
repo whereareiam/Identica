@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
-import me.whereareiam.identica.model.provider.ProviderContext;
+import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -19,9 +19,10 @@ import org.jetbrains.annotations.Nullable;
 public class HandshakeRequest {
 	private final @NotNull ConnectionIdentity identity;
 	/**
-	 * Provider the connection chose, such as through a provider entrypoint, if any.
+	 * Which provider handles the connection so far, and why. At the handshake nothing about the client is proven
+	 * yet.
 	 */
-	private final @Nullable ProviderContext provider;
+	private final @NotNull ProviderSelection selection;
 	/**
 	 * Preferred provider link of the account the connection belongs to, or {@code null} when no known account uses
 	 * its subject or username.

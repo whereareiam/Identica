@@ -69,6 +69,7 @@ public class VelocityResumeDecisionAdapter implements PlatformResumeDecisionAdap
 				.identity(identity)
 				.intendedServer(intendedServer)
 				.provider(provider)
+				.selection(prepared != null ? prepared.getSelection() : null)
 				.build();
 		ConnectionDecision decision = connectionCoordinator.resume(request)
 				.toCompletableFuture()

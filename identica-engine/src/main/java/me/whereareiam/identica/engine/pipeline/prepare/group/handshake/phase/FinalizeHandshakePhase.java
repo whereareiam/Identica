@@ -61,7 +61,7 @@ public class FinalizeHandshakePhase implements PipelinePhase<PrepareGroupState> 
 		HandshakeDecisionEvent event = new HandshakeDecisionEvent(
 				new HandshakeRequest(
 						request.getIdentity(),
-						context.getProvider(),
+						context.getSelection(),
 						context.getPreferredLink(),
 						context.getJourneyMode()
 				),

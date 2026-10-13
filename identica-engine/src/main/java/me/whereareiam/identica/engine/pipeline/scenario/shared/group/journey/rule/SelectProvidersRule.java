@@ -3,8 +3,6 @@ package me.whereareiam.identica.engine.pipeline.scenario.shared.group.journey.ru
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
-import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.migration.MigrationContext;
 import me.whereareiam.identica.model.pipeline.journey.JourneyOverrideItem;
 import me.whereareiam.identica.model.pipeline.journey.JourneyPlan;
@@ -24,6 +22,7 @@ import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.PipelineStateReference;
 import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.provider.ProviderOperations;
+import me.whereareiam.identica.provider.selection.ProviderSelector;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.pipeline.journey.JourneyExecutionPolicy;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
@@ -40,7 +39,7 @@ public class SelectProvidersRule implements JourneyRule {
 	private final AuthenticationJourneyRegistry authenticationJourneyRegistry;
 	private final RegistrationJourneyRegistry registrationJourneyRegistry;
 	private final MigrationJourneyRegistry migrationJourneyRegistry;
-	private final ProviderLinkPersistenceService providerLinkPersistenceService;
+	private final ProviderSelector providerSelector;
 	private final PipelineStateStore pipelineStateStore;
 
 	@Override
@@ -73,16 +72,8 @@ public class SelectProvidersRule implements JourneyRule {
 		List<InternalProvider> eligibleProviders = new ArrayList<>(
 				providerOperations.eligibleProviders(context, pipelineType, journeyMode)
 		);
-		String pendingProviderId = resolvePendingProviderId(context, pipelineType);
-		String preferredProviderId = resolvePreferredProviderId(context, pipelineType);
 		Set<String> excludedProviderIds = resolveExcludedProviderIds(ctx);
-		List<String> orderedProviderIds = orderedProviderIds(
-				eligibleProviders,
-				pendingProviderId,
-				preferredProviderId,
-				excludedProviderIds,
-				pipelineType
-		);
+		List<String> orderedProviderIds = orderedProviderIds(context, eligibleProviders, excludedProviderIds, pipelineType);
 
 		if (orderedProviderIds.isEmpty())
 			return current;
@@ -123,88 +114,35 @@ public class SelectProvidersRule implements JourneyRule {
 		return authenticationJourneyRegistry;
 	}
 
+	/**
+	 * Orders the eligible providers by the connection's selection. A migration only runs its target.
+	 */
 	private @NotNull List<String> orderedProviderIds(
+			@NotNull ScenarioContext context,
 			@NotNull List<InternalProvider> eligibleProviders,
-			@Nullable String pendingProviderId,
-			@Nullable String preferredProviderId,
 			@NotNull Set<String> excludedProviderIds,
 			@NotNull PipelineType pipelineType
 	) {
-		List<String> providerIds = new ArrayList<>();
-		for (InternalProvider provider : eligibleProviders) {
-			String id = providerId(provider);
-			if (id.isBlank())
-				continue;
-			if (indexOfProvider(providerIds, id) < 0)
-				providerIds.add(id);
-		}
+		List<String> providerIds = eligibleProviders.stream()
+				.map(this::providerId)
+				.filter(id -> !id.isBlank())
+				.filter(id -> !excludedProviderIds.contains(normalizeProviderId(id)))
+				.toList();
 
-		if (!excludedProviderIds.isEmpty()) {
-			providerIds.removeIf(id -> excludedProviderIds.contains(normalizeProviderId(id)));
-		}
+		if (pipelineType == PipelineType.MIGRATION) return migrationTarget(context, providerIds);
 
-		if (pipelineType == PipelineType.MIGRATION) {
-			if (pendingProviderId == null || pendingProviderId.isBlank())
-				return List.of();
-			int existingIndex = indexOfProvider(providerIds, pendingProviderId);
-			return existingIndex >= 0 ? List.of(providerIds.get(existingIndex)) : List.of();
-		}
-
-		if (preferredProviderId != null && !preferredProviderId.isBlank()) {
-			int preferredIndex = indexOfProvider(providerIds, preferredProviderId);
-			if (preferredIndex >= 0) {
-				String preferred = providerIds.remove(preferredIndex);
-				providerIds.addFirst(preferred);
-			}
-		}
-
-		if (pendingProviderId != null && !pendingProviderId.isBlank()) {
-			int existingIndex = indexOfProvider(providerIds, pendingProviderId);
-			if (existingIndex >= 0) providerIds.remove(existingIndex);
-			providerIds.addFirst(pendingProviderId);
-		}
-
-		return providerIds;
+		return providerSelector.rank(context.getSelection(), providerIds);
 	}
 
-	private int indexOfProvider(@NotNull List<String> providerIds, @NotNull String pendingProviderId) {
-		for (int index = 0; index < providerIds.size(); index++) {
-			String candidate = providerIds.get(index);
-			if (candidate != null && candidate.equalsIgnoreCase(pendingProviderId))
-				return index;
-		}
-		return -1;
-	}
+	private @NotNull List<String> migrationTarget(@NotNull ScenarioContext context, @NotNull List<String> providerIds) {
+		if (!(context instanceof MigrationContext migration) || migration.getTargetProviderId() == null)
+			return List.of();
 
-	private @Nullable String resolvePreferredProviderId(
-			@NotNull ScenarioContext context,
-			@NotNull PipelineType pipelineType
-	) {
-		if (pipelineType != PipelineType.AUTHENTICATION) return null;
-		if (context.getAccountUniqueId() == null) return null;
-
-		AccountProviderLink preferred = providerOperations.selectPreferredLink(
-				providerLinkPersistenceService.findByUniqueId(context.getAccountUniqueId())
-		);
-
-		return preferred != null ? preferred.getProviderId() : null;
-	}
-
-	private @Nullable String resolvePendingProviderId(
-			@NotNull ScenarioContext context,
-			@NotNull PipelineType pipelineType
-	) {
-		if (pipelineType == PipelineType.MIGRATION && context instanceof MigrationContext migrationContext) {
-			String targetProviderId = migrationContext.getTargetProviderId();
-			if (targetProviderId != null && !targetProviderId.isBlank())
-				return targetProviderId;
-		}
-
-		if (context.getProvider() == null)
-			return null;
-
-		String providerId = context.getProvider().getProviderId();
-		return providerId != null && !providerId.isBlank() ? providerId : null;
+		String targetProviderId = migration.getTargetProviderId();
+		return providerIds.stream()
+				.filter(targetProviderId::equalsIgnoreCase)
+				.limit(1)
+				.toList();
 	}
 
 	private @NotNull String providerId(@Nullable InternalProvider provider) {

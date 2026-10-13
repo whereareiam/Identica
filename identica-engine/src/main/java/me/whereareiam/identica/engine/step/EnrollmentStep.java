@@ -6,6 +6,7 @@ import com.google.inject.Singleton;
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.pipeline.scenario.registration.EnrollmentOptionsEvent;
+import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.auth.EnrollmentEntry;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
@@ -13,14 +14,17 @@ import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
+import me.whereareiam.identica.model.provider.selection.ProviderClaim;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.journey.step.type.InteractiveStep;
 import me.whereareiam.identica.provider.ProviderOperations;
+import me.whereareiam.identica.provider.selection.ProviderSelector;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
-import me.whereareiam.identica.type.provider.ProviderOrigin;
+import me.whereareiam.identica.type.provider.ProviderClaimOrigin;
 import me.whereareiam.keystone.model.SerializerOptions;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,19 +37,22 @@ public class EnrollmentStep extends InteractiveStep {
 	private final Provider<Engine> engineProvider;
 	private final Provider<Messages> messagesProvider;
 	private final EventManager eventManager;
+	private final ProviderSelector providerSelector;
 
 	@Inject
 	public EnrollmentStep(
 			ProviderOperations providerOperations,
 			Provider<Engine> engineProvider,
 			Provider<Messages> messagesProvider,
-			EventManager eventManager
+			EventManager eventManager,
+			ProviderSelector providerSelector
 	) {
 		super("enrollment");
 		this.providerOperations = providerOperations;
 		this.engineProvider = engineProvider;
 		this.messagesProvider = messagesProvider;
 		this.eventManager = eventManager;
+		this.providerSelector = providerSelector;
 	}
 
 	@Override
@@ -72,8 +79,18 @@ public class EnrollmentStep extends InteractiveStep {
 		if (entries.isEmpty())
 			return CompletableFuture.completedFuture(StepResult.failed(joinLines(enrollment.getEmpty())));
 
+		ProviderClaim selected = selectedThroughEntrypoint(context, entries);
+		if (selected != null) {
+			Logger.debug("Enrollment skipped the provider choice username=%s provider=%s origin=%s",
+					context.getUsername(),
+					selected.getProviderId(),
+					selected.getOrigin());
+			runProvider(context, selected.getProviderId());
+			return CompletableFuture.completedFuture(StepResult.complete(context));
+		}
+
 		if (shouldAutoSelectSingleProvider() && entries.size() == 1) {
-			applyProviderSelection(context, entries.getFirst().getProviderId());
+			runProvider(context, entries.getFirst().getProviderId());
 			return CompletableFuture.completedFuture(StepResult.complete(context));
 		}
 
@@ -87,23 +104,32 @@ public class EnrollmentStep extends InteractiveStep {
 				.isAutoSelectSingleProvider();
 	}
 
-	private void applyProviderSelection(@NotNull ScenarioContext context, @NotNull String providerId) {
+	/**
+	 * The offered provider the selection already settled with its hostname or a stronger claim, such as a verified
+	 * subject already linked to an account. The player is not asked to choose again.
+	 */
+	private @Nullable ProviderClaim selectedThroughEntrypoint(
+			@NotNull ScenarioContext context,
+			@NotNull List<EnrollmentEntry> entries
+	) {
+		List<String> offered = entries.stream().map(EnrollmentEntry::getProviderId).toList();
+		ProviderClaim winner = providerSelector.winner(context.getSelection(), offered);
+		if (winner == null || !providerSelector.isAtLeast(winner.getOrigin(), ProviderClaimOrigin.ENTRYPOINT)) return null;
+
+		return winner;
+	}
+
+	private void runProvider(@NotNull ScenarioContext context, @NotNull String providerId) {
 		ProviderContext provider = context.getProvider();
 		String username = context.getUsername() != null ? context.getUsername() : "";
 		if (provider == null) {
-			context.setProvider(ProviderContext.builder()
-					.providerId(providerId)
-					.providerUsername(username)
-					.source(ProviderOrigin.AUTO)
-					.build());
+			context.setProvider(ProviderContext.of(providerId, null, username));
 			return;
 		}
 
 		provider.setProviderId(providerId);
 		if (provider.getProviderUsername().isBlank())
 			provider.setProviderUsername(username);
-		if (provider.getSource() == null)
-			provider.setSource(ProviderOrigin.AUTO);
 	}
 
 	private List<EnrollmentEntry> buildEntries(

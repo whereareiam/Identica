@@ -101,7 +101,7 @@ class RecognitionFeatureTest {
 		assertNull(injector.getExistingBinding(Key.get(RestrictionSignalRegistry.class)));
 		assertTrue(feature.providerModules(FeatureProviderContext.builder().providerId("premium").workingPath(featuresPath)
 					.descriptor(new me.whereareiam.identica.model.provider.ProviderDescriptor()).features(features).build()).isEmpty());
-		assertEquals(3, injector.getInstance(RecognitionEligibilityRegistry.class).resolve().size());
+		assertEquals(2, injector.getInstance(RecognitionEligibilityRegistry.class).resolve().size());
 		verify(events).register(injector.getInstance(RecognitionAppliedLifecycle.class));
 
 		feature.shutdown(context);

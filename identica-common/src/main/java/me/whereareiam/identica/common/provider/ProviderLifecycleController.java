@@ -38,6 +38,7 @@ import me.whereareiam.identica.type.provider.ProviderTrait;
 import me.whereareiam.identica.provider.eligibility.ProviderEligibilityResolver;
 import me.whereareiam.identica.provider.migration.ProviderMigrationPrecheck;
 import me.whereareiam.identica.provider.resolver.ProviderResolver;
+import me.whereareiam.identica.provider.selection.ProviderClaimSource;
 import me.whereareiam.identica.provider.subject.SubjectResolver;
 import me.whereareiam.identica.type.provider.ProviderState;
 
@@ -55,6 +56,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ProviderLifecycleController {
 	private static final TypeLiteral<Set<ProviderFeatureContribution>> FEATURE_CONTRIBUTIONS = new TypeLiteral<>() {};
 	private static final TypeLiteral<Set<HandshakePolicy>> HANDSHAKE_POLICIES = new TypeLiteral<>() {};
+	private static final TypeLiteral<Set<ProviderClaimSource>> CLAIM_SOURCES = new TypeLiteral<>() {};
 	private static final TypeLiteral<Set<ProviderEligibilityResolver>> ELIGIBILITY_RESOLVERS = new TypeLiteral<>() {};
 	private static final TypeLiteral<Set<SubjectResolver>> SUBJECT_RESOLVERS = new TypeLiteral<>() {};
 	private static final TypeLiteral<Set<ProviderMigrationPrecheck>> MIGRATION_PRECHECKS = new TypeLiteral<>() {};
@@ -75,9 +77,11 @@ public class ProviderLifecycleController {
 	private final EventManager eventManager;
 	private final HandshakeStore handshakeStore;
 	private final Registry<Reloadable> reloadables;
+	private final Registry<ProviderClaimSource> claimSources;
 
 	private final ConcurrentHashMap<InternalProvider, Set<Reloadable>> providerReloadables = new ConcurrentHashMap<>();
 	private final ConcurrentHashMap<InternalProvider, Set<HandshakePolicy>> providerHandshakePolicies = new ConcurrentHashMap<>();
+	private final ConcurrentHashMap<InternalProvider, Set<ProviderClaimSource>> providerClaimSources = new ConcurrentHashMap<>();
 	private final ConcurrentHashMap<InternalProvider, Set<ProviderPlatformBinding>> providerPlatformBindings = new ConcurrentHashMap<>();
 
 	/**
@@ -292,6 +296,7 @@ public class ProviderLifecycleController {
 	private void storeBindings(InternalProvider internal, Injector injector) {
 		if (internal == null || injector == null) return;
 		providerHandshakePolicies.put(internal, copySet(resolveSet(injector, HANDSHAKE_POLICIES)));
+		providerClaimSources.put(internal, copySet(resolveSet(injector, CLAIM_SOURCES)));
 		providerPlatformBindings.put(internal, copySet(resolveSet(injector, PLATFORM_BINDINGS)));
 		internal.setEligibilityResolvers(copySet(resolveSet(injector, ELIGIBILITY_RESOLVERS)));
 		internal.setSubjectResolvers(copySet(resolveSet(injector, SUBJECT_RESOLVERS)));
@@ -309,6 +314,10 @@ public class ProviderLifecycleController {
 		if (policies != null)
 			for (HandshakePolicy policy : policies)
 				handshakeStore.registerPolicy(policy);
+
+		Set<ProviderClaimSource> sources = providerClaimSources.get(internal);
+		if (sources != null)
+			sources.forEach(claimSources::register);
 
 		Set<ProviderPlatformBinding> platformBindings = providerPlatformBindings.get(internal);
 		if (platformBindings != null)
@@ -339,6 +348,10 @@ public class ProviderLifecycleController {
 		if (policies != null)
 			for (HandshakePolicy policy : policies)
 				handshakeStore.unregisterPolicy(policy);
+
+		Set<ProviderClaimSource> sources = providerClaimSources.remove(internal);
+		if (sources != null)
+			sources.forEach(claimSources::unregister);
 	}
 
 	private <T> Set<T> resolveSet(Injector injector, TypeLiteral<Set<T>> type) {

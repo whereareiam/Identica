@@ -9,13 +9,15 @@ import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.auth.handshake.HandshakeDecision;
 import me.whereareiam.identica.model.auth.handshake.HandshakeRequest;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
-import me.whereareiam.identica.model.provider.ProviderContext;
+import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import me.whereareiam.identica.provider.ProviderAttemptStore;
 import me.whereareiam.identica.provider.premium.PremiumConstants;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
 import me.whereareiam.identica.provider.premium.handshake.PremiumHandshakeAttributes;
 import me.whereareiam.identica.provider.premium.resolver.PremiumDetector;
+import me.whereareiam.identica.provider.selection.ProviderSelector;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.provider.ProviderClaimOrigin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -29,6 +31,7 @@ public class PremiumHandshakePolicy implements ProviderScopedHandshakePolicy {
 	private final PremiumDetector detector;
 	private final ProviderAttemptStore attemptStore;
 	private final Provider<PremiumMessages> messagesProvider;
+	private final ProviderSelector providerSelector;
 
 	@Override
 	public @NotNull String providerId() {
@@ -38,7 +41,7 @@ public class PremiumHandshakePolicy implements ProviderScopedHandshakePolicy {
 	/**
 	 * Decides whether the connection needs a premium login. A username whose account prefers premium always needs one.
 	 * Any other client that was already asked for one and did not give it falls back to the other providers. Otherwise
-	 * a premium provider context asks for one, a known account follows its preferred provider, and an unknown username
+	 * a selection that Premium won with its hostname or a stronger claim asks for one, a known account follows its preferred provider, and an unknown username
 	 * of a seamless journey is asked for one when it is detected as premium.
 	 */
 	@Override
@@ -57,9 +60,15 @@ public class PremiumHandshakePolicy implements ProviderScopedHandshakePolicy {
 			return allow();
 		}
 
-		ProviderContext provider = request.getProvider();
-		if (provider != null && isPremium(provider.getProviderId())) {
-			Logger.debug("Premium handshake forcing online for provider context username=%s ip=%s", username, ip);
+		ProviderSelection selection = request.getSelection();
+		if (isPremium(selection.getWinnerProviderId())
+				&& providerSelector.isAtLeast(selection.getOrigin(), ProviderClaimOrigin.ENTRYPOINT)) {
+			Logger.debug(
+					"Premium handshake forcing online for the selected provider username=%s ip=%s origin=%s",
+					username,
+					ip,
+					selection.getOrigin()
+			);
 			return CompletableFuture.completedFuture(forceOnline());
 		}
 

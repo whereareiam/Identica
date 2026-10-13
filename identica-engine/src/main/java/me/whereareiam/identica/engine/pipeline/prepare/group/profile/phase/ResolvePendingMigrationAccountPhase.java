@@ -21,22 +21,21 @@ import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareAccountCandidateItem;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareContextItem;
 import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
-import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.pipeline.PipelinePhase;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.PipelineStateReference;
 import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.pipeline.state.prepare.PrepareGroupState;
-import me.whereareiam.identica.provider.ProviderOperations;
-import me.whereareiam.identica.provider.subject.SubjectResolution;
-import me.whereareiam.identica.provider.subject.SubjectResolveContext;
+import me.whereareiam.identica.model.provider.selection.ProviderClaim;
+import me.whereareiam.identica.model.provider.selection.ProviderSelection;
+import me.whereareiam.identica.provider.selection.ProviderSelector;
 import me.whereareiam.identica.service.DeliveryService;
 import me.whereareiam.identica.type.ScenarioResolution;
 import me.whereareiam.identica.type.messaging.DeliveryCheckpoint;
 import me.whereareiam.identica.type.messaging.DeliverySemantics;
 import me.whereareiam.identica.type.messaging.DeliverySource;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.provider.ProviderOrigin;
+import me.whereareiam.identica.type.provider.ProviderClaimOrigin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -45,13 +44,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 /**
- * Decides whether a connection continues the pending migration stored for its username and IP.
+ * Decides whether a connection continues the pending migration that claims it.
  *
  * <p>The migration continues only when a provider verified the subject of the connection, and that subject is
  * either the one the account is linked with, so the provider it is leaving, or belongs to the migration target
- * itself. After proof with the provider being left, the target provider is selected and set up in the same
- * session. Every other connection cancels the migration. The rule names no provider: it relies on
- * {@link ProviderContext#isSubjectVerified()}, which each provider's subject resolver supplies.</p>
+ * itself. The rule names no provider: it relies on the verified subject claims of the selection, which each
+ * provider's subject resolver supplies. Every other connection cancels the migration and withdraws its claim, so the
+ * next claim of the selection wins.</p>
  */
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
@@ -61,7 +60,7 @@ public class ResolvePendingMigrationAccountPhase implements PipelinePhase<Prepar
 	private final ProviderLinkPersistenceService providerLinkPersistenceService;
 	private final DeliveryService deliveryService;
 	private final EventManager eventManager;
-	private final ProviderOperations providerOperations;
+	private final ProviderSelector providerSelector;
 	private final Provider<Messages> messagesProvider;
 
 	@Override
@@ -71,7 +70,7 @@ public class ResolvePendingMigrationAccountPhase implements PipelinePhase<Prepar
 
 	@Override
 	public int order() {
-		return 150;
+		return 50;
 	}
 
 	@Override
@@ -83,12 +82,10 @@ public class ResolvePendingMigrationAccountPhase implements PipelinePhase<Prepar
 	public boolean supports(@NotNull PipelineState pipelineState, @NotNull PrepareGroupState state) {
 		if (pipelineState.has(PrepareDecision.KEY)) return false;
 		if (pipelineState.has(PrepareAccountCandidateItem.KEY)) return false;
+		if (state.getRequest() == null || !state.getRequest().getStage().includesProfile()) return false;
 
 		PrepareContextItem context = pipelineState.get(PrepareContextItem.KEY).orElse(null);
-		return context != null
-				&& context.getProvider() != null
-				&& context.getProvider().getProviderId() != null
-				&& !context.getProvider().getProviderId().isBlank();
+		return context != null && context.getSelection().getOrigin() == ProviderClaimOrigin.MIGRATION;
 	}
 
 	@Override
@@ -98,17 +95,10 @@ public class ResolvePendingMigrationAccountPhase implements PipelinePhase<Prepar
 	) {
 		PrepareContextItem context = pipelineState.get(PrepareContextItem.KEY).orElse(new PrepareContextItem());
 		var request = state.getRequest();
-		ProviderContext provider = context.getProvider();
-		if (request == null || provider == null) {
+		ProviderSelection selection = context.getSelection();
+		String connectionKey = request != null ? request.getConnectionKey() : null;
+		if (connectionKey == null || connectionKey.isBlank())
 			return CompletableFuture.completedFuture(PhaseResult.pass(state));
-		}
-
-		String connectionKey = request.getConnectionKey();
-		String providerId = provider.getProviderId();
-		String requestedUsername = request.getIdentity().getUsername();
-		if (connectionKey == null || connectionKey.isBlank() || providerId == null || providerId.isBlank()) {
-			return CompletableFuture.completedFuture(PhaseResult.pass(state));
-		}
 
 		PipelineState pendingState = pipelineStateStore.find(PipelineStateReference.builder()
 				.connectionKey(connectionKey)
@@ -119,45 +109,22 @@ public class ResolvePendingMigrationAccountPhase implements PipelinePhase<Prepar
 			return CompletableFuture.completedFuture(PhaseResult.pass(state));
 
 		MigrationContext migration = (MigrationContext) pendingState.getScenario(PipelineType.MIGRATION);
-		if (migration == null)
+		if (migration == null || migration.getTargetProviderId() == null)
 			return CompletableFuture.completedFuture(PhaseResult.pass(state));
 
 		String targetProviderId = migration.getTargetProviderId();
-		if (targetProviderId == null) return CompletableFuture.completedFuture(PhaseResult.pass(state));
-
 		UUID accountUniqueId = migration.getAccountUniqueId();
-		boolean target = targetProviderId.equalsIgnoreCase(providerId);
-		boolean proven = provider.isSubjectVerified() && (target || isLinkedSubject(accountUniqueId, provider));
-		if (!proven) {
-			cancel(migration, connectionKey, targetProviderId, provider);
-			return CompletableFuture.completedFuture(PhaseResult.pass(state));
-		}
-
-		if (!target) {
-			SubjectResolution resolved = providerOperations.resolveSelectedSubject(
-					targetProviderId,
-					SubjectResolveContext.builder()
-							.identity(request.getIdentity())
-							.build()
-			);
-			context.setProvider(ProviderContext.of(
-					targetProviderId,
-					resolved != null ? resolved.getProviderSubject() : null,
-					requestedUsername,
-					ProviderOrigin.MANUAL
-			));
+		if (!isProven(selection, targetProviderId, accountUniqueId)) {
+			cancel(migration, connectionKey, targetProviderId, selection);
+			context.setSelection(providerSelector.revoke(selection, ProviderClaimOrigin.MIGRATION));
 			pipelineState.put(PrepareContextItem.KEY, context);
-			Logger.debug(
-					"Prepare continued pending migration after proof with the provider it leaves requested=%s proven=%s key=%s",
-					targetProviderId,
-					providerId,
-					connectionKey
-			);
+			return CompletableFuture.completedFuture(PhaseResult.pass(state));
 		}
 
 		if (accountUniqueId == null)
 			return CompletableFuture.completedFuture(PhaseResult.pass(state));
 
+		String requestedUsername = request.getIdentity().getUsername();
 		Account storedAccount = accountPersistenceService.findByUniqueId(accountUniqueId).orElse(null);
 		Account account = storedAccount != null
 				? storedAccount.toBuilder().username(requestedUsername).build()
@@ -175,7 +142,7 @@ public class ResolvePendingMigrationAccountPhase implements PipelinePhase<Prepar
 		));
 		Logger.debug(
 				"Prepare reusing pending migration account provider=%s identica=%s key=%s",
-				providerId,
+				targetProviderId,
 				accountUniqueId,
 				connectionKey
 		);
@@ -184,25 +151,35 @@ public class ResolvePendingMigrationAccountPhase implements PipelinePhase<Prepar
 	}
 
 	/**
-	 * Whether the provider verified the connection as the subject the migrating account is linked with. That
-	 * is the provider the account is leaving, whichever provider it is.
+	 * Whether a provider verified the connection as a subject of the target, or as the subject the migrating account
+	 * is linked with, which is the provider the account is leaving, whichever provider it is.
 	 */
-	private boolean isLinkedSubject(@Nullable UUID accountUniqueId, @NotNull ProviderContext provider) {
-		String subject = provider.getProviderSubject();
-		if (accountUniqueId == null || provider.getProviderId() == null || subject == null || subject.isBlank())
-			return false;
+	private boolean isProven(
+			@NotNull ProviderSelection selection,
+			@NotNull String targetProviderId,
+			@Nullable UUID accountUniqueId
+	) {
+		if (selection.findVerifiedSubject(targetProviderId).isPresent()) return true;
+
+		return selection.claims().stream()
+				.filter(ProviderClaim::hasProof)
+				.anyMatch(claim -> isLinkedSubject(accountUniqueId, claim));
+	}
+
+	private boolean isLinkedSubject(@Nullable UUID accountUniqueId, @NotNull ProviderClaim claim) {
+		if (accountUniqueId == null) return false;
 
 		AccountProviderLink link = providerLinkPersistenceService
-				.findByUniqueIdAndProviderId(accountUniqueId, provider.getProviderId())
+				.findByUniqueIdAndProviderId(accountUniqueId, claim.getProviderId())
 				.orElse(null);
-		return link != null && subject.equalsIgnoreCase(link.getProviderSubject());
+		return link != null && link.getProviderSubject().equalsIgnoreCase(claim.getVerifiedSubject());
 	}
 
 	private void cancel(
 			@NotNull MigrationContext migration,
 			@NotNull String connectionKey,
 			@NotNull String targetProviderId,
-			@NotNull ProviderContext provider
+			@NotNull ProviderSelection selection
 	) {
 		UUID cancelledAccountUniqueId = migration.getAccountUniqueId();
 		String notice = String.join("\n", messagesProvider.get().getScenarios().getMigration().getCancelled());
@@ -231,10 +208,9 @@ public class ResolvePendingMigrationAccountPhase implements PipelinePhase<Prepar
 				.connectionKey(connectionKey)
 				.build());
 		Logger.debug(
-				"Prepare cleared pending migration without proof requested=%s observed=%s verified=%s key=%s",
+				"Prepare cleared pending migration without proof requested=%s claims=%s key=%s",
 				targetProviderId,
-				provider.getProviderId(),
-				provider.isSubjectVerified(),
+				selection.claims(),
 				connectionKey
 		);
 	}

@@ -5,6 +5,7 @@ import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.identity.IdentityReference;
 import me.whereareiam.identica.model.pipeline.ScenarioTransitionItem;
 import me.whereareiam.identica.model.provider.ProviderContext;
+import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.state.StateKey;
 import org.jetbrains.annotations.NotNull;
@@ -33,6 +34,12 @@ public class AuthContext implements ScenarioContext {
 	@Setter
 	private @Nullable ProviderContext provider;
 
+	/**
+	 * Which provider handles the connection, and why.
+	 */
+	@Setter
+	private @Nullable ProviderSelection selection;
+
 	@Setter
 	private @Nullable ScenarioTransitionItem transition;
 
@@ -43,6 +50,11 @@ public class AuthContext implements ScenarioContext {
 	 */
 	public @NotNull ConnectionIdentity getIdentity() {
 		return identity;
+	}
+
+	@Override
+	public @NotNull ProviderSelection getSelection() {
+		return selection != null ? selection : ProviderSelection.empty();
 	}
 
 	@Override
@@ -91,7 +103,7 @@ public class AuthContext implements ScenarioContext {
 		}
 
 		public @NotNull AuthContext build() {
-			return new AuthContext(identityReference, identity, intendedServer, provider, transition);
+			return new AuthContext(identityReference, identity, intendedServer, provider, selection, transition);
 		}
 	}
 

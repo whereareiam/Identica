@@ -1,6 +1,7 @@
 package me.whereareiam.identica.engine.pipeline.scenario.shared.group.journey.rule;
 
-import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
+import me.whereareiam.identica.common.provider.selection.DefaultProviderSelector;
+import me.whereareiam.identica.common.provider.selection.ProviderClaimRanking;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.migration.MigrationContext;
 import me.whereareiam.identica.model.pipeline.journey.JourneyPlan;
@@ -13,17 +14,23 @@ import me.whereareiam.identica.model.pipeline.journey.stage.step.JourneyStep;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
+import me.whereareiam.identica.model.provider.selection.ProviderClaim;
+import me.whereareiam.identica.model.provider.selection.ProviderSelection;
+import me.whereareiam.identica.model.registration.RegistrationContext;
 import me.whereareiam.identica.pipeline.journey.registry.type.AuthenticationJourneyRegistry;
 import me.whereareiam.identica.pipeline.journey.registry.type.MigrationJourneyRegistry;
 import me.whereareiam.identica.pipeline.journey.registry.type.RegistrationJourneyRegistry;
 import me.whereareiam.identica.pipeline.journey.step.Step;
+import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.PipelineStateStore;
+import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.provider.ProviderOperations;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.pipeline.journey.JourneyExecutionPolicy;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.StageType;
 import me.whereareiam.identica.type.pipeline.journey.step.StepContextRequirement;
+import me.whereareiam.identica.type.provider.ProviderClaimOrigin;
 import me.whereareiam.identica.type.provider.ProviderState;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.DisplayName;
@@ -48,7 +55,6 @@ class SelectProvidersRuleTest {
 		AuthenticationJourneyRegistry authenticationJourneyRegistry = mock(AuthenticationJourneyRegistry.class);
 		RegistrationJourneyRegistry registrationJourneyRegistry = mock(RegistrationJourneyRegistry.class);
 		MigrationJourneyRegistry migrationJourneyRegistry = mock(MigrationJourneyRegistry.class);
-		ProviderLinkPersistenceService providerLinkPersistenceService = mock(ProviderLinkPersistenceService.class);
 		PipelineStateStore pipelineStateStore = mock(PipelineStateStore.class);
 
 		InternalProvider provider = provider("premium");
@@ -67,7 +73,7 @@ class SelectProvidersRuleTest {
 				authenticationJourneyRegistry,
 				registrationJourneyRegistry,
 				migrationJourneyRegistry,
-				providerLinkPersistenceService,
+				new DefaultProviderSelector(new ProviderClaimRanking(mock(ProviderManager.class))),
 				pipelineStateStore
 		);
 
@@ -79,6 +85,59 @@ class SelectProvidersRuleTest {
 		assertEquals(1, result.blocks().size());
 		assertEquals("premium", result.blocks().getFirst().providerId());
 		assertEquals(1, result.blocks().getFirst().stages().size());
+	}
+
+	@Test
+	@DisplayName("Orders eligible providers by the connection's selection, then by priority")
+	void ordersEligibleProvidersBySelection() {
+		ProviderOperations providerOperations = mock(ProviderOperations.class);
+		RegistrationJourneyRegistry registrationJourneyRegistry = mock(RegistrationJourneyRegistry.class);
+		ProviderManager providerManager = mock(ProviderManager.class);
+		List<InternalProvider> providers = List.of(provider("alpha", 30), provider("beta", 20), provider("gamma", 10));
+		when(providerManager.getProviders()).thenReturn(providers);
+		DefaultProviderSelector selector = new DefaultProviderSelector(new ProviderClaimRanking(providerManager));
+
+		RegistrationContext context = RegistrationContext.builder()
+				.connectionUniqueId(UUID.randomUUID())
+				.identity(new ConnectionIdentity(UUID.randomUUID(), "PlayerOne", "127.0.0.1"))
+				.build();
+		context.setSelection(selector.claim(ProviderSelection.empty(), List.of(
+				ProviderClaim.of("gamma", ProviderClaimOrigin.ENTRYPOINT),
+				ProviderClaim.of("alpha", ProviderClaimOrigin.DISCOVERY),
+				ProviderClaim.of("delta", ProviderClaimOrigin.MIGRATION)
+		)));
+		when(providerOperations.eligibleProviders(context, PipelineType.REGISTRATION, JourneyMode.SEAMLESS))
+				.thenReturn(providers);
+		for (InternalProvider provider : providers) {
+			String id = provider.getDescriptor().getId();
+			when(registrationJourneyRegistry.resolvePlan(context, PipelineType.REGISTRATION, JourneyMode.SEAMLESS, id))
+					.thenReturn(providerPlan(id));
+		}
+
+		SelectProvidersRule rule = new SelectProvidersRule(
+				providerOperations,
+				mock(AuthenticationJourneyRegistry.class),
+				registrationJourneyRegistry,
+				mock(MigrationJourneyRegistry.class),
+				selector,
+				mock(PipelineStateStore.class)
+		);
+
+		JourneyExecutionPlan result = rule.apply(
+				new JourneyRuleContext(context, PipelineType.REGISTRATION, JourneyMode.SEAMLESS, null, PipelineState.initial()),
+				seedPlan()
+		);
+
+		assertEquals(
+				List.of("gamma", "alpha", "beta"),
+				result.blocks().stream().map(JourneyExecutionBlock::providerId).toList()
+		);
+	}
+
+	private InternalProvider provider(String id, int priority) {
+		InternalProvider provider = provider(id);
+		provider.setPriority(priority);
+		return provider;
 	}
 
 	private InternalProvider provider(String id) {

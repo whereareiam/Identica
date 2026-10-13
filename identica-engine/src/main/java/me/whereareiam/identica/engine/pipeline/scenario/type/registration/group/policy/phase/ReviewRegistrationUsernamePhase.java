@@ -91,7 +91,7 @@ public class ReviewRegistrationUsernamePhase implements PipelinePhase<PolicyStat
 						.account(account)
 						.incomingLink(link)
 						.incomingProfile(profile)
-						.providerContext(context.getProvider())
+						.selection(context.getSelection())
 						.build(),
 				context.getUsername()
 		);

@@ -167,7 +167,7 @@ class VerificationConfirmCommandTest {
 		state.setPipelineType(PipelineType.AUTHENTICATION);
 		state.setScenario(AuthContext.builder()
 				.identity(new ConnectionIdentity(accountUniqueId, "PlayerOne", "127.0.0.1"))
-				.provider(ProviderContext.of("credential", "subject", "PlayerOne", null))
+				.provider(ProviderContext.of("credential", "subject", "PlayerOne"))
 				.build());
 		if (waiting) state.put(JourneyStateItem.KEY, new JourneyStateItem(null, null, 0), 60_000L);
 		return state;

@@ -12,7 +12,9 @@ import me.whereareiam.identica.model.conflict.ConflictResolution;
 import me.whereareiam.identica.provider.ProviderOperations;
 import me.whereareiam.identica.conflict.UsernameConflictSchema;
 import me.whereareiam.identica.model.config.UsernameMessages;
-import me.whereareiam.identica.type.provider.ProviderOrigin;
+import me.whereareiam.identica.model.provider.selection.ProviderSelection;
+import me.whereareiam.identica.provider.selection.ProviderSelector;
+import me.whereareiam.identica.type.provider.ProviderClaimOrigin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -25,6 +27,7 @@ import java.util.Objects;
 public class UsernameEntrypointGuard implements ConflictGuard {
 	private final Provider<UsernameMessages> messagesProvider;
 	private final ProviderOperations providerOperations;
+	private final ProviderSelector providerSelector;
 
 	@Override
 	public @Nullable ConflictResolution guard(@NotNull ConflictContext context) {
@@ -41,13 +44,12 @@ public class UsernameEntrypointGuard implements ConflictGuard {
 		if (incomingProvider == null || existingProvider == null) return null;
 		if (incomingProvider.equalsIgnoreCase(existingProvider)) return null;
 
-		ProviderOrigin source = context.getAttribute(
-				UsernameConflictSchema.ATTRIBUTE_ENTRYPOINT_SOURCE
-		);
-		if (source == ProviderOrigin.ENTRYPOINT) {
-			Logger.debug("Username conflict accepted by entrypoint incoming=%s existing=%s",
+		ProviderSelection selection = context.getAttribute(UsernameConflictSchema.ATTRIBUTE_SELECTION);
+		if (selectedThroughEntrypoint(selection, incomingProvider)) {
+			Logger.debug("Username conflict accepted by entrypoint incoming=%s existing=%s origin=%s",
 					incomingProvider,
-					existingProvider);
+					existingProvider,
+					selection.getOrigin());
 			return null;
 		}
 
@@ -59,6 +61,16 @@ public class UsernameEntrypointGuard implements ConflictGuard {
 				incomingProvider,
 				existingProvider);
 		return ConflictResolution.deny(resolveEntrypointMessage(incomingProvider, existingProvider));
+	}
+
+	/**
+	 * Whether the arriving provider won the selection with its hostname or a stronger claim, such as a verified
+	 * subject already linked to an account.
+	 */
+	private boolean selectedThroughEntrypoint(@Nullable ProviderSelection selection, @NotNull String incomingProvider) {
+		return selection != null
+				&& selection.isWonBy(incomingProvider)
+				&& providerSelector.isAtLeast(selection.getOrigin(), ProviderClaimOrigin.ENTRYPOINT);
 	}
 
 	private @Nullable String resolveEntrypointMessage(

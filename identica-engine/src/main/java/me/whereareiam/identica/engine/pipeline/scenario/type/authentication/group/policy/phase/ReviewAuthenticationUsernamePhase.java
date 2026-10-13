@@ -92,7 +92,7 @@ public class ReviewAuthenticationUsernamePhase implements PipelinePhase<PolicySt
 						.account(account)
 						.incomingLink(link)
 						.incomingProfile(profile)
-						.providerContext(context.getProvider())
+						.selection(context.getSelection())
 						.build(),
 				context.getUsername()
 		);

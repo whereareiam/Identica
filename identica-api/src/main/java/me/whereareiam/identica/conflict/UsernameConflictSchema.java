@@ -2,7 +2,7 @@ package me.whereareiam.identica.conflict;
 
 import me.whereareiam.identica.model.conflict.ConflictAttributeKey;
 import me.whereareiam.identica.model.conflict.participant.ConflictParticipantRole;
-import me.whereareiam.identica.type.provider.ProviderOrigin;
+import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 
 import java.util.UUID;
 
@@ -15,8 +15,11 @@ public final class UsernameConflictSchema {
 
 	public static final ConflictAttributeKey<String> ATTRIBUTE_CANDIDATE_USERNAME =
 			ConflictAttributeKey.string("candidateUsername");
-	public static final ConflictAttributeKey<ProviderOrigin> ATTRIBUTE_ENTRYPOINT_SOURCE =
-			ConflictAttributeKey.of("entrypointSource", ProviderOrigin.class);
+	/**
+	 * Provider selection of the arriving connection: which provider handles it, and why.
+	 */
+	public static final ConflictAttributeKey<ProviderSelection> ATTRIBUTE_SELECTION =
+			ConflictAttributeKey.of("selection", ProviderSelection.class);
 	public static final ConflictAttributeKey<String> ATTRIBUTE_INCOMING_PRIMARY_PROVIDER_ID =
 			ConflictAttributeKey.string("incomingPrimaryProviderId");
 

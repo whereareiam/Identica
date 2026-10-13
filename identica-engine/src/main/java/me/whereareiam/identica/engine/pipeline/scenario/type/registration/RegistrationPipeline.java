@@ -69,6 +69,7 @@ public class RegistrationPipeline extends AbstractScenarioPipeline {
 				.intendedServer(request.getIntendedServer())
 				.build();
 		context.setProvider(request.getProvider());
+		context.setSelection(request.getSelection());
 		context.setTransition(request.getTransition());
 
 		EventUtil.callEvent(new RegistrationContextBuiltEvent(context));
@@ -94,6 +95,7 @@ public class RegistrationPipeline extends AbstractScenarioPipeline {
 					.build();
 
 			merged.setProvider(registration.getProvider());
+			merged.setSelection(registration.getSelection());
 			merged.setTransition(registration.getTransition());
 			return merged;
 		}

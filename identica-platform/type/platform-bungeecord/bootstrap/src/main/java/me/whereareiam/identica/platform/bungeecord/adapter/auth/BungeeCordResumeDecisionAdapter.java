@@ -70,6 +70,7 @@ public class BungeeCordResumeDecisionAdapter implements PlatformResumeDecisionAd
 				.identity(identity)
 				.intendedServer(intendedServer)
 				.provider(provider)
+				.selection(prepared != null ? prepared.getSelection() : null)
 				.build();
 		ConnectionDecision decision = connectionCoordinator.resume(request)
 				.toCompletableFuture()

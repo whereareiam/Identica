@@ -50,7 +50,7 @@ class FinalizeProfileStepTest {
 		RegistrationContext context = RegistrationContext.builder()
 				.identity(new ConnectionIdentity("whereareiam", "127.0.0.1"))
 				.build();
-		context.setProvider(ProviderContext.of("premium", null, "whereareiam", null));
+		context.setProvider(ProviderContext.of("premium", null, "whereareiam"));
 		when(profileStore.find("whereareiam")).thenReturn(new PremiumProfileSnapshot("premium-subject", System.currentTimeMillis()));
 
 		StepResult result = step.execute(context, PipelineState.initial()).join();
@@ -65,7 +65,7 @@ class FinalizeProfileStepTest {
 	void finalizeProfileContinuesAuthentication() {
 		AuthContext context = AuthContext.builder()
 				.identity(new ConnectionIdentity("whereareiam", "127.0.0.1"))
-				.provider(ProviderContext.of("premium", null, "whereareiam", null))
+				.provider(ProviderContext.of("premium", null, "whereareiam"))
 				.build();
 		when(profileStore.find("whereareiam")).thenReturn(new PremiumProfileSnapshot("premium-subject", System.currentTimeMillis()));
 
@@ -83,7 +83,7 @@ class FinalizeProfileStepTest {
 				.identity(new ConnectionIdentity("whereareiam", "127.0.0.1"))
 				.targetProviderId("premium")
 				.build();
-		context.setProvider(ProviderContext.of("premium", null, "whereareiam", null));
+		context.setProvider(ProviderContext.of("premium", null, "whereareiam"));
 		when(profileStore.find("whereareiam")).thenReturn(new PremiumProfileSnapshot("premium-subject", System.currentTimeMillis()));
 
 		StepResult result = step.execute(context, PipelineState.initial()).join();

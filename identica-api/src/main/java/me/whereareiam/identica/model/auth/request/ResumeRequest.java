@@ -4,6 +4,7 @@ import lombok.*;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.identity.IdentityReference;
 import me.whereareiam.identica.model.provider.ProviderContext;
+import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import me.whereareiam.identica.pipeline.state.PipelineInput;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -27,6 +28,10 @@ public class ResumeRequest {
 	private final @NotNull IdentityReference identityReference = new IdentityReference();
 	private final @Nullable ConnectionIdentity identity;
 	private final @Nullable ProviderContext provider;
+	/**
+	 * Which provider handles the connection, and why, as its preparation selected it.
+	 */
+	private final @Nullable ProviderSelection selection;
 	private final @Nullable String intendedServer;
 	/**
 	 * Input from the command that sent this request, applied to the player's state at the start of the run.
@@ -138,6 +143,7 @@ public class ResumeRequest {
 				.identityReference(identityReference)
 				.identity(identity)
 				.provider(provider)
+				.selection(selection)
 				.intendedServer(intendedServer)
 				.build();
 	}
@@ -156,7 +162,7 @@ public class ResumeRequest {
 		}
 
 		public @NotNull ResumeRequest build() {
-			return new ResumeRequest(identityReference, identity, provider, intendedServer, input);
+			return new ResumeRequest(identityReference, identity, provider, selection, intendedServer, input);
 		}
 	}
 }

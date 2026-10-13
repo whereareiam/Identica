@@ -5,6 +5,7 @@ import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
+import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
@@ -56,7 +57,7 @@ class CredentialAuthenticationCredentialStepTest {
 	void successfulPasswordAuthenticationContinues() {
 		AuthContext context = AuthContext.builder()
 				.identity(new ConnectionIdentity("whereareiam", "127.0.0.1"))
-				.provider(me.whereareiam.identica.model.provider.ProviderContext.of("credential", "subject", "whereareiam", null))
+				.provider(ProviderContext.of("credential", "subject", "whereareiam"))
 				.build();
 		PipelineState state = PipelineState.initial();
 		state.put(CredentialAuthenticationAttempt.KEY, new CredentialAuthenticationAttempt("credential"));

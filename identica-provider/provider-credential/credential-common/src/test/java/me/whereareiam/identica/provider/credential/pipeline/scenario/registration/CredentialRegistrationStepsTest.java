@@ -53,7 +53,7 @@ class CredentialRegistrationStepsTest {
 		RegistrationContext context = RegistrationContext.builder()
 				.identity(new ConnectionIdentity("whereareiam", "127.0.0.1"))
 				.build();
-		context.setProvider(ProviderContext.of("credential", "subject", "whereareiam", null));
+		context.setProvider(ProviderContext.of("credential", "subject", "whereareiam"));
 		PipelineState state = PipelineState.initial();
 		when(accountService.find("subject")).thenReturn(Optional.empty());
 		when(cryptographyService.hash(PASSWORD)).thenReturn(new PasswordCandidate("hash", "bcrypt"));

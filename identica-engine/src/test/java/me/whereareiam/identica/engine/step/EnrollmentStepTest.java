@@ -2,6 +2,8 @@ package me.whereareiam.identica.engine.step;
 
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.common.config.defaults.EngineDefaults;
+import me.whereareiam.identica.common.provider.selection.DefaultProviderSelector;
+import me.whereareiam.identica.common.provider.selection.ProviderClaimRanking;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.config.Engine;
@@ -9,11 +11,14 @@ import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
+import me.whereareiam.identica.model.provider.selection.ProviderClaim;
+import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import me.whereareiam.identica.model.registration.RegistrationContext;
+import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.provider.ProviderOperations;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
-import me.whereareiam.identica.type.provider.ProviderOrigin;
+import me.whereareiam.identica.type.provider.ProviderClaimOrigin;
 import me.whereareiam.identica.type.provider.ProviderState;
 import me.whereareiam.keystone.model.SerializerContent;
 import me.whereareiam.keystone.model.SerializerOptions;
@@ -21,18 +26,22 @@ import me.whereareiam.keystone.serializer.SerializerEngine;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -70,21 +79,27 @@ class EnrollmentStepTest {
 	private ProviderOperations providerOperations;
 	@Mock
 	private EventManager eventManager;
+	@Mock
+	private ProviderManager providerManager;
+
+	@BeforeEach
+	void enableProviders() {
+		lenient().when(providerManager.getProviders()).thenReturn(List.of(
+				provider("alpha", "Alpha"),
+				provider("beta", "Beta"),
+				provider("gamma", "Gamma")
+		));
+	}
 
 	@DisplayName("Automatically selects the only eligible provider when auto-selection is enabled")
 	@Test
 	void autoSelectsSingleProviderWhenEnabled() {
 		Engine settings = settings(true);
-		EnrollmentStep step = new EnrollmentStep(
-				providerOperations,
-				() -> settings,
-				this::messages,
-				eventManager
-		);
+		EnrollmentStep step = step(settings);
 		RegistrationContext context = context();
 
 		when(providerOperations.eligibleProviders(any(), eq(PipelineType.REGISTRATION), eq(JourneyMode.INTERACTIVE)))
-				.thenReturn(List.of(provider("premium", "Premium")));
+				.thenReturn(List.of(provider("alpha", "Alpha")));
 
 		StepResult result = step.execute(context).join();
 
@@ -92,9 +107,8 @@ class EnrollmentStepTest {
 		assertNull(result.getMessage());
 		assertEquals(context, result.getUpdatedContext());
 		assertNotNull(context.getProvider());
-		assertEquals("premium", context.getProvider().getProviderId());
+		assertEquals("alpha", context.getProvider().getProviderId());
 		assertEquals("PlayerOne", context.getProvider().getProviderUsername());
-		assertEquals(ProviderOrigin.AUTO, context.getProvider().getSource());
 		verify(eventManager).call(any());
 	}
 
@@ -102,16 +116,11 @@ class EnrollmentStepTest {
 	@Test
 	void keepsWaitingPromptWhenAutoSelectionDisabled() {
 		Engine settings = settings(false);
-		EnrollmentStep step = new EnrollmentStep(
-				providerOperations,
-				() -> settings,
-				this::messages,
-				eventManager
-		);
+		EnrollmentStep step = step(settings);
 		RegistrationContext context = context();
 
 		when(providerOperations.eligibleProviders(any(), eq(PipelineType.REGISTRATION), eq(JourneyMode.INTERACTIVE)))
-				.thenReturn(List.of(provider("premium", "Premium")));
+				.thenReturn(List.of(provider("alpha", "Alpha")));
 
 		StepResult result = step.execute(context).join();
 
@@ -126,18 +135,13 @@ class EnrollmentStepTest {
 	@Test
 	void keepsWaitingPromptWhenMultipleProvidersRemain() {
 		Engine settings = settings(true);
-		EnrollmentStep step = new EnrollmentStep(
-				providerOperations,
-				() -> settings,
-				this::messages,
-				eventManager
-		);
+		EnrollmentStep step = step(settings);
 		RegistrationContext context = context();
 
 		when(providerOperations.eligibleProviders(any(), eq(PipelineType.REGISTRATION), eq(JourneyMode.INTERACTIVE)))
 				.thenReturn(List.of(
-						provider("premium", "Premium"),
-						provider("credential", "Credential")
+						provider("alpha", "Alpha"),
+						provider("beta", "Beta")
 				));
 
 		StepResult result = step.execute(context).join();
@@ -145,6 +149,85 @@ class EnrollmentStepTest {
 		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
 		assertNull(context.getProvider());
 		verify(eventManager).call(any());
+	}
+
+	@DisplayName("Skips the choice for an offered provider its hostname selected")
+	@Test
+	void skipsTheChoiceForAnOfferedEntrypointProvider() {
+		RegistrationContext context = context(ProviderClaim.of("beta", ProviderClaimOrigin.ENTRYPOINT));
+		offer("alpha", "beta");
+
+		StepResult result = step(settings(true)).execute(context).join();
+
+		assertEquals(StepResult.StepStatus.COMPLETE, result.getStatus());
+		assertEquals("beta", context.getProvider().getProviderId());
+	}
+
+	@DisplayName("Skips the choice for an offered provider whose verified subject is linked to an account")
+	@Test
+	void skipsTheChoiceForAnOfferedLinkedProvider() {
+		RegistrationContext context = context(
+				ProviderClaim.of("alpha", ProviderClaimOrigin.ENTRYPOINT),
+				ProviderClaim.of("beta", ProviderClaimOrigin.ACCOUNT_LINK)
+		);
+		offer("alpha", "beta");
+
+		StepResult result = step(settings(true)).execute(context).join();
+
+		assertEquals(StepResult.StepStatus.COMPLETE, result.getStatus());
+		assertEquals("beta", context.getProvider().getProviderId());
+	}
+
+	@DisplayName("Shows the choice when the hostname selected a provider that is not offered")
+	@Test
+	void showsTheChoiceWhenTheEntrypointProviderIsNotOffered() {
+		RegistrationContext context = context(ProviderClaim.of("gamma", ProviderClaimOrigin.ENTRYPOINT));
+		offer("alpha", "beta");
+
+		StepResult result = step(settings(true)).execute(context).join();
+
+		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
+		assertNull(context.getProvider());
+	}
+
+	@DisplayName("Shows the choice when only a claim weaker than a hostname selects a provider")
+	@Test
+	void showsTheChoiceForAWeakerClaim() {
+		RegistrationContext context = context(
+				ProviderClaim.verified("alpha", "alpha-proof"),
+				ProviderClaim.of("beta", ProviderClaimOrigin.DISCOVERY)
+		);
+		offer("alpha", "beta");
+
+		StepResult result = step(settings(true)).execute(context).join();
+
+		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
+		assertNull(context.getProvider());
+	}
+
+	private void offer(String... providerIds) {
+		List<InternalProvider> providers = Arrays.stream(providerIds)
+				.map(id -> provider(id, id.toUpperCase(Locale.ROOT)))
+				.toList();
+		when(providerOperations.eligibleProviders(any(), eq(PipelineType.REGISTRATION), eq(JourneyMode.INTERACTIVE)))
+				.thenReturn(providers);
+	}
+
+	private EnrollmentStep step(Engine settings) {
+		return new EnrollmentStep(
+				providerOperations,
+				() -> settings,
+				this::messages,
+				eventManager,
+				new DefaultProviderSelector(new ProviderClaimRanking(providerManager))
+		);
+	}
+
+	private RegistrationContext context(ProviderClaim... claims) {
+		RegistrationContext context = context();
+		context.setSelection(new DefaultProviderSelector(new ProviderClaimRanking(providerManager))
+				.claim(ProviderSelection.empty(), List.of(claims)));
+		return context;
 	}
 
 	private Engine settings(boolean autoSelectSingleProvider) {

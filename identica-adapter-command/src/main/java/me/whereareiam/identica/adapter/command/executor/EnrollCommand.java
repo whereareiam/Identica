@@ -16,15 +16,19 @@ import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
 import me.whereareiam.identica.model.provider.ProviderContext;
+import me.whereareiam.identica.model.provider.selection.ProviderClaim;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.state.PipelineState;
+import me.whereareiam.identica.provider.selection.ProviderSelector;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.pipeline.journey.StageType;
-import me.whereareiam.identica.type.provider.ProviderOrigin;
+import me.whereareiam.identica.type.provider.ProviderClaimOrigin;
 import me.whereareiam.keystone.Actor;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
 
 
 @RequiredArgsConstructor(onConstructor_ = @Inject)
@@ -32,6 +36,7 @@ public class EnrollCommand {
 	private final ConnectionCoordinator connectionCoordinator;
 	private final Provider<Engine> engineProvider;
 	private final Provider<Messages> messagesProvider;
+	private final ProviderSelector providerSelector;
 
 	@AvailableWhilePending
 	@Definition("enroll")
@@ -67,8 +72,8 @@ public class EnrollCommand {
 	}
 
 	/**
-	 * Puts the chosen provider into the pending registration and restarts its provider stage. The pipeline
-	 * applies this to the state of the run the command resumes.
+	 * Adds the player's choice to the selection of the pending registration, runs the chosen provider and restarts its
+	 * provider stage. The pipeline applies this to the state of the run the command resumes.
 	 */
 	private void selectProvider(@NotNull PipelineState state, @NotNull String providerId) {
 		JourneyStateItem pending = state.get(JourneyStateItem.KEY).orElse(null);
@@ -77,19 +82,17 @@ public class EnrollCommand {
 		ScenarioContext context = state.getScenario(PipelineType.REGISTRATION);
 		if (context == null) return;
 
+		context.setSelection(providerSelector.claim(
+				context.getSelection(),
+				List.of(ProviderClaim.of(providerId, ProviderClaimOrigin.PLAYER_CHOICE))
+		));
 		String username = context.getUsername() != null ? context.getUsername() : "";
 		ProviderContext provider = context.getProvider();
 		if (provider == null) {
-			context.setProvider(ProviderContext.builder()
-					.providerId(providerId)
-					.providerUsername(username)
-					.source(ProviderOrigin.MANUAL)
-					.build());
+			context.setProvider(ProviderContext.of(providerId, null, username));
 		} else {
 			provider.setProviderId(providerId);
-			provider.setSource(ProviderOrigin.MANUAL);
-			String providerUsername = provider.getProviderUsername();
-			if (providerUsername.isBlank())
+			if (provider.getProviderUsername().isBlank())
 				provider.setProviderUsername(username);
 		}
 

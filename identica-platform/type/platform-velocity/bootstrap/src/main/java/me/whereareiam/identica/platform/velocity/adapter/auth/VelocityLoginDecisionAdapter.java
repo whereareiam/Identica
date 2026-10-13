@@ -80,6 +80,7 @@ public class VelocityLoginDecisionAdapter implements PlatformLoginDecisionAdapte
 				.identity(identity)
 				.connectionUniqueId(player.getUniqueId())
 				.provider(provider)
+				.selection(prepared != null ? prepared.getSelection() : null)
 				.intendedServer(intendedServer)
 				.build();
 		ConnectionDecision decision = connectionCoordinator.process(request)

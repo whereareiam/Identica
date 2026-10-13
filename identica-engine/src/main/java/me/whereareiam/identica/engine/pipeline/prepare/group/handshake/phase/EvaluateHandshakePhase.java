@@ -63,7 +63,7 @@ public class EvaluateHandshakePhase implements PipelinePhase<PrepareGroupState> 
 		context.setClaimedUniqueId(state.getRequest().getIdentity().getClaimedUniqueId());
 		HandshakeRequest request = new HandshakeRequest(
 				state.getRequest().getIdentity(),
-				context.getProvider(),
+				context.getSelection(),
 				context.getPreferredLink(),
 				context.getJourneyMode()
 		);

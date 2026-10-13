@@ -41,6 +41,9 @@ import me.whereareiam.identica.model.provider.ProviderDescriptor;
 import me.whereareiam.identica.model.provider.dependency.ProviderLibraries;
 import me.whereareiam.identica.provider.IdenticaProvider;
 import me.whereareiam.identica.provider.ProviderPlatformBinding;
+import me.whereareiam.identica.model.provider.selection.ProviderClaim;
+import me.whereareiam.identica.model.provider.selection.ProviderClaimRequest;
+import me.whereareiam.identica.provider.selection.ProviderClaimSource;
 import me.whereareiam.identica.provider.ProviderPlatformExtension;
 import me.whereareiam.identica.type.event.EventOrder;
 import me.whereareiam.identica.type.provider.ProviderState;
@@ -53,6 +56,8 @@ import java.lang.reflect.Method;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -98,6 +103,22 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 
 		controller.disableProvider(provider);
 		assertEquals(1, ProbePlatformBinding.unregisterCount());
+	}
+
+	@DisplayName("Enabling and disabling a provider registers its claim sources")
+	@Test
+	void enablingAndDisablingAProviderRegistersClaimSources(@TempDir Path tempDir) {
+		Injector injector = Guice.createInjector(new ProviderLifecycleTestModule(tempDir));
+		ProviderLifecycleController controller = injector.getInstance(ProviderLifecycleController.class);
+		Registry<ProviderClaimSource> sources = injector.getInstance(Key.get(new TypeLiteral<Registry<ProviderClaimSource>>() {}));
+		InternalProvider provider = discoveredProvider();
+
+		controller.loadProvider(provider);
+		controller.enableProvider(provider);
+		assertEquals(Set.of(ProbeClaimSource.class), sources.values().stream().map(Object::getClass).collect(Collectors.toSet()));
+
+		controller.disableProvider(provider);
+		assertTrue(sources.values().isEmpty());
 	}
 
 	@DisplayName("A loaded provider's documents are reloaded through the core's registry until the provider is unloaded")
@@ -234,6 +255,7 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 			bind(ConflictService.class).toInstance(new NoopConflictService());
 			bind(EventManager.class).toInstance(new NoopEventManager());
 			bind(HandshakeStore.class).toInstance(new NoopHandshakeStore());
+			bind(new TypeLiteral<Registry<ProviderClaimSource>>() {}).toInstance(new ClaimSourceRegistry());
 			bind(SchemaInstaller.class).toInstance(schema -> {});
 			bind(ProviderResolverRegistry.class).asEagerSingleton();
 		}
@@ -306,6 +328,35 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 			Multibinder.newSetBinder(binder(), ProviderPlatformBinding.class)
 					.addBinding()
 					.to(ProbePlatformBinding.class);
+			Multibinder.newSetBinder(binder(), ProviderClaimSource.class)
+					.addBinding()
+					.to(ProbeClaimSource.class);
+		}
+	}
+
+	private static final class ProbeClaimSource implements ProviderClaimSource {
+		@Override
+		public @NotNull Collection<ProviderClaim> claims(@NotNull ProviderClaimRequest request) {
+			return List.of();
+		}
+	}
+
+	private static final class ClaimSourceRegistry implements Registry<ProviderClaimSource> {
+		private final Set<ProviderClaimSource> sources = new HashSet<>();
+
+		@Override
+		public void register(ProviderClaimSource value) {
+			sources.add(value);
+		}
+
+		@Override
+		public void unregister(ProviderClaimSource value) {
+			sources.remove(value);
+		}
+
+		@Override
+		public Set<ProviderClaimSource> values() {
+			return Set.copyOf(sources);
 		}
 	}
 

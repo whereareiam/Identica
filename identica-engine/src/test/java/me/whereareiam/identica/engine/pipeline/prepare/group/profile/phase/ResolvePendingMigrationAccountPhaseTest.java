@@ -1,7 +1,7 @@
 package me.whereareiam.identica.engine.pipeline.prepare.group.profile.phase;
 
-import me.whereareiam.identica.persistence.AccountPersistenceService;
-import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
+import me.whereareiam.identica.common.provider.selection.DefaultProviderSelector;
+import me.whereareiam.identica.common.provider.selection.ProviderClaimRanking;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.scenario.migration.MigrationResolvedEvent;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
@@ -15,20 +15,26 @@ import me.whereareiam.identica.model.pipeline.migration.MigrationPendingState;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareAccountCandidateItem;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareContextItem;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareRequest;
-import me.whereareiam.identica.model.provider.ProviderContext;
+import me.whereareiam.identica.model.provider.InternalProvider;
+import me.whereareiam.identica.model.provider.ProviderDescriptor;
+import me.whereareiam.identica.model.provider.selection.ProviderClaim;
+import me.whereareiam.identica.model.provider.selection.ProviderSelection;
+import me.whereareiam.identica.persistence.AccountPersistenceService;
+import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.PipelineStateReference;
 import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.pipeline.state.StoredPipelineState;
 import me.whereareiam.identica.pipeline.state.prepare.PrepareGroupState;
-import me.whereareiam.identica.provider.ProviderOperations;
-import me.whereareiam.identica.provider.subject.SubjectResolution;
+import me.whereareiam.identica.provider.ProviderManager;
+import me.whereareiam.identica.provider.selection.ProviderSelector;
 import me.whereareiam.identica.service.DeliveryService;
 import me.whereareiam.identica.type.PrepareStage;
 import me.whereareiam.identica.type.ScenarioResolution;
 import me.whereareiam.identica.type.migration.MigrationInitiator;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.provider.ProviderOrigin;
+import me.whereareiam.identica.type.provider.ProviderClaimOrigin;
+import me.whereareiam.identica.type.provider.ProviderState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -56,6 +62,8 @@ class ResolvePendingMigrationAccountPhaseTest {
 	private static final String LOGIN_PROVIDER = "token";
 	/** A custom provider that derives its subject from the username and proves it in a later step. */
 	private static final String STEP_PROVIDER = "pin";
+	/** A custom provider the account migrates to. */
+	private static final String TARGET = "alpha";
 	private static final List<String> CANCELLED = List.of("Identica", "Your pending migration was cancelled.");
 
 	@Mock
@@ -69,45 +77,48 @@ class ResolvePendingMigrationAccountPhaseTest {
 	@Mock
 	private EventManager eventManager;
 	@Mock
-	private ProviderOperations providerOperations;
+	private ProviderManager providerManager;
 
 	private final UUID connectionUniqueId = UUID.randomUUID();
 	private final UUID accountUniqueId = UUID.randomUUID();
 	private List<String> cancelled = CANCELLED;
+	private String target = TARGET;
 	private ResolvePendingMigrationAccountPhase phase;
+
+	private ProviderSelector providerSelector;
 
 	@BeforeEach
 	void setUp() {
+		lenient().when(providerManager.getProviders()).thenReturn(List.of(
+				provider(TARGET),
+				provider(LOGIN_PROVIDER),
+				provider(STEP_PROVIDER)
+		));
+		providerSelector = new DefaultProviderSelector(new ProviderClaimRanking(providerManager));
 		phase = new ResolvePendingMigrationAccountPhase(
 				pipelineStateStore,
 				accountPersistenceService,
 				providerLinkPersistenceService,
 				deliveryService,
 				eventManager,
-				providerOperations,
+				providerSelector,
 				this::messages
 		);
 	}
 
-	@DisplayName("Continues after a verified login with a custom provider the account is leaving and selects the target")
+	@DisplayName("Continues after a verified login with a custom provider the account is leaving and keeps the target selected")
 	@Test
 	void continuesAfterProofWithTheCustomProviderTheAccountLeaves() {
-		pending(pendingState("credential"));
+		pending(pendingState(TARGET));
 		account();
 		linked(LOGIN_PROVIDER, "token-subject");
-		when(providerOperations.resolveSelectedSubject(eq("credential"), any())).thenReturn(SubjectResolution.builder()
-				.providerId("credential")
-				.providerSubject("credential-subject")
-				.build());
 
 		PipelineState state = observed(LOGIN_PROVIDER, "token-subject", true);
 		execute(state);
 
-		ProviderContext provider = state.get(PrepareContextItem.KEY).orElseThrow().getProvider();
-		assertNotNull(provider);
-		assertEquals("credential", provider.getProviderId());
-		assertEquals("credential-subject", provider.getProviderSubject());
-		assertFalse(provider.isSubjectVerified());
+		ProviderSelection selection = state.get(PrepareContextItem.KEY).orElseThrow().getSelection();
+		assertEquals(TARGET, selection.getWinnerProviderId());
+		assertEquals(ProviderClaimOrigin.MIGRATION, selection.getOrigin());
 		assertContinued(state);
 	}
 
@@ -120,24 +131,21 @@ class ResolvePendingMigrationAccountPhaseTest {
 		PipelineState state = observed(LOGIN_PROVIDER, "token-subject", true);
 		execute(state);
 
-		ProviderContext provider = state.get(PrepareContextItem.KEY).orElseThrow().getProvider();
-		assertEquals(LOGIN_PROVIDER, provider.getProviderId());
-		assertEquals("token-subject", provider.getProviderSubject());
+		assertEquals(LOGIN_PROVIDER, state.get(PrepareContextItem.KEY).orElseThrow().getSelection().getWinnerProviderId());
 		assertContinued(state);
-		verifyNoInteractions(providerOperations, providerLinkPersistenceService);
+		verifyNoInteractions(providerLinkPersistenceService);
 	}
 
 	@DisplayName("Cancels when a step-based custom provider the account is leaving is only seen, not verified")
 	@Test
 	void cancelsWhenTheStepBasedProviderTheAccountLeavesIsOnlySeen() {
-		pending(pendingState("credential"));
+		pending(pendingState(TARGET));
 
 		PipelineState state = observed(STEP_PROVIDER, "pin-subject", false);
 		execute(state);
 
 		assertCancelled(state);
-		assertEquals(STEP_PROVIDER, state.get(PrepareContextItem.KEY).orElseThrow().getProvider().getProviderId());
-		verifyNoInteractions(providerOperations, providerLinkPersistenceService);
+		verifyNoInteractions(providerLinkPersistenceService);
 	}
 
 	@DisplayName("Cancels when the target provider is only seen, not verified")
@@ -154,7 +162,7 @@ class ResolvePendingMigrationAccountPhaseTest {
 	@DisplayName("Cancels when the verified login belongs to another account of the provider being left")
 	@Test
 	void cancelsForAnotherSubjectOfTheProviderTheAccountLeaves() {
-		pending(pendingState("credential"));
+		pending(pendingState(TARGET));
 		linked(LOGIN_PROVIDER, "token-subject");
 
 		PipelineState state = observed(LOGIN_PROVIDER, "other-subject", true);
@@ -167,7 +175,7 @@ class ResolvePendingMigrationAccountPhaseTest {
 	@DisplayName("Cancels with the configured notice when the verified login is with a provider the account does not use")
 	@Test
 	void cancelsForAProviderTheAccountDoesNotUse() {
-		pending(pendingState("credential"));
+		pending(pendingState(TARGET));
 		when(providerLinkPersistenceService.findByUniqueIdAndProviderId(accountUniqueId, LOGIN_PROVIDER))
 				.thenReturn(Optional.empty());
 
@@ -182,7 +190,7 @@ class ResolvePendingMigrationAccountPhaseTest {
 	@Test
 	void cancelsSilentlyWhenTheNoticeIsEmpty() {
 		cancelled = List.of();
-		pending(pendingState("credential"));
+		pending(pendingState(TARGET));
 
 		PipelineState state = observed(STEP_PROVIDER, "pin-subject", false);
 		execute(state);
@@ -205,7 +213,7 @@ class ResolvePendingMigrationAccountPhaseTest {
 	@DisplayName("Leaves the connection alone once the pending migration expired")
 	@Test
 	void ignoresAnExpiredPendingMigration() {
-		pending(expired(pendingState("credential")));
+		pending(expired(pendingState(TARGET)));
 
 		PipelineState state = observed(LOGIN_PROVIDER, "token-subject", true);
 		execute(state);
@@ -225,7 +233,7 @@ class ResolvePendingMigrationAccountPhaseTest {
 
 	private void assertUntouched(PipelineState state) {
 		assertTrue(state.get(PrepareAccountCandidateItem.KEY).isEmpty());
-		assertEquals(LOGIN_PROVIDER, state.get(PrepareContextItem.KEY).orElseThrow().getProvider().getProviderId());
+		assertEquals(ProviderClaimOrigin.MIGRATION, state.get(PrepareContextItem.KEY).orElseThrow().getSelection().getOrigin());
 		verify(pipelineStateStore, never()).clear(any());
 		verify(deliveryService, never()).queue(any());
 		verifyNoInteractions(eventManager);
@@ -233,6 +241,9 @@ class ResolvePendingMigrationAccountPhaseTest {
 
 	private void assertCancelled(PipelineState state) {
 		assertTrue(state.get(PrepareAccountCandidateItem.KEY).isEmpty());
+		ProviderSelection selection = state.get(PrepareContextItem.KEY).orElseThrow().getSelection();
+		assertTrue(selection.findClaim(ProviderClaimOrigin.MIGRATION).isEmpty());
+		assertNotEquals(ProviderClaimOrigin.MIGRATION, selection.getOrigin());
 		ArgumentCaptor<PipelineStateReference> cleared = ArgumentCaptor.forClass(PipelineStateReference.class);
 		verify(pipelineStateStore).clear(cleared.capture());
 		assertEquals(CONNECTION_KEY, cleared.getValue().getConnectionKey());
@@ -260,13 +271,31 @@ class ResolvePendingMigrationAccountPhaseTest {
 		phase.execute(state, groupState).toCompletableFuture().join();
 	}
 
+	/**
+	 * A connection the pending migration to the target claims, which the provider also claims, verified or not.
+	 */
 	private PipelineState observed(String providerId, String subject, boolean verified) {
-		ProviderContext provider = ProviderContext.of(providerId, subject, USERNAME, ProviderOrigin.AUTO);
-		provider.setSubjectVerified(verified);
+		ProviderClaim seen = verified
+				? ProviderClaim.verified(providerId, subject)
+				: ProviderClaim.of(providerId, ProviderClaimOrigin.DISCOVERY);
+		PrepareContextItem context = new PrepareContextItem();
+		context.setSelection(providerSelector.claim(ProviderSelection.empty(), List.of(
+				ProviderClaim.of(target, ProviderClaimOrigin.MIGRATION),
+				seen
+		)));
 
 		PipelineState state = PipelineState.initial();
-		state.put(PrepareContextItem.KEY, new PrepareContextItem(null, provider, null, null, null));
+		state.put(PrepareContextItem.KEY, context);
 		return state;
+	}
+
+	private static InternalProvider provider(String id) {
+		ProviderDescriptor descriptor = new ProviderDescriptor();
+		descriptor.setId(id);
+		return InternalProvider.builder()
+				.descriptor(descriptor)
+				.state(ProviderState.ENABLED)
+				.build();
 	}
 
 	private void linked(String providerId, String subject) {
@@ -295,6 +324,7 @@ class ResolvePendingMigrationAccountPhaseTest {
 	}
 
 	private PipelineState pendingState(String targetProviderId, long ttlMillis) {
+		target = targetProviderId;
 		PipelineState pendingState = PipelineState.initial();
 		pendingState.setPipelineType(PipelineType.MIGRATION);
 		pendingState.setScenario(MigrationContext.builder()

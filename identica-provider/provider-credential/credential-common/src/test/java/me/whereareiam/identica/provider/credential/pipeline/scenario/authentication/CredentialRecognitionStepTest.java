@@ -75,7 +75,7 @@ class CredentialRecognitionStepTest {
 		identity.setConnectionUniqueId(java.util.UUID.randomUUID());
 		return AuthContext.builder()
 				.identity(identity)
-				.provider(ProviderContext.of("credential", "credential-subject", "whereareiam", null))
+				.provider(ProviderContext.of("credential", "credential-subject", "whereareiam"))
 				.build();
 	}
 }

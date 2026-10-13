@@ -10,10 +10,12 @@ import me.whereareiam.identica.model.auth.request.AdvanceRequest;
 import me.whereareiam.identica.model.auth.request.ConnectionRequest;
 import me.whereareiam.identica.model.auth.request.ResumeRequest;
 import me.whereareiam.identica.model.provider.ProviderContext;
+import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.PipelineStateReference;
 import me.whereareiam.identica.pipeline.state.PipelineStateStore;
+import me.whereareiam.identica.provider.selection.ProviderSelector;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -25,17 +27,20 @@ import java.util.Map;
 @Singleton
 public class ScenarioRegistry {
 	private final PipelineStateStore pipelineStateStore;
+	private final ProviderSelector providerSelector;
 	private final List<AbstractScenarioPipeline> runners;
 	private final Map<PipelineType, AbstractScenarioPipeline> runnersByType = new EnumMap<>(PipelineType.class);
 
 	@Inject
 	public ScenarioRegistry(
 			@NotNull PipelineStateStore pipelineStateStore,
+			@NotNull ProviderSelector providerSelector,
 			@NotNull AuthenticationPipeline authenticationPipeline,
 			@NotNull RegistrationPipeline registrationPipeline,
 			@NotNull MigrationPipeline migrationPipeline
 	) {
 		this.pipelineStateStore = pipelineStateStore;
+		this.providerSelector = providerSelector;
 		this.runners = List.of(registrationPipeline, authenticationPipeline, migrationPipeline);
 		runnersByType.put(authenticationPipeline.type(), authenticationPipeline);
 		runnersByType.put(registrationPipeline.type(), registrationPipeline);
@@ -155,21 +160,34 @@ public class ScenarioRegistry {
 		return pending ? runner : null;
 	}
 
+	/**
+	 * Whether the provider the pending pipeline runs loses the ranking of the arriving connection. The arriving
+	 * selection already holds what a new connection may carry over from the pending pipeline, its pending migration
+	 * and the player's choice, while proof counts only for the connection that gave it. Providers the pending
+	 * pipeline excluded stay excluded.
+	 */
 	private boolean belongsToAnotherProvider(@NotNull ResumeRequest resumeRequest, @NotNull ConnectionRequest request) {
-		ProviderContext connecting = request.getProvider();
-		if (connecting == null || isBlank(connecting.getProviderId())) return false;
+		ProviderSelection connecting = request.getSelection();
+		if (connecting == null) return false;
 
 		PipelineState stored = pipelineStateStore.find(PipelineStateReference.from(resumeRequest)).orElse(null);
 		ScenarioContext scenario = stored != null ? stored.getScenario() : null;
 		ProviderContext pending = scenario != null ? scenario.getProvider() : null;
 		if (pending == null || isBlank(pending.getProviderId())) return false;
-		if (pending.getProviderId().equalsIgnoreCase(connecting.getProviderId())) return false;
+
+		ProviderSelection ranked = connecting;
+		for (String excluded : scenario.getSelection().getExcludedProviderIds())
+			ranked = providerSelector.exclude(ranked, excluded);
+
+		String winner = ranked.getWinnerProviderId();
+		if (winner == null || winner.equalsIgnoreCase(pending.getProviderId())) return false;
 
 		Logger.debug(
-				"Scenario select discarded pending pipeline of another provider pipeline=%s pending=%s connecting=%s connection=%s key=%s",
+				"Scenario select discarded pending pipeline of another provider pipeline=%s pending=%s connecting=%s origin=%s connection=%s key=%s",
 				stored.getPipelineType(),
 				pending.getProviderId(),
-				connecting.getProviderId(),
+				winner,
+				ranked.getOrigin(),
 				resumeRequest.getConnectionUniqueId(),
 				resumeRequest.getIdentity() != null ? resumeRequest.getIdentity().connectionKey() : null
 		);

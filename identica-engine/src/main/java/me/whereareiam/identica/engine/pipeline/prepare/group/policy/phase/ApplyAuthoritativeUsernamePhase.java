@@ -90,7 +90,7 @@ public class ApplyAuthoritativeUsernamePhase extends AbstractUsernamePhase imple
 						.account(candidate.getAccount())
 						.incomingLink(candidate.getLink())
 						.incomingProfile(candidate.getProfile())
-						.providerContext(context.getProvider())
+						.selection(context.getSelection())
 						.build(),
 				candidate.getAccount().getUsername()
 		);

@@ -4,9 +4,12 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
 import me.whereareiam.identica.model.auth.handshake.HandshakeDecision;
+import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareContextItem;
 import me.whereareiam.identica.model.provider.ProviderContext;
+import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import me.whereareiam.identica.pipeline.state.StateKey;
+import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -46,7 +49,23 @@ public class PrepareDecision {
 	private final @Nullable UUID claimedUniqueId;
 
 	private final @Nullable HandshakeDecision handshake;
+	/**
+	 * Provider the connection continues with, once its profile is known.
+	 */
 	private final @Nullable ProviderContext provider;
+	/**
+	 * Which provider handles the connection, and why. The profile stage restores it from the handshake stage and
+	 * the scenario keeps it.
+	 */
+	private final @Nullable ProviderSelection selection;
+	/**
+	 * Preferred provider link of the account the connection belongs to, resolved at the handshake.
+	 */
+	private final @Nullable AccountProviderLink preferredLink;
+	/**
+	 * Journey mode of the scenario the connection heads to, resolved at the handshake.
+	 */
+	private final @Nullable JourneyMode journeyMode;
 
 	private final @Nullable String denialMessage;
 	private final @NotNull Status status;
@@ -87,7 +106,7 @@ public class PrepareDecision {
 	/**
 	 * Creates an allow decision for a prepared connection.
 	 *
-	 * @param context prepare context the decision carries the handshake, claimed UUID and provider from
+	 * @param context prepare context the decision carries the handshake, claimed UUID, provider and selection from
 	 * @param accountUniqueId account the connection belongs to, if known
 	 * @param effectiveUsername username the player continues with
 	 * @return allow decision
@@ -106,7 +125,7 @@ public class PrepareDecision {
 	 * Creates a deny decision for a prepared connection.
 	 *
 	 * @param message denial message
-	 * @param context prepare context the decision carries the handshake, claimed UUID and provider from
+	 * @param context prepare context the decision carries the handshake, claimed UUID, provider and selection from
 	 * @param accountUniqueId account the connection belongs to, if known
 	 * @param effectiveUsername username the player tried to continue with
 	 * @return deny decision
@@ -133,7 +152,10 @@ public class PrepareDecision {
 				.effectiveUsername(effectiveUsername)
 				.claimedUniqueId(context != null ? context.getClaimedUniqueId() : null)
 				.handshake(context != null ? context.getHandshake() : null)
-				.provider(context != null ? context.getProvider() : null);
+				.provider(context != null ? context.getProvider() : null)
+				.selection(context != null ? context.getSelection() : null)
+				.preferredLink(context != null ? context.getPreferredLink() : null)
+				.journeyMode(context != null ? context.getJourneyMode() : null);
 	}
 
 	/**

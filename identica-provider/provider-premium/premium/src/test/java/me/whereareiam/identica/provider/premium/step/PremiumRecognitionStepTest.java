@@ -75,7 +75,7 @@ class PremiumRecognitionStepTest {
 		identity.setConnectionUniqueId(java.util.UUID.randomUUID());
 		return AuthContext.builder()
 				.identity(identity)
-				.provider(ProviderContext.of("premium", "premium-subject", "whereareiam", null))
+				.provider(ProviderContext.of("premium", "premium-subject", "whereareiam"))
 				.build();
 	}
 }

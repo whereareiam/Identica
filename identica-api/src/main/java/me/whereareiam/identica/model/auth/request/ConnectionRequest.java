@@ -5,6 +5,7 @@ import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.identity.IdentityReference;
 import me.whereareiam.identica.model.pipeline.ScenarioTransitionItem;
 import me.whereareiam.identica.model.provider.ProviderContext;
+import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -27,6 +28,10 @@ public class ConnectionRequest {
 	 * Provider context selected for this connection, if known.
 	 */
 	private final @Nullable ProviderContext provider;
+	/**
+	 * Which provider handles this connection, and why, as its preparation selected it.
+	 */
+	private final @Nullable ProviderSelection selection;
 	/**
 	 * Scenario transition contract propagated across pipeline reroutes.
 	 */
@@ -100,7 +105,7 @@ public class ConnectionRequest {
 		}
 
 		public @NotNull ConnectionRequest build() {
-			return new ConnectionRequest(identityReference, identity, intendedServer, provider, transition);
+			return new ConnectionRequest(identityReference, identity, intendedServer, provider, selection, transition);
 		}
 	}
 }

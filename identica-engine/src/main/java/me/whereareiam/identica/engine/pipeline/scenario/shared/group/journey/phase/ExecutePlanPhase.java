@@ -33,6 +33,7 @@ import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.scenario.shared.JourneyState;
 import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.provider.ProviderOperations;
+import me.whereareiam.identica.provider.selection.ProviderSelector;
 import me.whereareiam.identica.provider.subject.SubjectResolution;
 import me.whereareiam.identica.provider.subject.SubjectResolveContext;
 import me.whereareiam.identica.routing.RoutingCoordinator;
@@ -43,7 +44,6 @@ import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
 import me.whereareiam.identica.type.pipeline.journey.step.StepContextRequirement;
 import me.whereareiam.identica.type.pipeline.journey.step.StepWaitReason;
-import me.whereareiam.identica.type.provider.ProviderOrigin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -63,6 +63,7 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 	private final ProviderManager providerManager;
 	private final ProviderOperations providerOperations;
 	private final RoutingCoordinator routingCoordinator;
+	private final ProviderSelector providerSelector;
 
 	@Override
 	public @NotNull String id() {
@@ -185,6 +186,7 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 
 						String failedProviderId = normalizeProviderId(fallbackResult.failedProviderId);
 						if (failedProviderId != null && excludedProviders.add(failedProviderId)) {
+							context.setSelection(providerSelector.exclude(context.getSelection(), failedProviderId));
 							recordExcludedProviders(pipelineState, context, pipelineType, excludedProviders);
 							JourneyExecutionPlan updatedPlan = removeExcludedProviders(plan, excludedProviders);
 							// Another provider may still sign the player in without input. Once none is left, the
@@ -718,18 +720,12 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 		ProviderContext provider = context.getProvider();
 		String username = context.getUsername() != null ? context.getUsername() : "";
 		if (provider == null) {
-			context.setProvider(ProviderContext.builder()
-					.providerId(providerId)
-					.providerUsername(username)
-					.source(ProviderOrigin.AUTO)
-					.build());
-			provider = context.getProvider();
+			provider = ProviderContext.of(providerId, null, username);
+			context.setProvider(provider);
 		} else {
 			provider.setProviderId(providerId);
 			if (provider.getProviderUsername().isBlank())
 				provider.setProviderUsername(username);
-			if (provider.getSource() == null)
-				provider.setSource(ProviderOrigin.AUTO);
 		}
 
 		enrichProviderSubject(context, providerId, provider);

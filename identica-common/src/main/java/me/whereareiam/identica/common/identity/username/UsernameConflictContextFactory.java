@@ -12,10 +12,9 @@ import me.whereareiam.identica.model.conflict.participant.ConflictParticipant;
 import me.whereareiam.identica.model.identity.Account;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.identity.provider.AccountProviderProfile;
-import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.conflict.UsernameConflictSchema;
 import me.whereareiam.identica.model.identity.username.UsernameConflictSubject;
-import me.whereareiam.identica.type.provider.ProviderOrigin;
+import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -58,10 +57,9 @@ public class UsernameConflictContextFactory {
 		context.putParticipant(buildIncomingParticipant(account, incomingLink, subject.getIncomingProfile()));
 		context.putParticipant(buildExistingParticipant(conflictAccount, existingLink, existingProfile));
 
-		ProviderContext providerContext = subject.getProviderContext();
-		ProviderOrigin source = providerContext != null ? providerContext.getSource() : null;
-		if (source != null)
-			context.putAttribute(UsernameConflictSchema.ATTRIBUTE_ENTRYPOINT_SOURCE, source);
+		ProviderSelection selection = subject.getSelection();
+		if (selection != null)
+			context.putAttribute(UsernameConflictSchema.ATTRIBUTE_SELECTION, selection);
 
 		resolvePrimaryLink(account.getUniqueId()).ifPresent(primaryIncoming ->
 				context.putAttribute(

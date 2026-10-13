@@ -1,5 +1,7 @@
 package me.whereareiam.identica.engine.pipeline.scenario.base.journey.phase;
 
+import me.whereareiam.identica.common.provider.selection.DefaultProviderSelector;
+import me.whereareiam.identica.common.provider.selection.ProviderClaimRanking;
 import me.whereareiam.identica.engine.pipeline.scenario.shared.group.journey.phase.ExecutePlanPhase;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.identity.IdentityService;
@@ -33,10 +35,9 @@ import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.pipeline.journey.JourneyExecutionPolicy;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
-import me.whereareiam.identica.type.pipeline.journey.step.StepWaitReason;
 import me.whereareiam.identica.type.pipeline.journey.StageType;
 import me.whereareiam.identica.type.pipeline.journey.step.StepContextRequirement;
-import me.whereareiam.identica.type.provider.ProviderOrigin;
+import me.whereareiam.identica.type.pipeline.journey.step.StepWaitReason;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
@@ -75,7 +76,8 @@ class ExecutePlanPhaseTest {
                 Messages::new,
 				providerManager,
 				providerOperations(),
-				routingCoordinator
+				routingCoordinator,
+				new DefaultProviderSelector(new ProviderClaimRanking(providerManager))
 		);
 
 		AtomicBoolean firstExecuted = new AtomicBoolean();
@@ -175,7 +177,8 @@ class ExecutePlanPhaseTest {
 				Messages::new,
 				providerManager,
 				providerOperations(),
-				routingCoordinator
+				routingCoordinator,
+				new DefaultProviderSelector(new ProviderClaimRanking(providerManager))
 		);
 
 		UUID connectionUniqueId = UUID.randomUUID();
@@ -241,7 +244,8 @@ class ExecutePlanPhaseTest {
 				Messages::new,
 				providerManager,
 				providerOperations(),
-				routingCoordinator
+				routingCoordinator,
+				new DefaultProviderSelector(new ProviderClaimRanking(providerManager))
 		);
 
 		AtomicBoolean subjectResolved = new AtomicBoolean();
@@ -277,7 +281,6 @@ class ExecutePlanPhaseTest {
 		context.setProvider(ProviderContext.builder()
 				.providerId("credential")
 				.providerUsername("PlayerOne")
-				.source(ProviderOrigin.MANUAL)
 				.build());
 
 		PipelineState pipelineState = PipelineState.initial();
@@ -364,14 +367,14 @@ class ExecutePlanPhaseTest {
 		assertEquals(List.of("credential"), executed);
 	}
 
-	@DisplayName("A provider that fails still falls back to the next provider")
+	@DisplayName("A provider that fails is excluded from the selection and falls back to the next provider")
 	@Test
 	void failedProviderFallsBackToTheNextProvider() {
 		List<String> executed = new ArrayList<>();
 		PipelineResult result = providerFallbackResult(executed, StepResult.failed(""), StepResult.complete(null));
 
 		assertEquals(PipelineStatus.COMPLETE, result.getStatus());
-		assertEquals(List.of("credential", "premium", "end"), executed);
+		assertEquals(List.of("credential", "premium", "excluded:credential", "end"), executed);
 	}
 
 	@DisplayName("A strict seamless journey still tries the next provider after one needed input")
@@ -382,7 +385,7 @@ class ExecutePlanPhaseTest {
 				executed, JourneyPolicy.STRICT, StepResult.waiting("prompt", StepWaitReason.INPUT), StepResult.complete(null));
 
 		assertEquals(PipelineStatus.COMPLETE, result.getStatus());
-		assertEquals(List.of("credential", "premium", "end"), executed);
+		assertEquals(List.of("credential", "premium", "excluded:credential", "end"), executed);
 	}
 
 	private PipelineResult providerFallbackResult(@NotNull List<String> executed, @NotNull StepResult... providerResults) {
@@ -420,7 +423,8 @@ class ExecutePlanPhaseTest {
 				() -> messages,
 				mock(ProviderManager.class),
 				providerOperations(),
-				mock(RoutingCoordinator.class)
+				mock(RoutingCoordinator.class),
+				new DefaultProviderSelector(new ProviderClaimRanking(mock(ProviderManager.class)))
 		);
 
 		UUID accountUniqueId = UUID.randomUUID();
@@ -458,6 +462,7 @@ class ExecutePlanPhaseTest {
 			StepResult providerResult = providerResults[index];
 			Step providerStep = step(providerId, current -> {
 				executed.add(providerId);
+				current.getSelection().getExcludedProviderIds().forEach(excluded -> executed.add("excluded:" + excluded));
 				return providerResult.getStatus() == StepResult.StepStatus.COMPLETE ? StepResult.complete(current) : providerResult;
 			});
 			blocks.add(new JourneyExecutionBlock(
@@ -530,7 +535,8 @@ class ExecutePlanPhaseTest {
 				() -> messages,
 				mock(ProviderManager.class),
 				providerOperations(),
-				mock(RoutingCoordinator.class)
+				mock(RoutingCoordinator.class),
+				new DefaultProviderSelector(new ProviderClaimRanking(mock(ProviderManager.class)))
 		);
 
 		UUID accountUniqueId = UUID.randomUUID();
@@ -606,6 +612,11 @@ class ExecutePlanPhaseTest {
 			@Override
 			public me.whereareiam.identica.model.provider.ResolvedEntrypoint resolveEntrypoint(String host, int port) {
 				return null;
+			}
+
+			@Override
+			public @NotNull List<SubjectResolution> resolveSubjects(@NotNull SubjectResolveContext context) {
+				return List.of();
 			}
 
 			@Override

@@ -63,7 +63,7 @@ class UsernameConflictPhasesTest {
 		);
 
 		PipelineState pipelineState = PipelineState.initial();
-		pipelineState.put(PrepareContextItem.KEY, new PrepareContextItem(null, providerContext(), null, null, null));
+		pipelineState.put(PrepareContextItem.KEY, prepareContext());
 		pipelineState.put(PrepareAccountCandidateItem.KEY, candidate());
 
 		phase.execute(pipelineState, new PrepareGroupState()).toCompletableFuture().join();
@@ -84,7 +84,7 @@ class UsernameConflictPhasesTest {
 				providerManager(false), persistence, conflictHandler, this::messages
 		);
 		PipelineState pipelineState = PipelineState.initial();
-		pipelineState.put(PrepareContextItem.KEY, new PrepareContextItem(null, providerContext(), null, null, null));
+		pipelineState.put(PrepareContextItem.KEY, prepareContext());
 		PrepareAccountCandidateItem candidate = candidate();
 		candidate.getProfile().setProviderUsername("ProviderName");
 		pipelineState.put(PrepareAccountCandidateItem.KEY, candidate);
@@ -281,6 +281,12 @@ class UsernameConflictPhasesTest {
 				.build();
 		when(providerManager.getProviders()).thenReturn(List.of(provider));
 		return providerManager;
+	}
+
+	private PrepareContextItem prepareContext() {
+		PrepareContextItem context = new PrepareContextItem();
+		context.setProvider(providerContext());
+		return context;
 	}
 
 	private ProviderContext providerContext() {

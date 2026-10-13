@@ -145,7 +145,7 @@ class PremiumVerificationStepTest {
 	private AuthContext context() {
 		return AuthContext.builder()
 				.identity(new ConnectionIdentity("PlayerOne", "127.0.0.1"))
-				.provider(ProviderContext.of("premium", "subject", "PlayerOne", null))
+				.provider(ProviderContext.of("premium", "subject", "PlayerOne"))
 				.build();
 	}
 }

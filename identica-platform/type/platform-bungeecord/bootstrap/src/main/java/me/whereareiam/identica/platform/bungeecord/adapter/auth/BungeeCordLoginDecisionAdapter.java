@@ -70,6 +70,7 @@ public class BungeeCordLoginDecisionAdapter implements PlatformLoginDecisionAdap
 				.identity(identity)
 				.connectionUniqueId(player.getUniqueId())
 				.provider(provider)
+				.selection(prepared != null ? prepared.getSelection() : null)
 				.intendedServer(intendedServer)
 				.build();
 		ConnectionDecision decision = connectionCoordinator.process(request)

@@ -68,6 +68,17 @@ public class DefaultProviderOperations implements ProviderOperations {
 	}
 
 	@Override
+	public @NotNull List<SubjectResolution> resolveSubjects(@NotNull SubjectResolveContext context) {
+		List<SubjectResolution> resolutions = new ArrayList<>();
+		for (InternalProvider provider : sortedEnabledProviders()) {
+			SubjectResolution resolution = resolveFromProvider(provider, context);
+			if (resolution != null) resolutions.add(resolution);
+		}
+
+		return List.copyOf(resolutions);
+	}
+
+	@Override
 	public @Nullable SubjectResolution resolveSelectedSubject(
 			@Nullable String providerId,
 			@NotNull SubjectResolveContext context

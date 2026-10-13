@@ -4,7 +4,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
-import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.feature.recognition.type.RecognitionAttemptKind;
 import me.whereareiam.identica.feature.recognition.type.RecognitionTrigger;
 import org.jetbrains.annotations.NotNull;
@@ -21,7 +20,6 @@ public class RecognitionEligibilityContext {
 	private final @Nullable String providerUsername;
 	private final @Nullable String clientIp;
 
-	private final @Nullable ProviderContext selectedProvider;
 	private final @Nullable ConnectionIdentity.Origin origin;
 
 	private final @NotNull RecognitionAttemptKind attemptKind;

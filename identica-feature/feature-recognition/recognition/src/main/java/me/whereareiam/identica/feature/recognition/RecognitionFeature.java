@@ -16,7 +16,6 @@ import me.whereareiam.identica.feature.recognition.config.provider.RecognitionSe
 import me.whereareiam.identica.feature.recognition.config.provider.RecognitionProvidersProvider;
 import me.whereareiam.identica.feature.recognition.eligibility.RecognitionEligibilityRegistry;
 import me.whereareiam.identica.feature.recognition.eligibility.RecognitionEligibilityRule;
-import me.whereareiam.identica.feature.recognition.eligibility.rule.ExplicitSelectionRecognitionEligibilityRule;
 import me.whereareiam.identica.feature.recognition.eligibility.rule.RecognitionEnabledEligibilityRule;
 import me.whereareiam.identica.feature.recognition.eligibility.rule.UntrustedIpRecognitionEligibilityRule;
 import me.whereareiam.identica.feature.recognition.pipeline.RecognitionAppliedLifecycle;
@@ -72,7 +71,6 @@ public final class RecognitionFeature implements IdenticaFeature {
 		RecognitionEligibilityRegistry eligibility = injector.getInstance(RecognitionEligibilityRegistry.class);
 		for (Class<? extends RecognitionEligibilityRule> type : List.of(
 				RecognitionEnabledEligibilityRule.class,
-				ExplicitSelectionRecognitionEligibilityRule.class,
 				UntrustedIpRecognitionEligibilityRule.class
 		)) {
 			RecognitionEligibilityRule rule = injector.getInstance(type);

@@ -60,8 +60,8 @@ rules:
 ```
 
 Before resolvers run, the subsystem also applies an entrypoint guard.
-When the incoming account and the active conflicting account belong to different providers and both providers expose entrypoints, Identica requires that collision to be handled from a provider entrypoint flow.
-If the flow did not come from an entrypoint, the conflict is denied with the subsystem's `pipeline.policy.entrypointRequired` message.
+When the incoming account and the active conflicting account belong to different providers and both providers expose entrypoints, Identica requires that the incoming provider was picked through its hostname or a stronger reason, such as an account its verified login already belongs to. See [How a provider is picked](../../providers/index.mdx#how-a-provider-is-picked).
+Otherwise the conflict is denied with the subsystem's `pipeline.policy.entrypointRequired` message.
 
 ### Example situation
 

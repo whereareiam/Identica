@@ -78,6 +78,18 @@ A `PipelineExtension` registers the step with `builder.registerStep(providerId, 
 
 The command hands the attempt to the pending journey with `ConnectionCoordinator.advance(...)` and shows the answer when the journey keeps waiting. It does not look for the pending journey itself: the pipeline does that in the connection's turn, after every earlier run of the connection has finished, so a passphrase typed before its prompt waits for the run that shows the prompt. When nothing is pending, the decision is `NO_PENDING` and the command shows its own message. An input that only fits some pending journeys overrides `PipelineInput.accepts(...)`; a declined input ends the same way. Mark the command with `@AvailableWhilePending`, so addons that hold back commands until a player has authenticated let it through.
 
+## Claiming connections
+
+Identica picks the provider of a join by ranking reasons, called claims: a pending migration, an account link of a verified subject, a hostname, a verified subject without an account, the player's choice, a matching name and discovery, strongest first. Its own claim sources already cover your provider: a subject your `SubjectResolver` resolves is discovery, or a verified subject when you mark it `verified`. When your provider knows more, such as an identity the client proved some other way, contribute a `ProviderClaimSource` from the provider's module:
+
+```java
+Multibinder.newSetBinder(binder(), ProviderClaimSource.class)
+        .addBinding()
+        .to(ExampleClaimSource.class);
+```
+
+A source returns claims for the connection in a `ProviderClaimRequest`, which carries its identity, the preparation stage, the subjects the providers resolved and the selection so far. It never decides the winner: Identica ranks every claim together. Code that adds a claim later, such as a command, goes through `ProviderSelector.claim(...)`, which ranks again instead of replacing the winner. The pick of a connection is `ScenarioContext.getSelection()`, and its origin is always the winning claim's.
+
 ## Configuration
 
 Each document is a `ConfigProvider` with the provider's working directory, injected as `@Named("workingPath") Path`. It writes its defaults on first start and reloads with `/identica admin reload`. A messages document implements `MessageDocument`, so addons find it through `identica.getConfigCatalog()`.

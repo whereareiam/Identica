@@ -20,6 +20,7 @@ import me.whereareiam.identica.pipeline.completion.extension.CompletionExtension
 import me.whereareiam.identica.pipeline.extension.PipelineExtensionRegistry;
 import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.provider.ProviderAttemptStore;
+import me.whereareiam.identica.provider.selection.ProviderSelector;
 import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.provider.premium.command.PremiumCommand;
 import me.whereareiam.identica.provider.premium.completion.PremiumCompletionStep;
@@ -71,6 +72,7 @@ class PremiumModuleTest {
 			binder.bind(AccountPersistenceService.class).toInstance(mock(AccountPersistenceService.class));
 			binder.bind(ProviderManager.class).toInstance(mock(ProviderManager.class));
 			binder.bind(ProviderAttemptStore.class).toInstance(mock(ProviderAttemptStore.class));
+			binder.bind(ProviderSelector.class).toInstance(mock(ProviderSelector.class));
 			binder.bind(HandshakeStore.class).toInstance(mock(HandshakeStore.class));
 			binder.bind(PremiumProfileLookup.class).toInstance(mock(PremiumProfileLookup.class));
 			binder.bind(PremiumProfileStore.class).toInstance(mock(PremiumProfileStore.class));

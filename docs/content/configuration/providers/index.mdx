@@ -114,10 +114,12 @@ Higher values win before lower values.
 ### entrypoints
 
 - Takes: a list of hostnames, optionally with `:port`
-- Affects: hostname-based provider selection before normal fallback ordering
+- Affects: which provider a player who joins through one of these hostnames gets, see [How a provider is picked](#how-a-provider-is-picked)
 
-Entries must use the format `host` or `host:port`.
-Leave the list empty if hostname-based provider selection is not part of your setup.
+Entries must use the format `host` or `host:port`. An entry without a port matches the hostname on any port; an entry with a port matches only that port. When several providers list the same hostname, the one with the higher `priority` takes it.
+Leave the list empty if provider hostnames are not part of your setup.
+
+A hostname only picks a provider. It never routes the player to a server, which is what forced hosts and routing's [`forcedHosts`](../routing/index.mdx#forcedhosts) do, and it never lifts a provider's own protection of a name: Premium still demands its login for a premium name or a Premium account, whatever hostname the player used.
 
 ### session
 
@@ -151,3 +153,25 @@ The `restriction-join` feature uses the nested `restriction.join` configuration 
 Provider ability IDs such as `authoritative-username` are code declarations, not configuration subtrees.
 
 <Include src="../features/_partials/provider-overrides.mdx" />
+
+## How a provider is picked
+
+Every join collects reasons for providers to handle it, and the strongest reason wins. Identica picks the provider once, while the player connects, and keeps it for the whole journey. From strongest to weakest:
+
+1. **A pending migration.** The player confirmed a move to another provider, so the new provider is set up.
+2. **An account of a verified login.** The provider proved that the client owns its identity, such as Premium after an online login, and that identity already belongs to an account. An existing account keeps its provider, so a hostname never moves an account.
+3. **The hostname.** The player joined through one of the provider's [`entrypoints`](#entrypoints). Joining through a hostname is a deliberate choice.
+4. **A verified login without an account.** The provider proved the client's identity, but no account uses it yet. The player registers with that provider unless a hostname picked another one.
+5. **The player's choice.** The player chose the provider in the interactive provider choice. The choice is kept when the player reconnects before the registration ends.
+6. **A matching name.** An account with the player's username uses the provider. Nothing about the client is proven by the name alone.
+7. **Discovery.** The provider recognises the username, without proof.
+
+Reasons of the same strength go to the provider with the higher `priority`. Only providers the journey may use can win: a hostname whose provider the journey does not offer is ignored, and a provider that fails for the player is left out for the rest of the journey.
+
+What this means in practice:
+
+- A new player who joins through a provider's hostname registers with that provider. In an interactive journey, the provider choice is skipped when the hostname's provider is offered.
+- A player whose verified login already has an account keeps that account's provider, whatever hostname they use. A Premium account stays on Premium through the Credential hostname.
+- A new player's hostname beats a verified login without an account. A premium owner who joins through the Credential hostname of a seamless network, and is asked for the premium login because the name is premium, still registers with Credential, and later joins ask for the Credential password. Through the Premium hostname, the same player registers with Premium.
+- When a Credential account holds the name `Steve`, the real premium owner of `Steve` who joins through the Premium hostname is asked for the premium login and reaches his own Premium account, or registers one. Without that login, only the matching name speaks for a provider, so the player is asked for the Credential password.
+

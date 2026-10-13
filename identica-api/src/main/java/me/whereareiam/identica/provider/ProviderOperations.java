@@ -119,6 +119,14 @@ public interface ProviderOperations {
 	@Nullable SubjectResolution discoverSubject(@NotNull SubjectResolveContext context);
 
 	/**
+	 * Resolves the subject of every enabled provider that has one for the connection.
+	 *
+	 * @param context subject resolve context
+	 * @return resolutions, the highest-priority provider first; at most one per provider
+	 */
+	@NotNull List<SubjectResolution> resolveSubjects(@NotNull SubjectResolveContext context);
+
+	/**
 	 * Resolves subject data for the currently selected provider using only that
 	 * provider's registered subject resolvers.
 	 *

@@ -6,7 +6,7 @@ import me.whereareiam.identica.conflict.ConflictSubject;
 import me.whereareiam.identica.model.identity.Account;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.identity.provider.AccountProviderProfile;
-import me.whereareiam.identica.model.provider.ProviderContext;
+import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -22,7 +22,10 @@ public class UsernameConflictSubject implements ConflictSubject {
 	private final @Nullable Account account;
 	private final @Nullable AccountProviderLink incomingLink;
 	private final @Nullable AccountProviderProfile incomingProfile;
-	private final @Nullable ProviderContext providerContext;
+	/**
+	 * Provider selection of the arriving connection, if known.
+	 */
+	private final @Nullable ProviderSelection selection;
 
 	@Override
 	public @NotNull String hook() {

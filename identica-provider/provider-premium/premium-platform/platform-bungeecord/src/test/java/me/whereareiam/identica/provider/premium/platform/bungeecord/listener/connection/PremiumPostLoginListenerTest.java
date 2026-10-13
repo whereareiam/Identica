@@ -49,8 +49,7 @@ class PremiumPostLoginListenerTest {
 				.provider(ProviderContext.of(
 						PremiumConstants.PROVIDER_ID,
 						premiumUniqueId.toString(),
-						"PlayerOne",
-						null
+						"PlayerOne"
 				))
 				.build();
 
@@ -83,8 +82,7 @@ class PremiumPostLoginListenerTest {
 				.provider(ProviderContext.of(
 						"credential",
 						credentialSubject.toString(),
-						"PlayerOne",
-						null
+						"PlayerOne"
 				))
 				.build();
 

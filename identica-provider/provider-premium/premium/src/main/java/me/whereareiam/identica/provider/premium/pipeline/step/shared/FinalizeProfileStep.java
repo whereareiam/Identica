@@ -51,15 +51,7 @@ public class FinalizeProfileStep extends AbstractProfileVerificationStep impleme
 		}
 
 		state.remove(PremiumVerifyAttemptItem.KEY);
-		ProviderContext existing = context.getProvider();
-		ProviderContext provider = ProviderContext.builder()
-				.providerId(PremiumConstants.PROVIDER_ID)
-				.providerSubject(providerSubject)
-				.providerUsername(username)
-				.source(existing != null ? existing.getSource() : null)
-				.build();
-
-		context.setProvider(provider);
+		context.setProvider(ProviderContext.of(PremiumConstants.PROVIDER_ID, providerSubject, username));
 		clearProfileItem(username);
 		Logger.debug(
 				"Premium finalize applied provider context connection=%s username=%s ip=%s subject=%s",

@@ -230,6 +230,7 @@ public class ScenarioPipeline {
 				.provider(context.getProvider() != null
 						? context.getProvider()
 						: fallbackRequest != null ? fallbackRequest.getProvider() : null)
+				.selection(context.getSelection())
 				.transition(context.getTransition() != null
 						? context.getTransition()
 						: fallbackRequest != null ? fallbackRequest.getTransition() : null)
@@ -258,6 +259,7 @@ public class ScenarioPipeline {
 				.identity(request.getIdentity())
 				.intendedServer(request.getIntendedServer())
 				.provider(request.getProvider())
+				.selection(request.getSelection())
 				.transition(transition)
 				.build();
 	}

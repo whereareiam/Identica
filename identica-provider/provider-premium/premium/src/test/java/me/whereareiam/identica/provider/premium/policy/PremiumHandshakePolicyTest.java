@@ -4,7 +4,8 @@ import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.auth.handshake.HandshakeDecision;
 import me.whereareiam.identica.model.auth.handshake.HandshakeRequest;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
-import me.whereareiam.identica.model.provider.ProviderContext;
+import me.whereareiam.identica.model.provider.selection.ProviderClaim;
+import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import me.whereareiam.identica.provider.ProviderAttemptStore;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
 import me.whereareiam.identica.provider.premium.config.PremiumSettings;
@@ -13,8 +14,9 @@ import me.whereareiam.identica.provider.premium.handshake.PremiumHandshakeAttrib
 import me.whereareiam.identica.provider.premium.resolver.PremiumDetector;
 import me.whereareiam.identica.provider.premium.resolver.PremiumProfileLookup;
 import me.whereareiam.identica.provider.premium.type.PremiumDetectionMethod;
+import me.whereareiam.identica.provider.selection.ProviderSelector;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
-import me.whereareiam.identica.type.provider.ProviderOrigin;
+import me.whereareiam.identica.type.provider.ProviderClaimOrigin;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,6 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -33,6 +36,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -42,11 +47,18 @@ import static org.mockito.Mockito.when;
 class PremiumHandshakePolicyTest {
 	private static final String USERNAME = "PlayerOne";
 	private static final String IP = "127.0.0.1";
+	private static final Set<ProviderClaimOrigin> ENTRYPOINT_OR_STRONGER = Set.of(
+			ProviderClaimOrigin.MIGRATION,
+			ProviderClaimOrigin.ACCOUNT_LINK,
+			ProviderClaimOrigin.ENTRYPOINT
+	);
 
 	@Mock
 	private PremiumProfileLookup profileLookup;
 	@Mock
 	private ProviderAttemptStore attemptStore;
+	@Mock
+	private ProviderSelector providerSelector;
 
 	private final PremiumSettings settings = new PremiumSettings();
 	private final PremiumMessages messages = new PremiumMessagesDefaults().supply(new PremiumMessages());
@@ -54,7 +66,14 @@ class PremiumHandshakePolicyTest {
 
 	@BeforeEach
 	void setUp() {
-		policy = new PremiumHandshakePolicy(new PremiumDetector(profileLookup, () -> settings), attemptStore, () -> messages);
+		lenient().when(providerSelector.isAtLeast(any(), eq(ProviderClaimOrigin.ENTRYPOINT))).thenAnswer(invocation ->
+				ENTRYPOINT_OR_STRONGER.contains(invocation.getArgument(0, ProviderClaimOrigin.class)));
+		policy = new PremiumHandshakePolicy(
+				new PremiumDetector(profileLookup, () -> settings),
+				attemptStore,
+				() -> messages,
+				providerSelector
+		);
 	}
 
 	@DisplayName("Asks for a premium login when the account prefers premium")
@@ -76,19 +95,36 @@ class PremiumHandshakePolicyTest {
 		verify(profileLookup, never()).findProfileId(any());
 	}
 
-	@DisplayName("Forces premium when provider context is explicitly set to the premium provider")
+	@DisplayName("Asks for a premium login when Premium won the selection with its hostname")
 	@Test
-	void manualPremiumProviderContextForcesPremiumHandshake() {
-		HandshakeDecision decision = evaluate(request(null, manualPremium(), null, JourneyMode.SEAMLESS));
+	void premiumEntrypointForcesPremiumHandshake() {
+		HandshakeDecision decision = evaluate(request(null, selection("premium", ProviderClaimOrigin.ENTRYPOINT), null, JourneyMode.SEAMLESS));
 
 		assertEquals(Optional.of(true), forcesOnline(decision));
+		verify(profileLookup, never()).findProfileId(any());
+	}
+
+	@DisplayName("Asks for a premium login when a pending migration to Premium won the selection")
+	@Test
+	void pendingMigrationToPremiumForcesPremiumHandshake() {
+		HandshakeDecision decision = evaluate(request(null, pendingMigrationToPremium(), null, JourneyMode.SEAMLESS));
+
+		assertEquals(Optional.of(true), forcesOnline(decision));
+	}
+
+	@DisplayName("Does not ask for a premium login only because Premium discovered a profile for the name")
+	@Test
+	void premiumDiscoveryDoesNotForcePremiumHandshake() {
+		HandshakeDecision decision = evaluate(request(null, selection("premium", ProviderClaimOrigin.DISCOVERY), null, JourneyMode.INTERACTIVE));
+
+		assertEquals(Optional.empty(), forcesOnline(decision));
 		verify(profileLookup, never()).findProfileId(any());
 	}
 
 	@DisplayName("Keeps asking a premium account for a premium login while its pending migration selected another provider")
 	@Test
 	void pendingMigrationAwayFromPremiumStillForcesOnline() {
-		ProviderContext credential = ProviderContext.of("credential", null, USERNAME, ProviderOrigin.MANUAL);
+		ProviderSelection credential = selection("credential", ProviderClaimOrigin.MIGRATION);
 
 		HandshakeDecision decision = evaluate(request(null, credential, link("premium", UUID.randomUUID()), JourneyMode.SEAMLESS));
 
@@ -100,7 +136,7 @@ class PremiumHandshakePolicyTest {
 	void existingVerifyAttemptSkipsManualPremiumRequeue() {
 		when(attemptStore.hasAttempt("premium", "verify", USERNAME, IP)).thenReturn(true);
 
-		HandshakeDecision decision = evaluate(request(null, manualPremium(), null, JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(null, pendingMigrationToPremium(), null, JourneyMode.SEAMLESS));
 
 		assertEquals(Optional.empty(), forcesOnline(decision));
 		verify(profileLookup, never()).findProfileId(any());
@@ -120,7 +156,7 @@ class PremiumHandshakePolicyTest {
 	void existingVerifyAttemptFallsBackFromAPendingMoveToPremium() {
 		when(attemptStore.hasAttempt("premium", "verify", USERNAME, IP)).thenReturn(true);
 
-		HandshakeDecision decision = evaluate(request(null, manualPremium(), link("credential", UUID.randomUUID()), JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(null, pendingMigrationToPremium(), link("credential", UUID.randomUUID()), JourneyMode.SEAMLESS));
 
 		assertEquals(HandshakeDecision.Status.ALLOW, decision.getStatus());
 		assertEquals(Optional.empty(), forcesOnline(decision));
@@ -272,18 +308,22 @@ class PremiumHandshakePolicyTest {
 
 	private HandshakeRequest request(
 			UUID claimedUniqueId,
-			ProviderContext provider,
+			ProviderSelection selection,
 			AccountProviderLink preferredLink,
 			JourneyMode journeyMode
 	) {
 		ConnectionIdentity identity = new ConnectionIdentity(USERNAME, IP);
 		identity.setClaimedUniqueId(claimedUniqueId);
 
-		return new HandshakeRequest(identity, provider, preferredLink, journeyMode);
+		return new HandshakeRequest(identity, selection != null ? selection : ProviderSelection.empty(), preferredLink, journeyMode);
 	}
 
-	private ProviderContext manualPremium() {
-		return ProviderContext.of("premium", null, USERNAME, ProviderOrigin.MANUAL);
+	private ProviderSelection pendingMigrationToPremium() {
+		return selection("premium", ProviderClaimOrigin.MIGRATION);
+	}
+
+	private ProviderSelection selection(String providerId, ProviderClaimOrigin origin) {
+		return ProviderSelection.of(ProviderClaim.of(providerId, origin), List.of(), List.of());
 	}
 
 	private AccountProviderLink link(String providerId, UUID subject) {

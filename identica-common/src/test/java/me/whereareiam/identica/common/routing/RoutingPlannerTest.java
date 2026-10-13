@@ -6,6 +6,7 @@ import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.ScenarioTransitionItem;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
+import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import me.whereareiam.identica.model.routing.RoutingPlan;
 import me.whereareiam.identica.model.routing.RoutingSignal;
 import me.whereareiam.identica.pipeline.ScenarioContext;
@@ -337,6 +338,15 @@ class RoutingPlannerTest {
 			@Override
 			public void setProvider(@Nullable ProviderContext provider) {
 				this.provider = provider;
+			}
+
+			@Override
+			public @NotNull ProviderSelection getSelection() {
+				return ProviderSelection.empty();
+			}
+
+			@Override
+			public void setSelection(@NotNull ProviderSelection selection) {
 			}
 
 			@Override

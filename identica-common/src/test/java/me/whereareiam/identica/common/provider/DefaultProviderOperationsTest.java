@@ -11,6 +11,7 @@ import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.model.provider.ProviderContext;
+import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
 import me.whereareiam.identica.model.provider.ResolvedEntrypoint;
 import me.whereareiam.identica.pipeline.ScenarioContext;
@@ -253,6 +254,41 @@ class DefaultProviderOperationsTest {
 		assertEquals("credential-subject", resolution.getProviderSubject());
 	}
 
+	@DisplayName("Resolves the subject of every enabled provider that has one, the highest priority first")
+	@Test
+	void resolvesTheSubjectsOfEveryProvider() {
+		ProviderDescriptor alphaDescriptor = new ProviderDescriptor();
+		alphaDescriptor.setId("alpha");
+		InternalProvider alpha = InternalProvider.builder()
+				.descriptor(alphaDescriptor)
+				.priority(10)
+				.state(ProviderState.ENABLED)
+				.subjectResolvers(Set.of(new StaticSubjectResolver("alpha", "alpha-subject")))
+				.build();
+		ProviderDescriptor betaDescriptor = new ProviderDescriptor();
+		betaDescriptor.setId("beta");
+		InternalProvider beta = InternalProvider.builder()
+				.descriptor(betaDescriptor)
+				.priority(100)
+				.state(ProviderState.ENABLED)
+				.subjectResolvers(Set.of(new StaticSubjectResolver("beta", "beta-subject")))
+				.build();
+		ProviderDescriptor gammaDescriptor = new ProviderDescriptor();
+		gammaDescriptor.setId("gamma");
+		InternalProvider gamma = InternalProvider.builder()
+				.descriptor(gammaDescriptor)
+				.priority(50)
+				.state(ProviderState.ENABLED)
+				.build();
+		when(providerManager.getProviders()).thenReturn(List.of(alpha, beta, gamma));
+
+		List<SubjectResolution> resolutions = operations(new Providers()).resolveSubjects(SubjectResolveContext.builder()
+				.identity(new ConnectionIdentity(UUID.randomUUID(), "PlayerOne", "127.0.0.1"))
+				.build());
+
+		assertEquals(List.of("beta", "alpha"), resolutions.stream().map(SubjectResolution::getProviderId).toList());
+	}
+
 	private ProviderOperations operations(Providers providers) {
 		return new DefaultProviderOperations(
 				providerManager,
@@ -328,6 +364,15 @@ class DefaultProviderOperationsTest {
 			@Override
 			public void setProvider(ProviderContext provider) {
 				currentProvider = provider;
+			}
+
+			@Override
+			public @NotNull ProviderSelection getSelection() {
+				return ProviderSelection.empty();
+			}
+
+			@Override
+			public void setSelection(@NotNull ProviderSelection selection) {
 			}
 
 			@Override

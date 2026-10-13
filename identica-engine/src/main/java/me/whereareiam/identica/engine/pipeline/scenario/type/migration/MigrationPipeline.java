@@ -60,6 +60,7 @@ public class MigrationPipeline extends AbstractScenarioPipeline {
 				.identity(request.getIdentity())
 				.intendedServer(request.getIntendedServer())
 				.provider(request.getProvider())
+				.selection(request.getSelection())
 				.transition(request.getTransition())
 				.build();
 
@@ -86,6 +87,7 @@ public class MigrationPipeline extends AbstractScenarioPipeline {
 					.build();
 
 			merged.setProvider(migration.getProvider());
+			merged.setSelection(migration.getSelection());
 			merged.setTransition(migration.getTransition());
 			Logger.debug(
 					"Migration resume merged connection=%s identica=%s username=%s ip=%s target=%s provider=%s subject=%s",

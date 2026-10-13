@@ -4,12 +4,7 @@ import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
-import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
-import me.whereareiam.identica.pipeline.state.PipelineState;
-import me.whereareiam.identica.pipeline.state.PipelineStateReference;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
-import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.keystone.model.SerializerContent;
 import me.whereareiam.keystone.serializer.SerializerEngine;
 import net.kyori.adventure.text.Component;
@@ -19,7 +14,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
@@ -33,7 +27,6 @@ import static org.mockito.Mockito.*;
 @DisplayName("Password Command Denials")
 class PasswordCommandDenialTest {
 	private final ConnectionCoordinator coordinator = mock(ConnectionCoordinator.class);
-	private final PipelineStateStore states = mock(PipelineStateStore.class);
 	private final Identity identity = mock(Identity.class);
 
 	@BeforeAll
@@ -45,11 +38,7 @@ class PasswordCommandDenialTest {
 	}
 
 	@BeforeEach
-	void pendingJourney() {
-		PipelineState state = PipelineState.initial();
-		state.setPipelineType(PipelineType.AUTHENTICATION);
-		state.put(JourneyStateItem.KEY, new JourneyStateItem(null, null, 0), 60_000L);
-		when(states.find(any(PipelineStateReference.class))).thenReturn(Optional.of(state));
+	void connectedPlayer() {
 		when(identity.getConnectionUniqueId()).thenReturn(UUID.randomUUID());
 	}
 
@@ -69,7 +58,7 @@ class PasswordCommandDenialTest {
 	void loginDisconnectsOnDenial(ConnectionDecision decision) {
 		when(coordinator.advance(any())).thenReturn(CompletableFuture.completedFuture(decision));
 
-		new LoginCommand(coordinator, states, CredentialMessages::new).login(identity, "secret");
+		new LoginCommand(coordinator, CredentialMessages::new).login(identity, "secret");
 
 		verify(identity).disconnect(Component.text(decision.getMessage() == null ? "" : decision.getMessage()));
 	}
@@ -79,12 +68,11 @@ class PasswordCommandDenialTest {
 	@MethodSource("denials")
 	void passDisconnectsOnDenial(ConnectionDecision decision) {
 		when(coordinator.advance(any())).thenReturn(CompletableFuture.completedFuture(decision));
-		PassCommand command = new PassCommand(coordinator, states, CredentialMessages::new);
+		PassCommand command = new PassCommand(coordinator, CredentialMessages::new);
 
 		command.pass(identity, "secret");
 		command.passConfirm(identity, "secret");
 
 		verify(identity, times(2)).disconnect(Component.text(decision.getMessage() == null ? "" : decision.getMessage()));
 	}
-
 }

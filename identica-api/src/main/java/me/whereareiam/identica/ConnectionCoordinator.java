@@ -10,7 +10,6 @@ import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 
 /**
@@ -52,14 +51,6 @@ public interface ConnectionCoordinator {
 	 * @return connection decision
 	 */
 	@NotNull CompletionStage<ConnectionDecision> advance(@NotNull AdvanceRequest request);
-
-	/**
-	 * Checks whether a connection has a pending scenario.
-	 *
-	 * @param connectionUniqueId connection unique id
-	 * @return {@code true} when a pending scenario exists
-	 */
-	boolean hasPending(@NotNull UUID connectionUniqueId);
 
 	/**
 	 * Runs pending post-connection completion for an attached identity.

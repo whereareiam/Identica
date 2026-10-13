@@ -32,12 +32,24 @@ public interface VerificationService {
 	boolean isEnabledForProvider(@NotNull String providerId);
 
 	/**
-	 * Resolves the provider verification requirement.
+	 * Resolves the provider verification requirement. A request that carries a code submits it to the active
+	 * challenge first; a code the challenge does not accept ends the resolution as
+	 * {@link me.whereareiam.identica.feature.verification.type.status.VerificationResolutionStatus#REJECTED REJECTED}.
 	 *
 	 * @param request verification resolution request
 	 * @return verification resolution result
 	 */
 	@NotNull VerificationResolutionResult resolveVerification(@NotNull VerificationResolutionRequest request);
+
+	/**
+	 * Checks whether a challenge for a subject, provider and purpose is waiting for a code.
+	 *
+	 * @param uniqueId subject id
+	 * @param providerId provider id
+	 * @param purpose challenge purpose
+	 * @return {@code true} when such a challenge is active
+	 */
+	boolean hasActiveChallenge(@NotNull UUID uniqueId, @Nullable String providerId, @Nullable String purpose);
 
 	/**
 	 * Submits an interaction to a pending challenge by id.

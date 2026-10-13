@@ -66,6 +66,11 @@ public class DefaultVerificationService implements VerificationService {
 	}
 
 	@Override
+	public boolean hasActiveChallenge(@NotNull UUID uniqueId, @Nullable String providerId, @Nullable String purpose) {
+		return challengeLifecycle.hasActiveChallenge(uniqueId, providerId, purpose);
+	}
+
+	@Override
 	public @NotNull VerificationChallengeResult<?> submitChallenge(
 			@NotNull String challengeId,
 			@NotNull VerificationInteraction interaction

@@ -107,20 +107,6 @@ public class ScenarioRegistry {
 		return runnersByType.get(type);
 	}
 
-	public boolean isPending(@NotNull PipelineState state) {
-		PipelineType pipelineType = state.getPipelineType();
-		if (pipelineType != null) {
-			AbstractScenarioPipeline runner = runnersByType.get(pipelineType);
-			return runner != null && runner.isPending(state);
-		}
-
-		for (AbstractScenarioPipeline runner : runners) {
-			if (runner.isPending(state)) return true;
-		}
-
-		return false;
-	}
-
 	private @Nullable AbstractScenarioPipeline resolveResumeRunner(@NotNull ResumeRequest request) {
 		PipelineStateReference reference = PipelineStateReference.from(request);
 		PipelineState stored = pipelineStateStore.find(reference).orElse(null);

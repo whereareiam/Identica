@@ -7,13 +7,18 @@ import com.google.inject.Singleton;
 import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.feature.FeatureRegistry;
 import me.whereareiam.identica.feature.verification.VerificationService;
+import me.whereareiam.identica.feature.verification.config.VerificationMessages;
+import me.whereareiam.identica.feature.verification.model.resolution.VerificationCodeAttempt;
 import me.whereareiam.identica.feature.verification.model.resolution.VerificationResolutionRequest;
 import me.whereareiam.identica.feature.verification.model.resolution.VerificationResolutionResult;
+import me.whereareiam.identica.feature.verification.type.status.VerificationChallengeStatus;
 import me.whereareiam.identica.feature.verification.type.status.VerificationResolutionStatus;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.ScenarioContext;
+import me.whereareiam.identica.pipeline.journey.step.StatefulStep;
+import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.provider.credential.CredentialConstants;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.pipeline.step.base.AbstractCredentialStep;
@@ -25,7 +30,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 @Singleton
-public class CredentialAuthenticationVerificationStep extends AbstractCredentialStep {
+public class CredentialAuthenticationVerificationStep extends AbstractCredentialStep implements StatefulStep {
 	private final Provider<CredentialMessages> messagesProvider;
 	private final ProviderLinkPersistenceService providerLinkPersistenceService;
 
@@ -52,7 +57,8 @@ public class CredentialAuthenticationVerificationStep extends AbstractCredential
 	}
 
 	@Override
-	public @NotNull CompletableFuture<StepResult> execute(@NotNull ScenarioContext context) {
+	public @NotNull CompletableFuture<StepResult> execute(@NotNull ScenarioContext context, @NotNull PipelineState state) {
+		String code = takeCode(state);
 		if (!features.isEnabled("credential", "verification"))
 			return CompletableFuture.completedFuture(StepResult.complete(context));
 
@@ -74,6 +80,7 @@ public class CredentialAuthenticationVerificationStep extends AbstractCredential
 				.uniqueId(uniqueId)
 				.providerId(CredentialConstants.PROVIDER_ID)
 				.purpose("authentication")
+				.code(code)
 				.build());
 		Logger.debug(
 				"Credential verification resolved connection=%s username=%s uniqueId=%s status=%s method=%s challenge=%s required=%s",
@@ -105,6 +112,8 @@ public class CredentialAuthenticationVerificationStep extends AbstractCredential
 
 		if (status == VerificationResolutionStatus.WAITING)
 			return StepResult.waiting(joinLines(messages.getPrompt()));
+		if (status == VerificationResolutionStatus.REJECTED)
+			return StepResult.waiting(rejectionMessage(result));
 
 		if (status == VerificationResolutionStatus.DENIED)
 			return StepResult.denied(result.getMethodId() == null
@@ -112,6 +121,28 @@ public class CredentialAuthenticationVerificationStep extends AbstractCredential
 					: messages.getUnavailable());
 
 		return StepResult.failed("");
+	}
+
+	/**
+	 * Takes the code a player typed out of the run's state, so it reaches only this run's resolution.
+	 */
+	private static @Nullable String takeCode(@NotNull PipelineState state) {
+		VerificationCodeAttempt attempt = state.get(VerificationCodeAttempt.KEY).orElse(null);
+		if (attempt == null) return null;
+
+		state.remove(VerificationCodeAttempt.KEY);
+		return attempt.getCode();
+	}
+
+	/**
+	 * Answers a code the challenge did not take with the confirm command's messages: a wrong code is invalid, and a
+	 * code without a challenge to take it finds nothing pending.
+	 */
+	private @NotNull String rejectionMessage(@NotNull VerificationResolutionResult result) {
+		VerificationMessages.Commands.Confirm messages = injector.getInstance(VerificationMessages.class).getCommands().getConfirm();
+		if (result.getRejection() == VerificationChallengeStatus.INVALID) return messages.getInvalidCode();
+
+		return messages.getNoPending();
 	}
 
 	private static @NotNull String joinLines(@Nullable List<String> lines) {

@@ -12,13 +12,8 @@ import me.whereareiam.identica.annotation.Definition;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.request.AdvanceRequest;
-import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
-import me.whereareiam.identica.pipeline.state.PipelineState;
-import me.whereareiam.identica.pipeline.state.PipelineStateReference;
-import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.pipeline.CredentialAuthenticationAttempt;
-import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.keystone.Actor;
 import me.whereareiam.keystone.model.SerializerContent;
 import org.jetbrains.annotations.NotNull;
@@ -26,7 +21,6 @@ import org.jetbrains.annotations.NotNull;
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class LoginCommand {
 	private final ConnectionCoordinator connectionCoordinator;
-	private final PipelineStateStore pipelineStateStore;
 	private final Provider<CredentialMessages> messagesProvider;
 
 	@AvailableWhilePending
@@ -35,35 +29,27 @@ public class LoginCommand {
 	public void login(@NotNull Actor sender, @Argument(value = "password", parser = "password") String password) {
 		if (!(sender instanceof Identity identity)) return;
 
-		PipelineType pipelineType = pendingPipelineType(identity);
-		if (!hasPending(identity)) {
-			sendMessage(identity, noPendingMessage(pipelineType));
-			return;
-		}
-
-		handleDecision(identity, pipelineType, advance(identity, new CredentialAuthenticationAttempt(password)));
+		handleDecision(identity, advance(identity, new CredentialAuthenticationAttempt(password)));
 	}
 
-	private void handleDecision(
-			@NotNull Identity identity,
-			@NotNull PipelineType pipelineType,
-			ConnectionDecision decision
-	) {
+	private void handleDecision(@NotNull Identity identity, ConnectionDecision decision) {
 		if (decision == null || decision.getStatus() == null)
 			return;
 
 		switch (decision.getStatus()) {
 			case WAIT -> sendMessage(identity, decision.getMessage());
 			case DENY, REQUIRE_RECONNECT -> disconnect(identity, decision.getMessage());
-			case NO_PENDING -> sendMessage(identity, noPendingMessage(pipelineType));
+			case NO_PENDING -> sendMessage(identity, noPendingMessage());
 			default -> {
 			}
 		}
 	}
 
 	/**
-	 * Continues the pending journey with the password the player typed. The pipeline puts the attempt into the
-	 * state of the run it starts.
+	 * Continues the pending journey with the password the player typed. The pipeline looks for the pending journey
+	 * in the connection's turn, after every earlier run has finished, so a password typed before its prompt waits
+	 * for the run that shows the prompt instead of being turned away. The pipeline puts the attempt into the state
+	 * of the run it starts.
 	 */
 	private ConnectionDecision advance(@NotNull Identity identity, @NotNull CredentialAuthenticationAttempt attempt) {
 		AdvanceRequest request = AdvanceRequest.builder()
@@ -74,32 +60,8 @@ public class LoginCommand {
 		return connectionCoordinator.advance(request).toCompletableFuture().join();
 	}
 
-	private boolean hasPending(@NotNull Identity identity) {
-		PipelineState state = pipelineStateStore.find(reference(identity)).orElse(null);
-		if (state == null) return false;
-
-		return state.has(JourneyStateItem.KEY);
-	}
-
-	private PipelineType pendingPipelineType(@NotNull Identity identity) {
-		PipelineState state = pipelineStateStore.find(reference(identity)).orElse(null);
-		PipelineType type = state != null ? state.getPipelineType() : null;
-		return type != null ? type : PipelineType.AUTHENTICATION;
-	}
-
-	private String noPendingMessage(@NotNull PipelineType pipelineType) {
-		CredentialMessages.Scenario scenario = messagesProvider.get().getScenario();
-		if (pipelineType == PipelineType.MIGRATION)
-			return scenario.getMigration().getVerification().getStatus().getNoPending();
-		return scenario.getAuthentication().getStatus().getNoPending();
-	}
-
-	private PipelineStateReference reference(@NotNull Identity identity) {
-		return PipelineStateReference.builder()
-				.connectionUniqueId(identity.getConnectionUniqueId())
-				.accountUniqueId(identity.getAccountUniqueId())
-				.connectionKey(identity.connectionKey())
-				.build();
+	private String noPendingMessage() {
+		return messagesProvider.get().getScenario().getAuthentication().getStatus().getNoPending();
 	}
 
 	private void sendMessage(@NotNull Identity identity, String message) {

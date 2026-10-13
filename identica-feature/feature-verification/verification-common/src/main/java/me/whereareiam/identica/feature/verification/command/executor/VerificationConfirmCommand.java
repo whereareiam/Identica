@@ -3,6 +3,7 @@ package me.whereareiam.identica.feature.verification.command.executor;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
+import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.annotation.Argument;
@@ -13,17 +14,16 @@ import me.whereareiam.identica.feature.verification.VerificationService;
 import me.whereareiam.identica.feature.verification.command.ProtectedActionCommand;
 import me.whereareiam.identica.feature.verification.config.VerificationMessages;
 import me.whereareiam.identica.feature.verification.model.VerificationDisablePendingState;
-import me.whereareiam.identica.feature.verification.model.challenge.VerificationChallengeResult;
 import me.whereareiam.identica.feature.verification.model.config.VerificationSettings;
-import me.whereareiam.identica.feature.verification.model.interaction.CodeVerificationInteraction;
-import me.whereareiam.identica.feature.verification.type.status.VerificationChallengeStatus;
+import me.whereareiam.identica.feature.verification.model.resolution.VerificationCodeAttempt;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
-import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.request.AdvanceRequest;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
+import me.whereareiam.identica.pipeline.ScenarioContext;
+import me.whereareiam.identica.pipeline.state.PipelineInput;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.PipelineStateReference;
 import me.whereareiam.identica.pipeline.state.PipelineStateStore;
@@ -34,9 +34,12 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
+import java.util.UUID;
 
 @Singleton
 public class VerificationConfirmCommand extends ProtectedActionCommand<Void> {
+	private static final String AUTHENTICATION = "authentication";
+
 	private final Provider<Messages> coreMessagesProvider;
 	private final Provider<VerificationMessages> messagesProvider;
 	private final Provider<VerificationSettings> verificationProvider;
@@ -88,8 +91,7 @@ public class VerificationConfirmCommand extends ProtectedActionCommand<Void> {
 		if (submitProtectedAction(identity, input))
 			return;
 
-		if (!submitChallenge(identity, input))
-			sendMessage(sender, verificationMessages().getConfirm().getNoPending(), Map.of());
+		submitChallenge(identity, input);
 	}
 
 	private boolean submitProtectedAction(@NotNull Identity identity, @NotNull String input) {
@@ -119,59 +121,19 @@ public class VerificationConfirmCommand extends ProtectedActionCommand<Void> {
 		return true;
 	}
 
-	private boolean submitChallenge(@NotNull Identity identity, @NotNull String input) {
-		PipelineStateReference reference = reference(identity);
-		PipelineState state = pipelineStateStore.find(reference).orElse(null);
-		if (state == null || state.get(JourneyStateItem.KEY).isEmpty()) return false;
-		var accountUniqueId = requireAccountUniqueId(identity);
-		if (accountUniqueId == null) return false;
-
-		String providerId = currentProvider(state);
-		VerificationChallengeResult<?> result = verificationService.submitChallenge(
-				accountUniqueId,
-				providerId,
-				"authentication",
-				CodeVerificationInteraction.builder()
-						.subjectUniqueId(accountUniqueId)
-						.code(input)
-						.build()
-		);
-
-		Logger.debug(
-				"Verification confirm submitted uniqueId=%s provider=%s status=%s challenge=%s method=%s codeLength=%s",
-				accountUniqueId,
-				providerId,
-				result.getStatus(),
-				result.getChallengeId(),
-				result.getMethodId(),
-				input.length()
-		);
-
-		if (result.getStatus() == VerificationChallengeStatus.METHOD_NOT_SELECTED) return false;
-
-		if (result.getStatus() == VerificationChallengeStatus.INVALID) {
-			sendMessage(identity, verificationMessages().getConfirm().getInvalidCode(), Map.of());
-			return true;
-		}
-
-		if (result.getStatus() == VerificationChallengeStatus.EXPIRED
-				|| result.getStatus() == VerificationChallengeStatus.METHOD_UNAVAILABLE
-				|| result.getStatus() == VerificationChallengeStatus.PROVIDER_UNSUPPORTED
-				|| result.getStatus() == VerificationChallengeStatus.PROVIDER_VERIFICATION_DISABLED) {
-			sendMessage(identity, verificationMessages().getConfirm().getNoPending(), Map.of());
-			return true;
-		}
-
-		if (result.getStatus() != VerificationChallengeStatus.VERIFIED) {
-			sendMessage(identity, verificationMessages().getConfirm().getNoPending(), Map.of());
-			return true;
-		}
-
+	/**
+	 * Hands the code to the pending journey. The pipeline asks {@link ChallengeCode} in the connection's turn, after
+	 * every earlier run has finished, so a code typed before its prompt waits for the run that shows the prompt; the
+	 * provider's verification step submits the code and answers with the prompt, the invalid-code message or the
+	 * no-pending message.
+	 */
+	private void submitChallenge(@NotNull Identity identity, @NotNull String code) {
 		ConnectionDecision decision = connectionCoordinator.advance(AdvanceRequest.builder()
 				.connectionUniqueId(identity.getConnectionUniqueId())
 				.identity(identity)
+				.input(new ChallengeCode(code))
 				.build()).toCompletableFuture().join();
-		if (decision == null || decision.getStatus() == null) return true;
+		if (decision == null || decision.getStatus() == null) return;
 
 		switch (decision.getStatus()) {
 			case WAIT -> sendMessage(identity, decision.getMessage(), Map.of());
@@ -180,15 +142,6 @@ public class VerificationConfirmCommand extends ProtectedActionCommand<Void> {
 			default -> {
 			}
 		}
-
-		return true;
-	}
-
-	private @Nullable String currentProvider(@NotNull PipelineState state) {
-		if (state.getScenario() == null || state.getScenario().getProvider() == null)
-			return null;
-
-		return state.getScenario().getProvider().getProviderId();
 	}
 
 	private VerificationMessages.Commands verificationMessages() {
@@ -239,5 +192,35 @@ public class VerificationConfirmCommand extends ProtectedActionCommand<Void> {
 
 		long ttlMs = verificationProvider.get().challengeTtlMillis();
 		pipelineStateStore.save(reference, state, ttlMs);
+	}
+
+	/**
+	 * The typed code as input for the pending journey. Only a journey whose authentication challenge waits for a code
+	 * takes it; any other journey, such as one still waiting for the password, declines it and leaves the player with
+	 * the no-pending message.
+	 */
+	@RequiredArgsConstructor
+	private final class ChallengeCode implements PipelineInput {
+		private final @NotNull String code;
+
+		@Override
+		public boolean accepts(@NotNull PipelineState state) {
+			ScenarioContext scenario = state.getScenario();
+			if (scenario == null || !state.has(JourneyStateItem.KEY)) return false;
+
+			UUID accountUniqueId = scenario.getAccountUniqueId();
+			if (accountUniqueId == null) return false;
+
+			return verificationService.hasActiveChallenge(accountUniqueId, providerId(scenario), AUTHENTICATION);
+		}
+
+		@Override
+		public void applyTo(@NotNull PipelineState state) {
+			state.put(VerificationCodeAttempt.KEY, new VerificationCodeAttempt(code));
+		}
+
+		private static @Nullable String providerId(@NotNull ScenarioContext scenario) {
+			return scenario.getProvider() != null ? scenario.getProvider().getProviderId() : null;
+		}
 	}
 }

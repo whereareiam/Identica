@@ -76,7 +76,7 @@ public CompletableFuture<StepResult> execute(ScenarioContext context, PipelineSt
 
 A `PipelineExtension` registers the step with `builder.registerStep(providerId, StageType.PROVIDER, mode, step)` for both journey modes.
 
-The command hands the attempt to the pending journey with `ConnectionCoordinator.advance(...)` and shows the answer when the journey keeps waiting. Mark it with `@AvailableWhilePending`, so addons that hold back commands until a player has authenticated let it through.
+The command hands the attempt to the pending journey with `ConnectionCoordinator.advance(...)` and shows the answer when the journey keeps waiting. It does not look for the pending journey itself: the pipeline does that in the connection's turn, after every earlier run of the connection has finished, so a passphrase typed before its prompt waits for the run that shows the prompt. When nothing is pending, the decision is `NO_PENDING` and the command shows its own message. An input that only fits some pending journeys overrides `PipelineInput.accepts(...)`; a declined input ends the same way. Mark the command with `@AvailableWhilePending`, so addons that hold back commands until a player has authenticated let it through.
 
 ## Configuration
 

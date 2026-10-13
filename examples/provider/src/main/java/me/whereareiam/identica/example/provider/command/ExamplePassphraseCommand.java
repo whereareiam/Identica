@@ -32,11 +32,9 @@ public class ExamplePassphraseCommand {
 	@Command("passphrase <passphrase>")
 	public void passphrase(@NotNull Actor sender, @Argument(value = "passphrase", parser = "password") String passphrase) {
 		if (!(sender instanceof Identity identity)) return;
-		if (!connectionCoordinator.hasPending(identity.getConnectionUniqueId())) {
-			send(identity, messages.get().getNoPending());
-			return;
-		}
 
+		// The pipeline looks for the pending journey in the connection's turn, so a passphrase typed before its
+		// prompt waits for the run that shows it. Without a pending journey the decision is NO_PENDING.
 		AdvanceRequest request = AdvanceRequest.builder()
 				.connectionUniqueId(identity.getConnectionUniqueId())
 				.identity(identity)

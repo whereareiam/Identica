@@ -38,6 +38,22 @@ class CredentialReturningJoinTest {
 		logsIn(anvil);
 	}
 
+	/**
+	 * Alice types her password as soon as the proxy accepts her, while the run that shows the prompt may still hold
+	 * her journey. The password waits for that run instead of finding nothing pending.
+	 */
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	void logsInWithAPasswordTypedBeforeThePrompt(ScenarioContext anvil) {
+		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
+
+		Journey.offline(anvil, "Alice").join()
+				.login(PASSWORD)
+				.doesNotSee(m -> m.credential().getScenario().getAuthentication().getStatus().getNoPending())
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
+	}
+
 	@Test
 	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
 	void refusesAWrongPasswordAndAcceptsTheRightOne(ScenarioContext anvil) {

@@ -59,7 +59,31 @@ class TotpVerificationTest {
 				.sees(m -> m.credential().getScenario().getAuthentication().getVerification().getPrompt())
 				.command("2fa confirm " + alice.app().wrongCode())
 				.sees(m -> m.verification().getCommands().getConfirm().getInvalidCode())
+				.doesNotSee(m -> m.credential().getScenario().getAuthentication().getVerification().getPrompt())
 				.remainsOn(AUTH)
+				.command("2fa confirm " + alice.app().nextCode())
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
+	}
+
+	/**
+	 * A code typed while Alice is still asked for her password has nothing to confirm; her password prompt is not
+	 * shown again, and the login goes on as usual.
+	 */
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	void answersACodeTypedAtThePasswordPromptWithNothingPending(ScenarioContext anvil) {
+		Enrolled alice = enrolled(anvil);
+
+		alice.journey().leave()
+				.rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.command("2fa confirm " + alice.app().wrongCode())
+				.sees(m -> m.verification().getCommands().getConfirm().getNoPending())
+				.doesNotSee(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.sees(m -> m.credential().getScenario().getAuthentication().getVerification().getPrompt())
 				.command("2fa confirm " + alice.app().nextCode())
 				.on(LOBBY)
 				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());

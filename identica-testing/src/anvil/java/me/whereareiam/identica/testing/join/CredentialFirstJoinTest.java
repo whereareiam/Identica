@@ -29,6 +29,22 @@ class CredentialFirstJoinTest {
 		registersWithoutChoosingTheProvider(anvil);
 	}
 
+	/**
+	 * Alice types her password as soon as the proxy accepts her, while the run that shows the prompt may still hold
+	 * her journey. The password waits for that run instead of finding nothing pending.
+	 */
+	@Test
+	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL)
+	void registersWithAPasswordTypedBeforeThePrompt(ScenarioContext anvil) {
+		Journey.offline(anvil, "Alice").join()
+				.command("pass " + PASSWORD)
+				.doesNotSee(m -> m.credential().getScenario().getRegistration().getStatus().getNoPending())
+				.sees(m -> m.credential().getScenario().getRegistration().getConfirmPrompt())
+				.command("passconfirm " + PASSWORD)
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getRegistration().getBody());
+	}
+
 	@Test
 	@Identica(mode = JourneyMode.SEAMLESS, policy = JourneyPolicy.STRICT, providers = Provider.CREDENTIAL)
 	void refusesAPlayerWhoWouldHaveToTypeInStrictSeamlessMode(ScenarioContext anvil) {

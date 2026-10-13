@@ -17,6 +17,7 @@ import me.whereareiam.identica.model.auth.request.ResumeRequest;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.ScenarioTransitionItem;
 import me.whereareiam.identica.pipeline.ScenarioContext;
+import me.whereareiam.identica.pipeline.state.PipelineInput;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.PipelineStateReference;
 import me.whereareiam.identica.pipeline.state.PipelineStateStore;
@@ -24,7 +25,6 @@ import me.whereareiam.identica.type.pipeline.PipelineType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -86,6 +86,8 @@ public class ScenarioPipeline {
 				request.getIp()
 		));
 		if (entryDecision != null) return CompletableFuture.completedFuture(entryDecision);
+		if (declines(PipelineStateReference.from(request), request.getInput()))
+			return CompletableFuture.completedFuture(ConnectionDecision.noPending());
 
 		AbstractScenarioPipeline runner = scenarioRegistry.selectForResume(request);
 		return execute(
@@ -104,6 +106,8 @@ public class ScenarioPipeline {
 				request.getIp()
 		));
 		if (entryDecision != null) return CompletableFuture.completedFuture(entryDecision);
+		if (declines(PipelineStateReference.from(request), request.getInput()))
+			return CompletableFuture.completedFuture(ConnectionDecision.noPending());
 
 		AbstractScenarioPipeline runner = scenarioRegistry.selectForAdvance(request);
 		ResumeRequest pendingRequest = ResumeRequest.builder()
@@ -121,13 +125,15 @@ public class ScenarioPipeline {
 		);
 	}
 
-	public boolean hasPending(@NotNull UUID connectionUniqueId) {
-		PipelineStateReference reference = PipelineStateReference.builder()
-				.connectionUniqueId(connectionUniqueId)
-				.build();
+	/**
+	 * Tells whether the pending journey turns down the input a command handed over. The connection's earlier runs
+	 * have finished by now, so the input sees the state its run would start from.
+	 */
+	private boolean declines(@NotNull PipelineStateReference reference, @Nullable PipelineInput input) {
+		if (input == null) return false;
 
 		PipelineState state = pipelineStateStore.find(reference).orElse(null);
-		return state != null && scenarioRegistry.isPending(state);
+		return state != null && !input.accepts(state);
 	}
 
 	private @NotNull CompletionStage<ConnectionDecision> execute(

@@ -206,6 +206,8 @@ Addons that hold back chat or commands until a player has authenticated are cove
 
 When `verification` is selected, find `VerificationService` for enrollment, challenge, selection, and reset flows, or `VerificationRegistry` for method discovery, through `identica.findService(...)`. Both types belong to `me.whereareiam.identica.feature.verification`.
 
+A provider's verification step is a `StatefulStep`. `/2fa confirm` hands the typed code to the pending journey as a `VerificationCodeAttempt` in the run's state; the step takes it out of the state and passes it with `VerificationResolutionRequest.code(...)`. `resolveVerification` submits the code before it resolves the requirement. A code the challenge does not take ends as `REJECTED`, with the reason in `getRejection()`: `INVALID` for a wrong code. The step keeps waiting with the confirm command's invalid-code message for a wrong code and its no-pending message otherwise.
+
 ## Session lookup example
 
 ```java

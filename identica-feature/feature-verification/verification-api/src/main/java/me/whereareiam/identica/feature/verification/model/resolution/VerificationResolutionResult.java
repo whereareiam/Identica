@@ -1,6 +1,7 @@
 package me.whereareiam.identica.feature.verification.model.resolution;
 
 import lombok.*;
+import me.whereareiam.identica.feature.verification.type.status.VerificationChallengeStatus;
 import me.whereareiam.identica.feature.verification.type.status.VerificationResolutionStatus;
 import org.jetbrains.annotations.Nullable;
 
@@ -20,6 +21,12 @@ public class VerificationResolutionResult {
 	private boolean required;
 	private boolean recoveryCodeUsed;
 	private @Nullable String message;
+	/**
+	 * Why the active challenge did not accept the code of the request, set when the status is
+	 * {@link VerificationResolutionStatus#REJECTED REJECTED}: {@link VerificationChallengeStatus#INVALID INVALID} for a
+	 * wrong code, another status when there was no challenge to take it.
+	 */
+	private @Nullable VerificationChallengeStatus rejection;
 
 	/**
 	 * Creates a resolution result.

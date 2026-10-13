@@ -36,6 +36,10 @@ public class VerificationChallengeLifecycle {
 	private final Provider<VerificationSettings> verificationProvider;
 	private final EventManager eventManager;
 
+	public boolean hasActiveChallenge(@NotNull UUID uniqueId, @Nullable String providerId, @Nullable String purpose) {
+		return challengeStore.findActive(uniqueId, providerId, purpose).isPresent();
+	}
+
 	public @NotNull VerificationChallengeResult<?> submitChallengeInteraction(
 			@NotNull String challengeId,
 			@NotNull VerificationInteraction interaction

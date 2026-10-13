@@ -17,7 +17,6 @@ import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 
 @Singleton
@@ -48,11 +47,6 @@ public class DefaultConnectionCoordinator implements ConnectionCoordinator {
 	@Override
 	public @NotNull CompletionStage<ConnectionDecision> advance(@NotNull AdvanceRequest request) {
 		return scenarioPipeline.advance(request);
-	}
-
-	@Override
-	public boolean hasPending(@NotNull UUID connectionUniqueId) {
-		return scenarioPipeline.hasPending(connectionUniqueId);
 	}
 
 	@Override

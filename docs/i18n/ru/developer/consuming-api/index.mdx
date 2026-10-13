@@ -1,7 +1,7 @@
 ---
 title: Использование API
 description: Как подключить API Identica как зависимость в другом плагине и безопасно с ним работать.
-sourceHash: cb6c299bdac7713603681ee7c89b661281c4cba5
+sourceHash: 6adbb953314ea3a4c54d514384d4f6a153dc1fb0
 ---
 
 На этой странице описано, как использовать API Identica из другого плагина или аддона.
@@ -206,6 +206,8 @@ if (features.isEnabled(providerId, "verification")) {
 Аддоны, которые не пропускают чат или команды, пока игрок не прошёл аутентификацию, описаны на странице [Написание аддона](../writing-addons/index.mdx).
 
 Если выбрана функция `verification`, найдите через `identica.findService(...)` сервис `VerificationService` — для привязки, проверки, выбора и сброса — или `VerificationRegistry` — для получения доступных методов. Оба типа находятся в `me.whereareiam.identica.feature.verification`.
+
+Шаг проверки провайдера — это `StatefulStep`. `/2fa confirm` передаёт введённый код в ожидающее прохождение как `VerificationCodeAttempt` в состоянии запуска; шаг забирает его из состояния и передаёт через `VerificationResolutionRequest.code(...)`. `resolveVerification` отправляет код, прежде чем разрешить требование. Код, который проверка не приняла, завершается статусом `REJECTED`, а причина находится в `getRejection()`: `INVALID` для неверного кода. При неверном коде шаг продолжает ждать с сообщением команды подтверждения о неверном коде, в остальных случаях — с её сообщением о том, что подтверждать нечего.
 
 ## Пример поиска сессии [#session-lookup-example]
 

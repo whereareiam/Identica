@@ -12,12 +12,14 @@ import me.whereareiam.identica.feature.verification.database.VerificationPersist
 import me.whereareiam.identica.feature.verification.model.challenge.PendingVerificationChallenge;
 import me.whereareiam.identica.feature.verification.model.challenge.VerificationChallengeResult;
 import me.whereareiam.identica.feature.verification.model.enrollment.VerificationEnrollment;
+import me.whereareiam.identica.feature.verification.model.interaction.CodeVerificationInteraction;
 import me.whereareiam.identica.feature.verification.model.resolution.VerificationResolutionRequest;
 import me.whereareiam.identica.feature.verification.model.resolution.VerificationResolutionResult;
 import me.whereareiam.identica.feature.verification.model.selection.VerificationSelection;
 import me.whereareiam.identica.feature.verification.type.UnavailableSelectionPolicy;
 import me.whereareiam.identica.feature.verification.type.status.VerificationChallengeStatus;
 import me.whereareiam.identica.feature.verification.type.status.VerificationResolutionStatus;
+import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.provider.ProviderManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -36,6 +38,9 @@ public class VerificationRequirementResolver {
 	private final VerificationChallengeLifecycle challengeLifecycle;
 
 	public @NotNull VerificationResolutionResult resolveVerification(@NotNull VerificationResolutionRequest request) {
+		VerificationResolutionResult rejected = submitCode(request);
+		if (rejected != null) return rejected;
+
 		String providerId = request.getProviderId();
 		VerificationPolicyResolver.ResolvedProviderPolicy providerPolicy = policyResolver.resolveProviderPolicy(providerId);
 		if (!supportsVerification(providerId))
@@ -123,6 +128,45 @@ public class VerificationRequirementResolver {
 				challenge.isRequired(),
 				challenge.isRecoveryCodeUsed()
 		);
+	}
+
+	/**
+	 * Submits the code of the request to the active challenge. A verified code is left for the resolution, which
+	 * finds the challenge satisfied.
+	 *
+	 * @return the rejection, or {@code null} when the request has no code or the challenge accepted it
+	 */
+	private @Nullable VerificationResolutionResult submitCode(@NotNull VerificationResolutionRequest request) {
+		String code = request.getCode();
+		if (code == null) return null;
+
+		VerificationChallengeResult<?> result = challengeLifecycle.submitChallengeInteraction(
+				request.getUniqueId(),
+				request.getProviderId(),
+				request.getPurpose(),
+				CodeVerificationInteraction.builder()
+						.subjectUniqueId(request.getUniqueId())
+						.code(code)
+						.build()
+		);
+		Logger.debug(
+				"Verification code submitted uniqueId=%s provider=%s status=%s challenge=%s method=%s codeLength=%s",
+				request.getUniqueId(),
+				request.getProviderId(),
+				result.getStatus(),
+				result.getChallengeId(),
+				result.getMethodId(),
+				code.length()
+		);
+		if (result.getStatus() == VerificationChallengeStatus.VERIFIED) return null;
+
+		return VerificationResolutionResult.builder()
+				.status(VerificationResolutionStatus.REJECTED)
+				.challengeId(result.getChallengeId())
+				.methodId(result.getMethodId())
+				.required(result.isRequired())
+				.rejection(result.getStatus())
+				.build();
 	}
 
 	private @NotNull VerificationResolutionResult handleResolutionUnavailable(

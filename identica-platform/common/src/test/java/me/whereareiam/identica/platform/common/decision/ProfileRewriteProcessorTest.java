@@ -81,11 +81,6 @@ class ProfileRewriteProcessorTest {
 		}
 
 		@Override
-		public boolean hasPending(@NotNull UUID connectionUniqueId) {
-			return false;
-		}
-
-		@Override
 		public void complete(@NotNull Identity identity) {
 		}
 	}

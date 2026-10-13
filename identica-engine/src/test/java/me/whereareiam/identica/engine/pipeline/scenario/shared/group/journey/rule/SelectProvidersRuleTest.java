@@ -102,7 +102,7 @@ class SelectProvidersRuleTest {
 				.identity(new ConnectionIdentity(UUID.randomUUID(), "PlayerOne", "127.0.0.1"))
 				.build();
 		context.setSelection(selector.claim(ProviderSelection.empty(), List.of(
-				ProviderClaim.of("gamma", ProviderClaimOrigin.ENTRYPOINT),
+				ProviderClaim.of("gamma", ProviderClaimOrigin.HOSTNAME),
 				ProviderClaim.of("alpha", ProviderClaimOrigin.DISCOVERY),
 				ProviderClaim.of("delta", ProviderClaimOrigin.MIGRATION)
 		)));

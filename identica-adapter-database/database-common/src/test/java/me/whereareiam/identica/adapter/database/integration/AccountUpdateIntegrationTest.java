@@ -1,6 +1,7 @@
 package me.whereareiam.identica.adapter.database.integration;
 
 import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
+import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import me.whereareiam.identica.adapter.database.account.DefaultAccountPersistenceService;
 import me.whereareiam.identica.adapter.database.testing.PersistenceServices;
 import me.whereareiam.identica.adapter.database.testing.TestDataFactory;
@@ -55,8 +56,8 @@ class AccountUpdateIntegrationTest {
 			DefaultAccountPersistenceService accounts = PersistenceServices.accounts(jdbi);
 			UUID alice = UUID.randomUUID();
 			UUID bob = UUID.randomUUID();
-			accounts.create(TestDataFactory.account(alice, "Alice"));
-			accounts.create(TestDataFactory.account(bob, "Bob"));
+			accounts.create(TestDataFactory.account(alice, "Alice"), AccountUsernameSource.PROVIDER, null);
+			accounts.create(TestDataFactory.account(bob, "Bob"), AccountUsernameSource.PROVIDER, null);
 
 			scenario.run(accounts, alice, bob);
 		} finally {

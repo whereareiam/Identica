@@ -62,7 +62,7 @@ public class PremiumHandshakePolicy implements ProviderScopedHandshakePolicy {
 
 		ProviderSelection selection = request.getSelection();
 		if (isPremium(selection.getWinnerProviderId())
-				&& providerSelector.isAtLeast(selection.getOrigin(), ProviderClaimOrigin.ENTRYPOINT)) {
+				&& providerSelector.isAtLeast(selection.getOrigin(), ProviderClaimOrigin.HOSTNAME)) {
 			Logger.debug(
 					"Premium handshake forcing online for the selected provider username=%s ip=%s origin=%s",
 					username,

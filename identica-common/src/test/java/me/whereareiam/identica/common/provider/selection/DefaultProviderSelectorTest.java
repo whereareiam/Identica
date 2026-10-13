@@ -41,7 +41,7 @@ class DefaultProviderSelectorTest {
 	@Test
 	void addsALaterClaimAndRanksAgain() {
 		ProviderSelection hostname = selector.claim(ProviderSelection.empty(), List.of(
-				ProviderClaim.of("alpha", ProviderClaimOrigin.ENTRYPOINT)
+				ProviderClaim.of("alpha", ProviderClaimOrigin.HOSTNAME)
 		));
 
 		ProviderSelection chosen = selector.claim(hostname, List.of(ProviderClaim.of("beta", ProviderClaimOrigin.PLAYER_CHOICE)));
@@ -77,7 +77,7 @@ class DefaultProviderSelectorTest {
 	@Test
 	void excludedProviderLosesTheSelection() {
 		ProviderSelection selection = selector.claim(ProviderSelection.empty(), List.of(
-				ProviderClaim.of("alpha", ProviderClaimOrigin.ENTRYPOINT),
+				ProviderClaim.of("alpha", ProviderClaimOrigin.HOSTNAME),
 				ProviderClaim.of("beta", ProviderClaimOrigin.DISCOVERY)
 		));
 
@@ -85,7 +85,7 @@ class DefaultProviderSelectorTest {
 
 		assertEquals("beta", excluded.getWinnerProviderId());
 		assertTrue(excluded.isExcluded("alpha"));
-		assertTrue(excluded.hasClaim("alpha", ProviderClaimOrigin.ENTRYPOINT));
+		assertTrue(excluded.hasClaim("alpha", ProviderClaimOrigin.HOSTNAME));
 	}
 
 	@DisplayName("Revoking an origin lets the next claim win")
@@ -108,7 +108,7 @@ class DefaultProviderSelectorTest {
 		ProviderSelection selection = selector.claim(ProviderSelection.empty(), List.of(
 				ProviderClaim.of("gamma", ProviderClaimOrigin.NAME_MATCH),
 				ProviderClaim.of("gamma", ProviderClaimOrigin.ACCOUNT_LINK),
-				ProviderClaim.of("beta", ProviderClaimOrigin.ENTRYPOINT)
+				ProviderClaim.of("beta", ProviderClaimOrigin.HOSTNAME)
 		));
 
 		assertEquals(List.of("gamma", "beta", "alpha"), selector.rank(selection, List.of("alpha", "beta", "gamma")));
@@ -119,7 +119,7 @@ class DefaultProviderSelectorTest {
 	@Test
 	void findsTheWinnerAmongCandidates() {
 		ProviderSelection selection = selector.claim(ProviderSelection.empty(), List.of(
-				ProviderClaim.of("alpha", ProviderClaimOrigin.ENTRYPOINT),
+				ProviderClaim.of("alpha", ProviderClaimOrigin.HOSTNAME),
 				ProviderClaim.of("beta", ProviderClaimOrigin.NAME_MATCH)
 		));
 

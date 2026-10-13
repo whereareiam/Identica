@@ -57,7 +57,7 @@ class RestorePrepareStatePhaseTest {
 		PrepareContextItem handshake = new PrepareContextItem();
 		handshake.setSelection(selector.claim(ProviderSelection.empty(), List.of(
 				ProviderClaim.verified("alpha", "alpha-proof"),
-				ProviderClaim.of("beta", ProviderClaimOrigin.ENTRYPOINT)
+				ProviderClaim.of("beta", ProviderClaimOrigin.HOSTNAME)
 		)));
 		handshake.setPreferredLink(link);
 		handshake.setJourneyMode(JourneyMode.SEAMLESS);

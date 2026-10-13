@@ -155,6 +155,26 @@ public final class Administrator {
 		return this;
 	}
 
+	/**
+	 * Renames an account by hand and expects the proxy to confirm the new username.
+	 */
+	public Administrator renamesUsername(String target, String username) {
+		run("identica admin username rename " + target + " " + username, filled(rename().getSuccess(), Map.of("username", username)));
+		return this;
+	}
+
+	/**
+	 * Tries to rename an account by hand to a username another account holds, and expects the proxy to refuse.
+	 */
+	public Administrator cannotRenameUsernameTo(String target, String username) {
+		run("identica admin username rename " + target + " " + username, filled(rename().getTaken(), Map.of("username", username)));
+		return this;
+	}
+
+	private Messages.Commands.Admin.Username.Rename rename() {
+		return configured.identica().getCommands().getAdmin().getUsername().getRename();
+	}
+
 	private Messages.Commands.Admin.Username.Duplicates duplicates() {
 		return configured.identica().getCommands().getAdmin().getUsername().getDuplicates();
 	}

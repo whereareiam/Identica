@@ -226,17 +226,41 @@ public class MessagesCommandDefaults {
 				"{entries}",
 				" ",
 				"  <gray>Each account still logs in through its own provider.</gray>",
-				"  <gray>To leave a username to one account, delete the others</gray>",
-				"  <gray>with <white>/identica admin delete</white> and their UUID.</gray>",
+				"  <gray>To leave a username to one account, rename the others</gray>",
+				"  <gray>with <white>/identica admin username rename</white> and their UUID.</gray>",
 				" "
 		));
 		duplicates.setGroup("   <dark_gray>▪</dark_gray> <green>{username}</green> <gray>({count} accounts)</gray>");
-		duplicates.setEntry("     <gray><click:run_command:/identica admin delete {uniqueId}>[{uniqueId}]</click></gray> <white>{username}</white>\n"
+		duplicates.setEntry("     <gray><click:suggest_command:'/identica admin username rename {uniqueId} '>[{uniqueId}]</click></gray> <white>{username}</white>\n"
 				+ "       <white>Providers: <green>{providers}</green> <gray>| <white>Last seen: <green>{lastSeen}");
 		duplicates.setEmpty("{prefix}<white>No two accounts share a username.</white>");
 
+		Messages.Commands.Admin.Username.Rename rename = new Messages.Commands.Admin.Username.Rename();
+		rename.setNotFound("{prefix}<white>No account found for <gray>{target}</gray>.</white>");
+		Messages.Commands.Admin.Clear.Multiple multiple = new Messages.Commands.Admin.Clear.Multiple();
+		multiple.setBody(List.of(
+				" ",
+				" <green><bold>Identica</bold>",
+				" ",
+				"  <white>Found <gray>{count}</gray> accounts for</white>",
+				"  <white>username <gray>{target}</gray></white>",
+				" ",
+				"  <white>Matches:</white>",
+				"{entries}",
+				" "
+		));
+		Messages.Commands.EntryFormat entryFormat = new Messages.Commands.EntryFormat();
+		entryFormat.setFormat("  <click:suggest_command:'/{command} {uniqueId} '>▪ <gray>{uniqueId}</gray>: <green>{username}</green></click>");
+		entryFormat.setEmptyFormat("  <click:suggest_command:'/{command} {uniqueId} '>▪ <gray>{uniqueId}</gray></click>");
+		multiple.setEntry(entryFormat);
+		rename.setMultiple(multiple);
+		rename.setInvalid("{prefix}<white><gray>{username}</gray> is not a username: use 3 to 16 letters, digits or underscores.</white>");
+		rename.setTaken("{prefix}<white>Account <gray>{holder}</gray> holds the username <gray>{username}</gray> already.</white>");
+		rename.setSuccess("{prefix}<white>Renamed <gray>{previous}</gray> to <green>{username}</green> [<gray>{uniqueId}</gray>]. Identica keeps this name until it is renamed by hand again.</white>");
+
 		Messages.Commands.Admin.Username username = new Messages.Commands.Admin.Username();
 		username.setDuplicates(duplicates);
+		username.setRename(rename);
 
 		return username;
 	}

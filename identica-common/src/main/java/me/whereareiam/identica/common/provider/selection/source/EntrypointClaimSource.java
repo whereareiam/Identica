@@ -32,6 +32,6 @@ public class EntrypointClaimSource implements ProviderClaimSource {
 		ResolvedEntrypoint entrypoint = providerOperations.resolveEntrypoint(origin.getHost(), port);
 		if (entrypoint == null) return List.of();
 
-		return List.of(ProviderClaim.of(entrypoint.getProviderId(), ProviderClaimOrigin.ENTRYPOINT));
+		return List.of(ProviderClaim.of(entrypoint.getProviderId(), ProviderClaimOrigin.HOSTNAME));
 	}
 }

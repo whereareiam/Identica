@@ -5,7 +5,7 @@ description: Premium account authentication with optional runtime feature integr
 
 The official `premium` provider authenticates Minecraft premium accounts. Install it using the [installation guide](../../../installation/normal/index.mdx), enable it in [Providers](../../../configuration/providers/index.mdx), and configure its [provider settings](./configuration/settings/index.mdx).
 
-Premium declares `ProviderTrait.AUTHORITATIVE_USERNAME`. Identica follows its verified username, subject to manual authority and conflict policy; this identity behavior is not a feature toggle. See [Username authority](../../../configuration/identity/username/index.mdx).
+Premium declares the `OWNED_USERNAME` guarantee. Identica follows its verified username unless an administrator set the name by hand, and the default [username conflict rules](../../../configuration/identity/username/index.mdx#default-rules) give a premium owner the name a Credential account holds; this identity behavior is not a feature toggle.
 
 Premium supports recognition, verification, restrictions, and sentinel checks. Configure shared defaults and its `providers[].features` overrides to choose which behavior applies.
 

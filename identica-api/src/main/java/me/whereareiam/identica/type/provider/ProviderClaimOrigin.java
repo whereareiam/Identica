@@ -22,9 +22,9 @@ public enum ProviderClaimOrigin {
 	ACCOUNT_LINK,
 
 	/**
-	 * The connection arrived through one of the provider's entrypoint hostnames.
+	 * The connection arrived through one of the hostnames the provider lists as its {@code entrypoints}.
 	 */
-	ENTRYPOINT,
+	HOSTNAME,
 
 	/**
 	 * The provider verified, for this connection, that the client owns its subject, such as through an online login.

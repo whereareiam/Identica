@@ -50,7 +50,7 @@ class PremiumHandshakePolicyTest {
 	private static final Set<ProviderClaimOrigin> ENTRYPOINT_OR_STRONGER = Set.of(
 			ProviderClaimOrigin.MIGRATION,
 			ProviderClaimOrigin.ACCOUNT_LINK,
-			ProviderClaimOrigin.ENTRYPOINT
+			ProviderClaimOrigin.HOSTNAME
 	);
 
 	@Mock
@@ -66,7 +66,7 @@ class PremiumHandshakePolicyTest {
 
 	@BeforeEach
 	void setUp() {
-		lenient().when(providerSelector.isAtLeast(any(), eq(ProviderClaimOrigin.ENTRYPOINT))).thenAnswer(invocation ->
+		lenient().when(providerSelector.isAtLeast(any(), eq(ProviderClaimOrigin.HOSTNAME))).thenAnswer(invocation ->
 				ENTRYPOINT_OR_STRONGER.contains(invocation.getArgument(0, ProviderClaimOrigin.class)));
 		policy = new PremiumHandshakePolicy(
 				new PremiumDetector(profileLookup, () -> settings),
@@ -98,7 +98,7 @@ class PremiumHandshakePolicyTest {
 	@DisplayName("Asks for a premium login when Premium won the selection with its hostname")
 	@Test
 	void premiumEntrypointForcesPremiumHandshake() {
-		HandshakeDecision decision = evaluate(request(null, selection("premium", ProviderClaimOrigin.ENTRYPOINT), null, JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(null, selection("premium", ProviderClaimOrigin.HOSTNAME), null, JourneyMode.SEAMLESS));
 
 		assertEquals(Optional.of(true), forcesOnline(decision));
 		verify(profileLookup, never()).findProfileId(any());

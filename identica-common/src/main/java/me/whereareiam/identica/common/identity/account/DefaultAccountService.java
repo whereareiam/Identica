@@ -19,9 +19,12 @@ import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.model.SessionCloseRequest;
 import me.whereareiam.identica.model.config.Settings;
 import me.whereareiam.identica.model.identity.Account;
+import me.whereareiam.identica.model.identity.username.UsernameWriteResult;
+import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import me.whereareiam.identica.model.identity.AccountOperationRequest;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.List;
@@ -50,8 +53,12 @@ public class DefaultAccountService implements AccountService {
 	}
 
 	@Override
-	public @NotNull Account create(@NotNull Account account) {
-		return accountPersistenceService.create(account);
+	public @NotNull UsernameWriteResult create(
+			@NotNull Account account,
+			@NotNull AccountUsernameSource source,
+			@Nullable String providerId
+	) {
+		return accountPersistenceService.create(account, source, providerId);
 	}
 
 	@Override

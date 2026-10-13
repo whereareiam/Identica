@@ -6,6 +6,10 @@ import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.Reloadable;
 import me.whereareiam.identica.common.config.provider.UsernameConflictsProvider;
 import me.whereareiam.identica.common.config.provider.UsernameMessagesProvider;
+import me.whereareiam.identica.common.identity.username.outcome.RefuseOutcome;
+import me.whereareiam.identica.common.identity.username.outcome.RenameArrivingOutcome;
+import me.whereareiam.identica.common.identity.username.outcome.RenameHolderOutcome;
+import me.whereareiam.identica.conflict.ConflictOutcome;
 import me.whereareiam.identica.conflict.ConflictService;
 import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
 import me.whereareiam.identica.lifecycle.StartupPhase;
@@ -14,17 +18,12 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-/**
- * Loads the username documents and registers the username conflict type, undoing both on shutdown, and warns about
- * usernames that several accounts share.
- */
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public final class UsernameLifecycle implements RuntimeLifecycle {
 	private final Registry<Reloadable> reloadables;
 	private final UsernameConflictsProvider conflictsProvider;
 	private final UsernameMessagesProvider messagesProvider;
 	private final ConflictService conflicts;
-	private final UsernameConflictType conflictType;
 	private final UsernameDuplicateWarning duplicateWarning;
 	private final Deque<Runnable> cleanup = new ArrayDeque<>();
 
@@ -38,8 +37,10 @@ public final class UsernameLifecycle implements RuntimeLifecycle {
 		cleanup.addFirst(() -> reloadables.unregister(conflictsProvider));
 		cleanup.addFirst(() -> reloadables.unregister(messagesProvider));
 		conflictsProvider.get();
-		cleanup.addFirst(() -> conflicts.unregister(conflictType));
-		conflicts.register(conflictType);
+		register(new RefuseOutcome());
+		register(new RenameArrivingOutcome());
+		register(new RenameHolderOutcome());
+
 		duplicateWarning.warn();
 	}
 
@@ -55,5 +56,10 @@ public final class UsernameLifecycle implements RuntimeLifecycle {
 			}
 		}
 		if (failure != null) throw failure;
+	}
+
+	private void register(@NotNull ConflictOutcome<?, ?, ?> outcome) {
+		cleanup.addFirst(() -> conflicts.unregister(outcome));
+		conflicts.register(outcome);
 	}
 }

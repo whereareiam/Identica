@@ -7,4 +7,4 @@ The official `credential` provider supplies credential registration, authenticat
 
 Credential supports recognition, verification, restrictions, and provider-owned sentinel checks. Configure shared defaults and its `providers[].features` overrides to choose which behavior applies. Its detailed brute-force policy remains in Credential's settings.
 
-Credential does not declare authoritative usernames. Configuration cannot grant that identity trait.
+Credential does not declare the `OWNED_USERNAME` guarantee: its players choose their usernames, so a name another account holds is refused under the default [username conflict rules](../../../configuration/identity/username/index.mdx#default-rules). Configuration cannot grant a guarantee.

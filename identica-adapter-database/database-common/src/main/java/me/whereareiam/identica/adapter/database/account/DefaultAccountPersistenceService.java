@@ -18,10 +18,13 @@ import me.whereareiam.identica.event.account.AccountLifecycleEvent;
 import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.identity.Account;
+import me.whereareiam.identica.model.identity.username.UsernameWriteResult;
+import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import me.whereareiam.identica.persistence.AccountPersistenceService;
 import me.whereareiam.identica.type.event.EventOrder;
 import org.jdbi.v3.core.Jdbi;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Optional;
@@ -82,28 +85,28 @@ public class DefaultAccountPersistenceService implements AccountPersistenceServi
 	}
 
 	/**
-	 * Creates an account with its username in one transaction. The username holds its key; when an older account
-	 * holds that key already, the account shares its username with that account, as accounts of a provider that
-	 * vouches for its usernames may, and is listed among the duplicate usernames.
+	 * Creates an account with its username in one transaction. When another row holds the username's key, the
+	 * transaction is rolled back and the result names that row's account.
 	 */
 	@Override
-	public @NotNull Account create(@NotNull Account account) {
-		UsernameEntity username = UsernameMapper.toEntity(account);
+	public @NotNull UsernameWriteResult create(
+			@NotNull Account account,
+			@NotNull AccountUsernameSource source,
+			@Nullable String providerId
+	) {
+		UsernameEntity username = UsernameMapper.toEntity(account, source, providerId);
+		boolean created = jdbi.get().inTransaction(handle -> {
+			accounts.get().insert(AccountMapper.toEntity(account));
+			if (usernames.get().insertIfAbsent(username)) return true;
 
-		try {
-			jdbi.get().useTransaction(handle -> {
-				accounts.get().insert(AccountMapper.toEntity(account));
-				if (usernames.get().insertIfAbsent(username)) return;
+			handle.rollback();
+			return false;
+		});
+		if (created) return UsernameWriteResult.written();
 
-				Logger.warn("Account %s shares the username %s with an older account", account.getUniqueId(), account.getUsername());
-				usernames.get().insert(username.toBuilder().usernameKey(null).build());
-			});
-
-			return account;
-		} catch (Exception e) {
-			Logger.warn(e, "Failed to create account %s", account.getUniqueId());
-			throw e;
-		}
+		return usernameRepository.get().findByUsernameKey(username.getUsernameKey())
+				.map(holder -> UsernameWriteResult.taken(holder.getUniqueId()))
+				.orElseThrow(() -> new IllegalStateException("Account " + account.getUniqueId() + " could not take the username " + account.getUsername()));
 	}
 
 	@Override

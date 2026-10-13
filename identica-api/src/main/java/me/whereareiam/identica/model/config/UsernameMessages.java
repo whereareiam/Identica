@@ -78,7 +78,7 @@ public class UsernameMessages implements MessageDocument {
 		}
 
 		/**
-		 * Username persistence, conflict-denial, and entrypoint-selection messages.
+		 * Username persistence and conflict messages.
 		 */
 		@Getter
 		@Setter
@@ -91,24 +91,19 @@ public class UsernameMessages implements MessageDocument {
 			 */
 			private @NotNull List<String> persistenceFailed;
 			/**
-			 * Fallback message lines when username conflict resolution denies the incoming player.
-			 *
-			 * @return configured message lines
-			 */
-			private @NotNull List<String> conflictDenied;
-			/**
-			 * Message lines shown when a player registers a username that another account holds without regard to case,
-			 * through a provider that does not vouch for its usernames.
+			 * Message lines shown when a player is refused because another account holds their username, or because
+			 * no free renamed username could be made, with the {@code username} placeholder.
 			 *
 			 * @return configured message lines
 			 */
 			private @NotNull List<String> taken;
 			/**
-			 * Message lines requesting an entrypoint, supporting incomingProvider, existingProvider, incomingHost, and existingHost placeholders.
+			 * Disconnect message lines for a player whose username was given to the player who owns it, with the
+			 * {@code username} placeholder for the given username and {@code renamed} for the player's new one.
 			 *
 			 * @return configured message lines
 			 */
-			private @NotNull List<String> entrypointRequired;
+			private @NotNull List<String> holderReplaced;
 		}
 	}
 }

@@ -16,7 +16,7 @@ public class UsernameMessagesDefaults implements DefaultsProvider<UsernameMessag
 		prepare.setFailed(List.of(
 				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
 				"",
-				"<white>Unable to prepare authoritative username.</white>",
+				"<white>Unable to prepare your username.</white>",
 				"<white>Please contact a server administrator.</white>",
 				"",
 				"<dark_gray>discord.arcadeya.com"
@@ -41,14 +41,6 @@ public class UsernameMessagesDefaults implements DefaultsProvider<UsernameMessag
 				"",
 				"<dark_gray>discord.arcadeya.com"
 		));
-		policy.setConflictDenied(List.of(
-				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
-				"",
-				"<white>That username is currently unavailable.</white>",
-				"<white>Please contact a server administrator if this looks wrong.</white>",
-				"",
-				"<dark_gray>discord.arcadeya.com"
-		));
 		policy.setTaken(List.of(
 				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
 				"",
@@ -57,11 +49,11 @@ public class UsernameMessagesDefaults implements DefaultsProvider<UsernameMessag
 				"",
 				"<dark_gray>discord.arcadeya.com"
 		));
-		policy.setEntrypointRequired(List.of(
+		policy.setHolderReplaced(List.of(
 				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
 				"",
-				"<white>This username is already active through another provider.</white>",
-				"<white>Use the correct entrypoint for <green>{existingProvider}</green> or <green>{incomingProvider}</green>.</white>",
+				"<white>The owner of the username <green>{username}</green> has joined.</white>",
+				"<white>Join again to play as <green>{renamed}</green>.</white>",
 				"",
 				"<dark_gray>discord.arcadeya.com"
 		));

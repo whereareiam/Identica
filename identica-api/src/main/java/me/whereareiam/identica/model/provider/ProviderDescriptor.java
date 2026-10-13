@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import me.whereareiam.identica.model.provider.dependency.ProviderLibraries;
-import me.whereareiam.identica.type.provider.ProviderTrait;
+import me.whereareiam.identica.type.provider.ProviderGuarantee;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,7 +32,7 @@ public class ProviderDescriptor {
 	/**
 	 * Identity guarantees declared by the provider implementation.
 	 */
-	private @NotNull Set<ProviderTrait> traits = Set.of();
+	private @NotNull Set<ProviderGuarantee> guarantees = Set.of();
 	/**
 	 * Feature integrations supported by the provider, independently of enablement.
 	 */
@@ -45,11 +45,11 @@ public class ProviderDescriptor {
 	/**
 	 * Checks a guarantee supplied by this provider implementation.
 	 *
-	 * @param trait identity trait to check
+	 * @param guarantee guarantee to check
 	 * @return whether the provider supplies the guarantee
 	 */
-	public boolean hasTrait(@NotNull ProviderTrait trait) {
-		return traits.contains(trait);
+	public boolean hasGuarantee(@NotNull ProviderGuarantee guarantee) {
+		return guarantees.contains(guarantee);
 	}
 
 	/**

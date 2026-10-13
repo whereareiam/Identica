@@ -36,7 +36,8 @@ public final class PersistenceServices {
 		return new DefaultAccountUsernamePersistenceService(
 				Providers.of(jdbi),
 				Providers.of(EntityAccess.of(jdbi, Dialectica.entity(UsernameEntity.class))),
-				Providers.of(EntityAccess.of(jdbi, Dialectica.entity(UsernameHistoryEntity.class)))
+				Providers.of(EntityAccess.of(jdbi, Dialectica.entity(UsernameHistoryEntity.class))),
+				Providers.of(jdbi.onDemand(UsernameRepository.class))
 		);
 	}
 

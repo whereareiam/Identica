@@ -2,7 +2,7 @@ package me.whereareiam.identica.provider;
 
 import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.provider.resolver.ProviderResolver;
-import me.whereareiam.identica.type.provider.ProviderTrait;
+import me.whereareiam.identica.type.provider.ProviderGuarantee;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -31,20 +31,20 @@ public interface ProviderManager {
 	List<InternalProvider> getProviders();
 
 	/**
-	 * Finds providers that advertise all requested traits.
+	 * Finds providers that declare all requested guarantees.
 	 *
-	 * @param traits required traits
+	 * @param guarantees required guarantees
 	 * @return immutable list of matching providers ordered by priority
 	 */
-	@NotNull List<InternalProvider> findProvidersByTraits(@NotNull ProviderTrait... traits);
+	@NotNull List<InternalProvider> findProvidersByGuarantees(@NotNull ProviderGuarantee... guarantees);
 
 	/**
 	 * Finds the highest priority provider that advertises all requested traits.
 	 *
-	 * @param traits required traits
+	 * @param guarantees required guarantees
 	 * @return matching provider or {@code null} when none match
 	 */
-	@Nullable InternalProvider findProviderByTraits(@NotNull ProviderTrait... traits);
+	@Nullable InternalProvider findProviderByGuarantees(@NotNull ProviderGuarantee... guarantees);
 
 	/**
 	 * Finds providers that support all requested features.

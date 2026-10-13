@@ -21,8 +21,8 @@ import java.util.OptionalInt;
  * one is added.
  * <p>
  * The core's migrations cover its documents: the settings, engine, routing, messages, commands, persistence and
- * replication documents, {@code providers/providers} and {@code providers/conflicts}, and the username documents
- * under {@code identity/username/}. On startup the ones an installation has not seen yet run in order, before any
+ * replication documents, {@code providers/providers}, and the username documents under {@code identity/username/};
+ * {@code providers/conflicts} is gone, its last migration deletes it. On startup the ones an installation has not seen yet run in order, before any
  * document is loaded, followed by those of the compiled features. The number of the core's last one is kept as
  * {@code _version} at the top of the settings document.
  * <p>
@@ -72,6 +72,7 @@ public final class ConfigMigrations {
 				.migration(ConnectionLayoutMigration.VERSION, ConnectionLayoutMigration.NAME, new ConnectionLayoutMigration(extension))
 				.migration(ProviderFeaturesMigration.VERSION, ProviderFeaturesMigration.NAME, new ProviderFeaturesMigration(extension))
 				.migration(DocumentVersionsMigration.VERSION, DocumentVersionsMigration.NAME, new DocumentVersionsMigration(extension))
+				.migration(UsernameConflictRulesMigration.VERSION, UsernameConflictRulesMigration.NAME, new UsernameConflictRulesMigration(extension))
 				.build();
 	}
 

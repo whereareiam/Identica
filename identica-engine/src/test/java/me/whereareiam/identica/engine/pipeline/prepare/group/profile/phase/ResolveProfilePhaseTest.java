@@ -58,7 +58,7 @@ class ResolveProfilePhaseTest {
 				.providerSubject("beta-subject")
 				.build());
 
-		PipelineState state = run(ProviderClaim.of("beta", ProviderClaimOrigin.ENTRYPOINT));
+		PipelineState state = run(ProviderClaim.of("beta", ProviderClaimOrigin.HOSTNAME));
 
 		ProviderContext provider = provider(state);
 		assertEquals("beta", provider.getProviderId());
@@ -69,7 +69,7 @@ class ResolveProfilePhaseTest {
 	@DisplayName("Continues with the winning provider without a subject when it resolves none")
 	@Test
 	void continuesWithoutASubjectWhenTheWinnerResolvesNone() {
-		PipelineState state = run(ProviderClaim.of("beta", ProviderClaimOrigin.ENTRYPOINT));
+		PipelineState state = run(ProviderClaim.of("beta", ProviderClaimOrigin.HOSTNAME));
 
 		ProviderContext provider = provider(state);
 		assertEquals("beta", provider.getProviderId());

@@ -158,9 +158,19 @@ Each `Journey` step checks both sides: what the player's client receives, and wh
 
 Use `Accounts` for players who already have an account.
 
+A player whose username Identica changes, such as an account a username conflict renamed, joins under another name than its client's. `.named(username)` tells the journey the name the proxy reports the player under from the next connection on, and `.playsAs(username)` expects the backend to see the player under it. `ProxyConfiguration.usernameConflicts()` changes the username conflict rules of a test network:
+
+```java
+holder.named("Steve_credential").rejoin()
+		.on(AUTH)
+		.login(PASSWORD)
+		.on(LOBBY)
+		.playsAs("Steve_credential");
+```
+
 The `auth` and `lobby` servers remember earlier tests: a player's position and inventory there belong to no test. Keep expectations on what the proxy and the player's client report, and do not rely on the state of a backend world.
 
-A message expectation names the message through Identica's own configuration models: `m.identica()` is `Messages`, `m.credential()` is `CredentialMessages`, `m.premium()` is `PremiumMessages`, `m.sentinel()` is `SentinelMessages`, `m.verification()` is `VerificationMessages`, `m.joinRestriction()` is `JoinRestrictionMessages` and `m.example()` is the example provider's `ExampleMessages`. The models are read from the files the running proxy generated, so the expectation follows the configured text, and a renamed or removed message stops the tests from compiling. Formatting tags are ignored and placeholders match any text. Chain `.with(...)` and `.without(...)` after `.sees(...)` to check what else the same message contains. Do not copy message text into a test.
+A message expectation names the message through Identica's own configuration models: `m.identica()` is `Messages`, `m.username()` is `UsernameMessages`, `m.credential()` is `CredentialMessages`, `m.premium()` is `PremiumMessages`, `m.sentinel()` is `SentinelMessages`, `m.verification()` is `VerificationMessages`, `m.joinRestriction()` is `JoinRestrictionMessages` and `m.example()` is the example provider's `ExampleMessages`. The models are read from the files the running proxy generated, so the expectation follows the configured text, and a renamed or removed message stops the tests from compiling. Formatting tags are ignored and placeholders match any text. Chain `.with(...)` and `.without(...)` after `.sees(...)` to check what else the same message contains. Do not copy message text into a test.
 
 A player reads what a message hands out, such as a secret or a list of codes, with `.reads(placeholder)` after the `.sees(...)` that matched it. `Authenticator` stands in for an authenticator app, computing the codes for a secret the player read:
 

@@ -54,8 +54,8 @@ When changing behavior:
 - For persistence, replication, or command infrastructure, start in the relevant `identica-adapter-*` module. For an owner's tables and their migrations, start with its `DatabaseSchema` and the contracts in `identica-adapter-database/database-api`.
 - For proxy-specific behavior, bootstrap flow, or listeners, start in `identica-platform/type/*`. For what a platform has to provide, start in `identica-platform/common`.
 - For credential-specific or premium-specific behavior, start in `identica-provider/*`.
-- For username behavior (synchronization, uniqueness, conflict rules), start in `identica-api` (`identity/username`, `model/identity/username`) and `identica-common` (`identity/username`). Its phases are in `identica-engine`, and its tables are in `identica-adapter-database/database-common`. Providers declare identity guarantees as `ProviderTrait`s in `identica-api`.
-- For optional behavior, feature-specific APIs, settings, persistence, or pipeline contributions, start in `identica-feature/*`. Core owns the `IdenticaFeature` contract and startup lifecycle; providers declare identity traits and supported feature integrations.
+- For username behavior (synchronization, uniqueness, conflict rules), start in `identica-api` (`identity/username`, `model/identity/username`) and `identica-common` (`identity/username`). Its phases are in `identica-engine`, and its tables are in `identica-adapter-database/database-common`. Providers declare identity guarantees as `ProviderGuarantee`s in `identica-api`; conflict rules and outcomes go through `ConflictService` (`identica-api` `conflict`, matching in `identica-common` `conflict`).
+- For optional behavior, feature-specific APIs, settings, persistence, or pipeline contributions, start in `identica-feature/*`. Core owns the `IdenticaFeature` contract and startup lifecycle; providers declare identity guarantees and supported feature integrations.
 - For build behavior or packaging conventions, check `build-logic/`.
 - For user-visible behavior changes, check the matching pages under `docs/content/`.
 

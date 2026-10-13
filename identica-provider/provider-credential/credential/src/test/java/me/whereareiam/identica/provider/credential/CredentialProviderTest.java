@@ -32,7 +32,7 @@ class CredentialProviderTest {
 	@Test
 	void declaresOptionalParticipationAndOnlyCryptographyLibraries() {
 		CredentialProvider provider = new CredentialProvider();
-		assertTrue(provider.traits().isEmpty());
+		assertTrue(provider.guarantees().isEmpty());
 
 		assertEquals(Set.of("verification", "recognition", "restriction", "restriction-join", "sentinel"), provider.supportedFeatures());
 		assertEquals(List.of("bcrypt", "argon2-jvm"), provider.libraries().getLibraries().stream().map(ProviderLibrary::getArtifactId).toList());

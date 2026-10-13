@@ -6,16 +6,17 @@ import me.whereareiam.identica.common.config.provider.UsernameConflictsProvider;
 import me.whereareiam.identica.common.config.provider.UsernameMessagesProvider;
 import me.whereareiam.identica.common.identity.account.DefaultAccountService;
 import me.whereareiam.identica.common.identity.account.DefaultRegistrationAccountService;
-import me.whereareiam.identica.common.identity.username.UsernameConflictContextFactory;
-import me.whereareiam.identica.common.identity.username.UsernameConflictResolver;
-import me.whereareiam.identica.common.identity.username.UsernameConflictType;
+import me.whereareiam.identica.common.identity.username.DefaultUsernameAssigner;
 import me.whereareiam.identica.common.identity.username.UsernameLifecycle;
+import me.whereareiam.identica.common.identity.username.UsernameOutcomeCheck;
+import me.whereareiam.identica.common.conflict.ConflictDocument;
 import me.whereareiam.identica.common.migration.DefaultMigrationService;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.account.AccountService;
 import me.whereareiam.identica.identity.account.RegistrationAccountService;
-import me.whereareiam.identica.identity.username.UsernameConflictHandler;
+import me.whereareiam.identica.identity.username.UsernameAssigner;
 import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
+import me.whereareiam.identica.model.config.UsernameConflicts;
 import me.whereareiam.identica.model.config.UsernameMessages;
 import me.whereareiam.identica.service.MigrationService;
 
@@ -30,10 +31,11 @@ public class IdentityConfiguration extends AbstractModule {
 		bind(UsernameConflictsProvider.class).asEagerSingleton();
 		bind(UsernameMessagesProvider.class).asEagerSingleton();
 		bind(UsernameMessages.class).toProvider(UsernameMessagesProvider.class);
-		bind(UsernameConflictContextFactory.class).asEagerSingleton();
-		bind(UsernameConflictResolver.class).asEagerSingleton();
-		bind(UsernameConflictHandler.class).to(UsernameConflictResolver.class);
-		bind(UsernameConflictType.class).asEagerSingleton();
-		Multibinder.newSetBinder(binder(), RuntimeLifecycle.class).addBinding().to(UsernameLifecycle.class);
+		bind(UsernameConflicts.class).toProvider(UsernameConflictsProvider.class);
+		bind(UsernameAssigner.class).to(DefaultUsernameAssigner.class).asEagerSingleton();
+		Multibinder<RuntimeLifecycle> lifecycles = Multibinder.newSetBinder(binder(), RuntimeLifecycle.class);
+		lifecycles.addBinding().to(UsernameLifecycle.class);
+		lifecycles.addBinding().to(UsernameOutcomeCheck.class);
+		Multibinder.newSetBinder(binder(), ConflictDocument.class).addBinding().to(UsernameConflictsProvider.class);
 	}
 }

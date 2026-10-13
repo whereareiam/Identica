@@ -154,7 +154,7 @@ class EnrollmentStepTest {
 	@DisplayName("Skips the choice for an offered provider its hostname selected")
 	@Test
 	void skipsTheChoiceForAnOfferedEntrypointProvider() {
-		RegistrationContext context = context(ProviderClaim.of("beta", ProviderClaimOrigin.ENTRYPOINT));
+		RegistrationContext context = context(ProviderClaim.of("beta", ProviderClaimOrigin.HOSTNAME));
 		offer("alpha", "beta");
 
 		StepResult result = step(settings(true)).execute(context).join();
@@ -167,7 +167,7 @@ class EnrollmentStepTest {
 	@Test
 	void skipsTheChoiceForAnOfferedLinkedProvider() {
 		RegistrationContext context = context(
-				ProviderClaim.of("alpha", ProviderClaimOrigin.ENTRYPOINT),
+				ProviderClaim.of("alpha", ProviderClaimOrigin.HOSTNAME),
 				ProviderClaim.of("beta", ProviderClaimOrigin.ACCOUNT_LINK)
 		);
 		offer("alpha", "beta");
@@ -181,7 +181,7 @@ class EnrollmentStepTest {
 	@DisplayName("Shows the choice when the hostname selected a provider that is not offered")
 	@Test
 	void showsTheChoiceWhenTheEntrypointProviderIsNotOffered() {
-		RegistrationContext context = context(ProviderClaim.of("gamma", ProviderClaimOrigin.ENTRYPOINT));
+		RegistrationContext context = context(ProviderClaim.of("gamma", ProviderClaimOrigin.HOSTNAME));
 		offer("alpha", "beta");
 
 		StepResult result = step(settings(true)).execute(context).join();

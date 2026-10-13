@@ -1,5 +1,7 @@
 package me.whereareiam.identica.testing.environment;
 
+import me.whereareiam.identica.common.config.defaults.UsernameConflictsDefaults;
+import me.whereareiam.identica.model.config.UsernameConflicts;
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.anvil.environment.yggdrasil.YggdrasilMock;
 import me.whereareiam.configura.Config;
@@ -70,6 +72,7 @@ public final class ProxyConfiguration {
 	private static final String RECOGNITION = "features/recognition/settings.yml";
 	private static final String VERIFICATION = "features/verification/settings.yml";
 	private static final String JOIN_RESTRICTION = "features/restriction/join/settings.yml";
+	private static final String USERNAME_CONFLICTS = "identity/username/conflicts.yml";
 
 	private final String name;
 	private final Map<String, Object> documents = new LinkedHashMap<>();
@@ -169,6 +172,14 @@ public final class ProxyConfiguration {
 	 */
 	public VerificationSettings verification() {
 		return (VerificationSettings) documents.computeIfAbsent(VERIFICATION, ignored -> new VerificationDefaults().supply(new VerificationSettings()));
+	}
+
+	/**
+	 * Returns the username conflict rules, starting from their defaults. The proxy only gets this file from the
+	 * test once a test asks for it.
+	 */
+	public UsernameConflicts usernameConflicts() {
+		return (UsernameConflicts) documents.computeIfAbsent(USERNAME_CONFLICTS, ignored -> new UsernameConflictsDefaults().supply(new UsernameConflicts()));
 	}
 
 	/**

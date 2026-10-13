@@ -7,6 +7,7 @@ import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * The username queries beyond reading and writing the username of one account, which
@@ -32,6 +33,12 @@ public interface UsernameRepository {
 				.filter(row -> row.getUsernameKey() != null || UsernameMapper.usernameKey(row.getUsername()).equals(usernameKey))
 				.toList();
 	}
+
+	/**
+	 * Finds the row that holds a username key.
+	 */
+	@SqlQuery("SELECT * FROM identica_account_usernames WHERE username_key = :usernameKey")
+	Optional<UsernameEntity> findByUsernameKey(@Bind("usernameKey") String usernameKey);
 
 	/**
 	 * Finds the usernames without a key, because an older account holds the key of each.

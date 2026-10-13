@@ -63,7 +63,7 @@ class ConfigMigrationsTest {
 		MigrationReport report = start();
 
 		assertTrue(report.isEmpty());
-		assertTrue(read("settings").startsWith("_version: 7\nlevel: 2\n"), read("settings"));
+		assertTrue(read("settings").startsWith("_version: 8\nlevel: 2\n"), read("settings"));
 		assertFalse(read("engine").contains("_version"));
 	}
 
@@ -75,8 +75,8 @@ class ConfigMigrationsTest {
 
 		MigrationReport report = migrate();
 
-		assertEquals(List.of(1, 2, 3, 4, 5, 6, 7), versions(report));
-		assertEquals("_version: 7\nlevel: 3\nsessions:\n  concurrencyPolicy: \"REJECT_NEW\"\n", read("settings"));
+		assertEquals(List.of(1, 2, 3, 4, 5, 6, 7, 8), versions(report));
+		assertEquals("_version: 8\nlevel: 3\nsessions:\n  concurrencyPolicy: \"REJECT_NEW\"\n", read("settings"));
 		assertEquals(EXISTING_ENGINE, read("engine"));
 		assertEquals(EXISTING_SETTINGS, Files.readString(dataPath.resolve(".strata/backup/identica.config/v1/settings.yml")));
 	}
@@ -89,7 +89,7 @@ class ConfigMigrationsTest {
 		start();
 
 		String settings = read("settings");
-		assertTrue(settings.startsWith("_version: 7\nlevel: 3\n"), settings);
+		assertTrue(settings.startsWith("_version: 8\nlevel: 3\n"), settings);
 		assertTrue(settings.contains("concurrencyPolicy: \"REJECT_NEW\""), settings);
 		assertTrue(settings.contains("identity:"), settings);
 	}
@@ -111,11 +111,11 @@ class ConfigMigrationsTest {
 	@DisplayName("A version written by a newer build refuses the start and changes nothing")
 	@Test
 	void newerVersionRefusesStart() throws IOException {
-		write("settings", "_version: 8\nlevel: 1\n");
+		write("settings", "_version: 9\nlevel: 1\n");
 
 		assertThrows(MigrationVersionException.class, this::migrate);
 
-		assertEquals("_version: 8\nlevel: 1\n", read("settings"));
+		assertEquals("_version: 9\nlevel: 1\n", read("settings"));
 	}
 
 	@DisplayName("A version in a document the migrations do not use survives being rewritten")

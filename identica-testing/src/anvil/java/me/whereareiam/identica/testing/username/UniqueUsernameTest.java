@@ -18,9 +18,9 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY;
 
 /**
  * Usernames are unique without regard to case, as Minecraft's are. A player who chooses a username, as a Credential
- * player does, cannot register one that another account holds in any case. A provider that vouches for its usernames,
- * as Premium does, is never refused: its player owns the name and gets an account that shares it, which
- * administrators find among the duplicate usernames.
+ * player does, cannot register one that another account holds in any case. A provider that owns its usernames, as
+ * Premium does, is not refused: its player gets the name, and the account that held it in another case is renamed,
+ * so no two accounts share it.
  */
 class UniqueUsernameTest {
 	private static final String PASSWORD = "Secret-123";
@@ -47,27 +47,30 @@ class UniqueUsernameTest {
 
 	@Test
 	@Identica(mode = JourneyMode.SEAMLESS, entrypoints = true)
-	void givesAPremiumOwnerAnAccountWhenACredentialAccountHoldsTheUsernameInAnotherCase(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+	void givesAPremiumOwnerTheUsernameACredentialAccountHoldsInAnotherCase(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		Journey holder = Accounts.credential(anvil, Client.offline("steve").through(Provider.CREDENTIAL.getEntrypoint()), PASSWORD);
 		SessionIdentity account = yggdrasil.register("Steve");
 
 		Journey owner = Journey.of(anvil, Client.premium(account).through(Provider.PREMIUM.getEntrypoint())).join()
 				.on(LOBBY)
 				.sees(m -> m.premium().getCompletion().getRegistration().getBody())
+				.playsAs("Steve")
 				.leave();
 
-		Administrator.at(anvil, PROXY).findsDuplicateUsername("steve");
+		Administrator.at(anvil, PROXY).findsNoDuplicateUsernames();
 
-		// Each account of the shared username logs in through its own provider.
-		holder.rejoin()
+		// Each account logs in through its own provider, the Credential one under its new name.
+		holder.named("steve_credential").rejoin()
 				.on(AUTH)
 				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
 				.login(PASSWORD)
 				.on(LOBBY)
 				.sees(m -> m.credential().getCompletion().getAuthentication().getBody())
+				.playsAs("steve_credential")
 				.leave();
 		owner.rejoin()
 				.on(LOBBY)
-				.sees(m -> m.premium().getCompletion().getAuthentication().getBody());
+				.sees(m -> m.premium().getCompletion().getAuthentication().getBody())
+				.playsAs("Steve");
 	}
 }

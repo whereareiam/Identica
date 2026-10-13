@@ -1,196 +1,152 @@
 package me.whereareiam.identica.common.conflict;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import me.whereareiam.identica.conflict.ConflictGuard;
-import me.whereareiam.identica.conflict.ConflictSubject;
-import me.whereareiam.identica.conflict.ConflictType;
-import me.whereareiam.identica.conflict.resolver.ConflictResolver;
-import me.whereareiam.identica.model.config.provider.Conflicts;
-import me.whereareiam.identica.model.conflict.ConflictAttributeKey;
-import me.whereareiam.identica.model.conflict.ConflictContext;
-import me.whereareiam.identica.model.conflict.ConflictResolution;
+import me.whereareiam.identica.conflict.ConflictOutcome;
+import me.whereareiam.identica.model.conflict.ConflictKind;
+import me.whereareiam.identica.model.conflict.ConflictSituation;
+import me.whereareiam.identica.model.identity.username.UsernameConflict;
+import me.whereareiam.identica.model.identity.username.UsernameConflictRule;
+import me.whereareiam.identica.model.conflict.NoSettings;
+import me.whereareiam.identica.model.identity.username.UsernameConflictDecision;
+import me.whereareiam.identica.type.identity.username.UsernameConflictTrigger;
+import me.whereareiam.identica.type.provider.ProviderClaimOrigin;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static me.whereareiam.identica.common.conflict.ConflictRules.NONE;
+import static me.whereareiam.identica.common.conflict.ConflictRules.OWNED;
+import static me.whereareiam.identica.common.conflict.ConflictRules.guarantees;
+import static me.whereareiam.identica.common.conflict.ConflictRules.providers;
+import static me.whereareiam.identica.common.conflict.ConflictRules.rule;
+import static me.whereareiam.identica.common.conflict.ConflictRules.situation;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Default Conflict Service")
 class DefaultConflictServiceTest {
-	private static final ConflictAttributeKey<String> SELECTOR = ConflictAttributeKey.string("selector");
+	private final DefaultConflictService service = new DefaultConflictService(Set::of);
+	private final ConflictSituation<UsernameConflictTrigger> ownedOverChosen =
+			situation("alpha", OWNED, "beta", NONE, UsernameConflictTrigger.FIRST_JOIN, ProviderClaimOrigin.NAME_MATCH);
 
-	@DisplayName("Conflict guards run before resolvers and can short-circuit resolution")
+	@DisplayName("A rule naming provider ids beats one naming guarantees, which beats one naming neither")
 	@Test
-	void guardRunsBeforeResolver() {
-		Conflicts conflicts = new Conflicts();
-		conflicts.getRules().put("username", rules(defaultRule(entry("test"))));
+	void prefersProviderIdsOverGuaranteesOverNothing() {
+		UsernameConflictRule fallback = rule("refuse");
+		UsernameConflictRule byGuarantees = guarantees(OWNED, NONE, "rename-holder");
+		UsernameConflictRule byProviders = providers(List.of("ALPHA"), List.of("beta"), "rename-arriving");
 
-		AtomicBoolean resolverCalled = new AtomicBoolean(false);
-		ConflictResolver resolver = resolver("test", resolverCalled, ConflictResolution.allow());
-		ConflictGuard guard = context -> ConflictResolution.deny("guarded");
-
-		DefaultConflictService service = new DefaultConflictService(() -> conflicts, Set.of(guard));
-		service.register(resolver);
-
-		ConflictResolution resolution = service.resolve(context("username"));
-		assertEquals(ConflictResolution.Decision.DENY, resolution.getDecision());
-		assertFalse(resolverCalled.get());
+		assertSame(byProviders, match(List.of(fallback, byGuarantees, byProviders)));
+		assertSame(byGuarantees, match(List.of(fallback, byGuarantees)));
+		assertSame(fallback, match(List.of(fallback)));
 	}
 
-	@DisplayName("Falls back to the default rule after case-specific resolvers pass")
+	@DisplayName("Among equally specific rules the first one in the list wins")
 	@Test
-	void fallsBackToDefaultRuleWhenCaseResolversPass() {
-		Conflicts conflicts = new Conflicts();
-		Conflicts.ConflictRules rules = new Conflicts.ConflictRules();
-		rules.setDefaultRule(defaultRule(entry("allow")));
+	void breaksTiesByOrder() {
+		UsernameConflictRule first = guarantees(OWNED, null, "rename-holder");
+		UsernameConflictRule second = guarantees(null, NONE, "refuse");
 
-		Conflicts.ConflictRules.ConflictRule caseRule = new Conflicts.ConflictRules.ConflictRule();
-		caseRule.setWhen(JsonNodeFactory.instance.objectNode().put("selector", "preferred"));
-		caseRule.setResolvers(List.of(entry("pass")));
-		rules.setCases(List.of(caseRule));
-
-		conflicts.getRules().put("username", rules);
-
-		AtomicBoolean passCalled = new AtomicBoolean(false);
-		AtomicBoolean allowCalled = new AtomicBoolean(false);
-		ConflictResolver passResolver = resolver("pass", passCalled, ConflictResolution.pass());
-		ConflictResolver allowResolver = resolver("allow", allowCalled, ConflictResolution.allow());
-
-		DefaultConflictService service = new DefaultConflictService(() -> conflicts, Set.of());
-		service.register(new TestConflictType());
-		service.register(passResolver);
-		service.register(allowResolver);
-
-		ConflictContext context = context("username");
-		context.putAttribute(SELECTOR, "preferred");
-
-		ConflictResolution resolution = service.resolve(context);
-		assertEquals(ConflictResolution.Decision.ALLOW, resolution.getDecision());
-		assertTrue(passCalled.get());
-		assertTrue(allowCalled.get());
+		assertSame(first, match(List.of(first, second)));
+		assertSame(second, match(List.of(second, first)));
 	}
 
-	@DisplayName("The first matching case wins")
+	@DisplayName("A trigger or the way the player arrived makes a rule more specific, and must match")
 	@Test
-	void firstMatchingCaseWins() {
-		Conflicts conflicts = new Conflicts();
-		Conflicts.ConflictRules rules = new Conflicts.ConflictRules();
-		rules.setDefaultRule(defaultRule(entry("default")));
+	void matchesTriggerAndArrival() {
+		UsernameConflictRule anyTrigger = guarantees(OWNED, NONE, "refuse");
+		UsernameConflictRule firstJoin = guarantees(OWNED, NONE, "rename-holder");
+		firstJoin.setTrigger(UsernameConflictTrigger.FIRST_JOIN);
+		UsernameConflictRule viaHostname = guarantees(OWNED, NONE, "rename-arriving");
+		viaHostname.setTrigger(UsernameConflictTrigger.FIRST_JOIN);
+		viaHostname.setArrivedVia(ProviderClaimOrigin.HOSTNAME);
 
-		Conflicts.ConflictRules.ConflictRule first = new Conflicts.ConflictRules.ConflictRule();
-		first.setWhen(JsonNodeFactory.instance.objectNode().put("selector", "preferred"));
-		first.setResolvers(List.of(entry("first")));
-
-		Conflicts.ConflictRules.ConflictRule second = new Conflicts.ConflictRules.ConflictRule();
-		second.setWhen(JsonNodeFactory.instance.objectNode().put("selector", "preferred"));
-		second.setResolvers(List.of(entry("second")));
-
-		rules.setCases(List.of(first, second));
-		conflicts.getRules().put("username", rules);
-
-		AtomicBoolean firstCalled = new AtomicBoolean(false);
-		AtomicBoolean secondCalled = new AtomicBoolean(false);
-		ConflictResolver firstResolver = resolver("first", firstCalled, ConflictResolution.allow());
-		ConflictResolver secondResolver = resolver("second", secondCalled, ConflictResolution.deny("denied"));
-
-		DefaultConflictService service = new DefaultConflictService(() -> conflicts, Set.of());
-		service.register(new TestConflictType());
-		service.register(firstResolver);
-		service.register(secondResolver);
-
-		ConflictContext context = context("username");
-		context.putAttribute(SELECTOR, "preferred");
-
-		ConflictResolution resolution = service.resolve(context);
-		assertEquals(ConflictResolution.Decision.ALLOW, resolution.getDecision());
-		assertTrue(firstCalled.get());
-		assertFalse(secondCalled.get());
+		assertSame(firstJoin, match(List.of(anyTrigger, viaHostname, firstJoin)));
+		ConflictSituation<UsernameConflictTrigger> throughHostname = ownedOverChosen.toBuilder().arrivedVia(ProviderClaimOrigin.HOSTNAME).build();
+		assertSame(viaHostname, service.match(List.of(anyTrigger, viaHostname, firstJoin), throughHostname).orElseThrow());
+		ConflictSituation<UsernameConflictTrigger> renamed = ownedOverChosen.toBuilder().trigger(UsernameConflictTrigger.PROVIDER_RENAME).build();
+		assertSame(anyTrigger, service.match(List.of(anyTrigger, viaHostname, firstJoin), renamed).orElseThrow());
 	}
 
+	@DisplayName("Guarantees match exactly: an empty list asks for a provider that guarantees nothing")
 	@Test
-	void usesTypeOwnedRulesUntilACentralOverrideIsConfigured() {
-		Conflicts configuration = new Conflicts();
-		DefaultConflictService service = new DefaultConflictService(() -> configuration, Set.of());
-		@SuppressWarnings("unchecked")
-		ConflictType<ConflictSubject> type = org.mockito.Mockito.mock(ConflictType.class);
-		org.mockito.Mockito.when(type.getKey()).thenReturn("optional-feature");
-		org.mockito.Mockito.when(type.getDefaultRules()).thenReturn(rules(defaultRule(entry("feature-rule"))));
-		service.register(type);
-		service.register(resolver("feature-rule", new AtomicBoolean(), ConflictResolution.deny("feature")));
-		service.register(resolver("override", new AtomicBoolean(), ConflictResolution.allow()));
+	void matchesGuaranteesExactly() {
+		UsernameConflictRule chosenArriving = guarantees(NONE, null, "refuse");
 
-		assertEquals(ConflictResolution.Decision.DENY, service.resolve(context("optional-feature")).getDecision());
-		assertTrue(configuration.getRules().isEmpty());
-		configuration.getRules().put("optional-feature", rules(defaultRule(entry("override"))));
-		assertEquals(ConflictResolution.Decision.ALLOW, service.resolve(context("optional-feature")).getDecision());
-		configuration.getRules().clear();
-		service.unregister(type);
-		assertNull(service.resolve(context("optional-feature")));
+		assertTrue(service.match(List.of(chosenArriving), ownedOverChosen).isEmpty());
+		ConflictSituation<UsernameConflictTrigger> chosen = situation("beta", NONE, "alpha", OWNED, UsernameConflictTrigger.FIRST_JOIN, null);
+		assertSame(chosenArriving, service.match(List.of(chosenArriving), chosen).orElseThrow());
 	}
 
-	private Conflicts.ConflictRules rules(Conflicts.ConflictRules.ConflictRule defaultRule) {
-		Conflicts.ConflictRules rules = new Conflicts.ConflictRules();
-		rules.setDefaultRule(defaultRule);
-		return rules;
-	}
-
-	private Conflicts.ConflictRules.ConflictRule defaultRule(
-			Conflicts.ConflictRules.ConflictRule.ResolverEntry resolverEntry
-	) {
-		Conflicts.ConflictRules.ConflictRule rule = new Conflicts.ConflictRules.ConflictRule();
-		rule.setResolvers(List.of(resolverEntry));
-		return rule;
-	}
-
-	private Conflicts.ConflictRules.ConflictRule.ResolverEntry entry(String id) {
-		Conflicts.ConflictRules.ConflictRule.ResolverEntry entry =
-				new Conflicts.ConflictRules.ConflictRule.ResolverEntry();
-		entry.setId(id);
-		return entry;
-	}
-
-	private ConflictContext context(String key) {
-		return ConflictContext.builder()
-				.key(key)
-				.hook("prepare")
-				.build();
-	}
-
-	private ConflictResolver resolver(String id, AtomicBoolean called, ConflictResolution resolution) {
-		return new ConflictResolver() {
+	@DisplayName("Writes a registered outcome's defaults into its kind's document")
+	@Test
+	void includesRegisteredOutcomesInTheirDocument() {
+		List<ConflictOutcome<?, ?, ?>> included = new ArrayList<>();
+		ConflictDocument document = new ConflictDocument() {
 			@Override
-			public @NotNull String getId() {
-				return id;
+			public @NotNull ConflictKind<?, ?> kind() {
+				return UsernameConflict.KIND;
 			}
 
 			@Override
-			public @NotNull ConflictResolution resolve(@NotNull ConflictContext context, @NotNull JsonNode params) {
-				called.set(true);
-				return resolution;
+			public void include(@NotNull ConflictOutcome<?, ?, ?> outcome) {
+				included.add(outcome);
 			}
 		};
+		Outcome outcome = new Outcome();
+
+		new DefaultConflictService(() -> Set.of(document)).register(outcome);
+
+		assertEquals(List.of(outcome), included);
 	}
 
-	private static final class TestConflictType implements ConflictType<ConflictSubject> {
+	@DisplayName("Finds outcomes by kind and id without regard to case, and forgets unregistered ones")
+	@Test
+	void registersOutcomes() {
+		Outcome outcome = new Outcome();
+		service.register(outcome);
+
+		assertEquals(Optional.of(outcome), service.findOutcome(UsernameConflict.KIND, "LONGEST-PLAYTIME"));
+		assertEquals(List.of(outcome), service.outcomes(UsernameConflict.KIND));
+		assertTrue(service.findOutcome(ConflictKind.of("other", Object.class, Object.class), "longest-playtime").isEmpty());
+
+		service.unregister(outcome);
+		assertTrue(service.findOutcome(UsernameConflict.KIND, "longest-playtime").isEmpty());
+	}
+
+	private UsernameConflictRule match(List<UsernameConflictRule> rules) {
+		return service.match(rules, ownedOverChosen).orElseThrow();
+	}
+
+	private static final class Outcome implements ConflictOutcome<UsernameConflict, UsernameConflictDecision, NoSettings> {
 		@Override
-		public @NotNull String getKey() {
-			return "username";
+		public @NotNull ConflictKind<UsernameConflict, UsernameConflictDecision> kind() {
+			return UsernameConflict.KIND;
 		}
 
 		@Override
-		public ConflictContext createContext(@NotNull ConflictSubject subject) {
-			return null;
+		public @NotNull String id() {
+			return "longest-playtime";
 		}
 
 		@Override
-		public boolean matchesRule(@NotNull ConflictContext context, @NotNull JsonNode when) {
-			String selector = context.getAttribute(SELECTOR);
-			return selector != null && selector.equalsIgnoreCase(when.path("selector").asText());
+		public @NotNull Class<NoSettings> settingsType() {
+			return NoSettings.class;
+		}
+
+		@Override
+		public @NotNull NoSettings defaults() {
+			return new NoSettings();
+		}
+
+		@Override
+		public @NotNull UsernameConflictDecision decide(@NotNull UsernameConflict conflict, @NotNull NoSettings settings) {
+			return UsernameConflictDecision.refuse();
 		}
 	}
 }

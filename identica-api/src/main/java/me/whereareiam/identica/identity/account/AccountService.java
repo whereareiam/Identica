@@ -2,7 +2,10 @@ package me.whereareiam.identica.identity.account;
 
 import me.whereareiam.identica.model.identity.Account;
 import me.whereareiam.identica.model.identity.AccountOperationRequest;
+import me.whereareiam.identica.model.identity.username.UsernameWriteResult;
+import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Optional;
@@ -30,12 +33,19 @@ public interface AccountService {
 	@NotNull List<Account> find(@NotNull String username);
 
 	/**
-	 * Create a new account.
+	 * Create a new account with its username. Usernames are unique without regard to case: when another account
+	 * holds the username already, no account is created and the result names the holder.
 	 *
-	 * @param account account to create
-	 * @return created account
+	 * @param account    account to create
+	 * @param source     what decides the account's username
+	 * @param providerId the provider the account registers through, or {@code null} when none
+	 * @return whether the account was created, or the account that holds its username
 	 */
-	@NotNull Account create(@NotNull Account account);
+	@NotNull UsernameWriteResult create(
+			@NotNull Account account,
+			@NotNull AccountUsernameSource source,
+			@Nullable String providerId
+	);
 
 	/**
 	 * Clear account-owned data while preserving the account UUID.

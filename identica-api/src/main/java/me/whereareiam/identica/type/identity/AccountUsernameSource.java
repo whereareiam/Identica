@@ -6,12 +6,24 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Describes which source currently controls username synchronization for an account.
+ * Describes what decides an account's username.
  */
 @RequiredArgsConstructor
 public enum AccountUsernameSource {
+	/**
+	 * The account follows the name its provider gives it.
+	 */
 	PROVIDER("provider"),
+
+	/**
+	 * An administrator named the account; Identica never changes the name by itself.
+	 */
 	MANUAL("manual"),
+
+	/**
+	 * Identica renamed the account in a username conflict; the account takes its provider's name back once nobody
+	 * holds it.
+	 */
 	SYSTEM("system");
 
 	@Getter

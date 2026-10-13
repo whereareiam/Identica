@@ -21,7 +21,7 @@ import me.whereareiam.identica.provider.premium.pipeline.step.type.authenticatio
 import me.whereareiam.identica.provider.premium.pipeline.step.type.migration.PremiumMigrationCompleteStep;
 import me.whereareiam.identica.provider.premium.platform.bungeecord.PremiumBungeeCordExtension;
 import me.whereareiam.identica.provider.premium.platform.velocity.PremiumVelocityExtension;
-import me.whereareiam.identica.type.provider.ProviderTrait;
+import me.whereareiam.identica.type.provider.ProviderGuarantee;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -51,8 +51,8 @@ public class PremiumProvider extends IdenticaProvider {
 	}
 
 	@Override
-	public @NotNull Set<ProviderTrait> traits() {
-		return java.util.Set.of(ProviderTrait.AUTHORITATIVE_USERNAME);
+	public @NotNull Set<ProviderGuarantee> guarantees() {
+		return java.util.Set.of(ProviderGuarantee.OWNED_USERNAME);
 	}
 
 	@Override

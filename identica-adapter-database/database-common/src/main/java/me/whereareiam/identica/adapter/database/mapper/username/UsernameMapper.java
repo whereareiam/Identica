@@ -27,14 +27,15 @@ public final class UsernameMapper {
 	}
 
 	/**
-	 * Returns the username row of a new account: it holds the key of its username and follows its provider.
+	 * Returns the username row of a new account: it holds the key of its username.
 	 */
-	public static UsernameEntity toEntity(Account account) {
+	public static UsernameEntity toEntity(Account account, AccountUsernameSource source, String providerId) {
 		return UsernameEntity.builder()
 				.uniqueId(account.getUniqueId())
 				.username(account.getUsername())
 				.usernameKey(usernameKey(account.getUsername()))
-				.source(AccountUsernameSource.PROVIDER.getId())
+				.source(source.getId())
+				.providerId(providerId)
 				.changedAt(account.getCreatedAt())
 				.build();
 	}

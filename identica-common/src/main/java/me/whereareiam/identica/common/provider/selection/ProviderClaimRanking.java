@@ -29,7 +29,7 @@ public class ProviderClaimRanking {
 	private static final List<ProviderClaimOrigin> PRECEDENCE = List.of(
 			ProviderClaimOrigin.MIGRATION,
 			ProviderClaimOrigin.ACCOUNT_LINK,
-			ProviderClaimOrigin.ENTRYPOINT,
+			ProviderClaimOrigin.HOSTNAME,
 			ProviderClaimOrigin.VERIFIED_SUBJECT,
 			ProviderClaimOrigin.PLAYER_CHOICE,
 			ProviderClaimOrigin.NAME_MATCH,

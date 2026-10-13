@@ -1,5 +1,6 @@
 package me.whereareiam.identica.feature.config.migration;
 
+import me.whereareiam.identica.common.conflict.DefaultConflictService;
 import me.whereareiam.identica.common.config.testing.DataDirectory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -40,6 +41,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Set;
 import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -63,7 +65,6 @@ class EarlierConfigurationUpgradeTest {
 	/** Places an entry of a list may take that the current defaults leave empty. */
 	private static final List<Pattern> OPTIONAL = List.of(
 			Pattern.compile("^providers/providers:/providers/\\*/(features|session)/.*"),
-			Pattern.compile("^identity/username/conflicts:/rules/username/cases/\\*/.*"),
 			Pattern.compile("^routing:/scenarios/.*")
 	);
 
@@ -75,7 +76,11 @@ class EarlierConfigurationUpgradeTest {
 			Pattern.compile("^messages:/(connection|scenarios)/\\w+/advanceBusy/.*"),
 			Pattern.compile("^messages:/(connection|scenarios)/(registration|migration)/errors/identity/replicationMissing$"),
 			Pattern.compile("^messages:/(connection|engine)/prepare/providerRestricted$"),
-			Pattern.compile(".*/conflicts?(:/rules)?/\\w+/default/providers$")
+			Pattern.compile("^identity/username/conflicts:/.*"),
+			Pattern.compile("^providers/conflicts:/.*"),
+			Pattern.compile("^providers/providers:/conflicts/.*"),
+			Pattern.compile("^(identity/username|providers/capabilities/authoritative-username)/messages:/pipeline/policy/(conflictDenied|entrypointRequired)(/.*)?$"),
+			Pattern.compile("^messages:/(connection|scenarios)/authentication/conflictEntrypointRequired(/.*)?$")
 	);
 
 	/**
@@ -160,8 +165,8 @@ class EarlierConfigurationUpgradeTest {
 
 		MigrationReport report = directory.migrate(FEATURES);
 
-		assertEquals(IntStream.rangeClosed(core + 1, 7).boxed().toList(), versions(report, ConfigMigrations.ID));
-		assertEquals(7, directory.tree("settings").path(StrataFeature.VERSION_KEY).asInt());
+		assertEquals(IntStream.rangeClosed(core + 1, 8).boxed().toList(), versions(report, ConfigMigrations.ID));
+		assertEquals(8, directory.tree("settings").path(StrataFeature.VERSION_KEY).asInt());
 		FEATURE_VERSIONS.forEach((stream, document) ->
 				assertEquals(2, directory.tree(document).path(StrataFeature.VERSION_KEY).asInt(), stream));
 	}
@@ -214,7 +219,9 @@ class EarlierConfigurationUpgradeTest {
 		directory.write("settings", directory.files().get("settings.yml").replace("maxAttempts: 10", "maxAttempts: 4"));
 		JsonNode sentinel = directory.at("features/sentinel/settings", "/sentinels/resumeSpam");
 		JsonNode verification = directory.at("features/verification/commands", "/commands/admin-verification-reset");
-		JsonNode username = directory.at("providers/capabilities/authoritative-username/messages", "/pipeline");
+		ObjectNode username = directory.at("providers/capabilities/authoritative-username/messages", "/pipeline").deepCopy();
+		// The messages of the earlier conflict rules have no counterpart and are dropped.
+		if (username.get("policy") instanceof ObjectNode policy) policy.remove(List.of("conflictDenied", "entrypointRequired"));
 
 		directory.migrate(FEATURES);
 
@@ -243,7 +250,7 @@ class EarlierConfigurationUpgradeTest {
 		}
 		MigrationReport again = directory.migrate(FEATURES);
 
-		assertEquals(IntStream.rangeClosed(2, 7).boxed().toList(), versions(again, ConfigMigrations.ID));
+		assertEquals(IntStream.rangeClosed(2, 8).boxed().toList(), versions(again, ConfigMigrations.ID));
 		for (String stream : FEATURE_VERSIONS.keySet())
 			assertEquals(List.of(2), versions(again, stream), stream);
 		assertEquals(migrated, directory.files());
@@ -309,11 +316,6 @@ class EarlierConfigurationUpgradeTest {
 		expected.put("replication:/cache/sessions/records", "\"network:sessions:session\"");
 		expected.put("persistence:/hikari/poolName", "\"Upgraded\"");
 		expected.put("features/verification/commands:/commands/verification/aliases", "[\"2fa\",\"twofactor\"]");
-		expected.put("identity/username/conflicts:/rules/username/cases/0/when/providers", "[\"premium\",\"credential\"]");
-		expected.put("identity/username/conflicts:/rules/username/cases/0/force", "true");
-		expected.put("identity/username/conflicts:/rules/username/cases/1/resolvers/0/parameters/target", "\"existing\"");
-		expected.put("identity/username/conflicts:/rules/username/default/when", "{}");
-		expected.put("identity/username/conflicts:/rules/username/default/resolvers/0/parameters/format/pattern", "\"{username}+\"");
 
 		Map<String, String> actual = new LinkedHashMap<>();
 		expected.keySet().forEach(path -> actual.put(path, value(directory, path).toString()));
@@ -335,7 +337,8 @@ class EarlierConfigurationUpgradeTest {
 		assertEquals(connection.at("/journey/step/enrollment/body"), value(directory, "messages:/engine/journey/step/enrollment/body"));
 		assertEquals(connection.at("/resumeSentineled"), value(directory, "features/sentinel/messages:/resumeSpam/denied"));
 		assertEquals(connection.at("/authentication/errors/identity/replicationMissing"), value(directory, "identity/username/messages:/pipeline/identity/synchronizationFailed"));
-		assertEquals(connection.at("/authentication/conflictEntrypointRequired"), value(directory, "identity/username/messages:/pipeline/policy/entrypointRequired"));
+		// The entrypoint message of the earlier conflict rules has no counterpart and is dropped.
+		assertTrue(value(directory, "identity/username/messages:/pipeline/policy/entrypointRequired").isMissingNode());
 		assertEquals(messages.at("/commands/verification/status/body"), value(directory, "features/verification/messages:/commands/status/body"));
 		assertEquals(messages.at("/commands/verification/methods/totp/pending"), value(directory, "features/verification/messages:/methods/totp/pending"));
 		assertEquals(messages.at("/commands/admin/verification/reset/completed"), value(directory, "features/verification/messages:/commands/admin/reset/completed"));
@@ -470,8 +473,7 @@ class EarlierConfigurationUpgradeTest {
 		new PersistenceProvider(data, registry).get();
 		new ReplicationProvider(data, registry).get();
 		new ProvidersProvider(providers, registry).get();
-		new ConflictsProvider(providers, registry).get();
-		new UsernameConflictsProvider(username, registry).get();
+		new UsernameConflictsProvider(username, registry, () -> new DefaultConflictService(Set::of)).get();
 		new UsernameMessagesProvider(username, registry).get();
 
 		Path features = data.resolve("features");

@@ -114,7 +114,7 @@ public class EnrollmentStep extends InteractiveStep {
 	) {
 		List<String> offered = entries.stream().map(EnrollmentEntry::getProviderId).toList();
 		ProviderClaim winner = providerSelector.winner(context.getSelection(), offered);
-		if (winner == null || !providerSelector.isAtLeast(winner.getOrigin(), ProviderClaimOrigin.ENTRYPOINT)) return null;
+		if (winner == null || !providerSelector.isAtLeast(winner.getOrigin(), ProviderClaimOrigin.HOSTNAME)) return null;
 
 		return winner;
 	}

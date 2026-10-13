@@ -9,9 +9,11 @@ import me.whereareiam.identica.adapter.database.entity.username.UsernameEntity;
 import me.whereareiam.identica.adapter.database.entity.username.UsernameHistoryEntity;
 import me.whereareiam.identica.adapter.database.mapper.username.UsernameHistoryMapper;
 import me.whereareiam.identica.adapter.database.mapper.username.UsernameMapper;
+import me.whereareiam.identica.adapter.database.repository.username.UsernameRepository;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.identity.username.AccountUsername;
 import me.whereareiam.identica.model.identity.username.AccountUsernameHistoryEntry;
+import me.whereareiam.identica.model.identity.username.UsernameWriteResult;
 import me.whereareiam.identica.persistence.username.AccountUsernamePersistenceService;
 import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import org.jdbi.v3.core.Jdbi;
@@ -30,6 +32,7 @@ public class DefaultAccountUsernamePersistenceService implements AccountUsername
 	private final Provider<Jdbi> jdbi;
 	private final Provider<EntityAccess<UsernameEntity>> usernames;
 	private final Provider<EntityAccess<UsernameHistoryEntity>> history;
+	private final Provider<UsernameRepository> usernameRepository;
 
 	@Override
 	public @NotNull Optional<AccountUsername> find(@NotNull UUID uniqueId) {
@@ -58,25 +61,37 @@ public class DefaultAccountUsernamePersistenceService implements AccountUsername
 	 * holds fails the update on the unique key, which leaves both unchanged.
 	 */
 	@Override
-	public boolean rename(@NotNull AccountUsernameHistoryEntry change) {
-		if (change.getNewUsername().isBlank()) return false;
+	public @NotNull Optional<AccountUsername> findHolder(@NotNull String username) {
+		return usernameRepository.get().findByUsernameKey(UsernameMapper.usernameKey(username)).map(UsernameMapper::toModel);
+	}
 
-		try {
-			return jdbi.get().inTransaction(handle -> {
-				boolean renamed = usernames.get().update(change.getUniqueId())
-						.set("username", change.getNewUsername())
-						.set(UsernameEntity.USERNAME_KEY, UsernameMapper.usernameKey(change.getNewUsername()))
-						.set("source", change.getSource().getId())
-						.set("provider_id", change.getProviderId())
-						.set("changed_at", change.getChangedAt())
-						.execute();
-				if (renamed) history.get().insert(UsernameHistoryMapper.toEntity(change));
+	/**
+	 * Renames an account in one transaction with its history entry, unless another row holds the new username's
+	 * key. The key's unique index still refuses a username another account takes between the check and the
+	 * write; the database's error is thrown then, because Dialectica 4.0.0 reports such a conflict of an update as
+	 * an ordinary statement failure.
+	 */
+	@Override
+	public @NotNull UsernameWriteResult rename(@NotNull AccountUsernameHistoryEntry change) {
+		if (change.getNewUsername().isBlank()) throw new IllegalArgumentException("A username must not be blank");
 
-				return renamed;
-			});
-		} catch (Exception e) {
-			Logger.warn(e, "Failed to rename %s to %s", change.getUniqueId(), change.getNewUsername());
-			return false;
-		}
+		return jdbi.get().inTransaction(handle -> {
+			Optional<UsernameEntity> holder = usernameRepository.get()
+					.findByUsernameKey(UsernameMapper.usernameKey(change.getNewUsername()))
+					.filter(row -> !row.getUniqueId().equals(change.getUniqueId()));
+			if (holder.isPresent()) return UsernameWriteResult.taken(holder.get().getUniqueId());
+
+			boolean renamed = usernames.get().update(change.getUniqueId())
+					.set("username", change.getNewUsername())
+					.set(UsernameEntity.USERNAME_KEY, UsernameMapper.usernameKey(change.getNewUsername()))
+					.set("source", change.getSource().getId())
+					.set("provider_id", change.getProviderId())
+					.set("changed_at", change.getChangedAt())
+					.execute();
+			if (!renamed) throw new IllegalStateException("Account " + change.getUniqueId() + " has no username");
+
+			history.get().insert(UsernameHistoryMapper.toEntity(change));
+			return UsernameWriteResult.written();
+		});
 	}
 }

@@ -1,17 +1,54 @@
 ---
-title: Provider traits and features
+title: Provider guarantees and features
 description: Identity guarantees, supported integrations, and operator-controlled feature policies.
 ---
 
 Identica compiles its feature implementations into the plugin. Source modules separate ownership; operators choose feature behavior through global and per-provider configuration.
 
-## Provider traits
+## Provider guarantees
 
-`IdenticaProvider.traits()` returns `Set<ProviderTrait>`. A trait states an identity guarantee supplied by the implementation. It is not an operator toggle.
+`IdenticaProvider.guarantees()` returns `Set<ProviderGuarantee>`. A guarantee states what the implementation guarantees about its identities. It is not an operator toggle, and username conflict rules match on it.
 
-`ProviderTrait.AUTHORITATIVE_USERNAME` means Identica follows the provider's verified username for its primary account link, subject to manual authority and conflict policy. Premium declares this trait. Credential does not. Provider configuration cannot grant the trait.
+`ProviderGuarantee.OWNED_USERNAME` means the provider owns its players' usernames: no two of its players hold one at once, and it verifies that a player owns the name they join with. Identica follows that name for the account the provider is the primary link of, unless an administrator set it by hand. Premium declares this guarantee. Credential does not. Provider configuration cannot grant a guarantee.
 
-Username handling is core behavior, not a feature, and is never listed in `supportedFeatures()`. Its contracts are in `identica-api`: `UsernameConflictHandler` in `me.whereareiam.identica.identity.username`, the models in `me.whereareiam.identica.model.identity.username`, `UsernameChangedEvent` in `me.whereareiam.identica.event.identity`, and the persistence services in `me.whereareiam.identica.persistence.username`. Conflict detection and the username documents are in `identica-common`, the username phases are in `identica-engine`, and the username tables are in `identica-adapter-database/database-common`. See [Username authority](../../configuration/identity/username/index.mdx).
+Username handling is core behavior, not a feature, and is never listed in `supportedFeatures()`. Its contracts are in `identica-api`: `UsernameAssigner` in `me.whereareiam.identica.identity.username`, the models in `me.whereareiam.identica.model.identity.username`, its closed types in `me.whereareiam.identica.type.identity.username`, `UsernameChangedEvent` in `me.whereareiam.identica.event.identity`, and the persistence services in `me.whereareiam.identica.persistence.username`. The rule matching and the username documents are in `identica-common`, the username phases are in `identica-engine`, and the username tables are in `identica-adapter-database/database-common`. See [Username](../../configuration/identity/username/index.mdx).
+
+### Conflict outcomes
+
+Conflicts between two accounts over something only one may have go through `ConflictService` in `me.whereareiam.identica.conflict`. A kind of conflict, such as `UsernameConflict.KIND`, keeps its rules in its own document; the service finds the most specific rule that applies and the outcome the rule names. Outcomes are registered by id with their settings, so an addon or provider can add its own, either with `ConflictService.register` or by returning them from `IdenticaProvider.conflictOutcomes()`, which registers them while the provider is enabled. An outcome only decides what each side keeps; none lets a player into another account.
+
+```java
+public final class LongestPlaytimeOutcome implements ConflictOutcome<UsernameConflict, UsernameConflictDecision, LongestPlaytime> {
+    @Override
+    public ConflictKind<UsernameConflict, UsernameConflictDecision> kind() {
+        return UsernameConflict.KIND;
+    }
+
+    @Override
+    public String id() {
+        return "longest-playtime";
+    }
+
+    @Override
+    public Class<LongestPlaytime> settingsType() {
+        return LongestPlaytime.class;
+    }
+
+    @Override
+    public LongestPlaytime defaults() {
+        return new LongestPlaytime();
+    }
+
+    @Override
+    public UsernameConflictDecision decide(UsernameConflict conflict, LongestPlaytime settings) {
+        return playtime.longer(conflict.getSituation())
+                ? UsernameConflictDecision.renameHolder(settings.getHolderRename())
+                : UsernameConflictDecision.renameArriving(settings.getRename());
+    }
+}
+```
+
+An outcome has an id in lowercase kebab case, a typed settings model and its defaults. Once it is registered, Identica writes the defaults under `outcomes.longest-playtime`; an administrator changes them there, under `providers.<provider>.longest-playtime`, or on one rule, and a rule names it with `outcome: longest-playtime`. `actsOn()` tells which side's provider settings apply.
 
 ## Supported features
 
@@ -19,8 +56,8 @@ Username handling is core behavior, not a feature, and is never listed in `suppo
 
 ```java
 @Override
-public Set<ProviderTrait> traits() {
-    return Set.of(ProviderTrait.AUTHORITATIVE_USERNAME);
+public Set<ProviderGuarantee> guarantees() {
+    return Set.of(ProviderGuarantee.OWNED_USERNAME);
 }
 
 @Override
@@ -53,4 +90,4 @@ Keep listeners, commands, pipeline extensions, models, persistence and configura
 
 ## Validation
 
-Test trait behavior without feature flags, support separately from enablement, explicit false values, inherited global values, and different settings on different providers. Test lifecycle cleanup and verify that shared provider configuration retains unrelated feature settings.
+Test guarantee behavior without feature flags, support separately from enablement, explicit false values, inherited global values, and different settings on different providers. Test lifecycle cleanup and verify that shared provider configuration retains unrelated feature settings.

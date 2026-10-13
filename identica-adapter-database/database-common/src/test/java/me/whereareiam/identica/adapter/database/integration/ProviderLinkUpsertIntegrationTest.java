@@ -1,6 +1,7 @@
 package me.whereareiam.identica.adapter.database.integration;
 
 import com.google.inject.util.Providers;
+import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import me.whereareiam.dialectica.Dialectica;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.dialectica.exception.KeyConflictException;
@@ -144,7 +145,7 @@ class ProviderLinkUpsertIntegrationTest {
 			List<UUID> accounts = new ArrayList<>();
 			for (int index = 0; index < count; index++) {
 				UUID uniqueId = UUID.randomUUID();
-				accountService.create(TestDataFactory.account(uniqueId, "Player" + index));
+				accountService.create(TestDataFactory.account(uniqueId, "Player" + index), AccountUsernameSource.PROVIDER, null);
 				accounts.add(uniqueId);
 			}
 

@@ -29,7 +29,7 @@ class ProviderClaimRankingTest {
 	private static final List<ProviderClaimOrigin> STRONGEST_FIRST = List.of(
 			ProviderClaimOrigin.MIGRATION,
 			ProviderClaimOrigin.ACCOUNT_LINK,
-			ProviderClaimOrigin.ENTRYPOINT,
+			ProviderClaimOrigin.HOSTNAME,
 			ProviderClaimOrigin.VERIFIED_SUBJECT,
 			ProviderClaimOrigin.PLAYER_CHOICE,
 			ProviderClaimOrigin.NAME_MATCH,
@@ -90,8 +90,8 @@ class ProviderClaimRankingTest {
 	@Test
 	void sameOriginAndPriorityRanksById() {
 		ProviderSelection selection = selector.claim(ProviderSelection.empty(), List.of(
-				claim("beta", ProviderClaimOrigin.ENTRYPOINT),
-				claim("alpha", ProviderClaimOrigin.ENTRYPOINT)
+				claim("beta", ProviderClaimOrigin.HOSTNAME),
+				claim("alpha", ProviderClaimOrigin.HOSTNAME)
 		));
 
 		assertEquals("alpha", selection.getWinnerProviderId());

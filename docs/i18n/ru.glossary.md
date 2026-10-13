@@ -60,14 +60,15 @@ Setting flags are badges; translate their text, keep `type`:
 | offline account | пиратский (офлайн) аккаунт | Spell out «пиратский (офлайн)» on first use in a page, then «офлайн-аккаунт». |
 | premium username | ник лицензионного аккаунта | |
 | identity | идентичность | «плагин идентификации» for "identity plugin". |
-| provider trait | признак провайдера | Keep `ProviderTrait` as code. |
+| provider guarantee | гарантия провайдера | Keep `ProviderGuarantee` as code. |
 | engine | движок | |
 | stage | этап | Kept apart from step («шаг»). |
 | handshake | рукопожатие | |
 | listener | слушатель | |
 | username | ник | «имя пользователя» only where the API means a username field. |
 | username authority | право на ник | Which source decides a player's nickname. |
-| authoritative username | ник, за который отвечает провайдер | Keep `AUTHORITATIVE_USERNAME` as code. |
+| owned username | ник, которым владеет провайдер | Keep `OWNED_USERNAME` as code. |
+| holder (of a username) | держатель ника | The account that holds the name in a conflict; the arriving side is «входящий». |
 | credential | учётные данные | Usually the password. |
 | password | пароль | |
 | session | сессия | |

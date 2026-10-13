@@ -40,7 +40,7 @@ public final class Journey {
 	private static final Duration SETTLE = Duration.ofSeconds(3);
 
 	private final String name;
-	private final String connectedPlayer;
+	private final String source;
 	private final String initialConnection;
 	private final Session session;
 	private final Messages messages;
@@ -49,6 +49,8 @@ public final class Journey {
 	private final IdenticaMessages configured;
 	private final long created;
 
+	private String playedAs;
+	private String connectedPlayer;
 	private int read;
 	private long console;
 	private int connections;
@@ -57,7 +59,8 @@ public final class Journey {
 
 	private Journey(ScenarioContext anvil, SimulatedPlayer player, String name, String address, String proxy) {
 		this.name = name;
-		String source = address != null ? "/" + address + ":" : "";
+		this.source = address != null ? "/" + address + ":" : "";
+		this.playedAs = name;
 		this.connectedPlayer = "[connected player] " + name + " (" + source;
 		this.initialConnection = "[initial connection] " + source;
 		this.session = player.capability(Session.class);
@@ -158,7 +161,7 @@ public final class Journey {
 	public Journey on(String backend) {
 		PlayerIdentity identity = server.joined(backend, TIMEOUT);
 		assertEquals(backend, identity.getRoute().getServer());
-		reported("[server connection] " + name + " -> " + backend, "has connected");
+		reported("[server connection] " + playedAs + " -> " + backend, "has connected");
 		return this;
 	}
 
@@ -168,7 +171,7 @@ public final class Journey {
 	public Journey remainsOn(String backend) {
 		server.stayed(backend, SETTLE);
 		List<String> moves = proxy.read(console, 200).getLines().stream().map(line -> line.getText())
-				.filter(line -> line.contains("[server connection] " + name + " -> ") && line.contains("has connected"))
+				.filter(line -> line.contains("[server connection] " + playedAs + " -> ") && line.contains("has connected"))
 				.toList();
 		assertEquals(List.of(), moves, name + " must stay on " + backend);
 		assertTrue(session.state().connected(), name + " must stay connected");
@@ -282,6 +285,26 @@ public final class Journey {
 				.filter(line -> line.contains(connectedPlayer) && line.contains("has connected"))
 				.toList();
 		assertEquals(connections, accepted.size(), "The proxy must not accept " + name + "; console: " + accepted);
+		return this;
+	}
+
+	/**
+	 * Expects the proxy to name the player differently from the client from the next connection on, as when the
+	 * player gets a renamed or a temporary username. The proxy reports the player's connections under that name.
+	 *
+	 * @param username the username the proxy gives the player
+	 */
+	public Journey named(String username) {
+		playedAs = username;
+		connectedPlayer = "[connected player] " + username + " (" + source;
+		return this;
+	}
+
+	/**
+	 * Expects the player's current backend to see the player under a username.
+	 */
+	public Journey playsAs(String username) {
+		assertEquals(username, identity().getObserved().getUsername(), name + " must play as " + username);
 		return this;
 	}
 

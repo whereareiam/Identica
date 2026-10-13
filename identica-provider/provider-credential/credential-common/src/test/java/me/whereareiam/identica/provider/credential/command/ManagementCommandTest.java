@@ -4,6 +4,8 @@ import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceServi
 import me.whereareiam.identica.persistence.provider.ProviderProfilePersistenceService;
 import me.whereareiam.identica.identity.account.AccountService;
 import me.whereareiam.identica.model.identity.Account;
+import me.whereareiam.identica.model.identity.username.UsernameWriteResult;
+import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.identity.provider.AccountProviderProfile;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
@@ -83,7 +85,7 @@ class ManagementCommandTest {
 		when(credentialService.find(SUBJECT)).thenReturn(Optional.empty());
 		when(credentialService.register(eq(SUBJECT), anyString(), anyString(), eq(PasswordChangeReason.ADMIN_SET)))
 				.thenReturn(Optional.of(mock(CredentialAccount.class)));
-		when(accountService.create(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		when(accountService.create(any(Account.class), any(), any())).thenReturn(UsernameWriteResult.written());
 		when(providerLinks.findBySubject("credential", SUBJECT)).thenReturn(Optional.empty());
 
 		command = new ManagementCommand(() -> messages, credentialService, cryptographyService, passwordRules,
@@ -100,7 +102,7 @@ class ManagementCommandTest {
 		command.forceRegister(mock(Actor.class), USERNAME, "Secret-123");
 
 		ArgumentCaptor<Account> account = ArgumentCaptor.forClass(Account.class);
-		verify(accountService).create(account.capture());
+		verify(accountService).create(account.capture(), eq(AccountUsernameSource.PROVIDER), eq("credential"));
 		assertEquals(ACCOUNT, account.getValue().getUniqueId());
 		assertEquals(USERNAME, account.getValue().getUsername());
 
@@ -124,7 +126,7 @@ class ManagementCommandTest {
 
 		command.forceRegister(mock(Actor.class), USERNAME, "Secret-123");
 
-		verify(accountService, never()).create(any(Account.class));
+		verify(accountService, never()).create(any(Account.class), any(), any());
 		assertFalse(storedLink().isPrimaryLink());
 	}
 

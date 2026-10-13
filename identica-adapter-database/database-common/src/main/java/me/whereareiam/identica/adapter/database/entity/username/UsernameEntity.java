@@ -18,8 +18,8 @@ import java.util.UUID;
 
 /**
  * The current username of an account, one row per account. Its key, the username in lower case, is unique, so no
- * two accounts hold one username in different cases; an account that shares its username with an older one has no
- * key.
+ * two accounts hold one username in different cases; an account from before usernames were unique that shares its
+ * username with an older one has no key.
  */
 @Getter
 @Setter

@@ -11,6 +11,8 @@ import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceServi
 import me.whereareiam.identica.persistence.provider.ProviderProfilePersistenceService;
 import me.whereareiam.identica.identity.account.AccountService;
 import me.whereareiam.identica.model.identity.Account;
+import me.whereareiam.identica.model.identity.username.UsernameWriteResult;
+import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.identity.provider.AccountProviderProfile;
 import me.whereareiam.identica.provider.credential.CredentialConstants;
@@ -26,6 +28,7 @@ import me.whereareiam.keystone.Actor;
 import me.whereareiam.keystone.model.SerializerContent;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Objects;
 import java.util.UUID;
 
 @RequiredArgsConstructor(onConstructor_ = @Inject)
@@ -152,12 +155,17 @@ public class ManagementCommand {
 			UUID uniqueId = uniqueIdGenerator.resolveConfiguredUniqueId(username, providerSubject, null);
 			if (uniqueId == null) return false;
 
-			account = accountService.create(Account.builder()
+			Account created = Account.builder()
 					.uniqueId(uniqueId)
 					.username(username)
 					.createdAt(now)
 					.lastSeenAt(now)
-					.build());
+					.build();
+			UsernameWriteResult result = accountService.create(created, AccountUsernameSource.PROVIDER, providerId);
+			account = result.isWritten()
+					? created
+					: accountService.find(Objects.requireNonNull(result.getHolderUniqueId())).orElse(null);
+			if (account == null) return false;
 		}
 
 		providerLinkPersistenceService.upsert(AccountProviderLink.builder()

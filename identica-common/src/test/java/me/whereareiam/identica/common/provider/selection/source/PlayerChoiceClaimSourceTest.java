@@ -38,7 +38,7 @@ class PlayerChoiceClaimSourceTest {
 	void carriesOverOnlyTheChoice() {
 		pending(ProviderSelection.of(
 				ProviderClaim.verified("beta", "beta-proof"),
-				List.of(ProviderClaim.of("alpha", ProviderClaimOrigin.PLAYER_CHOICE), ProviderClaim.of("beta", ProviderClaimOrigin.ENTRYPOINT)),
+				List.of(ProviderClaim.of("alpha", ProviderClaimOrigin.PLAYER_CHOICE), ProviderClaim.of("beta", ProviderClaimOrigin.HOSTNAME)),
 				List.of()
 		));
 

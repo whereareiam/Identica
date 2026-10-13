@@ -1,278 +1,275 @@
 ---
 title: Username
-description: Provider-controlled username synchronization behavior.
+description: How Identica decides usernames, and the rules that settle two accounts wanting one.
 ---
 
-Identica follows the verified username supplied by a provider declaring `ProviderTrait.AUTHORITATIVE_USERNAME`. Premium declares this trait through `traits()`; Credential does not.
+Every account has one username, and it follows the account's primary provider: a Premium account plays under its Mojang name, a Credential account under the name its player registered with. This is mandatory identity behavior, not a toggleable feature.
 
-This is mandatory identity behavior, not a toggleable feature. Synchronization applies to the primary provider link and respects manual username authority. User configuration cannot grant the trait or turn it into a feature switch.
+A provider tells Identica what it guarantees about its usernames. A provider with the `OWNED_USERNAME` guarantee owns its players' names: no two of its players hold one name at once, and it checks that the player owns the name they join with. Premium declares it; Credential does not, because Credential players choose their names. Configuration cannot grant a guarantee.
 
-Messages live under `identity/username/messages`.
+The rules live in `identity/username/conflicts`, the messages in `identity/username/messages`.
 
 ## Unique usernames
 
-Usernames are unique without regard to case, as Minecraft usernames are: while an account holds `Alice`, no other player can register `alice` or `ALICE`.
+Usernames are unique without regard to case, as Minecraft usernames are: while an account holds `Alice`, no other account gets `alice` or `ALICE`. When a player wants a name another account holds, the [conflict rules](#conflict-rules) decide what happens. No outcome ever lets one player into another player's account: a rule only decides which of the two accounts keeps the name and which one is renamed, or refuses the joining player.
 
-- A provider without `ProviderTrait.AUTHORITATIVE_USERNAME`, such as Credential, lets its players choose their usernames. A player who registers a username another account holds in any case is refused with `pipeline.policy.taken` before the provider asks them for anything.
-- A provider with the trait, such as Premium, vouches for the username of its players, so they are never refused. A Premium player whose username a Credential account holds in another case gets an account of their own that shares the username.
-- When a provider with the trait reports that an account was renamed to a username another account holds, the account keeps its username until that username is free again.
-
-Accounts that share a username keep logging in through their own provider links. They come from a provider with the trait, or from a database that held both before usernames were unique; when the database is upgraded, the oldest account of each username holds it. Each start warns in the console about every username several accounts share, naming its accounts with their unique ids, providers and last logins:
+A database from before usernames were unique may still have accounts that share one. When it is upgraded, the oldest account of each username holds it; the others keep logging in through their own provider links. Each start warns in the console about every username several accounts share, naming its accounts with their unique ids, providers and last logins:
 
 ```text
 Duplicate usernames: steve is shared by steve (…, providers credential, last seen …), Steve (…, providers premium, last seen …). …
 ```
 
-`/identica admin username duplicates` lists the same accounts. To leave a username to one account, delete the others with `/identica admin delete <uuid>`.
+`/identica admin username duplicates` lists the same accounts. To leave a username to one account, rename the others with [`/identica admin username rename`](#renaming-an-account-by-hand).
 
-## Conflicts
+## When a conflict comes up
 
-This subsystem contributes the built-in `username` conflict type.
-Username conflict defaults and settings live in `identity/username/conflicts`. This uses the shared `Conflicts` document shape: a top-level `rules` map with a `username` entry.
+A player wants a username in two situations:
 
-The optional generic override at `providers/conflicts` takes precedence when it contains `rules.username`. Leave that entry absent to use the identity-owned rules. The [Conflicts](../../providers/conflicts.mdx) page describes the shared rule structure.
-This section documents the username-specific selector and resolver behavior for `rules.username`.
+- `FIRST_JOIN`: the player joins through a provider for the first time and wants its name. This is a new account, and also an account that moves to another provider, such as with `/premium`, and from then on takes its name from that provider.
+- `PROVIDER_RENAME`: the provider of a known account gives it a new name, such as after a rename at Mojang.
 
-A username conflict happens when a provider with the `AUTHORITATIVE_USERNAME` trait wants to apply a username that is already used by another active account.
-If no active conflicting account is found, normal username synchronization continues without conflict resolution.
+When nobody holds the wanted name, the account gets it. When another account holds it, the rules settle the conflict. The joining player is the **arriving** side; the account that holds the name is the **holder**, standing on its primary provider.
 
-An identity-owned conflict document uses this shape:
+A conflict is decided before the proxy names the player, so a renamed player plays under the new name at once and a refused player is refused before any prompt.
+
+## Default rules
+
+The default rules name guarantees only, never providers, so they also cover providers added later:
+
+| Arriving provider | Holder's provider | Trigger | Outcome |
+| --- | --- | --- | --- |
+| `OWNED_USERNAME` | no guarantee | `FIRST_JOIN` | `rename-holder`: the owner gets the name, the holder is renamed |
+| `OWNED_USERNAME` | no guarantee | `PROVIDER_RENAME` | `rename-arriving`: the holder chose the name first and keeps it, the renamed player gets a renamed name |
+| no guarantee | any | any | `refuse`: a player who chooses a name cannot take a held one |
+| any | any | any | `refuse` |
+
+For example, a Credential player registered `Steve`. When the owner of the premium account `Steve` joins through Premium for the first time, the owner gets `Steve` and the Credential account becomes `Steve_credential`. The Credential player keeps logging in with the same client name and password and plays as `Steve_credential` from then on.
+
+A premium player who joins through Premium's [entrypoint hostname](../../providers/index.mdx#entrypoints) reaches the first rule. A premium player who joins without one may be sent to the Credential account's password prompt, because the name matches that account; see [How a provider is picked](../../providers/index.mdx#how-a-provider-is-picked).
+
+## Conflict rules
+
+`identity/username/conflicts` holds the settings of every outcome, optional changes per provider, and the rules:
+
+<Tabs items={["YAML", "JSON"]}>
+  <Tab value="YAML">
+```yaml
+outcomes:
+  rename-holder:
+    pattern: "{username}_{provider}"
+    tooLong: SHORTEN
+    taken: NUMBER
+    holderOnline: KEEP_PLAYING
+  rename-arriving:
+    pattern: "{username}_{provider}"
+    tooLong: SHORTEN
+    taken: NUMBER
+  refuse: {}
+providers: {}
+rules:
+  - arriving: { guarantees: [OWNED_USERNAME] }
+    holder: { guarantees: [] }
+    trigger: FIRST_JOIN
+    outcome: rename-holder
+  - arriving: { guarantees: [OWNED_USERNAME] }
+    holder: { guarantees: [] }
+    trigger: PROVIDER_RENAME
+    outcome: rename-arriving
+  - arriving: { guarantees: [] }
+    outcome: refuse
+  - outcome: refuse
+```
+  </Tab>
+  <Tab value="JSON">
+```json
+{
+  "outcomes": {
+    "rename-holder": { "pattern": "{username}_{provider}", "tooLong": "SHORTEN", "taken": "NUMBER", "holderOnline": "KEEP_PLAYING" },
+    "rename-arriving": { "pattern": "{username}_{provider}", "tooLong": "SHORTEN", "taken": "NUMBER" },
+    "refuse": {}
+  },
+  "providers": {},
+  "rules": [
+    { "arriving": { "guarantees": ["OWNED_USERNAME"] }, "holder": { "guarantees": [] }, "trigger": "FIRST_JOIN", "outcome": "rename-holder" },
+    { "arriving": { "guarantees": ["OWNED_USERNAME"] }, "holder": { "guarantees": [] }, "trigger": "PROVIDER_RENAME", "outcome": "rename-arriving" },
+    { "arriving": { "guarantees": [] }, "outcome": "refuse" },
+    { "outcome": "refuse" }
+  ]
+}
+```
+  </Tab>
+</Tabs>
+
+A rule without conditions is the least specific one and settles everything no other rule does.
+
+### Which rule applies
+
+Of the rules that apply to a conflict, the most specific one wins:
+
+1. a rule naming provider ids on more sides beats one naming fewer;
+2. then a rule naming guarantees on more sides beats one naming fewer;
+3. then a rule that also names a `trigger` or `arrivedVia` beats one that does not.
+
+Among equally specific rules, the first one in the list wins. When two equally specific rules can apply to the same conflict but settle it differently, the console warns on start and on reload, because the second one never applies there. When no rule applies, the arriving player is refused.
+
+### rules[].arriving and rules[].holder
+
+What the rule asks of each side. Leave a side out to accept any.
+
+#### guarantees
+
+- Takes: a list of guarantees, such as `[OWNED_USERNAME]`
+- Affects: which providers the side may stand on
+
+The provider must declare exactly these guarantees: `[]` asks for a provider that guarantees nothing, such as Credential. Leave the field out to accept any provider.
+
+#### providers
+
+- Takes: a list of provider ids, such as `[premium]`
+- Affects: which providers the side may stand on
+
+Provider ids are compared without regard to case. A rule naming providers is more specific than one naming guarantees, so use it to treat one pair of providers differently from what the defaults say.
+
+### rules[].trigger
+
+- Takes: `FIRST_JOIN` or `PROVIDER_RENAME`
+- Affects: which situation the rule applies to
+
+Leave it out for both.
+
+### rules[].arrivedVia
+
+- Takes: why the arriving player's provider was picked, such as `HOSTNAME`
+- Affects: whether the rule applies only to players who reached their provider that way
+
+`HOSTNAME` means the player joined through one of the provider's `entrypoints`. Leave it out for any reason.
+
+### rules[].outcome
+
+- Takes: an outcome id, such as `rename-holder`, or `{ id: ..., with: { ... } }` to change some of its settings for this rule only
+- Affects: how the conflict is settled
+
+| Outcome | Effect |
+| --- | --- |
+| `refuse` | The arriving player is refused with `pipeline.policy.taken`; the holder keeps the name. |
+| `rename-arriving` | The holder keeps the name; the arriving account gets a renamed one. |
+| `rename-holder` | The arriving account gets the name; the holder gets a renamed one. |
+
+An addon or provider may register outcomes of its own; their ids appear under `outcomes`. A rule naming an outcome nobody registered is reported as an error in the console on start and on reload, and refuses the arriving player instead.
+
+For example, this rule disconnects an online holder while every other rule keeps the default:
 
 ```yaml
-rules:
-  username:
-    default:
-      resolvers:
-        - id: format_display
-          parameters:
-            format:
-              pattern: "{username}*"
-            target: joiner
-    cases:
-      - when:
-          providers: [premium, credential]
-        resolvers:
-          - id: format_display
-            parameters:
-              format:
-                pattern: "{username}_{incomingProvider:8}"
-              target: joiner
+outcome:
+  id: rename-holder
+  with:
+    holderOnline: KICK_HOLDER
 ```
 
-Before resolvers run, the subsystem also applies an entrypoint guard.
-When the incoming account and the active conflicting account belong to different providers and both providers expose entrypoints, Identica requires that the incoming provider was picked through its hostname or a stronger reason, such as an account its verified login already belongs to. See [How a provider is picked](../../providers/index.mdx#how-a-provider-is-picked).
-Otherwise the conflict is denied with the subsystem's `pipeline.policy.entrypointRequired` message.
+## Outcome settings
 
-### Example situation
+An outcome's settings come from three places, each stating only what it changes:
 
-With the generated default conflict rules:
+1. the rule's `with`, which wins;
+2. `providers.<provider>.<outcome>`, for the provider of the account the outcome acts on: the holder's for `rename-holder`, the arriving account's for the others;
+3. `outcomes.<outcome>`, which Identica writes with the outcome's defaults once the outcome is registered.
 
-- An active `credential` account is already using `Steve`.
-- A `premium` account with the `AUTHORITATIVE_USERNAME` trait joins and also reports `Steve`.
-- Identica detects a username conflict before applying the update.
-- The `premium` + `credential` case rule runs first.
-- That default case formats the incoming side as `{username}_{incomingProvider}`.
-- In simple terms, the joining side gets a name like `Steve_Premium`.
+For example, Credential accounts that lose their name could be renamed differently from all others:
 
-For other provider combinations that do not match a specific case rule, the generated default rule appends `*` to the incoming side instead, such as `Steve*`.
+```yaml
+providers:
+  credential:
+    rename-holder:
+      pattern: "{username}_offline"
+```
 
-The selector field below decides when a case rule applies.
+The shipped document changes nothing per provider.
 
-### rules.username.cases[].when.providers
-
-- Takes: a list of provider ids
-- Affects: which provider combination a case rule applies to
-
-The rule matches when both provider ids are present in the conflict context, regardless of their order in the list.
-Most rules should contain exactly two provider ids such as `premium` and `credential`.
-
-The resolver fields below configure the built-in `format_display` resolver for `rules.username`.
-
-### format_display
-
-`format_display` formats a replacement username from the current conflict context and returns that formatted value as the resolver result.
-
-#### rules.username.default.resolvers[].parameters.format.pattern
-#### rules.username.cases[].resolvers[].parameters.format.pattern
+### pattern
 
 - Takes: a string
-- Affects: the formatted username override produced by `format_display`
+- Current default: `"{username}_{provider}"`
+- Affects: the renamed username of `rename-holder` and `rename-arriving`
 
-Supported placeholders:
+`{username}` is the username being renamed and `{provider}` the id of the renamed account's provider. Characters Minecraft does not allow in a username, anything but letters, digits and `_`, are left out.
 
-- `{username}` or `{requested}`
-- `{incomingProvider}` and `{existingProvider}`
-- `{incomingProviderId}` and `{existingProviderId}`
-- `{random}` or `{random:4}`
+### tooLong
 
-Provider display-name placeholders support optional truncation with `:maxSymbolCount`.
+- Takes: `SHORTEN` or `REFUSE`
+- Current default: `SHORTEN`
+- Affects: what happens when the renamed username is longer than Minecraft's 16 characters
 
-Examples:
+`SHORTEN` shortens the original username until the result fits: `Christopherson` becomes `Chris_credential`. `REFUSE` refuses the arriving player instead, and the holder keeps the name.
 
-```text
-{incomingProvider}
-{incomingProvider:8}
-{existingProvider:6}
-{username}_{incomingProvider:8}_{random:3}
-```
+### taken
 
-Only `{incomingProvider}` and `{existingProvider}` support truncation.
+- Takes: `NUMBER` or `REFUSE`
+- Current default: `NUMBER`
+- Affects: what happens when another account holds the renamed username
 
-#### rules.username.default.resolvers[].parameters.format.uppercase
-#### rules.username.cases[].resolvers[].parameters.format.uppercase
+`NUMBER` adds a number from 2 to 9, such as `Steve_credential2`, and refuses the arriving player when all of them are held. `REFUSE` refuses at once.
 
-- Takes: `true` or `false`
-- Current default: `false`
-- Affects: whether the full formatted result is converted to uppercase
+### holderOnline
 
-#### rules.username.default.resolvers[].parameters.format.lowercase
-#### rules.username.cases[].resolvers[].parameters.format.lowercase
+- Takes: `KEEP_PLAYING` or `KICK_HOLDER`
+- Current default: `KEEP_PLAYING`
+- Affects: what `rename-holder` does with a holder who is online
 
-- Takes: `true` or `false`
-- Current default: `false`
-- Affects: whether the full formatted result is converted to lowercase
+With `KEEP_PLAYING`, the holder keeps playing under the name until leaving and plays under the renamed name from the next join on. Both stored names change at once, so the arriving player plays this session under a name made with the same `rename-holder` settings, such as `Steve_premium`, and under the name from the next join on, once the holder has left. With `KICK_HOLDER`, the holder is disconnected with `pipeline.policy.holderReplaced`, so the name is free for everyone from then on. The proxy names the arriving player while the holder is still connected, so the arriving player also plays this first session under a name made with these settings.
 
-Avoid enabling both `uppercase` and `lowercase` at the same time.
+### Names made without a rule
 
-#### rules.username.default.resolvers[].parameters.target
-#### rules.username.cases[].resolvers[].parameters.target
+Identica uses the `rename-holder` settings in two cases no rule decides:
 
-- Takes: `"joiner"`, `"existing"`, or `"both"`
-- Current default: `"joiner"`
-- Affects: which side receives the formatted override value
+- Two accounts of the same provider with `OWNED_USERNAME` want one name, so the holder's name is stale: the holder was renamed at the provider and has not joined since. The current owner gets the name, and the holder a name made with `rename-holder`'s settings for its provider. On the holder's next join, the provider's new name for it goes through the rules as a `PROVIDER_RENAME`.
+- Another player on this proxy still plays under the account's username, such as a holder renamed while online who has not left yet. The player plays this session under a name made with `rename-holder`'s settings for the player's provider.
 
-`joiner` means the incoming account side.
+## Fixed rules
 
-Pattern with provider-name truncation:
+Some things no rule changes:
 
-<Tabs items={["YAML", "JSON"]}>
-  <Tab value="YAML">
-```yaml
-resolvers:
-  - id: "format_display"
-    parameters:
-      format:
-        pattern: "{username}_{incomingProvider:8}"
-      target: "joiner"
-```
-  </Tab>
-  <Tab value="JSON">
-```json
-{
-  "resolvers": [
-    {
-      "id": "format_display",
-      "parameters": {
-        "format": {
-          "pattern": "{username}_{incomingProvider:8}"
-        },
-        "target": "joiner"
-      }
-    }
-  ]
-}
-```
-  </Tab>
-</Tabs>
+- No outcome lets a player into another player's account.
+- A username an administrator set by hand is never changed by Identica. When a rule would rename such a holder, the arriving account is renamed instead.
+- An account that a conflict renamed takes its own name back on a later join once nobody holds it.
+- Of accounts from before usernames were unique that share one, the holder is the one that keeps the name for everyone else; the others keep theirs but do not count as holding it.
 
-Pattern with full-result uppercase formatting:
+## Renaming an account by hand
 
-<Tabs items={["YAML", "JSON"]}>
-  <Tab value="YAML">
-```yaml
-resolvers:
-  - id: "format_display"
-    parameters:
-      format:
-        pattern: "{username}_{incomingProvider}"
-        uppercase: true
-      target: "joiner"
-```
-  </Tab>
-  <Tab value="JSON">
-```json
-{
-  "resolvers": [
-    {
-      "id": "format_display",
-      "parameters": {
-        "format": {
-          "pattern": "{username}_{incomingProvider}",
-          "uppercase": true
-        },
-        "target": "joiner"
-      }
-    }
-  ]
-}
-```
-  </Tab>
-</Tabs>
-
-Pattern applied to both sides:
-
-<Tabs items={["YAML", "JSON"]}>
-  <Tab value="YAML">
-```yaml
-resolvers:
-  - id: "format_display"
-    parameters:
-      format:
-        pattern: "{username}_{random:3}"
-      target: "both"
-```
-  </Tab>
-  <Tab value="JSON">
-```json
-{
-  "resolvers": [
-    {
-      "id": "format_display",
-      "parameters": {
-        "format": {
-          "pattern": "{username}_{random:3}"
-        },
-        "target": "both"
-      }
-    }
-  ]
-}
-```
-  </Tab>
-</Tabs>
+`/identica admin username rename <account> <username>` renames an account, named by its username or unique id. The new username must be 3 to 16 letters, digits or `_`, and nobody may hold it in any case. Identica keeps a name set this way: neither a conflict nor a rename at the provider changes it. The player plays under it from the next join on.
 
 ## Messages
 
-Username pipeline messages live in `identity/username/messages` and apply across the subsystem's authentication, registration, and migration contributions.
+Username pipeline messages live in `identity/username/messages` and apply across the authentication, registration, and migration scenarios.
 
 ### pipeline.identity.synchronizationFailed
 
 - Takes: a list of message lines
 - Current default: a built-in username synchronization failure message
-- Affects: the message shown when the feature cannot synchronize the account username
+- Affects: the message shown when Identica cannot synchronize the account username
 
 ### pipeline.policy.taken
 
 - Takes: a list of message lines
 - Current default: a built-in message naming the taken username
-- Affects: the message a player is refused with when they register a username another account holds in any case
+- Affects: the message a player is refused with when the conflict rules refuse them
 
-The `{username}` placeholder is replaced with the username the player joined with.
+The `{username}` placeholder is replaced with the username the player wanted.
 
-### pipeline.policy.entrypointRequired
+### pipeline.policy.holderReplaced
 
 - Takes: a list of message lines
-- Current default: a built-in provider entrypoint requirement message
-- Affects: the message shown when a username conflict must be handled through a provider entrypoint
+- Current default: a built-in message naming both usernames
+- Affects: the message an online holder is disconnected with under `holderOnline: KICK_HOLDER`
+
+The `{username}` placeholder is the username the holder lost and `{renamed}` the one the holder plays under from the next join on.
 
 For example:
 
 ```yaml
 pipeline:
-  identity:
-    synchronizationFailed:
-      - "<red>Unable to synchronize your username.</red>"
   policy:
-    entrypointRequired:
-      - "<yellow>Use the entrypoint for {existingProvider} or {incomingProvider}.</yellow>"
+    taken:
+      - "<red>{username} is taken, please join with another name.</red>"
+    holderReplaced:
+      - "<yellow>The owner of {username} has joined. Join again to play as {renamed}.</yellow>"
 ```

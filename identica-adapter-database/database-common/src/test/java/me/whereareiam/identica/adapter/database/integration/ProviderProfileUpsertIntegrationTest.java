@@ -1,6 +1,7 @@
 package me.whereareiam.identica.adapter.database.integration;
 
 import com.google.inject.util.Providers;
+import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import me.whereareiam.dialectica.Dialectica;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
@@ -81,7 +82,7 @@ class ProviderProfileUpsertIntegrationTest {
 			);
 			for (String subject : subjects) {
 				UUID uniqueId = UUID.randomUUID();
-				accounts.create(TestDataFactory.account(uniqueId, subject));
+				accounts.create(TestDataFactory.account(uniqueId, subject), AccountUsernameSource.PROVIDER, null);
 				links.upsert(TestDataFactory.providerLink(uniqueId, "premium", subject, true));
 			}
 

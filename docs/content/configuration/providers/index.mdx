@@ -7,7 +7,7 @@ The providers configuration controls which identity providers are enabled and ho
 Use this file to enable providers, set priority and entrypoints, tune provider-specific session behavior, and apply feature-owned provider fields.
 
 Shared feature settings and provider-scoped feature overrides are documented under [Features](../features/index.mdx).
-Conflict configuration for provider-owned conflicts is documented under [Conflicts](./conflicts.mdx).
+What happens when two accounts want one username is documented under [Username](../identity/username/index.mdx).
 
 ## behavior
 
@@ -150,7 +150,7 @@ The supported subtrees include:
 - `features.verification`: [Verification](../features/verification/settings/index.mdx#provider-overrides)
 
 The `restriction-join` feature uses the nested `restriction.join` configuration path.
-Provider ability IDs such as `authoritative-username` are code declarations, not configuration subtrees.
+Provider guarantees such as `OWNED_USERNAME` are code declarations, not configuration subtrees.
 
 <Include src="../features/_partials/provider-overrides.mdx" />
 

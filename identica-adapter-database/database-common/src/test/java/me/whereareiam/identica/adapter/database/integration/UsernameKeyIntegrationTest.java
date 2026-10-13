@@ -4,7 +4,10 @@ import me.whereareiam.dialectica.Dialectica;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
 import me.whereareiam.identica.adapter.database.account.DefaultAccountPersistenceService;
+import me.whereareiam.identica.adapter.database.entity.account.AccountEntity;
 import me.whereareiam.identica.adapter.database.entity.username.UsernameEntity;
+import me.whereareiam.identica.adapter.database.mapper.account.AccountMapper;
+import me.whereareiam.identica.adapter.database.mapper.username.UsernameMapper;
 import me.whereareiam.identica.adapter.database.testing.PersistenceServices;
 import me.whereareiam.identica.adapter.database.testing.SimultaneousCalls;
 import me.whereareiam.identica.adapter.database.testing.TestDataFactory;
@@ -15,6 +18,7 @@ import me.whereareiam.identica.model.identity.Account;
 import me.whereareiam.identica.model.identity.username.AccountUsername;
 import me.whereareiam.identica.model.identity.username.AccountUsernameDuplicate;
 import me.whereareiam.identica.model.identity.username.AccountUsernameHistoryEntry;
+import me.whereareiam.identica.model.identity.username.UsernameWriteResult;
 import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.DisplayName;
@@ -31,8 +35,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Usernames are unique without regard to case through the key each account's username holds, while accounts that
- * share a username go on without one.
+ * Usernames are unique without regard to case through the key each account's username holds, while accounts from
+ * before that rule that share a username go on without one.
  */
 @DisplayName("Username keys")
 class UsernameKeyIntegrationTest {
@@ -40,36 +44,57 @@ class UsernameKeyIntegrationTest {
 	private static final UUID LOWERCASE_ALICE = UUID.fromString("00000000-0000-0000-0000-00000000000b");
 	private static final UUID BOB = UUID.fromString("00000000-0000-0000-0000-00000000000c");
 
-	@DisplayName("Creates an account with its username, which follows its provider and holds its key")
+	@DisplayName("Creates an account with its username, its source and the provider it registered through")
 	@ParameterizedTest(name = "{0}")
 	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
 	void createsAnAccountWithItsUsername(TestDatabase database) {
 		withServices(database, (accounts, usernames, duplicates, jdbi) -> {
-			accounts.create(TestDataFactory.account(ALICE, "Alice"));
+			UsernameWriteResult result = accounts.create(TestDataFactory.account(ALICE, "Alice"), AccountUsernameSource.SYSTEM, "vouched");
 
+			assertTrue(result.isWritten());
 			assertEquals("Alice", accounts.findByUniqueId(ALICE).orElseThrow().getUsername());
 			AccountUsername username = usernames.find(ALICE).orElseThrow();
 			assertEquals("Alice", username.getUsername());
-			assertEquals(AccountUsernameSource.PROVIDER, username.getSource());
+			assertEquals(AccountUsernameSource.SYSTEM, username.getSource());
+			assertEquals("vouched", username.getProviderId());
 			assertEquals(Map.of(ALICE, "alice"), keys(jdbi));
 		});
 	}
 
-	@DisplayName("Of two accounts created at once with one username in two cases, exactly one holds the username")
+	@DisplayName("Creates no account whose username another account holds in another case, and names the holder")
 	@ParameterizedTest(name = "{0}")
 	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
-	void givesASimultaneouslyCreatedUsernameToOneAccount(TestDatabase database) {
+	void refusesAnAccountWhoseUsernameIsHeld(TestDatabase database) {
+		withServices(database, (accounts, usernames, duplicates, jdbi) -> {
+			accounts.create(TestDataFactory.account(ALICE, "Alice"), AccountUsernameSource.PROVIDER, null);
+
+			UsernameWriteResult result = accounts.create(TestDataFactory.account(LOWERCASE_ALICE, "alice"), AccountUsernameSource.PROVIDER, null);
+
+			assertFalse(result.isWritten());
+			assertEquals(ALICE, result.getHolderUniqueId());
+			assertTrue(accounts.findByUniqueId(LOWERCASE_ALICE).isEmpty());
+			assertEquals(Map.of(ALICE, "alice"), keys(jdbi));
+		});
+	}
+
+	@DisplayName("Of two accounts created at once with one username in two cases, exactly one is created")
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
+	void createsOneOfTwoSimultaneousAccountsOfAUsername(TestDatabase database) {
 		withServices(database, (accounts, usernames, duplicates, jdbi) -> {
 			List<String> names = List.of("Alice", "alice");
 			List<UUID> uniqueIds = List.of(ALICE, LOWERCASE_ALICE);
 
-			SimultaneousCalls.run(2, party -> accounts.create(TestDataFactory.account(uniqueIds.get(party), names.get(party))));
+			List<UsernameWriteResult> results = SimultaneousCalls.run(2, party ->
+					accounts.create(TestDataFactory.account(uniqueIds.get(party), names.get(party)), AccountUsernameSource.PROVIDER, null));
 
+			assertEquals(1, results.stream().filter(UsernameWriteResult::isWritten).count(), results.toString());
 			Map<UUID, String> keys = keys(jdbi);
-			assertEquals(2, keys.size(), keys.toString());
-			assertEquals(1, keys.values().stream().filter("alice"::equals).count(), keys.toString());
-			assertEquals(1, keys.values().stream().filter(key -> key == null).count(), keys.toString());
-			assertEquals(List.of("alice"), duplicates.findAll().stream().map(AccountUsernameDuplicate::getUsername).toList());
+			assertEquals(1, keys.size(), keys.toString());
+			UUID created = keys.keySet().iterator().next();
+			UsernameWriteResult refused = results.stream().filter(result -> !result.isWritten()).findFirst().orElseThrow();
+			assertEquals(created, refused.getHolderUniqueId());
+			assertTrue(duplicates.findAll().isEmpty());
 		});
 	}
 
@@ -78,12 +103,25 @@ class UsernameKeyIntegrationTest {
 	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
 	void findsAUsernameInEveryCase(TestDatabase database) {
 		withServices(database, (accounts, usernames, duplicates, jdbi) -> {
-			accounts.create(TestDataFactory.account(ALICE, "Älice"));
-			accounts.create(TestDataFactory.account(LOWERCASE_ALICE, "äLICE"));
-			accounts.create(TestDataFactory.account(BOB, "Bob"));
+			accounts.create(TestDataFactory.account(ALICE, "Älice"), AccountUsernameSource.PROVIDER, null);
+			shareUsername(jdbi, LOWERCASE_ALICE, "äLICE", 2_000L);
+			accounts.create(TestDataFactory.account(BOB, "Bob"), AccountUsernameSource.PROVIDER, null);
 
 			assertEquals(List.of(ALICE, LOWERCASE_ALICE), uniqueIds(accounts.findByUsername("ÄLICE")));
 			assertEquals(List.of(BOB), uniqueIds(accounts.findByUsername("bOB")));
+		});
+	}
+
+	@DisplayName("Finds the holder of a username: the account with its key, not one that shares it without a key")
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
+	void findsTheHolderOfAUsername(TestDatabase database) {
+		withServices(database, (accounts, usernames, duplicates, jdbi) -> {
+			shareUsername(jdbi, LOWERCASE_ALICE, "alice", 1_000L);
+			accounts.create(TestDataFactory.account(ALICE, "Alice"), AccountUsernameSource.PROVIDER, null);
+
+			assertEquals(ALICE, usernames.findHolder("ALICE").orElseThrow().getUniqueId());
+			assertTrue(usernames.findHolder("Bob").isEmpty());
 		});
 	}
 
@@ -92,10 +130,10 @@ class UsernameKeyIntegrationTest {
 	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
 	void renamesWithKeyAndHistory(TestDatabase database) {
 		withServices(database, (accounts, usernames, duplicates, jdbi) -> {
-			accounts.create(TestDataFactory.account(ALICE, "Alice"));
+			accounts.create(TestDataFactory.account(ALICE, "Alice"), AccountUsernameSource.PROVIDER, null);
 
-			assertTrue(usernames.rename(change(ALICE, "Alice", "Alicia")));
-			accounts.create(TestDataFactory.account(LOWERCASE_ALICE, "alice"));
+			assertTrue(usernames.rename(change(ALICE, "Alice", "Alicia")).isWritten());
+			accounts.create(TestDataFactory.account(LOWERCASE_ALICE, "alice"), AccountUsernameSource.PROVIDER, null);
 
 			assertEquals(Map.of(ALICE, "alicia", LOWERCASE_ALICE, "alice"), keys(jdbi));
 			AccountUsername renamed = usernames.find(ALICE).orElseThrow();
@@ -112,11 +150,13 @@ class UsernameKeyIntegrationTest {
 	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
 	void keepsTheUsernameOfARenameOntoAHeldOne(TestDatabase database) {
 		withServices(database, (accounts, usernames, duplicates, jdbi) -> {
-			accounts.create(TestDataFactory.account(ALICE, "Alice"));
-			accounts.create(TestDataFactory.account(BOB, "Bob"));
+			accounts.create(TestDataFactory.account(ALICE, "Alice"), AccountUsernameSource.PROVIDER, null);
+			accounts.create(TestDataFactory.account(BOB, "Bob"), AccountUsernameSource.PROVIDER, null);
 
-			assertFalse(usernames.rename(change(BOB, "Bob", "ALICE")));
+			UsernameWriteResult result = usernames.rename(change(BOB, "Bob", "ALICE"));
 
+			assertFalse(result.isWritten());
+			assertEquals(ALICE, result.getHolderUniqueId());
 			assertEquals("Bob", accounts.findByUniqueId(BOB).orElseThrow().getUsername());
 			assertEquals(Map.of(ALICE, "alice", BOB, "bob"), keys(jdbi));
 			assertEquals(List.of(), history(jdbi, BOB));
@@ -128,7 +168,7 @@ class UsernameKeyIntegrationTest {
 	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
 	void changesTheSource(TestDatabase database) {
 		withServices(database, (accounts, usernames, duplicates, jdbi) -> {
-			accounts.create(TestDataFactory.account(ALICE, "Alice"));
+			accounts.create(TestDataFactory.account(ALICE, "Alice"), AccountUsernameSource.PROVIDER, null);
 
 			usernames.setSource(ALICE, AccountUsernameSource.MANUAL);
 
@@ -143,9 +183,9 @@ class UsernameKeyIntegrationTest {
 	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
 	void listsSharedUsernames(TestDatabase database) {
 		withServices(database, (accounts, usernames, duplicates, jdbi) -> {
-			accounts.create(account(LOWERCASE_ALICE, "alice", 1_000L));
-			accounts.create(account(ALICE, "Alice", 2_000L));
-			accounts.create(account(BOB, "Bob", 3_000L));
+			accounts.create(account(LOWERCASE_ALICE, "alice", 1_000L), AccountUsernameSource.PROVIDER, null);
+			shareUsername(jdbi, ALICE, "Alice", 2_000L);
+			accounts.create(account(BOB, "Bob", 3_000L), AccountUsernameSource.PROVIDER, null);
 
 			List<AccountUsernameDuplicate> shared = duplicates.findAll();
 			assertEquals(1, shared.size());
@@ -157,6 +197,17 @@ class UsernameKeyIntegrationTest {
 			assertTrue(duplicates.findAll().isEmpty());
 			assertTrue(usernames.find(LOWERCASE_ALICE).isEmpty());
 		});
+	}
+
+	/**
+	 * Stores an account from before usernames were unique, which shares its username with an older account and has
+	 * no key.
+	 */
+	private static void shareUsername(Jdbi jdbi, UUID uniqueId, String username, long createdAt) {
+		Account account = account(uniqueId, username, createdAt);
+		EntityAccess.of(jdbi, Dialectica.entity(AccountEntity.class)).insert(AccountMapper.toEntity(account));
+		EntityAccess.of(jdbi, Dialectica.entity(UsernameEntity.class)).insert(
+				UsernameMapper.toEntity(account, AccountUsernameSource.PROVIDER, null).toBuilder().usernameKey(null).build());
 	}
 
 	private static AccountUsernameHistoryEntry change(UUID uniqueId, String oldUsername, String newUsername) {

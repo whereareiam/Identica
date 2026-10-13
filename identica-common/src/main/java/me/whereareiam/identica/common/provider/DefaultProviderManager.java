@@ -12,7 +12,7 @@ import me.whereareiam.identica.model.provider.ProviderDescriptor;
 import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.provider.resolver.ProviderResolver;
 import me.whereareiam.identica.type.provider.ProviderState;
-import me.whereareiam.identica.type.provider.ProviderTrait;
+import me.whereareiam.identica.type.provider.ProviderGuarantee;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -76,7 +76,7 @@ public class DefaultProviderManager implements ProviderManager {
 	}
 
 	@Override
-	public @NotNull List<InternalProvider> findProvidersByTraits(ProviderTrait... traits) {
+	public @NotNull List<InternalProvider> findProvidersByGuarantees(ProviderGuarantee... guarantees) {
 		if (providers.isEmpty()) return List.of();
 
 		List<InternalProvider> matches = new ArrayList<>();
@@ -88,7 +88,7 @@ public class DefaultProviderManager implements ProviderManager {
 
 			String id = descriptor.getId();
 			if (id.isBlank()) continue;
-			if (!supportsAll(descriptor, traits)) continue;
+			if (!supportsAll(descriptor, guarantees)) continue;
 
 			matches.add(provider);
 		}
@@ -101,8 +101,8 @@ public class DefaultProviderManager implements ProviderManager {
 	}
 
 	@Override
-	public InternalProvider findProviderByTraits(ProviderTrait... traits) {
-		List<InternalProvider> matches = findProvidersByTraits(traits);
+	public InternalProvider findProviderByGuarantees(ProviderGuarantee... guarantees) {
+		List<InternalProvider> matches = findProvidersByGuarantees(guarantees);
 		if (matches.isEmpty()) return null;
 
 		return matches.getFirst();
@@ -183,12 +183,12 @@ public class DefaultProviderManager implements ProviderManager {
 				.collect(Collectors.toList());
 	}
 
-	private boolean supportsAll(ProviderDescriptor descriptor, ProviderTrait[] traits) {
-		if (traits == null) return true;
+	private boolean supportsAll(ProviderDescriptor descriptor, ProviderGuarantee[] guarantees) {
+		if (guarantees == null) return true;
 
-		for (ProviderTrait trait : traits) {
-			if (trait == null) continue;
-			if (!descriptor.hasTrait(trait))
+		for (ProviderGuarantee guarantee : guarantees) {
+			if (guarantee == null) continue;
+			if (!descriptor.hasGuarantee(guarantee))
 				return false;
 		}
 

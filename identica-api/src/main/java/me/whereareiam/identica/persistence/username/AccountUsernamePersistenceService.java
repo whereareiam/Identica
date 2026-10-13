@@ -2,6 +2,7 @@ package me.whereareiam.identica.persistence.username;
 
 import me.whereareiam.identica.model.identity.username.AccountUsername;
 import me.whereareiam.identica.model.identity.username.AccountUsernameHistoryEntry;
+import me.whereareiam.identica.model.identity.username.UsernameWriteResult;
 import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import org.jetbrains.annotations.NotNull;
 
@@ -22,6 +23,15 @@ public interface AccountUsernamePersistenceService {
 	@NotNull Optional<AccountUsername> find(@NotNull UUID uniqueId);
 
 	/**
+	 * Finds the account that holds a username, without regard to case. Accounts from before usernames were unique
+	 * may share a username with it; the holder is the one that keeps the username for everyone else.
+	 *
+	 * @param username the username
+	 * @return the holder's username, or empty when no account holds it
+	 */
+	@NotNull Optional<AccountUsername> findHolder(@NotNull String username);
+
+	/**
 	 * Changes what decides an account's username, keeping the username itself.
 	 *
 	 * @param uniqueId the account
@@ -31,11 +41,12 @@ public interface AccountUsernamePersistenceService {
 
 	/**
 	 * Renames an account and appends the change to its username history, both or neither. The account takes the
-	 * change's new username, source and provider; another account that holds the new username without regard to case
-	 * keeps it, and this account keeps its own.
+	 * change's new username, source and provider; when another account holds the new username without regard to
+	 * case, that account keeps it, this account keeps its own and the result names the holder. Two accounts renamed
+	 * to one username at once cannot both get it.
 	 *
 	 * <pre>{@code
-	 * boolean renamed = usernames.rename(AccountUsernameHistoryEntry.builder()
+	 * UsernameWriteResult result = usernames.rename(AccountUsernameHistoryEntry.builder()
 	 *         .uniqueId(account)
 	 *         .providerId("example")
 	 *         .oldUsername("Alice")
@@ -46,7 +57,8 @@ public interface AccountUsernamePersistenceService {
 	 * }</pre>
 	 *
 	 * @param change the change, which becomes the history entry
-	 * @return whether the account was renamed
+	 * @return whether the account was renamed, or the account that holds the username
+	 * @throws RuntimeException when the storage fails
 	 */
-	boolean rename(@NotNull AccountUsernameHistoryEntry change);
+	@NotNull UsernameWriteResult rename(@NotNull AccountUsernameHistoryEntry change);
 }

@@ -1,6 +1,7 @@
 package me.whereareiam.identica.adapter.database.integration;
 
 import com.google.inject.util.Providers;
+import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import me.whereareiam.dialectica.Dialectica;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
@@ -162,7 +163,7 @@ class StoredValueCompatibilityIntegrationTest {
 	}
 
 	private static void writeAsNow(Jdbi jdbi, UUID uniqueId, String username) {
-		accounts(jdbi).create(TestDataFactory.account(uniqueId, username));
+		accounts(jdbi).create(TestDataFactory.account(uniqueId, username), AccountUsernameSource.PROVIDER, null);
 		links(jdbi).upsert(TestDataFactory.providerLink(uniqueId, "example", username, true));
 	}
 

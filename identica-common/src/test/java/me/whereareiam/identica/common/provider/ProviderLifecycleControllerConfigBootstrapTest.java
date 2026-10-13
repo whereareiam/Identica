@@ -24,9 +24,8 @@ import me.whereareiam.identica.common.provider.resolver.ProviderResolverRegistry
 import me.whereareiam.identica.common.provider.resolver.ProviderWorkingPathResolver;
 import me.whereareiam.identica.common.registry.RegistryConfiguration;
 import me.whereareiam.identica.config.ConfigProvider;
+import me.whereareiam.identica.common.conflict.DefaultConflictService;
 import me.whereareiam.identica.conflict.ConflictService;
-import me.whereareiam.identica.conflict.ConflictType;
-import me.whereareiam.identica.conflict.resolver.ConflictResolver;
 import me.whereareiam.identica.database.schema.SchemaInstaller;
 import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.EventManager;
@@ -34,8 +33,6 @@ import me.whereareiam.identica.event.base.Event;
 import me.whereareiam.identica.handshake.HandshakeStore;
 import me.whereareiam.identica.handshake.policy.HandshakePolicy;
 import me.whereareiam.identica.model.auth.handshake.HandshakeInstruction;
-import me.whereareiam.identica.model.conflict.ConflictContext;
-import me.whereareiam.identica.model.conflict.ConflictResolution;
 import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
 import me.whereareiam.identica.model.provider.dependency.ProviderLibraries;
@@ -180,7 +177,7 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 
 		assertEquals(ProviderState.LOADED, provider.getState());
 		assertEquals(Set.of("recognition", "verification"), Set.copyOf(provider.getDescriptor().getSupportedFeatureIds()));
-		assertTrue(provider.getDescriptor().getTraits().isEmpty());
+		assertTrue(provider.getDescriptor().getGuarantees().isEmpty());
 	}
 
 	@Test
@@ -252,7 +249,7 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 			bind(ProviderLifecycleController.class).asEagerSingleton();
 			bind(FeatureRegistry.class).toInstance(org.mockito.Mockito.mock(FeatureRegistry.class));
 			install(new RegistryConfiguration());
-			bind(ConflictService.class).toInstance(new NoopConflictService());
+			bind(ConflictService.class).toInstance(new DefaultConflictService(Set::of));
 			bind(EventManager.class).toInstance(new NoopEventManager());
 			bind(HandshakeStore.class).toInstance(new NoopHandshakeStore());
 			bind(new TypeLiteral<Registry<ProviderClaimSource>>() {}).toInstance(new ClaimSourceRegistry());
@@ -439,44 +436,6 @@ class ProviderLifecycleControllerConfigBootstrapTest {
 		public TestDocument supply(TestDocument config) {
 			config.setValue("prepared");
 			return config;
-		}
-	}
-
-	private static final class NoopConflictService implements ConflictService {
-		@Override
-		public void register(@NotNull ConflictResolver resolver) {
-		}
-
-		@Override
-		public void unregister(@NotNull ConflictResolver resolver) {
-		}
-
-		@Override
-		public ConflictResolver getResolver(@NotNull String id) {
-			return null;
-		}
-
-		@Override
-		public void register(@NotNull ConflictType<?> type) {
-		}
-
-		@Override
-		public void unregister(@NotNull ConflictType<?> type) {
-		}
-
-		@Override
-		public ConflictType<?> getType(@NotNull String key) {
-			return null;
-		}
-
-		@Override
-		public @NotNull Set<ConflictType<?>> getTypes() {
-			return Set.of();
-		}
-
-		@Override
-		public ConflictResolution resolve(@NotNull ConflictContext context) {
-			return null;
 		}
 	}
 

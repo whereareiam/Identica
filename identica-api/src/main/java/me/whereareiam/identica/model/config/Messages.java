@@ -364,6 +364,51 @@ public class Messages implements MessageDocument {
 			@ToString
 			public static class Username {
 				private @NotNull Duplicates duplicates;
+				private @NotNull Rename rename;
+
+				/**
+				 * Messages of renaming an account by hand.
+				 */
+				@Getter
+				@Setter
+				@ToString
+				public static class Rename {
+					/**
+					 * Message shown when no account matches the target.
+					 * Placeholders:
+					 * - {target}
+					 */
+					private @NotNull String notFound;
+
+					/**
+					 * Lines shown when several accounts match the target, to pick one by its UUID.
+					 */
+					private @NotNull Clear.Multiple multiple;
+
+					/**
+					 * Message shown when the new username is not one Minecraft allows.
+					 * Placeholders:
+					 * - {username}
+					 */
+					private @NotNull String invalid;
+
+					/**
+					 * Message shown when another account holds the new username.
+					 * Placeholders:
+					 * - {username}
+					 * - {holder}: the UUID of the account that holds it
+					 */
+					private @NotNull String taken;
+
+					/**
+					 * Message shown when the account was renamed.
+					 * Placeholders:
+					 * - {previous}: the account's username before
+					 * - {username}: the account's new username
+					 * - {uniqueId}
+					 */
+					private @NotNull String success;
+				}
 
 				/**
 				 * Messages of the listing of accounts that share a username without regard to case.

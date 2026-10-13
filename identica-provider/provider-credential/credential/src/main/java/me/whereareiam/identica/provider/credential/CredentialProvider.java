@@ -25,7 +25,7 @@ import me.whereareiam.identica.provider.credential.database.DatabaseModule;
 import me.whereareiam.identica.provider.credential.pipeline.CredentialPipelineExtension;
 import me.whereareiam.identica.provider.credential.sentinel.BruteForceSentinelDefinition;
 import me.whereareiam.identica.provider.credential.sentinel.CredentialSentinelModule;
-import me.whereareiam.identica.type.provider.ProviderTrait;
+import me.whereareiam.identica.type.provider.ProviderGuarantee;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -60,7 +60,7 @@ public class CredentialProvider extends IdenticaProvider {
 	}
 
 	@Override
-	public @NotNull Set<ProviderTrait> traits() {
+	public @NotNull Set<ProviderGuarantee> guarantees() {
 		return Set.of();
 	}
 

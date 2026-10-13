@@ -42,9 +42,9 @@ Recognition and sentinel inherit the shared `enabled` value. Verification inheri
 
 Sentinel also owns global connection checks that run before a provider is known. Those checks use shared settings. Once a provider is selected, Sentinel honors that provider's enable switch. Credential's brute-force rule only applies to Credential attempts and retains its detailed policy in Credential's settings.
 
-## Identity traits
+## Provider guarantees
 
-Authoritative usernames are an identity guarantee, not a toggleable feature. Premium declares `AUTHORITATIVE_USERNAME`; Identica follows its verified username unless manual authority or conflict policy says otherwise. There is no `features.username.enabled` switch. See [Username authority](../identity/username/index.mdx).
+Owned usernames are a provider guarantee, not a toggleable feature. Premium declares `OWNED_USERNAME`; Identica follows its verified username unless an administrator set the name by hand or the username conflict rules say otherwise. There is no `features.username.enabled` switch. See [Username](../identity/username/index.mdx).
 
 ## Feature references
 

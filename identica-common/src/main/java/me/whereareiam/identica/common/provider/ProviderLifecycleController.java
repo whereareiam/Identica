@@ -34,7 +34,7 @@ import me.whereareiam.identica.provider.ProviderPlatformExtension;
 import me.whereareiam.identica.feature.FeatureRegistry;
 import me.whereareiam.identica.feature.FeatureProviderContext;
 import me.whereareiam.identica.feature.ProviderFeatureContribution;
-import me.whereareiam.identica.type.provider.ProviderTrait;
+import me.whereareiam.identica.type.provider.ProviderGuarantee;
 import me.whereareiam.identica.provider.eligibility.ProviderEligibilityResolver;
 import me.whereareiam.identica.provider.migration.ProviderMigrationPrecheck;
 import me.whereareiam.identica.provider.resolver.ProviderResolver;
@@ -138,7 +138,7 @@ public class ProviderLifecycleController {
 					? instanceFactory.instantiatePlatformExtension(platformExtensionClass)
 					: null;
 
-			descriptor.setTraits(Set.copyOf(probeProvider.traits()));
+			descriptor.setGuarantees(Set.copyOf(probeProvider.guarantees()));
 			Set<String> participatingFeatures = new LinkedHashSet<>();
 			for (String featureId : probeProvider.supportedFeatures()) {
 				String normalized = normalizeFeatureId(featureId);
@@ -215,7 +215,7 @@ public class ProviderLifecycleController {
 		Logger.debug("Enabling provider %s", safeId(internal));
 		internal.setState(ProviderState.ENABLED);
 		try {
-			registerConflictResolvers(internal.getProvider());
+			registerConflictOutcomes(internal.getProvider());
 			internal.getProvider().onEnable();
 			registerProviderBindings(internal);
 			fireProviderEnabled(internal);
@@ -232,7 +232,7 @@ public class ProviderLifecycleController {
 		Logger.debug("Disabling provider %s", safeId(internal));
 		internal.setState(ProviderState.DISABLED);
 		try {
-			unregisterConflictResolvers(internal.getProvider());
+			unregisterConflictOutcomes(internal.getProvider());
 			internal.getProvider().onDisable();
 			fireProviderDisabled(internal);
 		} catch (Exception e) {
@@ -274,23 +274,16 @@ public class ProviderLifecycleController {
 		return false;
 	}
 
-	private void registerConflictResolvers(IdenticaProvider provider) {
+	private void registerConflictOutcomes(IdenticaProvider provider) {
 		if (provider == null) return;
-		for (var resolver : provider.getConflictResolvers())
-			conflictService.register(resolver);
-
-		for (var type : provider.getConflictTypes())
-			conflictService.register(type);
+		for (var outcome : provider.conflictOutcomes())
+			conflictService.register(outcome);
 	}
 
-	private void unregisterConflictResolvers(IdenticaProvider provider) {
+	private void unregisterConflictOutcomes(IdenticaProvider provider) {
 		if (provider == null) return;
-		for (var resolver : provider.getConflictResolvers())
-			conflictService.unregister(resolver);
-
-		for (var type : provider.getConflictTypes())
-			conflictService.unregister(type);
-
+		for (var outcome : provider.conflictOutcomes())
+			conflictService.unregister(outcome);
 	}
 
 	private void storeBindings(InternalProvider internal, Injector injector) {

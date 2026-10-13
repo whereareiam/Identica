@@ -65,13 +65,13 @@ class CollectProviderClaimsPhaseTest {
 				.build());
 		when(providerOperations.resolveSubjects(any())).thenReturn(subjects);
 		source(ProviderClaim.of("alpha", ProviderClaimOrigin.DISCOVERY));
-		source(ProviderClaim.of("beta", ProviderClaimOrigin.ENTRYPOINT));
+		source(ProviderClaim.of("beta", ProviderClaimOrigin.HOSTNAME));
 
 		PipelineState state = run(PrepareStage.HANDSHAKE, ProviderSelection.empty());
 
 		ProviderSelection selection = state.get(PrepareContextItem.KEY).orElseThrow().getSelection();
 		assertEquals("beta", selection.getWinnerProviderId());
-		assertEquals(ProviderClaimOrigin.ENTRYPOINT, selection.getOrigin());
+		assertEquals(ProviderClaimOrigin.HOSTNAME, selection.getOrigin());
 		assertEquals(2, requests.size());
 		assertEquals(subjects, requests.getFirst().getSubjects());
 	}

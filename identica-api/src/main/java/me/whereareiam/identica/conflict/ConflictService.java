@@ -1,84 +1,76 @@
 package me.whereareiam.identica.conflict;
 
-import me.whereareiam.identica.conflict.resolver.ConflictResolver;
-import me.whereareiam.identica.model.conflict.ConflictContext;
-import me.whereareiam.identica.model.conflict.ConflictResolution;
+import me.whereareiam.identica.model.conflict.ConflictKind;
+import me.whereareiam.identica.model.conflict.ConflictRule;
+import me.whereareiam.identica.model.conflict.ConflictSituation;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.Set;
+import java.util.List;
+import java.util.Optional;
 
 /**
- * Resolves conflicts using configured rules and registered resolvers.
+ * Settles conflicts between two accounts over something only one of them may have, such as a username.
+ *
+ * <p>Each kind of conflict keeps its rules in its own configuration. A rule names the situations it applies to by
+ * the providers of both sides, what they guarantee, what brought the conflict up and how the arriving player
+ * reached the proxy, and names the outcome that settles it. The most specific rule that applies wins: one naming
+ * provider ids beats one naming guarantees, which beats one naming neither; among equally specific rules the
+ * first one in the configuration wins. Outcomes are registered by id for their kind, so an addon can add its
+ * own.</p>
+ *
+ * <pre>{@code
+ * conflicts.register(new LongestPlaytimeOutcome());
+ * Optional<UsernameConflictRule> rule = conflicts.match(document.getRules(), situation);
+ * }</pre>
  */
 public interface ConflictService {
 	/**
-	 * Register a resolver for use in conflict resolution.
+	 * Registers an outcome for its kind, replacing an outcome of the same kind with the same id.
 	 *
-	 * @param resolver resolver to register
+	 * @param outcome outcome to register
 	 */
-	void register(@NotNull ConflictResolver resolver);
+	void register(@NotNull ConflictOutcome<?, ?, ?> outcome);
 
 	/**
-	 * Unregister a resolver.
+	 * Unregisters an outcome when it is the one registered under its kind and id.
 	 *
-	 * @param resolver resolver to unregister
+	 * @param outcome outcome to unregister
 	 */
-	void unregister(@NotNull ConflictResolver resolver);
+	void unregister(@NotNull ConflictOutcome<?, ?, ?> outcome);
 
 	/**
-	 * Resolve a registered resolver by id.
+	 * Finds the outcome registered for a kind under an id.
 	 *
-	 * @param id resolver id
-	 * @return resolver or {@code null}
+	 * @param kind kind of conflict
+	 * @param id   id of the outcome, as rules name it
+	 * @param <C>  what the outcome settles
+	 * @param <D>  what the outcome decides
+	 * @return the outcome, or empty when none is registered under the id
 	 */
-	@Nullable
-	ConflictResolver getResolver(@NotNull String id);
+	<C, D> @NotNull Optional<ConflictOutcome<C, D, ?>> findOutcome(@NotNull ConflictKind<C, D> kind, @NotNull String id);
 
 	/**
-	 * Register a conflict type.
+	 * Returns the outcomes registered for a kind.
 	 *
-	 * @param type conflict type
+	 * @param kind kind of conflict
+	 * @param <C>  what the outcomes settle
+	 * @param <D>  what the outcomes decide
+	 * @return the outcomes
 	 */
-	void register(@NotNull ConflictType<?> type);
+	<C, D> @NotNull List<ConflictOutcome<C, D, ?>> outcomes(@NotNull ConflictKind<C, D> kind);
 
 	/**
-	 * Unregister a conflict type.
+	 * Finds the rule that settles a situation: the most specific rule that applies to it, and the first one in the
+	 * list among equally specific ones.
 	 *
-	 * @param type conflict type
+	 * @param rules     rules in their configured order
+	 * @param situation situation to settle
+	 * @param <T>       what brings conflicts of the kind up
+	 * @param <R>       rule type of the kind
+	 * @return the rule, or empty when no rule applies
 	 */
-	void unregister(@NotNull ConflictType<?> type);
-
-	/**
-	 * Resolve a registered conflict type by key.
-	 *
-	 * @param key conflict key
-	 * @return conflict type or {@code null}
-	 */
-	@Nullable
-	ConflictType<?> getType(@NotNull String key);
-
-	/**
-	 * Return registered conflict types.
-	 *
-	 * @return conflict types
-	 */
-	@NotNull
-	Set<ConflictType<?>> getTypes();
-
-	/**
-	 * Resolve a conflict for the provided context.
-	 *
-	 * <pre>{@code
-	 * ConflictResolution resolution = conflictService.resolve(context);
-	 * if (resolution != null && resolution.getDecision() == ConflictResolution.Decision.DENY) {
-	 *     // handle denial
-	 * }
-	 * }</pre>
-	 *
-	 * @param context conflict context
-	 * @return conflict resolution or {@code null} when no resolver applies
-	 */
-	@Nullable
-	ConflictResolution resolve(@NotNull ConflictContext context);
+	<T extends Enum<T>, R extends ConflictRule<T>> @NotNull Optional<R> match(
+			@NotNull List<R> rules,
+			@NotNull ConflictSituation<T> situation
+	);
 }

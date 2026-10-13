@@ -18,7 +18,7 @@ import org.jetbrains.annotations.Nullable;
  * connection. Proof belongs to the connection it was given for and never carries over to another one.</p>
  *
  * <pre>{@code
- * ProviderClaim hostname = ProviderClaim.of("alpha", ProviderClaimOrigin.ENTRYPOINT);
+ * ProviderClaim hostname = ProviderClaim.of("alpha", ProviderClaimOrigin.HOSTNAME);
  * ProviderClaim proven = ProviderClaim.verified("alpha", "0b5d...");
  * }</pre>
  */

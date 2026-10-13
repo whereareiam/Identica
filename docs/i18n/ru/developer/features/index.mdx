@@ -1,18 +1,55 @@
 ---
-title: Признаки и функции провайдеров
+title: Гарантии и функции провайдеров
 description: Гарантии идентичности, поддерживаемые интеграции и политики функций, которыми управляет администратор.
-sourceHash: a350b8880c4bb0f6dd7e1f109b0bf6057df65e22
+sourceHash: 1622cfbab0b357e7936346c13973fdb7c7a83587
 ---
 
 Identica компилирует реализации своих функций прямо в плагин. Модули исходного кода разделяют зону ответственности, а поведение функций администраторы выбирают через глобальную конфигурацию и конфигурацию отдельных провайдеров.
 
-## Признаки провайдеров [#provider-traits]
+## Гарантии провайдеров [#provider-guarantees]
 
-`IdenticaProvider.traits()` возвращает `Set<ProviderTrait>`. Признак выражает гарантию идентичности, которую даёт реализация. Это не переключатель для администратора.
+`IdenticaProvider.guarantees()` возвращает `Set<ProviderGuarantee>`. Гарантия выражает то, что реализация гарантирует о своих идентичностях. Это не переключатель для администратора, и правила конфликтов ников сопоставляются именно с гарантиями.
 
-`ProviderTrait.AUTHORITATIVE_USERNAME` означает, что для основной привязки аккаунта Identica следует подтверждённому нику из провайдера — с учётом ручного назначения права на ник и политики разрешения конфликтов. Провайдер Premium объявляет этот признак, провайдер Credential — нет. Конфигурация провайдера не может выдать этот признак.
+`ProviderGuarantee.OWNED_USERNAME` означает, что провайдер владеет никами своих игроков: двое его игроков не могут одновременно владеть одним ником, и он проверяет, что игрок владеет ником, с которым заходит. Identica следует этому нику для аккаунта, чьей основной привязкой является провайдер, если только администратор не назначил ник вручную. Провайдер Premium объявляет эту гарантию, провайдер Credential — нет. Конфигурация провайдера не может выдать гарантию.
 
-Работа с никами — это поведение ядра, а не функция, и она никогда не указывается в `supportedFeatures()`. Её контракты находятся в `identica-api`: `UsernameConflictHandler` в `me.whereareiam.identica.identity.username`, модели в `me.whereareiam.identica.model.identity.username`, `UsernameChangedEvent` в `me.whereareiam.identica.event.identity` и сервисы хранения данных в `me.whereareiam.identica.persistence.username`. Обнаружение конфликтов и документы ников находятся в `identica-common`, фазы обработки ников — в `identica-engine`, а таблицы ников — в `identica-adapter-database/database-common`. См. [Право на ник](../../configuration/identity/username/index.mdx).
+Работа с никами — это поведение ядра, а не функция, и она никогда не указывается в `supportedFeatures()`. Её контракты находятся в `identica-api`: `UsernameAssigner` в `me.whereareiam.identica.identity.username`, модели в `me.whereareiam.identica.model.identity.username`, закрытые типы в `me.whereareiam.identica.type.identity.username`, `UsernameChangedEvent` в `me.whereareiam.identica.event.identity` и сервисы хранения данных в `me.whereareiam.identica.persistence.username`. Сопоставление правил и документы ников находятся в `identica-common`, фазы обработки ников — в `identica-engine`, а таблицы ников — в `identica-adapter-database/database-common`. См. [Ник](../../configuration/identity/username/index.mdx).
+
+### Исходы конфликтов [#conflict-outcomes]
+
+Конфликты двух аккаунтов за то, что может быть только у одного из них, проходят через `ConflictService` в `me.whereareiam.identica.conflict`. Каждый вид конфликта, например `UsernameConflict.KIND`, хранит свои правила в собственном документе; сервис находит самое конкретное подходящее правило и исход, который оно называет. Исходы регистрируются по id вместе с настройками, поэтому аддон или провайдер может добавить свой — через `ConflictService.register` или вернув его из `IdenticaProvider.conflictOutcomes()`, тогда он зарегистрирован, пока провайдер включён. Исход решает только, что остаётся у каждой стороны; ни один не пускает игрока в чужой аккаунт.
+
+```java
+public final class LongestPlaytimeOutcome implements ConflictOutcome<UsernameConflict, UsernameConflictDecision, LongestPlaytime> {
+    @Override
+    public ConflictKind<UsernameConflict, UsernameConflictDecision> kind() {
+        return UsernameConflict.KIND;
+    }
+
+    @Override
+    public String id() {
+        return "longest-playtime";
+    }
+
+    @Override
+    public Class<LongestPlaytime> settingsType() {
+        return LongestPlaytime.class;
+    }
+
+    @Override
+    public LongestPlaytime defaults() {
+        return new LongestPlaytime();
+    }
+
+    @Override
+    public UsernameConflictDecision decide(UsernameConflict conflict, LongestPlaytime settings) {
+        return playtime.longer(conflict.getSituation())
+                ? UsernameConflictDecision.renameHolder(settings.getHolderRename())
+                : UsernameConflictDecision.renameArriving(settings.getRename());
+    }
+}
+```
+
+У исхода есть id в нижнем регистре через дефис, типизированная модель настроек и её значения по умолчанию. После регистрации Identica записывает значения по умолчанию в `outcomes.longest-playtime`; администратор меняет их там, в `providers.<провайдер>.longest-playtime` или в отдельном правиле, а правило называет исход как `outcome: longest-playtime`. `actsOn()` указывает, настройки провайдера какой стороны применяются.
 
 ## Поддерживаемые функции [#supported-features]
 
@@ -20,8 +57,8 @@ Identica компилирует реализации своих функций �
 
 ```java
 @Override
-public Set<ProviderTrait> traits() {
-    return Set.of(ProviderTrait.AUTHORITATIVE_USERNAME);
+public Set<ProviderGuarantee> guarantees() {
+    return Set.of(ProviderGuarantee.OWNED_USERNAME);
 }
 
 @Override
@@ -54,4 +91,4 @@ public Set<String> supportedFeatures() {
 
 ## Проверка [#validation]
 
-Тестируйте поведение признаков без флагов функций, поддержку — отдельно от включения, явно заданные значения false, унаследованные глобальные значения и разные настройки у разных провайдеров. Тестируйте очистку жизненного цикла и проверяйте, что общая конфигурация провайдера сохраняет настройки, не относящиеся к изменяемой функции.
+Тестируйте поведение гарантий без флагов функций, поддержку — отдельно от включения, явно заданные значения false, унаследованные глобальные значения и разные настройки у разных провайдеров. Тестируйте очистку жизненного цикла и проверяйте, что общая конфигурация провайдера сохраняет настройки, не относящиеся к изменяемой функции.

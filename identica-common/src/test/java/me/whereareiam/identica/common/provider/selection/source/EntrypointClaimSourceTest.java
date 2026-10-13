@@ -35,7 +35,7 @@ class EntrypointClaimSourceTest {
 				.build());
 
 		assertEquals(
-				List.of(ProviderClaim.of("alpha", ProviderClaimOrigin.ENTRYPOINT)),
+				List.of(ProviderClaim.of("alpha", ProviderClaimOrigin.HOSTNAME)),
 				new EntrypointClaimSource(providerOperations).claims(request(new ConnectionIdentity.Origin("alpha.example.org", 25565)))
 		);
 	}

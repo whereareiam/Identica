@@ -2,11 +2,10 @@ package me.whereareiam.identica.provider;
 
 import com.google.inject.Module;
 import lombok.Setter;
-import me.whereareiam.identica.conflict.ConflictType;
-import me.whereareiam.identica.conflict.resolver.ConflictResolver;
+import me.whereareiam.identica.conflict.ConflictOutcome;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
 import me.whereareiam.identica.model.provider.dependency.ProviderLibraries;
-import me.whereareiam.identica.type.provider.ProviderTrait;
+import me.whereareiam.identica.type.provider.ProviderGuarantee;
 import me.whereareiam.identica.feature.FeatureRegistry;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -46,12 +45,12 @@ public abstract class IdenticaProvider {
 	}
 
 	/**
-	 * Declares identity guarantees supplied by this provider. Traits are fixed by
+	 * Declares what this provider guarantees about its identities. Guarantees are fixed by
 	 * the implementation and cannot be enabled through feature configuration.
 	 *
-	 * @return provider identity traits
+	 * @return provider guarantees
 	 */
-	public @NotNull Set<ProviderTrait> traits() {
+	public @NotNull Set<ProviderGuarantee> guarantees() {
 		return Set.of();
 	}
 
@@ -87,20 +86,11 @@ public abstract class IdenticaProvider {
 	}
 
 	/**
-	 * Provide conflict resolvers owned by this provider.
+	 * Provides conflict outcomes owned by this provider, which conflict rules can name while the provider is loaded.
 	 *
-	 * @return list of provider-defined resolvers
+	 * @return the provider's conflict outcomes
 	 */
-	public @NotNull List<ConflictResolver> getConflictResolvers() {
-		return List.of();
-	}
-
-	/**
-	 * Provide conflict types owned by this provider.
-	 *
-	 * @return list of provider-defined conflict types
-	 */
-	public @NotNull List<ConflictType> getConflictTypes() {
+	public @NotNull List<ConflictOutcome<?, ?, ?>> conflictOutcomes() {
 		return List.of();
 	}
 

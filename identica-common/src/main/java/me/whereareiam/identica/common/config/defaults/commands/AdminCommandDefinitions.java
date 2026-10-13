@@ -135,6 +135,16 @@ public class AdminCommandDefinitions implements CommandDefinitions {
 				.usage("{command} {alias}")
 				.cooldown(globalCooldown())
 				.build());
+
+		registry.register("admin-username-rename", CommandDefinition.builder()
+				.enabled(true)
+				.aliases(List.of("admin username rename"))
+				.permission("identica.admin.username")
+				.description("Rename an account by hand")
+				.usage("{command} {alias} <target> <username>")
+				.arguments(Map.of("target", "Target", "username", "Username"))
+				.cooldown(globalCooldown())
+				.build());
 	}
 
 	private void registerSessions(Registry registry) {

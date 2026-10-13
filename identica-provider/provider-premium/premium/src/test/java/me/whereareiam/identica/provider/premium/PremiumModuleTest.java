@@ -31,7 +31,7 @@ import me.whereareiam.identica.provider.premium.config.provider.PremiumSettingsP
 import me.whereareiam.identica.provider.premium.profile.PremiumProfileStore;
 import me.whereareiam.identica.provider.premium.resolver.PremiumProfileLookup;
 import me.whereareiam.identica.service.MigrationService;
-import me.whereareiam.identica.type.provider.ProviderTrait;
+import me.whereareiam.identica.type.provider.ProviderGuarantee;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -45,7 +45,7 @@ class PremiumModuleTest {
 	@Test
 	void declaresOnlyAuthoritativeUsernameCapabilityAndOptionalFeatures() {
 		PremiumProvider provider = new PremiumProvider();
-		assertEquals(java.util.Set.of(ProviderTrait.AUTHORITATIVE_USERNAME), provider.traits());
+		assertEquals(java.util.Set.of(ProviderGuarantee.OWNED_USERNAME), provider.guarantees());
 
 		assertEquals(Set.of("verification", "recognition", "restriction", "restriction-join", "sentinel"), provider.supportedFeatures());
 		assertTrue(provider.libraries().toLibraryRequests().isEmpty());

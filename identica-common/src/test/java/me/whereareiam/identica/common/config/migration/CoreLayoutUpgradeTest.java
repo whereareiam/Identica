@@ -7,6 +7,7 @@ import me.whereareiam.configura.Configura;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.Reloadable;
+import me.whereareiam.identica.common.conflict.DefaultConflictService;
 import me.whereareiam.identica.common.config.provider.*;
 import me.whereareiam.identica.common.config.testing.DataDirectory;
 import me.whereareiam.identica.common.config.testing.EarlierConfiguration;
@@ -19,6 +20,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.file.Path;
+import java.util.Set;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
@@ -133,8 +135,7 @@ class CoreLayoutUpgradeTest {
 		new PersistenceProvider(data, registry).get();
 		new ReplicationProvider(data, registry).get();
 		new ProvidersProvider(providers, registry).get();
-		new ConflictsProvider(providers, registry).get();
-		new UsernameConflictsProvider(username, registry).get();
+		new UsernameConflictsProvider(username, registry, () -> new DefaultConflictService(Set::of)).get();
 		new UsernameMessagesProvider(username, registry).get();
 	}
 

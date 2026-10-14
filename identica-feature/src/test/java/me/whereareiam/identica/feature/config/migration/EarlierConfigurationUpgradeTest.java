@@ -165,8 +165,8 @@ class EarlierConfigurationUpgradeTest {
 
 		MigrationReport report = directory.migrate(FEATURES);
 
-		assertEquals(IntStream.rangeClosed(core + 1, 8).boxed().toList(), versions(report, ConfigMigrations.ID));
-		assertEquals(8, directory.tree("settings").path(StrataFeature.VERSION_KEY).asInt());
+		assertEquals(IntStream.rangeClosed(core + 1, 9).boxed().toList(), versions(report, ConfigMigrations.ID));
+		assertEquals(9, directory.tree("settings").path(StrataFeature.VERSION_KEY).asInt());
 		FEATURE_VERSIONS.forEach((stream, document) ->
 				assertEquals(2, directory.tree(document).path(StrataFeature.VERSION_KEY).asInt(), stream));
 	}
@@ -250,7 +250,7 @@ class EarlierConfigurationUpgradeTest {
 		}
 		MigrationReport again = directory.migrate(FEATURES);
 
-		assertEquals(IntStream.rangeClosed(2, 8).boxed().toList(), versions(again, ConfigMigrations.ID));
+		assertEquals(IntStream.rangeClosed(2, 9).boxed().toList(), versions(again, ConfigMigrations.ID));
 		for (String stream : FEATURE_VERSIONS.keySet())
 			assertEquals(List.of(2), versions(again, stream), stream);
 		assertEquals(migrated, directory.files());
@@ -357,6 +357,7 @@ class EarlierConfigurationUpgradeTest {
 				+ "\"verification\":{\"unavailableSelectionPolicy\":\"CLEAR_SELECTION\","
 				+ "\"methods\":[{\"id\":\"totp\",\"enabled\":true,\"priority\":90,\"unavailableSelectionPolicy\":\"KEEP_LOCKED\"}]}}"),
 				credential.get("features"));
+		// 2.2.1's ALLOW_MULTIPLE no longer exists: the newest login takes over instead.
 		assertEquals(json("{\"concurrencyPolicy\":\"REPLACE_EXISTING\"}"), credential.get("session"));
 
 		ObjectNode premium = provider(directory, "premium");
@@ -414,13 +415,16 @@ class EarlierConfigurationUpgradeTest {
 
 	/**
 	 * Returns the values of a directory before its upgrade, without those the migrations drop on purpose: values
-	 * with no counterpart, the usages {@link ReservationUsernameMigration} rewrites, and what 2.2.1 wrote into the
-	 * entries of {@code credential} and {@code premium} by default, which the core's migrations drop.
+	 * with no counterpart, the usages {@link ReservationUsernameMigration} rewrites, the session policy
+	 * {@code ALLOW_MULTIPLE}, which becomes {@code REPLACE_EXISTING}, and what 2.2.1 wrote into the entries of
+	 * {@code credential} and {@code premium} by default, which the core's migrations drop.
 	 */
 	private Map<String, JsonNode> kept(DataDirectory directory) {
 		Map<String, JsonNode> values = new TreeMap<>(directory.values());
 		values.keySet().removeIf(path -> DROPPED.stream().anyMatch(pattern -> pattern.matcher(path).matches()));
 		values.keySet().removeIf(path -> path.matches("^commands:/commands/admin-reservation-\\w+/usage$"));
+		values.entrySet().removeIf(value -> value.getKey().matches(".*/(c|sessionC)oncurrencyPolicy$")
+				&& value.getValue().asText().equals("ALLOW_MULTIPLE"));
 
 		JsonNode entries = directory.at("providers/providers", "/providers");
 		for (int index = 0; index < entries.size(); index++) {

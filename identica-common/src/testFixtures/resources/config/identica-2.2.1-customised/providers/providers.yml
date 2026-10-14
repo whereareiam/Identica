@@ -38,7 +38,7 @@ providers:
     priority: 60
     overrides:
       allowRecognitionOnUntrustedIp: true
-      sessionConcurrencyPolicy: "REPLACE_EXISTING"
+      sessionConcurrencyPolicy: "ALLOW_MULTIPLE"
       recognition:
         enabled: false
         signals:

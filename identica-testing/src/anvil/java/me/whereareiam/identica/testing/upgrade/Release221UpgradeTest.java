@@ -7,6 +7,7 @@ import me.whereareiam.identica.common.config.testing.EarlierConfiguration;
 import me.whereareiam.identica.feature.verification.model.config.VerificationSettings;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.config.provider.Providers;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
@@ -15,6 +16,7 @@ import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.DatabaseType;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.session.SessionConcurrencyPolicy;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -85,6 +87,14 @@ class Release221UpgradeTest {
 		assertEquals(8, verification.getTotp().getDigits());
 		Messages messages = ProxyConfiguration.generated(anvil, "messages.yml", Messages.class);
 		assertEquals(CUSTOMISED, last(messages.getScenarios().getRegistration().getRouting().getMissingServer()));
+		// One session per account: the provider's ALLOW_MULTIPLE of 2.2.1 lets the newest login take over instead.
+		Providers providers = ProxyConfiguration.generated(anvil, "providers/providers.yml", Providers.class);
+		assertEquals(SessionConcurrencyPolicy.REPLACE_EXISTING, providers.getProviders().stream()
+				.filter(entry -> entry.getId().equals(Provider.CREDENTIAL.getId()))
+				.findFirst()
+				.orElseThrow()
+				.getSession()
+				.getConcurrencyPolicy());
 		// Credential's messages of 2.2.1 still name a message this version no longer has; the rest of the file loads.
 		CredentialMessages credential = ProxyConfiguration.generated(anvil, "providers/Credential/messages.yml", CredentialMessages.class);
 		assertEquals(

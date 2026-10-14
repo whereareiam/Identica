@@ -73,6 +73,7 @@ public final class ConfigMigrations {
 				.migration(ProviderFeaturesMigration.VERSION, ProviderFeaturesMigration.NAME, new ProviderFeaturesMigration(extension))
 				.migration(DocumentVersionsMigration.VERSION, DocumentVersionsMigration.NAME, new DocumentVersionsMigration(extension))
 				.migration(UsernameConflictRulesMigration.VERSION, UsernameConflictRulesMigration.NAME, new UsernameConflictRulesMigration(extension))
+				.migration(SessionPolicyMigration.VERSION, SessionPolicyMigration.NAME, new SessionPolicyMigration(extension))
 				.build();
 	}
 

@@ -11,6 +11,7 @@ import me.whereareiam.identica.common.config.provider.EngineProvider;
 import me.whereareiam.identica.common.config.provider.ReplicationProvider;
 import me.whereareiam.identica.common.config.provider.SettingsProvider;
 import me.whereareiam.identica.model.config.Replication;
+import me.whereareiam.identica.type.session.SessionConcurrencyPolicy;
 import me.whereareiam.strata.Strata;
 import me.whereareiam.strata.adapter.configura.StrataFeature;
 import me.whereareiam.strata.exception.MigrationVersionException;
@@ -63,7 +64,7 @@ class ConfigMigrationsTest {
 		MigrationReport report = start();
 
 		assertTrue(report.isEmpty());
-		assertTrue(read("settings").startsWith("_version: 8\nlevel: 2\n"), read("settings"));
+		assertTrue(read("settings").startsWith("_version: 9\nlevel: 2\n"), read("settings"));
 		assertFalse(read("engine").contains("_version"));
 	}
 
@@ -75,8 +76,8 @@ class ConfigMigrationsTest {
 
 		MigrationReport report = migrate();
 
-		assertEquals(List.of(1, 2, 3, 4, 5, 6, 7, 8), versions(report));
-		assertEquals("_version: 8\nlevel: 3\nsessions:\n  concurrencyPolicy: \"REJECT_NEW\"\n", read("settings"));
+		assertEquals(List.of(1, 2, 3, 4, 5, 6, 7, 8, 9), versions(report));
+		assertEquals("_version: 9\nlevel: 3\nsessions:\n  concurrencyPolicy: \"REJECT_NEW\"\n", read("settings"));
 		assertEquals(EXISTING_ENGINE, read("engine"));
 		assertEquals(EXISTING_SETTINGS, Files.readString(dataPath.resolve(".strata/backup/identica.config/v1/settings.yml")));
 	}
@@ -89,7 +90,7 @@ class ConfigMigrationsTest {
 		start();
 
 		String settings = read("settings");
-		assertTrue(settings.startsWith("_version: 8\nlevel: 3\n"), settings);
+		assertTrue(settings.startsWith("_version: 9\nlevel: 3\n"), settings);
 		assertTrue(settings.contains("concurrencyPolicy: \"REJECT_NEW\""), settings);
 		assertTrue(settings.contains("identity:"), settings);
 	}
@@ -111,11 +112,11 @@ class ConfigMigrationsTest {
 	@DisplayName("A version written by a newer build refuses the start and changes nothing")
 	@Test
 	void newerVersionRefusesStart() throws IOException {
-		write("settings", "_version: 9\nlevel: 1\n");
+		write("settings", "_version: 10\nlevel: 1\n");
 
 		assertThrows(MigrationVersionException.class, this::migrate);
 
-		assertEquals("_version: 9\nlevel: 1\n", read("settings"));
+		assertEquals("_version: 10\nlevel: 1\n", read("settings"));
 	}
 
 	@DisplayName("A version in a document the migrations do not use survives being rewritten")
@@ -140,6 +141,18 @@ class ConfigMigrationsTest {
 		assertFalse(settings.contains("activeTtl"), settings);
 		assertFalse(settings.contains("heartbeatTimeout"), settings);
 		assertEquals(Duration.ofSeconds(30), new ReplicationProvider(dataPath, registry()).get().getHeartbeatTimeout());
+	}
+
+	@DisplayName("A 2.2.1 installation with the removed session policy ALLOW_MULTIPLE starts with REPLACE_EXISTING")
+	@Test
+	void removedSessionPolicyBecomesReplaceExisting() throws IOException {
+		write("settings", "level: 3\nconnection:\n  sessions:\n    concurrencyPolicy: \"ALLOW_MULTIPLE\"\n");
+
+		start();
+
+		assertTrue(read("settings").contains("concurrencyPolicy: \"REPLACE_EXISTING\""), read("settings"));
+		assertEquals(SessionConcurrencyPolicy.REPLACE_EXISTING,
+				new SettingsProvider(dataPath, registry()).get().getSessions().getConcurrencyPolicy());
 	}
 
 	@DisplayName("The session namespaces keep the names an operator chose under their new keys")

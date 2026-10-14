@@ -16,6 +16,7 @@ import java.util.List;
 @ToString
 public class SentinelMessages implements MessageDocument {
 	private @NotNull ResumeSpam resumeSpam;
+	private @NotNull ContestedConnection contestedConnection;
 
 	/**
 	 * Messages used by the built-in resume-spam sentinel.
@@ -24,6 +25,19 @@ public class SentinelMessages implements MessageDocument {
 	@Setter
 	@ToString
 	public static class ResumeSpam {
+		private @NotNull List<String> denied;
+	}
+
+	/**
+	 * Messages used by the built-in contested-connection sentinel.
+	 */
+	@Getter
+	@Setter
+	@ToString
+	public static class ContestedConnection {
+		/**
+		 * Reason shown while the address is locked out; {@code {seconds}} is the time left.
+		 */
 		private @NotNull List<String> denied;
 	}
 }

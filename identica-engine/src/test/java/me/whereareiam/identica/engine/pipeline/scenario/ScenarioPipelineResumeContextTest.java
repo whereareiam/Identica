@@ -91,8 +91,7 @@ class ScenarioPipelineResumeContextTest {
 		ScenarioContext decoded = state.getScenario();
 		PipelineStateReference reference = PipelineStateReference.from(decoded);
 
-		assertEquals(connectionId, reference.getConnectionUniqueId());
-		assertEquals(accountUniqueId, reference.getAccountUniqueId());
+		assertEquals(PipelineStateReference.of("PlayerOne", "1.1.1.1"), reference);
 	}
 
 	@DisplayName("Migration resumes preserve the account UUID from the original context")

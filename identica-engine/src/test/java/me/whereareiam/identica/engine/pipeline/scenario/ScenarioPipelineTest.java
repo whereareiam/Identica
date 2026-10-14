@@ -1,10 +1,12 @@
 package me.whereareiam.identica.engine.pipeline.scenario;
 
 import me.whereareiam.identica.engine.connection.ConnectionDecisionResolver;
+import me.whereareiam.identica.engine.pipeline.scenario.hold.UsernameHold;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.request.AdvanceRequest;
+import me.whereareiam.identica.model.auth.request.ConnectionRequest;
 import me.whereareiam.identica.model.auth.request.ResumeRequest;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
@@ -46,8 +48,10 @@ class ScenarioPipelineTest {
 	private final ScenarioRegistry registry = mock(ScenarioRegistry.class);
 	private final PipelineStateStore store = mock(PipelineStateStore.class);
 	private final AbstractScenarioPipeline runner = mock(AbstractScenarioPipeline.class);
+	private final UsernameHold usernameHold = mock(UsernameHold.class);
 	private final ScenarioPipeline pipeline = new ScenarioPipeline(
 			decisions,
+			usernameHold,
 			registry,
 			new ConnectionRuns(),
 			store,
@@ -117,6 +121,21 @@ class ScenarioPipelineTest {
 		assertEquals(ConnectionDecision.Status.NO_PENDING, decision.getStatus());
 		verify(registry, never()).selectForResume(any());
 		verify(store, never()).consume(any(PipelineStateReference.class));
+	}
+
+	@DisplayName("Refuses a connection whose username another login holds, without looking for or starting a scenario")
+	@Test
+	void heldUsernameStartsNoScenario() {
+		ConnectionDecision refused = ConnectionDecision.deny("held");
+		when(usernameHold.enter(any())).thenReturn(refused);
+
+		ConnectionDecision decision = pipeline.process(ConnectionRequest.builder()
+				.connectionUniqueId(connection)
+				.identity(identity())
+				.build()).toCompletableFuture().join();
+
+		assertSame(refused, decision);
+		verify(registry, never()).select(any());
 	}
 
 	private ResumeRequest resumeRequest() {

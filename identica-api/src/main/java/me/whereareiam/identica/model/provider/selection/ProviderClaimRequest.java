@@ -20,7 +20,8 @@ import java.util.List;
 @Builder
 public class ProviderClaimRequest {
 	/**
-	 * Identity of the connection.
+	 * Identity of the connection, which also finds its pending pipeline, if any, through
+	 * {@link me.whereareiam.identica.pipeline.state.PipelineStateReference#from(ConnectionIdentity)}.
 	 */
 	private final @NotNull ConnectionIdentity identity;
 	/**
@@ -28,10 +29,6 @@ public class ProviderClaimRequest {
 	 * profile is.
 	 */
 	private final @NotNull PrepareStage stage;
-	/**
-	 * Key of the connection, which also finds its pending pipeline, if any.
-	 */
-	private final @Nullable String connectionKey;
 	/**
 	 * Subjects the enabled providers resolve for the connection, the highest-priority provider first.
 	 */

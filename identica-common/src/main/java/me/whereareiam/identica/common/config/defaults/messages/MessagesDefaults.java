@@ -76,6 +76,14 @@ public class MessagesDefaults implements DefaultsProvider<Messages> {
 				"",
 				"<dark_gray>discord.arcadeya.com"
 		));
+		engine.setUsernameHeld(List.of(
+				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
+				"",
+				"<white>This name is being logged in from another location.</white>",
+				"<white>Try again shortly.</white>",
+				"",
+				"<dark_gray>discord.arcadeya.com"
+		));
 		engine.setJourney(buildJourneyMessages());
 		engine.setPrepare(buildPrepare());
 		messages.setEngine(engine);

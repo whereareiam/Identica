@@ -90,6 +90,7 @@ public class VelocityResumeDecisionAdapter implements PlatformResumeDecisionAdap
 				identity.getUsername(),
 				identity.getOrigin()
 		);
+		liveIdentity.setConnectionUsername(identity.getConnectionUsername());
 		if (decision == null || decision.getStatus() == ConnectionDecision.Status.NO_PENDING)
 			return;
 
@@ -97,8 +98,7 @@ public class VelocityResumeDecisionAdapter implements PlatformResumeDecisionAdap
 				decision,
 				liveIdentity,
 				resumeTarget(player),
-				player.getUniqueId(),
-				accountUniqueId
+				identity
 		);
 
 		ConnectionDecision.Status status = decision.getStatus();

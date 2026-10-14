@@ -33,7 +33,7 @@ The `engine` section holds messages of the login flow itself. Two of them belong
 #### concurrentLoginKick
 
 - Takes: a list of lines
-- Affects: the reason shown to the earlier connection when `REPLACE_EXISTING` disconnects it
+- Affects: the reason shown to the earlier connection when `REPLACE_EXISTING` disconnects it, and to a connection that was still logging in when another connection logged in to the account
 
 #### concurrentLoginRefused
 
@@ -42,6 +42,14 @@ The `engine` section holds messages of the login flow itself. Two of them belong
 - Affects: the reason shown to the new login when `REJECT_NEW` refuses it because the account is already online
 
 Emptying either message changes only the text. The earlier connection is still disconnected, and the new login is still refused, then with the scenario's general failure message.
+
+#### usernameHeld
+
+- Takes: a list of lines
+- Current default: a notice reading `This name is being logged in from another location.` and `Try again shortly.`
+- Affects: the reason shown to a connection that is refused because another connection, from another address, is logging in under the same username on another proxy of the network
+
+See [Logins in progress](../engine/index.mdx#logins-in-progress) for when Identica refuses such a connection. Emptying the message changes only the text; the connection is still refused.
 
 ## routing
 

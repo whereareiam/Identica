@@ -148,12 +148,9 @@ public class DefaultDeliveryService implements DeliveryService {
 		if (request.getSource() != DeliverySource.INITIAL_PROMPT) return true;
 		if (request.getMarker() == null) return true;
 
-		UUID connectionUniqueId = identity.getConnectionUniqueId();
-		if (connectionUniqueId == null) return false;
+		PipelineStateReference reference = PipelineStateReference.from(identity);
+		if (reference.isEmpty()) return false;
 
-		PipelineStateReference reference = PipelineStateReference.builder()
-						.connectionUniqueId(connectionUniqueId)
-						.build();
 		PipelineState state = pipelineStateStore.find(reference).orElse(null);
 		if (state == null) return false;
 

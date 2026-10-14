@@ -34,7 +34,25 @@ public class SentinelSettingsDefaults implements DefaultsProvider<SentinelSettin
 		resumeSpam.setWarning(warning);
 
 		sentinels.setResumeSpam(resumeSpam);
+		sentinels.setContestedConnection(defaultContestedConnection());
 		return sentinels;
+	}
+
+	private SentinelPolicy defaultContestedConnection() {
+		SentinelPolicy contestedConnection = new SentinelPolicy();
+		contestedConnection.setEnabled(true);
+		contestedConnection.setMaxAttempts(5);
+
+		SentinelPolicy.Lockout lockout = new SentinelPolicy.Lockout();
+		lockout.setEnabled(true);
+		lockout.setDuration(Duration.ofMinutes(1));
+		contestedConnection.setLockout(lockout);
+
+		SentinelPolicy.Warning warning = new SentinelPolicy.Warning();
+		warning.setEnabled(false);
+		warning.setThresholdPercentage(0);
+		contestedConnection.setWarning(warning);
+		return contestedConnection;
 	}
 
 	private SentinelSettings.Replication defaultReplication() {

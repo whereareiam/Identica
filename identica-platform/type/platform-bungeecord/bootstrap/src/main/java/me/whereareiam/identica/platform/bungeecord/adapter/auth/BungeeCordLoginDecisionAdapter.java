@@ -93,6 +93,7 @@ public class BungeeCordLoginDecisionAdapter implements PlatformLoginDecisionAdap
 				identity.getUsername(),
 				identity.getOrigin()
 		);
+		liveIdentity.setConnectionUsername(identity.getConnectionUsername());
 		decisionApplier.apply(decision, liveIdentity, loginTarget(player));
 		ConnectionDecision.Status status = decision != null ? decision.getStatus() : null;
 		if (status == ConnectionDecision.Status.ALLOW || status == ConnectionDecision.Status.WAIT)

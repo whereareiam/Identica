@@ -1,124 +1,118 @@
 package me.whereareiam.identica.pipeline.state;
 
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.ToString;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.auth.request.AdvanceRequest;
 import me.whereareiam.identica.model.auth.request.ResumeRequest;
-import me.whereareiam.identica.model.identity.IdentityReference;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.UUID;
+import java.util.Locale;
 
+/**
+ * The connection a pipeline state belongs to: the username the connection was identified by and the address it
+ * came from. The hostname the client connected through is not part of it.
+ *
+ * <p>Login progress belongs to the connection that made it. A player who returns with the same username from the
+ * same address continues where she left, on any proxy that shares the states; a client with the same username from
+ * another address has a state of its own. Unique ids are not part of the reference: two clients with one username
+ * get the same offline unique id, so an id cannot tell them apart.</p>
+ *
+ * <pre>{@code
+ * PipelineState state = pipelineStateStore.find(PipelineStateReference.from(identity)).orElse(null);
+ * }</pre>
+ */
 @Getter
-@Builder
 @ToString
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@EqualsAndHashCode
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public final class PipelineStateReference {
-	@Builder.Default
-	private final @NotNull IdentityReference identityReference = new IdentityReference();
-	private final @Nullable String connectionKey;
+	private static final PipelineStateReference EMPTY = new PipelineStateReference("", "");
 
-	public boolean isEmpty() {
-		return identityReference.isEmpty() && (connectionKey == null || connectionKey.isBlank());
+	/**
+	 * Username of the connection, in lower case.
+	 */
+	private final @NotNull String username;
+	/**
+	 * Address of the connection, empty when unknown.
+	 */
+	private final @NotNull String ip;
+
+	/**
+	 * Creates the reference of a connection.
+	 *
+	 * @param username username the connection was identified by
+	 * @param ip address of the connection, or {@code null} when unknown
+	 * @return reference, empty when the username is blank
+	 */
+	public static @NotNull PipelineStateReference of(@Nullable String username, @Nullable String ip) {
+		if (username == null || username.isBlank()) return EMPTY;
+
+		return new PipelineStateReference(username.trim().toLowerCase(Locale.ROOT), ip == null ? "" : ip.trim());
 	}
 
-	public @Nullable UUID getConnectionUniqueId() {
-		return identityReference.getConnectionUniqueId();
+	/**
+	 * Creates the reference of the connection an identity describes, under the username it was identified by.
+	 *
+	 * @param identity connection identity, or {@code null}
+	 * @return reference, empty without an identity
+	 */
+	public static @NotNull PipelineStateReference from(@Nullable ConnectionIdentity identity) {
+		if (identity == null) return EMPTY;
+
+		return of(identity.getConnectionUsername(), identity.getIp());
 	}
 
-	public @Nullable UUID getAccountUniqueId() {
-		return identityReference.getAccountUniqueId();
-	}
-
+	/**
+	 * Creates the reference of the connection a scenario runs for.
+	 *
+	 * @param context scenario context
+	 * @return reference
+	 */
 	public static @NotNull PipelineStateReference from(@NotNull ScenarioContext context) {
-		ConnectionIdentity identity = context.getIdentity();
-		return PipelineStateReference.builder()
-				.identityReference(context.getIdentityReference())
-				.connectionKey(resolveConnectionKey(identity))
-				.build();
+		return from(context.getIdentity());
 	}
 
+	/**
+	 * Creates the reference of the connection a resume request comes from.
+	 *
+	 * @param request resume request
+	 * @return reference, empty when the request has no identity
+	 */
 	public static @NotNull PipelineStateReference from(@NotNull ResumeRequest request) {
-		ConnectionIdentity identity = request.getIdentity();
-		return PipelineStateReference.builder()
-				.identityReference(request.getIdentityReference())
-				.connectionKey(resolveConnectionKey(identity))
-				.build();
+		return from(request.getIdentity());
 	}
 
+	/**
+	 * Creates the reference of the connection an advance request comes from.
+	 *
+	 * @param request advance request
+	 * @return reference, empty when the request has no identity
+	 */
 	public static @NotNull PipelineStateReference from(@NotNull AdvanceRequest request) {
-		ConnectionIdentity identity = request.getIdentity();
-		return PipelineStateReference.builder()
-				.identityReference(request.getIdentityReference())
-				.connectionKey(resolveConnectionKey(identity))
-				.build();
+		return from(request.getIdentity());
 	}
 
-	private static @Nullable String resolveConnectionKey(@Nullable ConnectionIdentity identity) {
-		if (identity == null) return null;
-		return identity.connectionKey();
+	/**
+	 * Returns whether the reference names no connection.
+	 *
+	 * @return {@code true} without a username
+	 */
+	public boolean isEmpty() {
+		return username.isBlank();
 	}
 
-	public static class PipelineStateReferenceBuilder {
-		private final IdentityReference identityReference = new IdentityReference();
-
-		/**
-		 * Copies UUID roles from an identity reference into this state reference.
-		 *
-		 * @param identityReference source identity reference, or {@code null}
-		 * @return this builder
-		 */
-		public @NotNull PipelineStateReferenceBuilder identityReference(@Nullable IdentityReference identityReference) {
-			if (identityReference == null) return this;
-
-			this.identityReference.setConnectionUniqueId(identityReference.getConnectionUniqueId());
-			this.identityReference.setObservedUniqueId(identityReference.getObservedUniqueId());
-			this.identityReference.setAccountUniqueId(identityReference.getAccountUniqueId());
-			return this;
-		}
-
-		/**
-		 * Sets the live connection UUID alias for this state reference.
-		 *
-		 * @param connectionUniqueId live connection UUID
-		 * @return this builder
-		 */
-		public @NotNull PipelineStateReferenceBuilder connectionUniqueId(@Nullable UUID connectionUniqueId) {
-			identityReference.setConnectionUniqueId(connectionUniqueId);
-			return this;
-		}
-
-		/**
-		 * Sets the observed platform UUID for this state reference.
-		 *
-		 * @param observedUniqueId observed platform UUID
-		 * @return this builder
-		 */
-		public @NotNull PipelineStateReferenceBuilder observedUniqueId(@Nullable UUID observedUniqueId) {
-			identityReference.setObservedUniqueId(observedUniqueId);
-			return this;
-		}
-
-		/**
-		 * Sets the resolved account UUID alias for this state reference.
-		 *
-		 * @param accountUniqueId resolved account UUID
-		 * @return this builder
-		 */
-		public @NotNull PipelineStateReferenceBuilder accountUniqueId(@Nullable UUID accountUniqueId) {
-			identityReference.setAccountUniqueId(accountUniqueId);
-			return this;
-		}
-
-		/**
-		 * Builds the immutable state reference.
-		 *
-		 * @return state reference
-		 */
-		public @NotNull PipelineStateReference build() {
-			return new PipelineStateReference(identityReference, connectionKey);
-		}
+	/**
+	 * Returns the key a store files the state under.
+	 *
+	 * @return username and address joined by {@code |}
+	 */
+	public @NotNull String key() {
+		return username + "|" + ip;
 	}
 }

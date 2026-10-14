@@ -43,14 +43,16 @@ public class PendingScenarioAccountLifecycle implements EventListener {
 		eventManager.register(this);
 	}
 
+	/**
+	 * Cancels the pending scenario of the account's connection on this proxy. A state a player left behind on
+	 * another connection is not reached; resuming it fails once the account has changed.
+	 */
 	@IdenticEvent
 	public void onAccountLifecycle(@NotNull AccountLifecycleEvent event) {
-		UUID connectionUniqueId = resolveConnectionUniqueId(event);
-		if (connectionUniqueId == null) return;
+		Identity connection = resolveConnection(event);
+		if (connection == null) return;
 
-		PipelineStateReference reference = PipelineStateReference.builder()
-				.connectionUniqueId(connectionUniqueId)
-				.build();
+		PipelineStateReference reference = PipelineStateReference.from(connection);
 		PipelineState stored = pipelineStateStore.consume(reference).orElse(null);
 		if (stored == null) return;
 
@@ -74,15 +76,16 @@ public class PendingScenarioAccountLifecycle implements EventListener {
 		}
 	}
 
-	private @Nullable UUID resolveConnectionUniqueId(@NotNull AccountLifecycleEvent event) {
-		UUID connectionUniqueId = event.getIdentity().getAccountUniqueId();
-		if (connectionUniqueId != null) return connectionUniqueId;
+	private @Nullable Identity resolveConnection(@NotNull AccountLifecycleEvent event) {
+		UUID accountUniqueId = event.getIdentity().getAccountUniqueId();
+		Identity connection = accountUniqueId != null
+				? identityService.findByAccountUniqueId(accountUniqueId).orElse(null)
+				: null;
+		if (connection != null) return connection;
 
 		String username = event.getIdentity().getUsername();
 		if (username.isBlank()) return null;
 
-		return identityService.find(username)
-				.map(Identity::getUniqueId)
-				.orElse(null);
+		return identityService.find(username).orElse(null);
 	}
 }

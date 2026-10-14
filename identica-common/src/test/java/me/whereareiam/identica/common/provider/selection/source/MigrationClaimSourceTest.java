@@ -35,7 +35,6 @@ import static org.mockito.Mockito.when;
 @DisplayName("Migration Claim Source")
 class MigrationClaimSourceTest {
 	private static final String USERNAME = "PlayerOne";
-	private static final String CONNECTION_KEY = "PlayerOne|127.0.0.1|play.example.org|25565";
 
 	@Mock
 	private PipelineStateStore pipelineStateStore;
@@ -50,7 +49,7 @@ class MigrationClaimSourceTest {
 
 		ArgumentCaptor<PipelineStateReference> reference = ArgumentCaptor.forClass(PipelineStateReference.class);
 		verify(pipelineStateStore).find(reference.capture());
-		assertEquals(CONNECTION_KEY, reference.getValue().getConnectionKey());
+		assertEquals(PipelineStateReference.of(USERNAME, "127.0.0.1"), reference.getValue());
 	}
 
 	@DisplayName("Claims nothing for a connection without a pending migration")
@@ -84,7 +83,6 @@ class MigrationClaimSourceTest {
 		return new MigrationClaimSource(pipelineStateStore).claims(ProviderClaimRequest.builder()
 				.identity(new ConnectionIdentity(USERNAME, "127.0.0.1"))
 				.stage(PrepareStage.HANDSHAKE)
-				.connectionKey(CONNECTION_KEY)
 				.build());
 	}
 

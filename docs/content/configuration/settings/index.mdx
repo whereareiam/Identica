@@ -156,6 +156,8 @@ A login from that same connection continues its session; the policy decides what
 
 A player leaving closes only the session of their own connection, never a session of the same account that another connection holds.
 
+The policy covers connections that already logged in. A connection that is still logging in when another connection of the account finishes is disconnected whatever the policy says; see [Logins in progress](../engine/index.mdx#logins-in-progress).
+
 `REJECT_NEW` does not keep refusing logins for a session nobody holds any more. A session of a proxy that stopped or crashed without closing it disappears after `heartbeatTimeout`, and the proxy that holds a connection treats its session as gone as soon as that connection is no longer online.
 
 This is the default policy used when a session opens after authentication, registration, or migration.

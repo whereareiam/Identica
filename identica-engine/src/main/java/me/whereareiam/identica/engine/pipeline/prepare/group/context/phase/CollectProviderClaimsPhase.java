@@ -72,7 +72,6 @@ public class CollectProviderClaimsPhase implements PipelinePhase<PrepareGroupSta
 		ProviderClaimRequest claimRequest = ProviderClaimRequest.builder()
 				.identity(identity)
 				.stage(request.getStage())
-				.connectionKey(request.getConnectionKey())
 				.subjects(resolveSubjects(identity))
 				.selection(context.getSelection())
 				.build();

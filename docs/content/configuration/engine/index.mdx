@@ -83,6 +83,8 @@ If this is `false`, waiting or reconnect-required state is cleared instead of sa
 
 Whether a resumed authentication or registration flow may bypass an active join restriction is controlled by [join restriction settings](../features/restriction/join/index.mdx#settings).
 
+A saved state belongs to the connection that made it: the username together with the address the player connects from. See [Logins in progress](#logins-in-progress).
+
 #### journeyMode
 
 - Takes: `"SEAMLESS"` or `"INTERACTIVE"`
@@ -132,6 +134,18 @@ If you set `STRICT`, a flow that could have worked in the other mode may fail or
 
 With `SEAMLESS` and `STRICT`, Identica never prompts. When a step needs player input, such as a provider choice or a password, the player is disconnected with the `engine.journey.step.interactionRequired` message instead of receiving the prompt.
 A provider that always needs input, such as `credential` without session recognition, therefore cannot register or authenticate anyone in that configuration.
+
+### Logins in progress
+
+A login in progress, such as a typed password waiting for the authenticator code or a new password waiting for its confirmation, belongs to the connection that made it: the username together with the address the player connects from. The hostname the client connected through does not count.
+
+- A player who returns with the same username from the same address continues where she left, within `pipelineTtl`, on any proxy that shares the state through Redis.
+- A client that uses the username from another address starts a login of its own. It never sees, continues or changes the progress of the other connection, so it is asked for the password even when the owner already typed it.
+- While a connection logs in under a username, a proxy of the network refuses another connection with that username from another address with `engine.usernameHeld`. The username is free again once that login ends, the player leaves, or `pipelineTtl` passes. On one proxy the proxy itself refuses a second player with a username that is already connected.
+- A connection whose login a provider proves, for example with a verified online login, is not refused: it wins, and the connection that held the username is disconnected. Only such proof counts, never the hostname, the username or the address.
+- An account logs in through one connection. When a connection finishes logging in, every other connection that is still logging in to the account or under its username, on any proxy, is disconnected with `engine.concurrentLoginKick`. Connections that are already logged in follow `settings.sessions.concurrencyPolicy`.
+
+The [sentinel feature](../features/sentinel/settings/index.mdx) locks out an address that keeps being refused this way.
 
 ### authentication
 

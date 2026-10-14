@@ -13,10 +13,14 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class ConnectionIdentity {
 	private @NotNull IdentityReference identityReference;
 	private @NotNull String username;
+	/**
+	 * Username the connection was identified by before the first {@link #setUsername rename}, or {@code null}
+	 * while it was never renamed.
+	 */
+	private @Nullable String connectionUsername;
 	private @Nullable String ip;
 	/**
 	 * Address the client used to connect, if available.
@@ -73,6 +77,59 @@ public class ConnectionIdentity {
 			@Nullable String ip
 	) {
 		this(identityReference, username, ip, null);
+	}
+
+	/**
+	 * Creates a connection identity.
+	 *
+	 * @param identityReference unique ids of the connection and its account
+	 * @param username username the connection is identified by
+	 * @param ip optional IP address
+	 * @param origin optional address the client used to connect
+	 */
+	public ConnectionIdentity(
+			@NotNull IdentityReference identityReference,
+			@NotNull String username,
+			@Nullable String ip,
+			@Nullable Origin origin
+	) {
+		this.identityReference = identityReference;
+		this.username = username;
+		this.ip = ip;
+		this.origin = origin;
+	}
+
+	/**
+	 * Changes the username the identity goes by, such as the account's stored spelling or a name a conflict rule
+	 * gave it. The connection keeps the username it was identified by, which {@link #getConnectionUsername()}
+	 * returns, so what belongs to the connection stays found under it.
+	 *
+	 * @param username new username
+	 */
+	public void setUsername(@NotNull String username) {
+		if (connectionUsername == null && this.username != null && !this.username.equals(username))
+			connectionUsername = this.username;
+
+		this.username = username;
+	}
+
+	/**
+	 * Returns the username the connection was identified by when it was created, whatever it was renamed to
+	 * since. Login progress belongs to the connection under this name and its address.
+	 *
+	 * @return username of the connection
+	 */
+	public @NotNull String getConnectionUsername() {
+		return connectionUsername != null ? connectionUsername : username;
+	}
+
+	/**
+	 * Keeps the username the connection was identified by, for a copy of another connection's identity.
+	 *
+	 * @param connectionUsername username of the connection, or {@code null} to use the current username
+	 */
+	public void setConnectionUsername(@Nullable String connectionUsername) {
+		this.connectionUsername = connectionUsername;
 	}
 
 	public @Nullable UUID getConnectionUniqueId() {

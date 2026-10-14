@@ -28,12 +28,10 @@ public class MigrationClaimSource implements ProviderClaimSource {
 
 	@Override
 	public @NotNull Collection<ProviderClaim> claims(@NotNull ProviderClaimRequest request) {
-		String connectionKey = request.getConnectionKey();
-		if (connectionKey == null || connectionKey.isBlank()) return List.of();
+		PipelineStateReference reference = PipelineStateReference.from(request.getIdentity());
+		if (reference.isEmpty()) return List.of();
 
-		PipelineState pending = pipelineStateStore.find(PipelineStateReference.builder()
-				.connectionKey(connectionKey)
-				.build()).orElse(null);
+		PipelineState pending = pipelineStateStore.find(reference).orElse(null);
 		if (pending == null || pending.getPipelineType() != PipelineType.MIGRATION) return List.of();
 		if (pending.get(MigrationPendingState.KEY).isEmpty()) return List.of();
 

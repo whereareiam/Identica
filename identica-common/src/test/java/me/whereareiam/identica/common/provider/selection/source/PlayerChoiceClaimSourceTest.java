@@ -28,7 +28,6 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Player Choice Claim Source")
 class PlayerChoiceClaimSourceTest {
-	private static final String CONNECTION_KEY = "Alice|127.0.0.1||";
 
 	@Mock
 	private PipelineStateStore pipelineStateStore;
@@ -67,7 +66,6 @@ class PlayerChoiceClaimSourceTest {
 		return List.copyOf(new PlayerChoiceClaimSource(pipelineStateStore).claims(ProviderClaimRequest.builder()
 				.identity(new ConnectionIdentity("Alice", "127.0.0.1"))
 				.stage(PrepareStage.HANDSHAKE)
-				.connectionKey(CONNECTION_KEY)
 				.build()));
 	}
 }

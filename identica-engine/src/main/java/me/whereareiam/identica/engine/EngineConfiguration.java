@@ -14,6 +14,8 @@ import me.whereareiam.identica.engine.pipeline.prepare.registry.PreparePipelineR
 import me.whereareiam.identica.engine.pipeline.scenario.DefaultPendingScenarioService;
 import me.whereareiam.identica.engine.pipeline.scenario.PendingPipelineKickCoordinator;
 import me.whereareiam.identica.engine.pipeline.scenario.PendingScenarioAccountLifecycle;
+import me.whereareiam.identica.engine.pipeline.scenario.hold.UsernameHold;
+import me.whereareiam.identica.engine.pipeline.scenario.hold.UsernameHolds;
 import me.whereareiam.identica.engine.pipeline.scenario.ScenarioRegistry;
 import me.whereareiam.identica.engine.pipeline.scenario.shared.group.journey.rule.DefaultJourneyRuleRegistry;
 import me.whereareiam.identica.engine.pipeline.scenario.type.authentication.AuthenticationPipelineRegistry;
@@ -66,6 +68,8 @@ public class EngineConfiguration extends AbstractModule {
 		bind(ConnectionCoordinator.class).to(DefaultConnectionCoordinator.class).asEagerSingleton();
 		bind(PendingPipelineKickCoordinator.class).asEagerSingleton();
 		bind(PendingScenarioAccountLifecycle.class).asEagerSingleton();
+		bind(UsernameHolds.class).asEagerSingleton();
+		bind(UsernameHold.class).asEagerSingleton();
 		bind(PendingScenarioService.class).to(DefaultPendingScenarioService.class).asEagerSingleton();
 
 		bind(AuthenticationJourneyRegistry.class).to(DefaultAuthenticationStageRegistry.class).asEagerSingleton();

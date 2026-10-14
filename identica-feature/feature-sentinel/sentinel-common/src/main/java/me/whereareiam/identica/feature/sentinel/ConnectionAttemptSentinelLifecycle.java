@@ -8,20 +8,23 @@ import me.whereareiam.identica.event.connection.attempt.ConnectionAdvanceAttempt
 import me.whereareiam.identica.event.connection.attempt.ConnectionAttemptEvent;
 import me.whereareiam.identica.event.connection.attempt.ConnectionProcessAttemptEvent;
 import me.whereareiam.identica.event.connection.attempt.ConnectionResumeAttemptEvent;
-import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.feature.sentinel.model.SentinelContext;
 import me.whereareiam.identica.feature.sentinel.model.SentinelDecision;
-import me.whereareiam.identica.feature.sentinel.SentinelService;
 import me.whereareiam.identica.feature.sentinel.type.SentinelScope;
+import me.whereareiam.identica.model.auth.ConnectionDecision;
+import me.whereareiam.identica.model.provider.ProviderContext;
+import me.whereareiam.identica.pipeline.ScenarioContext;
+import me.whereareiam.identica.pipeline.state.PipelineStateReference;
+import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import org.jetbrains.annotations.NotNull;
 
 @Singleton
 public class ConnectionAttemptSentinelLifecycle implements EventListener {
 	private final SentinelService sentinelService;
-	private final me.whereareiam.identica.pipeline.state.PipelineStateStore states;
+	private final PipelineStateStore states;
 
 	@Inject
-	public ConnectionAttemptSentinelLifecycle(SentinelService sentinelService, me.whereareiam.identica.pipeline.state.PipelineStateStore states) {
+	public ConnectionAttemptSentinelLifecycle(SentinelService sentinelService, PipelineStateStore states) {
 		this.states = states;
 		this.sentinelService = sentinelService;
 	}
@@ -48,12 +51,13 @@ public class ConnectionAttemptSentinelLifecycle implements EventListener {
 	}
 
 	private String providerId(ConnectionAttemptEvent event) {
-		if (event.getConnectionUniqueId() == null) return null;
-		return states.find(me.whereareiam.identica.pipeline.state.PipelineStateReference.builder()
-				.connectionUniqueId(event.getConnectionUniqueId()).build())
+		PipelineStateReference reference = PipelineStateReference.of(event.getUsername(), event.getIp());
+		if (reference.isEmpty()) return null;
+
+		return states.find(reference)
 				.map(state -> state.getScenario(state.getPipelineType()))
-				.map(me.whereareiam.identica.pipeline.ScenarioContext::getProvider)
-				.map(me.whereareiam.identica.model.provider.ProviderContext::getProviderId)
+				.map(ScenarioContext::getProvider)
+				.map(ProviderContext::getProviderId)
 				.orElse(null);
 	}
 

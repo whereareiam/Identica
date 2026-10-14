@@ -7,10 +7,12 @@ import com.google.inject.TypeLiteral;
 import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.Reloadable;
 import me.whereareiam.identica.config.ConfigProvider;
+import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.feature.IdenticaFeature;
 import me.whereareiam.identica.feature.sentinel.config.provider.SentinelMessagesProvider;
 import me.whereareiam.identica.feature.sentinel.config.provider.SentinelSettingsProvider;
+import me.whereareiam.identica.feature.sentinel.type.ContestedConnectionSentinelDefinition;
 import me.whereareiam.identica.feature.sentinel.type.ResumeSpamSentinelDefinition;
 import me.whereareiam.identica.feature.FeatureContext;
 import org.jetbrains.annotations.NotNull;
@@ -51,10 +53,10 @@ public final class SentinelFeatureBootstrap implements IdenticaFeature {
 		Registry<SentinelDefinition> registry = injector.getInstance(Key.get(new TypeLiteral<Registry<SentinelDefinition>>() {}));
 		shutdownActions.push(() -> List.copyOf(registry.values()).forEach(registry::unregister));
 		registry.register(injector.getInstance(ResumeSpamSentinelDefinition.class));
-		ConnectionAttemptSentinelLifecycle listener = injector.getInstance(ConnectionAttemptSentinelLifecycle.class);
+		registry.register(injector.getInstance(ContestedConnectionSentinelDefinition.class));
 		EventManager events = injector.getInstance(EventManager.class);
-		shutdownActions.push(() -> events.unregister(listener));
-		events.register(listener);
+		register(events, injector.getInstance(ConnectionAttemptSentinelLifecycle.class));
+		register(events, injector.getInstance(ContestedLoginSentinelLifecycle.class));
 	}
 
 	/** {@inheritDoc} */
@@ -70,6 +72,11 @@ public final class SentinelFeatureBootstrap implements IdenticaFeature {
 			}
 		}
 		if (failure != null) throw failure;
+	}
+
+	private void register(EventManager events, EventListener listener) {
+		shutdownActions.push(() -> events.unregister(listener));
+		events.register(listener);
 	}
 
 	private void loadConfig(Injector injector, Class<? extends ConfigProvider<?>> type) {

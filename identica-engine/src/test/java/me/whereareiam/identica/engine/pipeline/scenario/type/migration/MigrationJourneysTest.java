@@ -1,11 +1,13 @@
 package me.whereareiam.identica.engine.pipeline.scenario.type.migration;
 
+import me.whereareiam.identica.common.replication.DefaultReplicationSystem;
 import me.whereareiam.identica.engine.pipeline.scenario.ConnectionRuns;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.scenario.migration.MigrationRequiredEvent;
 import me.whereareiam.identica.event.scenario.migration.MigrationResolvedEvent;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.config.Engine;
+import me.whereareiam.identica.model.config.Replication;
 import me.whereareiam.identica.model.migration.MigrationContext;
 import me.whereareiam.identica.model.migration.MigrationJourney;
 import me.whereareiam.identica.model.migration.PendingMigration;
@@ -14,6 +16,7 @@ import me.whereareiam.identica.model.pipeline.migration.MigrationPendingState;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.PipelineStateReference;
 import me.whereareiam.identica.pipeline.state.PipelineStateStore;
+import me.whereareiam.identica.replication.ReplicationAdapter;
 import me.whereareiam.identica.type.ScenarioResolution;
 import me.whereareiam.identica.type.migration.MigrationInitiator;
 import me.whereareiam.identica.type.migration.MigrationResultStatus;
@@ -48,7 +51,14 @@ class MigrationJourneysTest {
 	private final ConnectionRuns runs = new ConnectionRuns();
 	private final PipelineStateStore store = mock(PipelineStateStore.class);
 	private final EventManager events = mock(EventManager.class);
-	private final MigrationJourneys journeys = new MigrationJourneys(runs, store, events, MigrationJourneysTest::engine);
+	private final MigrationJourneys journeys = new MigrationJourneys(
+			runs,
+			store,
+			events,
+			MigrationJourneysTest::engine,
+			new DefaultReplicationSystem(localOnlyAdapter()),
+			MigrationJourneysTest::replication
+	);
 	private final UUID connection = UUID.randomUUID();
 	private final UUID account = UUID.randomUUID();
 
@@ -111,6 +121,16 @@ class MigrationJourneysTest {
 				&& account.equals(required.getAccountUniqueId())));
 	}
 
+	@DisplayName("Finds a journey in the state of the connection it was started for, its username and address")
+	@Test
+	void findsTheJourneyUnderItsConnection() {
+		when(store.find(any(PipelineStateReference.class))).thenReturn(Optional.empty());
+		journeys.start(journey()).toCompletableFuture().join();
+		when(store.find(PipelineStateReference.of("PlayerOne", "127.0.0.1"))).thenReturn(Optional.of(startedState()));
+
+		assertTrue(journeys.find(connection).toCompletableFuture().join().isPresent());
+	}
+
 	@DisplayName("Finds a started journey with the details it was started with")
 	@Test
 	void findsAStartedJourney() {
@@ -155,6 +175,20 @@ class MigrationJourneysTest {
 		state.put(MigrationPendingState.KEY, new MigrationPendingState("premium", 1234L, MigrationInitiator.ADMIN, null), 60_000L);
 		state.put(JourneyStateItem.KEY, new JourneyStateItem(JourneyMode.INTERACTIVE, null, 0), 60_000L);
 		return state;
+	}
+
+	private static Replication replication() {
+		Replication replication = new Replication();
+		Replication.Cache cache = new Replication.Cache();
+		cache.setPipelineState("pipeline-state");
+		replication.setCache(cache);
+		return replication;
+	}
+
+	private static ReplicationAdapter localOnlyAdapter() {
+		ReplicationAdapter adapter = mock(ReplicationAdapter.class);
+		when(adapter.isAvailable()).thenReturn(false);
+		return adapter;
 	}
 
 	private static Engine engine() {

@@ -11,6 +11,7 @@ import me.whereareiam.identica.lifecycle.StartupPhase;
 import me.whereareiam.identica.event.base.ReplicatedEvent;
 import me.whereareiam.identica.event.account.AccountClearEvent;
 import me.whereareiam.identica.event.account.AccountDeleteEvent;
+import me.whereareiam.identica.event.connection.LoginSupersededEvent;
 import me.whereareiam.identica.event.identity.session.SessionClosedEvent;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.config.Replication;
@@ -122,6 +123,7 @@ public class ReplicatedEventBridge implements EventListener, RuntimeLifecycle {
 		registry.register("session-closed", SessionClosedEvent.class);
 		registry.register("account-clear", AccountClearEvent.class);
 		registry.register("account-delete", AccountDeleteEvent.class);
+		registry.register("login-superseded", LoginSupersededEvent.class);
 	}
 
 	private void prepare(@NotNull ReplicatedEvent event) {

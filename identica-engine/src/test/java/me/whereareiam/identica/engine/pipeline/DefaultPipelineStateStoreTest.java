@@ -34,140 +34,57 @@ import static org.mockito.Mockito.when;
 
 @DisplayName("Default Pipeline-State Store")
 class DefaultPipelineStateStoreTest {
-	@DisplayName("A pipeline-state reference is empty when it carries no lookup key")
+	private static final String OWNER_ADDRESS = "127.0.0.1";
+	private static final String OTHER_ADDRESS = "127.0.0.2";
+
+	@DisplayName("Stores and finds a state under the connection that saved it")
 	@Test
-	void emptyReferenceRequiresKey() {
-		PipelineStateReference reference = PipelineStateReference.builder().build();
-		assertTrue(reference.isEmpty());
+	void findsTheStateOfTheSameConnection() {
+		DefaultPipelineStateStore store = localStore();
+		PipelineStateReference owner = PipelineStateReference.of("Alice", OWNER_ADDRESS);
+
+		store.save(owner, pendingState(), 1_000L);
+
+		assertTrue(store.find(owner).isPresent());
 	}
 
-	@DisplayName("Stores and loads pipeline state by connection UUID")
+	@DisplayName("A connection with the same username from another address finds no state")
 	@Test
-	void saveAndFindByConnectionUniqueId() {
-		EventUtil.initialize(mock(EventManager.class));
-		ReplicationAdapter adapter = localOnlyAdapter();
-		DefaultPipelineStateStore store = new DefaultPipelineStateStore(
-				new DefaultReplicationSystem(adapter),
-				this::replication
-		);
-		UUID connectionId = UUID.randomUUID();
-		PipelineStateReference reference = PipelineStateReference.builder()
-				.connectionUniqueId(connectionId)
-				.build();
-		PipelineState state = PipelineState.initial();
+	void anotherAddressFindsNothing() {
+		DefaultPipelineStateStore store = localStore();
+		store.save(PipelineStateReference.of("Alice", OWNER_ADDRESS), pendingState(), 1_000L);
 
-		store.save(reference, state, 1_000L);
-
-		assertTrue(store.find(reference).isPresent());
+		assertTrue(store.find(PipelineStateReference.of("Alice", OTHER_ADDRESS)).isEmpty());
+		assertTrue(store.consume(PipelineStateReference.of("Alice", OTHER_ADDRESS)).isEmpty());
 	}
 
-	@DisplayName("Stores and loads pipeline state by connection key")
+	@DisplayName("Saving and clearing the state of another address leaves the owner's state as it was")
 	@Test
-	void saveAndFindByConnectionKey() {
-		EventUtil.initialize(mock(EventManager.class));
-		ReplicationAdapter adapter = localOnlyAdapter();
-		DefaultPipelineStateStore store = new DefaultPipelineStateStore(
-				new DefaultReplicationSystem(adapter),
-				this::replication
-		);
-		PipelineStateReference reference = PipelineStateReference.builder()
-				.connectionKey("user|127.0.0.1|example.com|25565")
-				.build();
-		PipelineState state = PipelineState.initial();
+	void anotherAddressLeavesTheOwnersStateAlone() {
+		DefaultPipelineStateStore store = localStore();
+		PipelineStateReference owner = PipelineStateReference.of("Alice", OWNER_ADDRESS);
+		PipelineStateReference other = PipelineStateReference.of("Alice", OTHER_ADDRESS);
+		store.save(owner, pendingState(), 1_000L);
 
-		store.save(reference, state, 1_000L);
+		PipelineState fresh = PipelineState.initial();
+		fresh.setPipelineType(PipelineType.AUTHENTICATION);
+		store.save(other, fresh, 1_000L);
+		store.clear(other);
 
-		assertTrue(store.find(reference).isPresent());
+		Optional<PipelineState> found = store.find(owner);
+		assertTrue(found.isPresent());
+		assertEquals(PipelineType.REGISTRATION, found.get().getPipelineType());
 	}
 
-	@DisplayName("Origin-aware resumes can find snapshots that were saved without origin information")
+	@DisplayName("Consuming a state removes it")
 	@Test
-	void saveWithoutOriginFindsByOriginAwareConnectionKey() {
-		EventUtil.initialize(mock(EventManager.class));
-		ReplicationAdapter adapter = localOnlyAdapter();
-		DefaultPipelineStateStore store = new DefaultPipelineStateStore(
-				new DefaultReplicationSystem(adapter),
-				this::replication
-		);
-		PipelineStateReference storedReference = PipelineStateReference.builder()
-				.connectionKey("user|127.0.0.1||")
-				.build();
-		PipelineStateReference resumeReference = PipelineStateReference.builder()
-				.connectionKey("user|127.0.0.1|premium.example.com|25565")
-				.build();
-		PipelineState state = PipelineState.initial();
+	void consumingRemovesTheState() {
+		DefaultPipelineStateStore store = localStore();
+		PipelineStateReference owner = PipelineStateReference.of("Alice", OWNER_ADDRESS);
+		store.save(owner, pendingState(), 1_000L);
 
-		store.save(storedReference, state, 1_000L);
-
-		assertTrue(store.find(resumeReference).isPresent());
-	}
-
-	@DisplayName("Origin-agnostic resumes can find snapshots that were saved with origin information")
-	@Test
-	void saveWithOriginFindsByOriginAgnosticConnectionKey() {
-		EventUtil.initialize(mock(EventManager.class));
-		ReplicationAdapter adapter = localOnlyAdapter();
-		DefaultPipelineStateStore store = new DefaultPipelineStateStore(
-				new DefaultReplicationSystem(adapter),
-				this::replication
-		);
-		PipelineStateReference storedReference = PipelineStateReference.builder()
-				.connectionKey("user|127.0.0.1|premium.example.com|25565")
-				.build();
-		PipelineStateReference resumeReference = PipelineStateReference.builder()
-				.connectionKey("user|127.0.0.1||")
-				.build();
-		PipelineState state = PipelineState.initial();
-
-		store.save(storedReference, state, 1_000L);
-
-		assertTrue(store.find(resumeReference).isPresent());
-	}
-
-	@DisplayName("Replacing a snapshot clears stale aliases for older connection keys")
-	@Test
-	void replacingSnapshotInvalidatesStaleConnectionKeyAliases() {
-		EventUtil.initialize(mock(EventManager.class));
-		ReplicationAdapter adapter = localOnlyAdapter();
-		DefaultPipelineStateStore store = new DefaultPipelineStateStore(
-				new DefaultReplicationSystem(adapter),
-				this::replication
-		);
-		UUID originalId = UUID.randomUUID();
-		PipelineStateReference originalReference = PipelineStateReference.builder()
-				.connectionUniqueId(originalId)
-				.accountUniqueId(originalId)
-				.connectionKey("user|127.0.0.1|example.com|25565")
-				.build();
-		PipelineState originalState = pendingState();
-
-		store.save(originalReference, originalState, 1_000L);
-
-		PipelineStateReference narrowedReference = PipelineStateReference.builder()
-				.connectionUniqueId(originalId)
-				.accountUniqueId(originalId)
-				.connectionKey("user|127.0.0.1||")
-				.build();
-		PipelineState narrowedState = pendingState();
-
-		store.save(narrowedReference, narrowedState, 1_000L);
-		store.clear(narrowedReference);
-
-		UUID reconnectId = UUID.randomUUID();
-		PipelineStateReference reconnectReference = PipelineStateReference.builder()
-				.connectionUniqueId(reconnectId)
-				.accountUniqueId(reconnectId)
-				.connectionKey("user|127.0.0.1|example.com|25565")
-				.build();
-
-		assertTrue(store.find(reconnectReference).isEmpty());
-	}
-
-	private PipelineState pendingState() {
-		PipelineState state = PipelineState.initial();
-		state.setPipelineType(PipelineType.REGISTRATION);
-		state.put(JourneyStateItem.KEY, new JourneyStateItem(null, null, 0), 1_000L);
-		return state;
+		assertTrue(store.consume(owner).isPresent());
+		assertTrue(store.find(owner).isEmpty());
 	}
 
 	@DisplayName("Loads pipeline state with a scenario context from the replication adapter")
@@ -175,14 +92,12 @@ class DefaultPipelineStateStoreTest {
 	void findsStateStoredThroughAnAvailableAdapter() {
 		EventUtil.initialize(mock(EventManager.class));
 		ReplicationAdapter shared = new InMemoryAdapter();
-		PipelineStateReference reference = PipelineStateReference.builder()
-				.connectionUniqueId(UUID.randomUUID())
-				.build();
+		PipelineStateReference reference = PipelineStateReference.of("Alice", OWNER_ADDRESS);
 		PipelineState state = PipelineState.initial();
 		state.setPipelineType(PipelineType.REGISTRATION);
 		state.setScenario(RegistrationContext.builder()
-				.connectionUniqueId(reference.getConnectionUniqueId())
-				.identity(new ConnectionIdentity(UUID.randomUUID(), "Alice", "127.0.0.1"))
+				.connectionUniqueId(UUID.randomUUID())
+				.identity(new ConnectionIdentity(UUID.randomUUID(), "Alice", OWNER_ADDRESS))
 				.intendedServer("lobby")
 				.build());
 
@@ -195,14 +110,19 @@ class DefaultPipelineStateStoreTest {
 		assertEquals("Alice", found.get().getScenario().getIdentity().getUsername());
 	}
 
+	private PipelineState pendingState() {
+		PipelineState state = PipelineState.initial();
+		state.setPipelineType(PipelineType.REGISTRATION);
+		state.put(JourneyStateItem.KEY, new JourneyStateItem(null, null, 0), 1_000L);
+		return state;
+	}
+
 	@DisplayName("Never writes values of run keys to the replication adapter")
 	@Test
 	void saveLeavesRunValuesOut() {
 		EventUtil.initialize(mock(EventManager.class));
 		InMemoryAdapter shared = new InMemoryAdapter();
-		PipelineStateReference reference = PipelineStateReference.builder()
-				.connectionUniqueId(UUID.randomUUID())
-				.build();
+		PipelineStateReference reference = PipelineStateReference.of("Alice", OWNER_ADDRESS);
 		PipelineState state = pendingState();
 		state.put(TypedPassword.KEY, new TypedPassword("Secret-123"), 60_000L);
 
@@ -223,9 +143,7 @@ class DefaultPipelineStateStoreTest {
 	void discardsAnUnreadableState() {
 		EventUtil.initialize(mock(EventManager.class));
 		InMemoryAdapter shared = new InMemoryAdapter();
-		PipelineStateReference reference = PipelineStateReference.builder()
-				.connectionUniqueId(UUID.randomUUID())
-				.build();
+		PipelineStateReference reference = PipelineStateReference.of("Alice", OWNER_ADDRESS);
 		StoredPipelineState stored = pendingState().store();
 		stored.getValues().put(RegistrationContext.KEY.id(), new StoredPipelineState.StoredValue("{\"identity\": 1}", 0L));
 		DefaultPipelineStateStore store = new DefaultPipelineStateStore(new DefaultReplicationSystem(shared), this::replication);
@@ -233,7 +151,7 @@ class DefaultPipelineStateStoreTest {
 		store.save(reference, PipelineState.restore(stored), 60_000L);
 
 		assertTrue(store.find(reference).isEmpty());
-		assertTrue(shared.values.isEmpty(), "the unreadable state and its aliases are removed");
+		assertTrue(shared.values.isEmpty(), "the unreadable state is removed");
 	}
 
 	@Getter
@@ -281,6 +199,11 @@ class DefaultPipelineStateStoreTest {
 		cache.setPipelineState("pipeline-state");
 		replication.setCache(cache);
 		return replication;
+	}
+
+	private DefaultPipelineStateStore localStore() {
+		EventUtil.initialize(mock(EventManager.class));
+		return new DefaultPipelineStateStore(new DefaultReplicationSystem(localOnlyAdapter()), this::replication);
 	}
 
 	private ReplicationAdapter localOnlyAdapter() {

@@ -4,6 +4,7 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.engine.connection.ConnectionDecisionResolver;
+import me.whereareiam.identica.engine.pipeline.scenario.hold.UsernameHold;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.connection.attempt.ConnectionAdvanceAttemptEvent;
 import me.whereareiam.identica.event.connection.attempt.ConnectionAttemptEvent;
@@ -32,6 +33,7 @@ import java.util.concurrent.CompletionStage;
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class ScenarioPipeline {
 	private final ConnectionDecisionResolver decisionResolver;
+	private final UsernameHold usernameHold;
 	private final ScenarioRegistry scenarioRegistry;
 	private final ConnectionRuns connectionRuns;
 	private final PipelineStateStore pipelineStateStore;
@@ -58,6 +60,9 @@ public class ScenarioPipeline {
 					request.getIp()
 			));
 			if (entryDecision != null) return CompletableFuture.completedFuture(entryDecision);
+
+			ConnectionDecision held = usernameHold.enter(request);
+			if (held != null) return CompletableFuture.completedFuture(held);
 		}
 
 		ScenarioSelection selection = scenarioRegistry.select(request);
@@ -218,6 +223,7 @@ public class ScenarioPipeline {
 				identity.getIp()
 		);
 		mergedIdentity.setOrigin(identity.getOrigin());
+		mergedIdentity.setConnectionUsername(identity.getConnectionUsername());
 
 		return ConnectionRequest.builder()
 				.connectionUniqueId(context.getConnectionUniqueId() != null

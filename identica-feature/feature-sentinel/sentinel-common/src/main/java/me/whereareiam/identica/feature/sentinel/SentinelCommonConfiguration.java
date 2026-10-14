@@ -14,6 +14,7 @@ import me.whereareiam.identica.feature.sentinel.config.provider.SentinelMessages
 import me.whereareiam.identica.feature.sentinel.config.provider.SentinelSettingsProvider;
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelMessages;
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelSettings;
+import me.whereareiam.identica.feature.sentinel.type.ContestedConnectionSentinelDefinition;
 import me.whereareiam.identica.feature.sentinel.type.ResumeSpamSentinelDefinition;
 import me.whereareiam.strata.MigrationStream;
 import me.whereareiam.strata.adapter.configura.ConfigContext;
@@ -31,6 +32,8 @@ public class SentinelCommonConfiguration extends AbstractModule {
 		bind(SentinelService.class).to(DefaultSentinelService.class).in(com.google.inject.Singleton.class);
 		bind(ConnectionAttemptSentinelLifecycle.class).in(com.google.inject.Singleton.class);
 		bind(ResumeSpamSentinelDefinition.class).in(com.google.inject.Singleton.class);
+		bind(ContestedConnectionSentinelDefinition.class).in(com.google.inject.Singleton.class);
+		bind(ContestedLoginSentinelLifecycle.class).in(com.google.inject.Singleton.class);
 	}
 
 	/**

@@ -117,10 +117,8 @@ public class ScenarioRegistry {
 		PipelineState stored = pipelineStateStore.find(reference).orElse(null);
 		if (stored == null) {
 			Logger.debug(
-					"Scenario resume lookup missed connection=%s identity=%s key=%s",
-					reference.getConnectionUniqueId(),
-					reference.getAccountUniqueId(),
-					reference.getConnectionKey()
+					"Scenario resume lookup missed key=%s",
+					reference.key()
 			);
 			return null;
 		}
@@ -128,10 +126,8 @@ public class ScenarioRegistry {
 		PipelineType storedType = stored.getPipelineType();
 		if (storedType == null) {
 			Logger.debug(
-					"Scenario resume lookup found state without pipeline type connection=%s identity=%s key=%s",
-					reference.getConnectionUniqueId(),
-					reference.getAccountUniqueId(),
-					reference.getConnectionKey()
+					"Scenario resume lookup found state without pipeline type key=%s",
+					reference.key()
 			);
 			return null;
 		}
@@ -139,23 +135,19 @@ public class ScenarioRegistry {
 		AbstractScenarioPipeline runner = runnersByType.get(storedType);
 		if (runner == null) {
 			Logger.debug(
-					"Scenario resume lookup found unmapped pipeline type=%s connection=%s identity=%s key=%s",
+					"Scenario resume lookup found unmapped pipeline type=%s key=%s",
 					storedType,
-					reference.getConnectionUniqueId(),
-					reference.getAccountUniqueId(),
-					reference.getConnectionKey()
+					reference.key()
 			);
 			return null;
 		}
 
 		boolean pending = runner.isPending(stored);
 		Logger.debug(
-				"Scenario resume lookup found pipeline=%s pending=%s connection=%s identity=%s key=%s",
+				"Scenario resume lookup found pipeline=%s pending=%s key=%s",
 				storedType,
 				pending,
-				reference.getConnectionUniqueId(),
-				reference.getAccountUniqueId(),
-				reference.getConnectionKey()
+				reference.key()
 		);
 		return pending ? runner : null;
 	}

@@ -492,11 +492,13 @@ public abstract class AbstractScenarioPipeline {
 					? requestIdentity.getClaimedUniqueId()
 					: base.getIdentity().getClaimedUniqueId());
 			merged.setOrigin(requestIdentity.getOrigin());
+			merged.setConnectionUsername(requestIdentity.getConnectionUsername());
 			return merged;
 		}
 
 		merged.setClaimedUniqueId(base.getIdentity().getClaimedUniqueId());
 		merged.setOrigin(base.getIdentity().getOrigin());
+		merged.setConnectionUsername(base.getIdentity().getConnectionUsername());
 
 		return merged;
 	}

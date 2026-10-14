@@ -62,6 +62,32 @@ This sentinel watches process, resume, and advance attempts.
 The current code clamps this into the `0..100` range and computes the warning threshold from `maxAttempts`.
 For example, with `maxAttempts: 10` and `thresholdPercentage: 70`, warnings begin on attempt `8`.
 
+### sentinels.contestedConnection.enabled
+
+- Takes: `true` or `false`
+- Current default: `true`
+- Affects: whether the contested-connection sentinel locks out an address that keeps contesting usernames
+
+This sentinel counts the connections of an address that are refused because another connection is logging in under their username from another address (see [Logins in progress](../../../engine/index.mdx#logins-in-progress)). It counts per address, whatever username each connection uses. Once the address reaches `maxAttempts`, every connection from it is refused for the lockout duration.
+
+### sentinels.contestedConnection.maxAttempts
+
+- Takes: an integer greater than `0`
+- Current default: `5`
+- Affects: how many refused connections an address may have before it is locked out
+
+### sentinels.contestedConnection.lockout.enabled
+
+- Takes: `true` or `false`
+- Current default: `true`
+- Affects: whether the sentinel locks the address out once it reaches `maxAttempts`
+
+### sentinels.contestedConnection.lockout.duration
+
+- Takes: a positive duration
+- Current default: `"1m"`
+- Affects: how long the address stays locked out
+
 ### replication.state
 
 <Badge type="warning">Advanced</Badge>
@@ -85,6 +111,14 @@ The following fields belong to `features/sentinel/messages`.
 The `{seconds}` placeholder is replaced with the remaining lockout duration.
 An empty list silences the message; the lockout still denies.
 
+### contestedConnection.denied
+
+- Takes: a list of lines
+- Current default: a notice reading `Too many attempts to log in under names in use.` and the time left
+- Affects: the reason shown to a connection from an address the contested-connection sentinel locked out
+
+The `{seconds}` placeholder is replaced with the remaining lockout duration. An empty list silences the message; the lockout still denies.
+
 ## Settings example
 
 The following example belongs to `features/sentinel/settings`:
@@ -102,6 +136,12 @@ sentinels:
     warning:
       enabled: true
       thresholdPercentage: 70
+  contestedConnection:
+    enabled: true
+    maxAttempts: 5
+    lockout:
+      enabled: true
+      duration: "1m"
 replication:
   state: "identica:sentinels"
 ```
@@ -120,6 +160,14 @@ replication:
       "warning": {
         "enabled": true,
         "thresholdPercentage": 70
+      }
+    },
+    "contestedConnection": {
+      "enabled": true,
+      "maxAttempts": 5,
+      "lockout": {
+        "enabled": true,
+        "duration": "1m"
       }
     }
   },

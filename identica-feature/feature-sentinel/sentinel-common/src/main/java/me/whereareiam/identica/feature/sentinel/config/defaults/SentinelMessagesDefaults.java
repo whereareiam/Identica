@@ -21,6 +21,17 @@ public class SentinelMessagesDefaults implements DefaultsProvider<SentinelMessag
 				"<dark_gray>discord.arcadeya.com"
 		));
 		messages.setResumeSpam(resumeSpam);
+
+		SentinelMessages.ContestedConnection contestedConnection = new SentinelMessages.ContestedConnection();
+		contestedConnection.setDenied(List.of(
+				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
+				"",
+				"<white>Too many attempts to log in under names in use.</white>",
+				"<white>Please try again in <green>{seconds}s</green>.</white>",
+				"",
+				"<dark_gray>discord.arcadeya.com"
+		));
+		messages.setContestedConnection(contestedConnection);
 		return messages;
 	}
 }

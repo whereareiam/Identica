@@ -92,6 +92,7 @@ public class BungeeCordResumeDecisionAdapter implements PlatformResumeDecisionAd
 				identity.getUsername(),
 				identity.getOrigin()
 		);
+		liveIdentity.setConnectionUsername(identity.getConnectionUsername());
 		if (decision == null || decision.getStatus() == ConnectionDecision.Status.NO_PENDING)
 			return;
 
@@ -99,8 +100,7 @@ public class BungeeCordResumeDecisionAdapter implements PlatformResumeDecisionAd
 				decision,
 				liveIdentity,
 				resumeTarget(player),
-				player.getUniqueId(),
-				accountUniqueId
+				identity
 		);
 
 		ConnectionDecision.Status status = decision.getStatus();

@@ -626,7 +626,8 @@ public class Messages implements MessageDocument {
 	@ToString
 	public static class Engine {
 		/**
-		 * Message shown when an existing session is kicked due to a new login.
+		 * Message shown when an existing session is kicked due to a new login, and to a connection that was still
+		 * logging in when another connection logged in to the account.
 		 */
 		private @NotNull List<String> concurrentLoginKick;
 		/**
@@ -634,6 +635,11 @@ public class Messages implements MessageDocument {
 		 * connection and the session concurrency policy is {@code REJECT_NEW}.
 		 */
 		private @NotNull List<String> concurrentLoginRefused;
+		/**
+		 * Message shown when a connection is refused because another connection, from another address, is logging
+		 * in under the same username.
+		 */
+		private @NotNull List<String> usernameHeld;
 		private @NotNull Journey journey;
 		private @NotNull Prepare prepare;
 

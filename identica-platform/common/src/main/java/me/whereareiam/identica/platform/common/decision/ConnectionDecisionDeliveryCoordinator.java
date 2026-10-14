@@ -3,6 +3,7 @@ package me.whereareiam.identica.platform.common.decision;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.delivery.DeliveryMarker;
 import me.whereareiam.identica.model.delivery.DeliveryPayload;
@@ -27,9 +28,16 @@ public class ConnectionDecisionDeliveryCoordinator {
 	private final @NotNull DeliveryService deliveryService;
 	private final @NotNull PipelineStateStore pipelineStateStore;
 
+	/**
+	 * Queues the prompt of a waiting decision for the connection, marked with the journey position it belongs to.
+	 *
+	 * @param connection connection the decision is for
+	 * @param decision decision of the connection's pipeline
+	 * @param checkpoint when the prompt is delivered
+	 * @return {@code true} when the prompt was queued
+	 */
 	public boolean queueWaitDecision(
-			@NotNull UUID connectionUniqueId,
-			@Nullable UUID accountUniqueId,
+			@NotNull ConnectionIdentity connection,
 			@Nullable ConnectionDecision decision,
 			@NotNull DeliveryCheckpoint checkpoint
 	) {
@@ -38,10 +46,10 @@ public class ConnectionDecisionDeliveryCoordinator {
 		String message = decision.getMessage();
 		if (message == null || message.isBlank()) return false;
 
-		PipelineStateReference reference = PipelineStateReference.builder()
-				.connectionUniqueId(connectionUniqueId)
-				.build();
-		PipelineState state = pipelineStateStore.find(reference).orElse(null);
+		UUID connectionUniqueId = connection.getConnectionUniqueId();
+		if (connectionUniqueId == null) return false;
+
+		PipelineState state = pipelineStateStore.find(PipelineStateReference.from(connection)).orElse(null);
 		JourneyStateItem journey = state != null ? state.get(JourneyStateItem.KEY).orElse(null) : null;
 
 		deliveryService.queue(DeliveryRequest.builder()
@@ -49,7 +57,7 @@ public class ConnectionDecisionDeliveryCoordinator {
 				.source(DeliverySource.INITIAL_PROMPT)
 				.target(DeliveryTarget.builder()
 						.connectionUniqueId(connectionUniqueId)
-						.accountUniqueId(accountUniqueId)
+						.accountUniqueId(connection.getAccountUniqueId())
 						.build())
 				.payload(DeliveryPayload.builder()
 						.chatMessage(message)

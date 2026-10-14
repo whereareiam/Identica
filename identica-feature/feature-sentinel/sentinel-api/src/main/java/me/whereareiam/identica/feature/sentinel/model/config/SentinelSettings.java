@@ -29,6 +29,11 @@ public class SentinelSettings {
 		 * Rate limit applied when clients spam pipeline resume or advance requests.
 		 */
 		private @NotNull SentinelPolicy resumeSpam = new SentinelPolicy();
+		/**
+		 * Rate limit applied to an address whose connections are refused because other connections log in under
+		 * their usernames.
+		 */
+		private @NotNull SentinelPolicy contestedConnection = new SentinelPolicy();
 	}
 
 	/**

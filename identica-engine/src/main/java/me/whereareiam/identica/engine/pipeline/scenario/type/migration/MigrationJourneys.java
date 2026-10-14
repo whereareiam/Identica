@@ -1,9 +1,12 @@
 package me.whereareiam.identica.engine.pipeline.scenario.type.migration;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
-import lombok.RequiredArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import me.whereareiam.identica.engine.pipeline.scenario.ConnectionRuns;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.scenario.migration.MigrationRequiredEvent;
@@ -11,14 +14,18 @@ import me.whereareiam.identica.event.scenario.migration.MigrationResolvedEvent;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.config.Engine;
+import me.whereareiam.identica.model.config.Replication;
 import me.whereareiam.identica.model.migration.MigrationContext;
 import me.whereareiam.identica.model.migration.MigrationJourney;
 import me.whereareiam.identica.model.migration.PendingMigration;
 import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
 import me.whereareiam.identica.model.pipeline.migration.MigrationPendingState;
+import me.whereareiam.identica.model.replication.ReplicationType;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.PipelineStateReference;
 import me.whereareiam.identica.pipeline.state.PipelineStateStore;
+import me.whereareiam.identica.replication.ReplicationSystem;
+import me.whereareiam.identica.replication.cache.ReplicatedCache;
 import me.whereareiam.identica.type.ScenarioResolution;
 import me.whereareiam.identica.type.migration.MigrationResultStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
@@ -35,14 +42,38 @@ import java.util.concurrent.CompletionStage;
  * Starts, cancels and finds the migration journeys commands and administrators ask for. Each of them works on the
  * connection's pipeline state in the connection's turn, so it neither misses a journey a run has taken out of the
  * store nor has its change overwritten when that run saves.
+ *
+ * <p>A journey waits in the pipeline state of the connection it was started for, its username and address. The
+ * commands and administrators that find or cancel it name the connection by its unique id, so the journeys remember
+ * which connection each unique id started one for.</p>
  */
 @Singleton
-@RequiredArgsConstructor(onConstructor_ = @Inject)
 public class MigrationJourneys {
+	private static final String CONNECTIONS_NAMESPACE_SUFFIX = ":migration-journeys";
+
 	private final ConnectionRuns connectionRuns;
 	private final PipelineStateStore pipelineStateStore;
 	private final EventManager eventManager;
 	private final Provider<Engine> engineProvider;
+	private final Supplier<ReplicatedCache<JourneyConnection>> connections;
+
+	@Inject
+	public MigrationJourneys(
+			@NotNull ConnectionRuns connectionRuns,
+			@NotNull PipelineStateStore pipelineStateStore,
+			@NotNull EventManager eventManager,
+			@NotNull Provider<Engine> engineProvider,
+			@NotNull ReplicationSystem replicationSystem,
+			@NotNull Provider<Replication> replicationProvider
+	) {
+		this.connectionRuns = connectionRuns;
+		this.pipelineStateStore = pipelineStateStore;
+		this.eventManager = eventManager;
+		this.engineProvider = engineProvider;
+		this.connections = Suppliers.memoize(() -> replicationSystem
+				.cache(replicationProvider.get().getCache().getPipelineState() + CONNECTIONS_NAMESPACE_SUFFIX)
+				.replicated(ReplicationType.identity(JourneyConnection.class)));
+	}
 
 	public @NotNull CompletionStage<MigrationResultStatus> start(@NotNull MigrationJourney journey) {
 		return connectionRuns.submit(journey.getConnectionUniqueId(), () -> CompletableFuture.completedFuture(store(journey)));
@@ -89,6 +120,11 @@ public class MigrationJourneys {
 		state.put(JourneyStateItem.KEY, new JourneyStateItem(journeyMode, null, 0), ttlMs);
 
 		pipelineStateStore.save(PipelineStateReference.from(context), state, ttlMs);
+		connections.get().put(
+				journey.getConnectionUniqueId().toString(),
+				new JourneyConnection(context.getIdentity().getConnectionUsername(), journey.getIp()),
+				ttlMs
+		).join();
 		eventManager.call(new MigrationRequiredEvent(context, false, System.currentTimeMillis() + ttlMs, journeyMode));
 		Logger.debug(
 				"Stored migration pending connection=%s identica=%s target=%s username=%s ip=%s journeyMode=%s",
@@ -112,6 +148,7 @@ public class MigrationJourneys {
 		if (context != null && context.getConnectionUniqueId() != null)
 			eventManager.call(new MigrationResolvedEvent(context, ScenarioResolution.CANCELLED, false));
 		pipelineStateStore.clear(reference(connectionUniqueId));
+		connections.get().invalidate(connectionUniqueId.toString()).join();
 
 		return Optional.of(started);
 	}
@@ -158,9 +195,19 @@ public class MigrationJourneys {
 		return started.build();
 	}
 
-	private static @NotNull PipelineStateReference reference(@NotNull UUID connectionUniqueId) {
-		return PipelineStateReference.builder()
-				.connectionUniqueId(connectionUniqueId)
-				.build();
+	private @NotNull PipelineStateReference reference(@NotNull UUID connectionUniqueId) {
+		return connections.get().get(connectionUniqueId.toString()).join()
+				.map(connection -> PipelineStateReference.of(connection.username, connection.ip))
+				.orElseGet(() -> PipelineStateReference.of(null, null));
+	}
+
+	/**
+	 * The connection a unique id started a journey for.
+	 */
+	@NoArgsConstructor
+	@AllArgsConstructor
+	public static final class JourneyConnection {
+		public @Nullable String username;
+		public @Nullable String ip;
 	}
 }

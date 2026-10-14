@@ -5,6 +5,7 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.Serializer;
+import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.service.PlatformDeliveryAdapter;
@@ -12,8 +13,6 @@ import me.whereareiam.keystone.Actor;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.UUID;
 
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
@@ -48,12 +47,10 @@ public class ConnectionDecisionApplier {
 			@Nullable ConnectionDecision decision,
 			@NotNull Actor actor,
 			@NotNull Target target,
-			@NotNull UUID connectionUniqueId,
-			@Nullable UUID accountUniqueId
+			@NotNull ConnectionIdentity connection
 	) {
 		boolean deferred = deliveryCoordinator.queueWaitDecision(
-				connectionUniqueId,
-				accountUniqueId,
+				connection,
 				decision,
 				platformDeliveryAdapter.initialPromptCheckpoint()
 		);

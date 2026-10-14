@@ -57,7 +57,6 @@ import static org.mockito.Mockito.*;
 @DisplayName("Resolve Pending Migration Account Phase")
 class ResolvePendingMigrationAccountPhaseTest {
 	private static final String USERNAME = "PlayerOne";
-	private static final String CONNECTION_KEY = "PlayerOne|127.0.0.1||";
 	/** A custom provider whose login the platform verifies before the profile is resolved. */
 	private static final String LOGIN_PROVIDER = "token";
 	/** A custom provider that derives its subject from the username and proves it in a later step. */
@@ -246,7 +245,7 @@ class ResolvePendingMigrationAccountPhaseTest {
 		assertNotEquals(ProviderClaimOrigin.MIGRATION, selection.getOrigin());
 		ArgumentCaptor<PipelineStateReference> cleared = ArgumentCaptor.forClass(PipelineStateReference.class);
 		verify(pipelineStateStore).clear(cleared.capture());
-		assertEquals(CONNECTION_KEY, cleared.getValue().getConnectionKey());
+		assertEquals(PipelineStateReference.of(USERNAME, "127.0.0.1"), cleared.getValue());
 
 		ArgumentCaptor<MigrationResolvedEvent> resolved = ArgumentCaptor.forClass(MigrationResolvedEvent.class);
 		verify(eventManager).call(resolved.capture());
@@ -263,7 +262,7 @@ class ResolvePendingMigrationAccountPhaseTest {
 	private void execute(PipelineState state) {
 		PrepareGroupState groupState = new PrepareGroupState();
 		groupState.setRequest(PrepareRequest.builder()
-				.connectionKey(CONNECTION_KEY)
+				.connectionKey(USERNAME + "|127.0.0.1||")
 				.stage(PrepareStage.PROFILE)
 				.identity(new ConnectionIdentity(USERNAME, "127.0.0.1"))
 				.build());

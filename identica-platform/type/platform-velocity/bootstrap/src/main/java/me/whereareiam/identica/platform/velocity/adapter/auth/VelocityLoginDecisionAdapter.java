@@ -94,28 +94,19 @@ public class VelocityLoginDecisionAdapter implements PlatformLoginDecisionAdapte
 				provider != null ? provider.getProviderSubject() : null
 		);
 
-		decisionApplier.apply(decision, new VelocityCommandPlayer(
+		UUID accountUniqueId = identity.getAccountUniqueId();
+		VelocityCommandPlayer liveIdentity = new VelocityCommandPlayer(
 				player.getUniqueId(),
-				identity.getAccountUniqueId(),
+				accountUniqueId,
 				player,
 				identity.getUsername(),
 				identity.getOrigin()
-		), loginTarget(event));
+		);
+		liveIdentity.setConnectionUsername(identity.getConnectionUsername());
+		decisionApplier.apply(decision, liveIdentity, loginTarget(event));
 		ConnectionDecision.Status status = decision != null ? decision.getStatus() : null;
-		if (status == ConnectionDecision.Status.ALLOW || status == ConnectionDecision.Status.WAIT) {
-			UUID accountUniqueId = identity.getAccountUniqueId();
-			identityService.attach(
-					player.getUniqueId(),
-					accountUniqueId,
-					new VelocityCommandPlayer(
-							player.getUniqueId(),
-							accountUniqueId,
-							player,
-							identity.getUsername(),
-							identity.getOrigin()
-					)
-			);
-		}
+		if (status == ConnectionDecision.Status.ALLOW || status == ConnectionDecision.Status.WAIT)
+			identityService.attach(player.getUniqueId(), accountUniqueId, liveIdentity);
 	}
 
 	private String resolveIp(@NotNull Player player) {

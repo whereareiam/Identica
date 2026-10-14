@@ -1,7 +1,7 @@
 ---
 title: Настройки
 description: Подробное описание каждой настройки функции Sentinel в Identica.
-sourceHash: 1e61901601eaa69cfc1ade8c96454a71a5a62d0d
+sourceHash: c864c52e5a198e08a3eaeea51421f80990018452
 ---
 
 На этой странице описаны настройки встроенной функции Sentinel.
@@ -63,6 +63,32 @@ sourceHash: 1e61901601eaa69cfc1ade8c96454a71a5a62d0d
 Текущий код приводит значение к диапазону `0..100` и вычисляет порог предупреждения от `maxAttempts`.
 Например, при `maxAttempts: 10` и `thresholdPercentage: 70` предупреждения начинаются с попытки `8`.
 
+### sentinels.contestedConnection.enabled
+
+- Принимает: `true` или `false`
+- По умолчанию: `true`
+- Влияет на: блокирует ли sentinel адрес, подключения которого снова и снова пытаются войти под занятыми именами
+
+Этот sentinel считает подключения адреса, отклонённые потому, что под их именем уже входит другое подключение с другого адреса (см. [Входы в процессе](../../../engine/index.mdx#logins-in-progress)). Он считает по адресу, какое бы имя ни использовало каждое подключение. Когда адрес достигает `maxAttempts`, все подключения с него отклоняются на время блокировки.
+
+### sentinels.contestedConnection.maxAttempts
+
+- Принимает: целое число больше `0`
+- По умолчанию: `5`
+- Влияет на: сколько отклонённых подключений может быть у адреса, прежде чем его заблокируют
+
+### sentinels.contestedConnection.lockout.enabled
+
+- Принимает: `true` или `false`
+- По умолчанию: `true`
+- Влияет на: блокирует ли sentinel адрес, когда тот достигает `maxAttempts`
+
+### sentinels.contestedConnection.lockout.duration
+
+- Принимает: положительную длительность
+- По умолчанию: `"1m"`
+- Влияет на: как долго адрес остаётся заблокированным
+
 ### replication.state
 
 <Badge type="warning">Для опытных</Badge>
@@ -86,6 +112,14 @@ sourceHash: 1e61901601eaa69cfc1ade8c96454a71a5a62d0d
 Плейсхолдер `{seconds}` заменяется оставшимся временем блокировки.
 Пустой список отключает сообщение, но блокировка по-прежнему отклоняет попытки.
 
+### contestedConnection.denied
+
+- Принимает: список строк
+- По умолчанию: уведомление со строкой `Too many attempts to log in under names in use.` и оставшимся временем
+- Влияет на: причину, которую видит подключение с адреса, заблокированного sentinel занятых имён
+
+Плейсхолдер `{seconds}` заменяется оставшимся временем блокировки. Пустой список отключает сообщение, но блокировка по-прежнему отклоняет попытки.
+
 ## Пример настроек [#settings-example]
 
 Этот пример относится к `features/sentinel/settings`:
@@ -103,6 +137,12 @@ sentinels:
     warning:
       enabled: true
       thresholdPercentage: 70
+  contestedConnection:
+    enabled: true
+    maxAttempts: 5
+    lockout:
+      enabled: true
+      duration: "1m"
 replication:
   state: "identica:sentinels"
 ```
@@ -121,6 +161,14 @@ replication:
       "warning": {
         "enabled": true,
         "thresholdPercentage": 70
+      }
+    },
+    "contestedConnection": {
+      "enabled": true,
+      "maxAttempts": 5,
+      "lockout": {
+        "enabled": true,
+        "duration": "1m"
       }
     }
   },

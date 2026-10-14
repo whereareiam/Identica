@@ -96,13 +96,13 @@ public class ResolvePendingMigrationAccountPhase implements PipelinePhase<Prepar
 		PrepareContextItem context = pipelineState.get(PrepareContextItem.KEY).orElse(new PrepareContextItem());
 		var request = state.getRequest();
 		ProviderSelection selection = context.getSelection();
-		String connectionKey = request != null ? request.getConnectionKey() : null;
-		if (connectionKey == null || connectionKey.isBlank())
+		PipelineStateReference reference = request != null
+				? PipelineStateReference.from(request.getIdentity())
+				: PipelineStateReference.of(null, null);
+		if (reference.isEmpty())
 			return CompletableFuture.completedFuture(PhaseResult.pass(state));
 
-		PipelineState pendingState = pipelineStateStore.find(PipelineStateReference.builder()
-				.connectionKey(connectionKey)
-				.build()).orElse(null);
+		PipelineState pendingState = pipelineStateStore.find(reference).orElse(null);
 		if (pendingState == null || pendingState.getPipelineType() != PipelineType.MIGRATION)
 			return CompletableFuture.completedFuture(PhaseResult.pass(state));
 		if (pendingState.get(MigrationPendingState.KEY).isEmpty())
@@ -115,7 +115,7 @@ public class ResolvePendingMigrationAccountPhase implements PipelinePhase<Prepar
 		String targetProviderId = migration.getTargetProviderId();
 		UUID accountUniqueId = migration.getAccountUniqueId();
 		if (!isProven(selection, targetProviderId, accountUniqueId)) {
-			cancel(migration, connectionKey, targetProviderId, selection);
+			cancel(migration, reference, targetProviderId, selection);
 			context.setSelection(providerSelector.revoke(selection, ProviderClaimOrigin.MIGRATION));
 			pipelineState.put(PrepareContextItem.KEY, context);
 			return CompletableFuture.completedFuture(PhaseResult.pass(state));
@@ -144,7 +144,7 @@ public class ResolvePendingMigrationAccountPhase implements PipelinePhase<Prepar
 				"Prepare reusing pending migration account provider=%s identica=%s key=%s",
 				targetProviderId,
 				accountUniqueId,
-				connectionKey
+				reference.key()
 		);
 
 		return CompletableFuture.completedFuture(PhaseResult.pass(state));
@@ -177,7 +177,7 @@ public class ResolvePendingMigrationAccountPhase implements PipelinePhase<Prepar
 
 	private void cancel(
 			@NotNull MigrationContext migration,
-			@NotNull String connectionKey,
+			@NotNull PipelineStateReference reference,
 			@NotNull String targetProviderId,
 			@NotNull ProviderSelection selection
 	) {
@@ -204,14 +204,12 @@ public class ResolvePendingMigrationAccountPhase implements PipelinePhase<Prepar
 		if (migration.getConnectionUniqueId() != null)
 			eventManager.call(new MigrationResolvedEvent(migration, ScenarioResolution.CANCELLED, false));
 
-		pipelineStateStore.clear(PipelineStateReference.builder()
-				.connectionKey(connectionKey)
-				.build());
+		pipelineStateStore.clear(reference);
 		Logger.debug(
 				"Prepare cleared pending migration without proof requested=%s claims=%s key=%s",
 				targetProviderId,
 				selection.claims(),
-				connectionKey
+				reference.key()
 		);
 	}
 }

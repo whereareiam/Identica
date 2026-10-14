@@ -158,7 +158,8 @@ publications:
     artifact: identica-bungeecord
 
   # A provider jar has no proxy plugin descriptor, so Modrinth only accepts it as a java-agent upload;
-  # the version is moved to the proxy loaders right after.
+  # the version is moved to the proxy loaders right after. Modrinth requires java-agent versions to name
+  # their environment; the proxy loaders have none.
   credential-provider-modrinth:
     provider:
       id: modrinth
@@ -166,6 +167,8 @@ publications:
       release_type_map: *modrinth_release_types
       upload_loaders:
         - java-agent
+      loader_fields:
+        environment: server_only
       reclassify:
         loaders: *proxy_loaders
       dependencies:
@@ -180,6 +183,8 @@ publications:
       release_type_map: *modrinth_release_types
       upload_loaders:
         - java-agent
+      loader_fields:
+        environment: server_only
       reclassify:
         loaders: *proxy_loaders
       dependencies:

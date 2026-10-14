@@ -10,7 +10,7 @@ import org.jetbrains.annotations.NotNull;
  * holding it.
  * <p>
  * {@code sessions.activeTtl} in the settings document is removed, not renamed: it was the lifetime of a
- * cache entry refreshed twice in it, typically hours, and {@code sessions.heartbeatTimeout} is the time
+ * cache entry refreshed twice in it, typically hours, and {@code replication.heartbeatTimeout} is the time
  * after which the sessions of a stopped proxy disappear, so its default applies. In the replication
  * document the session namespaces are renamed after what they hold now, keeping the names an operator
  * chose: {@code session} becomes {@code records}, {@code user} becomes {@code accounts} and

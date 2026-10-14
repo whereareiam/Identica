@@ -5,6 +5,7 @@ import me.whereareiam.identica.common.replication.DefaultReplicationSystem;
 import me.whereareiam.identica.common.replication.ReplicationTestFixtures;
 import me.whereareiam.identica.common.replication.event.DefaultReplicatedEventRegistry;
 import me.whereareiam.identica.common.replication.event.ReplicatedEventBridge;
+import me.whereareiam.identica.common.replication.lease.DefaultLeaseKeeper;
 import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.event.identity.session.SessionClosedEvent;
@@ -297,8 +298,9 @@ class DefaultSessionServiceTest {
 			events.register(new Capture(this));
 			new ReplicatedEventBridge(events, replicationSystem, () -> replication(serverId), new DefaultReplicatedEventRegistry()).initialize();
 			store = new SessionStore(LIFETIME_MS, replication(serverId), replicationSystem);
-			keepalive = new SessionKeepalive(store, new SessionFixtures.ManualScheduler());
-			keepalive.initialize();
+			DefaultLeaseKeeper leaseKeeper = new DefaultLeaseKeeper(() -> replication(serverId), new SessionFixtures.ManualScheduler());
+			keepalive = new SessionKeepalive(store, leaseKeeper);
+			leaseKeeper.initialize();
 			service = new DefaultSessionService(
 					DefaultSessionServiceTest::settings,
 					() -> providers,

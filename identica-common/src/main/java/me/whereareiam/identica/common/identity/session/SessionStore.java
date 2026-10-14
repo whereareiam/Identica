@@ -7,12 +7,12 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.config.Replication;
-import me.whereareiam.identica.model.config.Settings;
 import me.whereareiam.identica.model.replication.ReplicationPage;
 import me.whereareiam.identica.model.replication.ReplicationType;
 import me.whereareiam.identica.replication.ReplicationSystem;
 import me.whereareiam.identica.replication.cache.ReplicatedCache;
 import me.whereareiam.identica.replication.codec.SnapshotCodec;
+import me.whereareiam.identica.replication.lease.LeaseKeeper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -30,8 +30,8 @@ import java.util.function.Predicate;
  * Stores each session once, as a record under its own id, and finds it again by account and by provider
  * subject through index entries that only list session ids. This is the only code that knows the keys.
  * <p>
- * The record is the truth. It lives for the heartbeat timeout and has to be refreshed to stay, so the
- * sessions of a proxy that stopped disappear by themselves. An index entry may be out of date: a lookup
+ * The record is the truth. It lives for the lease lifetime, the heartbeat timeout, and has to be refreshed by
+ * the {@link SessionKeepalive} to stay, so the sessions of a proxy that stopped disappear by themselves. An index entry may be out of date: a lookup
  * resolves every id it lists against the records, returns only the sessions that exist and still belong
  * under that key, and drops the other ids from the entry. Nothing is read from the proxy's local copies
  * while the shared store is available, so every proxy sees a session appear and end at once.
@@ -49,12 +49,12 @@ public class SessionStore {
 
 	@Inject
 	public SessionStore(
-			Provider<Settings> settingsProvider,
+			LeaseKeeper leaseKeeper,
 			Provider<Replication> replicationProvider,
 			ReplicationSystem replicationSystem
 	) {
 		this.stored = Suppliers.memoize(() -> Stored.of(
-				settingsProvider.get().getSessions().heartbeatTimeoutMillis(),
+				leaseKeeper.lifetimeMs(),
 				replicationProvider.get(),
 				replicationSystem
 		));
@@ -62,13 +62,6 @@ public class SessionStore {
 
 	SessionStore(long lifetimeMs, Replication replication, ReplicationSystem replicationSystem) {
 		this.stored = Suppliers.ofInstance(Stored.of(lifetimeMs, replication, replicationSystem));
-	}
-
-	/**
-	 * Returns how long a record stays without being refreshed, in milliseconds.
-	 */
-	public long lifetimeMs() {
-		return stored.get().lifetimeMs();
 	}
 
 	public @NotNull CompletableFuture<Optional<Session>> find(@Nullable String sessionId) {
@@ -247,11 +240,10 @@ public class SessionStore {
 	}
 
 	/**
-	 * What the store is built from, created on first use, once the settings and the replication document are
-	 * loaded: how long a record lives and the caches holding the records and the index entries.
+	 * What the store is built from, created on first use, once the replication document is loaded: the caches
+	 * holding the records and the index entries, with the lease lifetime as the records' time to live.
 	 */
 	private record Stored(
-			long lifetimeMs,
 			@NotNull ReplicatedCache<Session> records,
 			@NotNull ReplicatedCache<String> accounts,
 			@NotNull ReplicatedCache<String> subjects
@@ -261,7 +253,6 @@ public class SessionStore {
 			ReplicationType<String, String> index = ReplicationType.identity(String.class).withCodec(SnapshotCodec.string());
 
 			return new Stored(
-					lifetimeMs,
 					replicationSystem.cache(namespace(namespaces.getRecords(), "records"))
 							.defaultTtl(lifetimeMs)
 							.replicated(ReplicationType.identity(Session.class)),

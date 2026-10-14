@@ -9,12 +9,14 @@ import me.whereareiam.configura.Configura;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.identica.common.config.IdenticaModule;
 import me.whereareiam.identica.common.config.defaults.EngineDefaults;
+import me.whereareiam.identica.common.config.defaults.ReplicationDefaults;
 import me.whereareiam.identica.common.config.defaults.RoutingDefaults;
 import me.whereareiam.identica.common.config.defaults.SettingsDefaults;
 import me.whereareiam.identica.common.config.defaults.messages.MessagesDefaults;
 import me.whereareiam.identica.common.config.defaults.provider.ProvidersDefaults;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.config.Replication;
 import me.whereareiam.identica.model.config.Routing;
 import me.whereareiam.identica.model.config.Settings;
 import me.whereareiam.identica.model.config.provider.Providers;
@@ -64,6 +66,7 @@ public final class ProxyConfiguration {
 	private static final String ROUTING = "routing.yml";
 	private static final String SETTINGS = "settings.yml";
 	private static final String MESSAGES = "messages.yml";
+	private static final String REPLICATION = "replication.yml";
 	private static final String PROVIDERS = "providers/providers.yml";
 	private static final String PREMIUM = "providers/Premium/settings.yml";
 	private static final String CREDENTIAL = "providers/Credential/settings.yml";
@@ -116,6 +119,14 @@ public final class ProxyConfiguration {
 
 	public Settings settings() {
 		return (Settings) documents.get(SETTINGS);
+	}
+
+	/**
+	 * Returns the replication settings, starting from their defaults. A proxy of a replicated cluster has them
+	 * already, pointing at the cluster's Redis; any other proxy only gets this file once a test asks for it.
+	 */
+	public Replication replication() {
+		return (Replication) documents.computeIfAbsent(REPLICATION, ignored -> new ReplicationDefaults().supply(new Replication()));
 	}
 
 	public Providers providers() {

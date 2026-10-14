@@ -16,9 +16,13 @@ import me.whereareiam.identica.event.scenario.ScenarioResolvedEvent;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.config.Replication;
+import me.whereareiam.identica.model.replication.LeaseRenewal;
 import me.whereareiam.identica.model.replication.ReplicationType;
 import me.whereareiam.identica.replication.ReplicationSystem;
 import me.whereareiam.identica.replication.cache.ReplicatedCache;
+import me.whereareiam.identica.replication.lease.LeaseKeeper;
+import me.whereareiam.identica.replication.lease.LeasedRecords;
+import me.whereareiam.identica.replication.lease.Leases;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -27,12 +31,17 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Remembers, for every username, the connection that is logging in under it, so that a proxy of a network refuses
  * another connection with that username while the first one logs in. A connection holds its username from the moment
  * its login waits for the player until the login ends, the player leaves or the login times out.
+ *
+ * <p>A hold is a lease of the {@link LeaseKeeper}: the proxy of the connection renews it while the login waits, so
+ * the holds of a proxy that stopped or crashed expire within the heartbeat timeout instead of blocking the username
+ * until the login would have timed out.</p>
  *
  * <p>A proxy refuses a second connection of a username that one of its own players uses by itself; the holds matter
  * between the proxies of a replicated network.</p>
@@ -43,18 +52,23 @@ public class UsernameHolds implements EventListener {
 
 	private final Provider<Replication> replicationProvider;
 	private final Supplier<ReplicatedCache<Holder>> holders;
+	private final LeaseKeeper leaseKeeper;
+	private final Leases<Holder> leases;
 	private final Map<UUID, String> heldHere = new ConcurrentHashMap<>();
 
 	@Inject
 	public UsernameHolds(
 			@NotNull ReplicationSystem replicationSystem,
 			@NotNull Provider<Replication> replicationProvider,
+			@NotNull LeaseKeeper leaseKeeper,
 			@NotNull EventManager eventManager
 	) {
 		this.replicationProvider = replicationProvider;
 		this.holders = Suppliers.memoize(() -> replicationSystem
 				.cache(replicationProvider.get().getCache().getPipelineState() + NAMESPACE_SUFFIX)
 				.replicated(ReplicationType.identity(Holder.class)));
+		this.leaseKeeper = leaseKeeper;
+		this.leases = leaseKeeper.leases("username hold", new HolderRecords());
 		eventManager.register(this);
 	}
 
@@ -83,10 +97,12 @@ public class UsernameHolds implements EventListener {
 	public void onScenarioRequired(@NotNull ScenarioRequiredEvent event) {
 		ConnectionIdentity identity = event.getContext().getIdentity();
 		String key = key(identity.getConnectionUsername());
-		long ttlMs = event.getExpiresAt() - System.currentTimeMillis();
+		long ttlMs = Math.min(leaseKeeper.lifetimeMs(), event.getExpiresAt() - System.currentTimeMillis());
 		if (key == null || ttlMs <= 0) return;
 
-		holders.get().put(key, new Holder(serverId(), event.getConnectionUniqueId(), identity.getIp()), ttlMs).join();
+		Holder holder = new Holder(serverId(), event.getConnectionUniqueId(), identity.getIp());
+		holders.get().put(key, holder, ttlMs).join();
+		leases.hold(key, holder, event.getExpiresAt());
 		heldHere.put(event.getConnectionUniqueId(), key);
 		Logger.debug("Username hold taken username=%s connection=%s", key, event.getConnectionUniqueId());
 	}
@@ -108,6 +124,9 @@ public class UsernameHolds implements EventListener {
 		String key = heldHere.remove(connectionUniqueId);
 		if (key == null) return;
 
+		if (leases.find(key).filter(held -> connectionUniqueId.equals(held.connectionUniqueId)).isPresent())
+			leases.release(key);
+
 		Holder holder = holders.get().getFresh(key).join().orElse(null);
 		if (holder == null || !isHere(holder) || !connectionUniqueId.equals(holder.connectionUniqueId)) return;
 
@@ -115,8 +134,20 @@ public class UsernameHolds implements EventListener {
 		Logger.debug("Username hold released username=%s connection=%s", key, connectionUniqueId);
 	}
 
+	/**
+	 * Whether two holders are the same connection of the same proxy.
+	 */
+	private static boolean isSameHolder(@NotNull Holder first, @NotNull Holder second) {
+		return Objects.equals(first.connectionUniqueId, second.connectionUniqueId)
+				&& serverIdOf(first).equalsIgnoreCase(serverIdOf(second));
+	}
+
 	private boolean isHere(@NotNull Holder holder) {
-		return serverId().equalsIgnoreCase(holder.serverId == null ? "" : holder.serverId);
+		return serverId().equalsIgnoreCase(serverIdOf(holder));
+	}
+
+	private static @NotNull String serverIdOf(@NotNull Holder holder) {
+		return holder.serverId == null ? "" : holder.serverId;
 	}
 
 	private @NotNull String serverId() {
@@ -127,6 +158,26 @@ public class UsernameHolds implements EventListener {
 		if (username == null || username.isBlank()) return null;
 
 		return username.trim().toLowerCase(Locale.ROOT);
+	}
+
+	/**
+	 * Renews the holds of this proxy's connections: a hold that another connection took over meanwhile ends.
+	 */
+	private final class HolderRecords implements LeasedRecords<Holder> {
+		@Override
+		public @NotNull CompletableFuture<Optional<Holder>> find(@NotNull String key) {
+			return holders.get().getFresh(key);
+		}
+
+		@Override
+		public boolean isTakenOver(@NotNull Holder held, @NotNull Holder stored) {
+			return !isSameHolder(held, stored);
+		}
+
+		@Override
+		public @NotNull CompletableFuture<Void> write(@NotNull String key, @NotNull Holder holder, @NotNull LeaseRenewal renewal) {
+			return holders.get().put(key, holder, renewal.getTtlMs());
+		}
 	}
 
 	/**

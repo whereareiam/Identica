@@ -5,6 +5,8 @@ import lombok.Setter;
 import lombok.ToString;
 import org.jetbrains.annotations.NotNull;
 
+import java.time.Duration;
+
 /**
  * Replication configuration used for cross-instance replication.
  */
@@ -12,10 +14,35 @@ import org.jetbrains.annotations.NotNull;
 @Setter
 @ToString
 public class Replication {
+	/**
+	 * Shortest accepted heartbeat timeout: below it a renewal every third of the timeout would be more frequent than
+	 * once a second.
+	 */
+	public static final Duration MINIMUM_HEARTBEAT_TIMEOUT = Duration.ofSeconds(3);
+
 	private boolean enabled;
 	private @NotNull String serverId;
+	/**
+	 * How long a record this proxy owns, such as a session or the hold of a username being logged in, stays stored
+	 * after the proxy last renewed it. The proxy renews each record it holds every third of this time, so the
+	 * records of a proxy that stopped or crashed without releasing them disappear this long after it stopped.
+	 */
+	private @NotNull Duration heartbeatTimeout;
 	private @NotNull Redis redis;
 	private @NotNull Cache cache;
+
+	/**
+	 * Returns the heartbeat timeout in milliseconds with validation.
+	 *
+	 * @return heartbeat timeout in milliseconds
+	 * @throws IllegalStateException when the timeout is shorter than {@link #MINIMUM_HEARTBEAT_TIMEOUT}
+	 */
+	public long heartbeatTimeoutMillis() {
+		if (heartbeatTimeout.compareTo(MINIMUM_HEARTBEAT_TIMEOUT) < 0)
+			throw new IllegalStateException("replication.heartbeatTimeout must be at least " + MINIMUM_HEARTBEAT_TIMEOUT.toSeconds() + "s");
+
+		return heartbeatTimeout.toMillis();
+	}
 
 	/**
 	 * Redis settings used by the replication adapter.

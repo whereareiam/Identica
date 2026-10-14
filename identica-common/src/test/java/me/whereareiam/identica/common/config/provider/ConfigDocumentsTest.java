@@ -15,6 +15,7 @@ import me.whereareiam.identica.model.config.persistence.SqlitePersistence;
 import me.whereareiam.identica.model.config.persistence.external.MysqlPersistence;
 import me.whereareiam.identica.model.config.persistence.external.PostgresPersistence;
 import me.whereareiam.identica.model.config.provider.Providers;
+import me.whereareiam.identica.type.identity.UniqueIdMode;
 import me.whereareiam.identica.type.session.SessionConcurrencyPolicy;
 import me.whereareiam.strata.adapter.configura.StrataFeature;
 import org.junit.jupiter.api.AfterEach;
@@ -62,19 +63,19 @@ class ConfigDocumentsTest {
 	void userDocumentIsCompletedFromDefaults() throws IOException {
 		write("settings", """
 				level: 0
-				sessions:
-				  heartbeatTimeout: "1m"
+				identity:
+				  reservationTtl: "1h"
 				""");
 
 		Settings settings = new SettingsProvider(dataPath, registry()).get();
 
 		assertEquals(0, settings.getLevel());
-		assertEquals(Duration.ofMinutes(1), settings.getSessions().getHeartbeatTimeout());
+		assertEquals(Duration.ofHours(1), settings.getIdentity().getReservationTtl());
+		assertEquals(UniqueIdMode.RANDOM, settings.getIdentity().getUniqueIdMode());
 		assertEquals(SessionConcurrencyPolicy.REPLACE_EXISTING, settings.getSessions().getConcurrencyPolicy());
-		assertEquals(Duration.ofMinutes(15), settings.getIdentity().getReservationTtl());
 		String written = read("settings");
-		assertTrue(written.startsWith("level: 0\nsessions:\n  heartbeatTimeout: \"1m\"\n  concurrencyPolicy: \"REPLACE_EXISTING\"\n"), written);
-		assertTrue(written.contains("reservationTtl: \"15m\""), written);
+		assertTrue(written.startsWith("level: 0\nidentity:\n  reservationTtl: \"1h\"\n  uniqueIdMode: \"RANDOM\"\n"), written);
+		assertTrue(written.contains("concurrencyPolicy: \"REPLACE_EXISTING\""), written);
 	}
 
 	@DisplayName("A provider entry keeps what the user wrote and gets its defaults; others are not added")

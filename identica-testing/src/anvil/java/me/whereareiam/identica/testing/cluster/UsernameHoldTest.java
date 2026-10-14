@@ -28,6 +28,7 @@ class UsernameHoldTest {
 	private static final String PASSWORD = "Secret-123";
 	private static final String ELSEWHERE = "127.0.0.2";
 	private static final int HELD_ATTEMPTS = 2;
+	private static final Duration HEARTBEAT_TIMEOUT = Duration.ofSeconds(10);
 
 	@Test
 	@IdenticaCluster
@@ -121,6 +122,28 @@ class UsernameHoldTest {
 				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt());
 	}
 
+	/**
+	 * A proxy that crashes cannot give up the holds of its logins. They expire with its heartbeat timeout, long
+	 * before the login would have timed out: another address is refused right after the crash and let in once the
+	 * timeout has passed.
+	 */
+	@Test
+	@IdenticaCluster(configure = ShortHeartbeat.class)
+	void letsAnotherAddressInOnceACrashedProxysHoldExpired(ScenarioContext anvil) {
+		Accounts.credential(anvil, "Alice", PASSWORD, PROXY_A).rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt());
+
+		anvil.processes().kill(PROXY_A);
+
+		elsewhereThroughProxyB(anvil, "Alice")
+				.kickedWith(m -> m.identica().getEngine().getUsernameHeld())
+				.waits(HEARTBEAT_TIMEOUT.plusSeconds(2))
+				.rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt());
+	}
+
 	@Test
 	@IdenticaCluster(configure = FewContestedAttempts.class)
 	void locksOutAnAddressThatKeepsTryingHeldUsernames(ScenarioContext anvil) {
@@ -188,6 +211,13 @@ class UsernameHoldTest {
 	}
 
 	private record Enrolled(Journey journey, Authenticator app) {
+	}
+
+	private static final class ShortHeartbeat implements Consumer<ProxyConfiguration> {
+		@Override
+		public void accept(ProxyConfiguration proxy) {
+			proxy.replication().setHeartbeatTimeout(HEARTBEAT_TIMEOUT);
+		}
 	}
 
 	private static final class FewContestedAttempts implements Consumer<ProxyConfiguration> {

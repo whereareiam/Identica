@@ -30,6 +30,22 @@ Do not leave a random generated value in place across restarts if you want predi
 This value is especially important for replicated events, because Identica uses it to distinguish local-origin events from events coming from another runtime.
 A session also records the `serverId` of the proxy holding the player's connection, so a concurrent login through another proxy disconnects exactly that connection.
 
+## heartbeatTimeout
+
+<Badge type="warning">Advanced</Badge>
+
+- Takes: a duration of at least `"3s"`
+- Current default: `"30s"`
+- Affects: how long a record this proxy owns stays stored after the proxy last renewed it
+
+A proxy owns two kinds of shared records: the session of every player connected through it, and the hold on the username of every player who is logging in through it. It renews each of them every third of this time, every 10 seconds with the default, for as long as it owns them.
+
+A record ends at once when its proxy is done with it: a session when its player disconnects, a username hold when the login ends, the player leaves or the scenario's [`pipelineTtl`](../engine/index.mdx#pipelinettl) passes. This setting only matters when a proxy stops without ending its records, for example when it crashes. Its records then disappear this long after it stopped. Until then other proxies still see them: they list the sessions in `/identica admin session list`, `REJECT_NEW` still refuses a new login of those accounts, and a player from another address is still refused with `engine.usernameHeld` under a username that was being logged in.
+
+With Redis replication a renewal is one read and one small write per record, which are three Redis commands, and every tenth renewal of a session also renews its two index entries. For 1000 online players that is about 360 Redis commands per second. A shorter timeout frees the accounts and usernames of a crashed proxy sooner and costs proportionally more commands; a longer one costs fewer.
+
+A value below `"3s"` is refused at startup. This is not an offline remember-me duration.
+
 ## redis
 
 The `redis` section controls how Identica connects to Redis and which channels are used for publish/subscribe replication.
@@ -161,7 +177,7 @@ A session is stored once, as a record under its own id, and found by account or 
 - Current default: `"identica:sessions:records"`
 - Affects: the namespace of the session records, keyed by session id
 
-A record expires after `settings.sessions.heartbeatTimeout` unless the proxy holding the session's connection writes it again.
+A record expires after [`heartbeatTimeout`](#heartbeattimeout) unless the proxy holding the session's connection writes it again.
 
 ##### accounts
 

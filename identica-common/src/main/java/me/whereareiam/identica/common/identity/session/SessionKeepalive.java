@@ -2,123 +2,76 @@ package me.whereareiam.identica.common.identity.session;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
-import me.whereareiam.identica.lifecycle.StartupPhase;
-import me.whereareiam.identica.logging.Logger;
+import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.model.Session;
-import me.whereareiam.identica.model.scheduler.JobKey;
-import me.whereareiam.identica.model.scheduler.Origin;
-import me.whereareiam.identica.model.scheduler.PeriodicalRunnableTask;
-import me.whereareiam.identica.model.scheduler.Purpose;
-import me.whereareiam.identica.service.Scheduler;
+import me.whereareiam.identica.model.replication.LeaseRenewal;
+import me.whereareiam.identica.replication.lease.LeaseKeeper;
+import me.whereareiam.identica.replication.lease.LeasedRecords;
+import me.whereareiam.identica.replication.lease.Leases;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Keeps the sessions this proxy holds stored. A session's record expires after the heartbeat timeout, so
- * the proxy holding its connection writes it again every third of that time, and every tenth time also
- * renews the index entries listing it. A proxy never refreshes a session whose connection another proxy
- * holds.
+ * Keeps the sessions this proxy holds stored, on a lease of the {@link LeaseKeeper}. A session's record expires
+ * after the heartbeat timeout, so the proxy holding its connection writes it again every third of that time, and
+ * every tenth time also renews the index entries listing it. A proxy never refreshes a session whose connection
+ * another proxy holds.
  * <p>
  * The proxy holding a connection is the authority on its session: a record that expired while the shared
  * store was unreachable is written again from the copy kept here. A session that was closed is released
  * first, so it is not written again.
  */
 @Singleton
-public class SessionKeepalive implements RuntimeLifecycle {
-	/** Refreshes within one record lifetime. */
-	static final int REFRESHES_PER_LIFETIME = 3;
+public class SessionKeepalive {
 	/** Record refreshes between two renewals of the index entries, a third of their lifetime. */
-	static final int REFRESHES_PER_INDEXING = SessionStore.INDEX_LIFETIMES * REFRESHES_PER_LIFETIME / 3;
+	static final int REFRESHES_PER_INDEXING = SessionStore.INDEX_LIFETIMES * LeaseKeeper.RENEWALS_PER_LIFETIME / 3;
 
-	private static final Origin ORIGIN = Origin.core(SessionKeepalive.class);
-	private static final JobKey JOB_KEY = JobKey.of(ORIGIN, Purpose.of("session-keepalive"), "refresh");
-
-	private final SessionStore store;
-	private final Scheduler scheduler;
-	private final Map<String, Held> held = new ConcurrentHashMap<>();
+	private final Leases<Session> leases;
 
 	@Inject
-	public SessionKeepalive(SessionStore store, Scheduler scheduler) {
-		this.store = store;
-		this.scheduler = scheduler;
-	}
-
-	@Override
-	public @NotNull StartupPhase phase() {
-		return StartupPhase.RUNTIME;
-	}
-
-	/**
-	 * Starts refreshing the held sessions every third of a record's lifetime.
-	 */
-	@Override
-	public void initialize() {
-		long interval = store.lifetimeMs() / REFRESHES_PER_LIFETIME;
-		scheduler.schedule(PeriodicalRunnableTask.builder()
-				.key(JOB_KEY)
-				.delay(interval)
-				.period(interval)
-				.runnable(this::refresh)
-				.build());
+	public SessionKeepalive(@NotNull SessionStore store, @NotNull LeaseKeeper leaseKeeper) {
+		this.leases = leaseKeeper.leases("session", new SessionRecords(store));
 	}
 
 	/**
 	 * Starts refreshing a session this proxy holds, or takes over its new state when it already does.
 	 */
 	public void hold(@NotNull Session session) {
-		held.compute(session.getSessionId(), (ignored, current) -> new Held(session, current != null ? current.refreshes : 0));
+		leases.hold(session.getSessionId(), session);
 	}
 
 	/**
 	 * Stops refreshing a session, which then expires unless it was removed.
 	 */
 	public void release(@NotNull String sessionId) {
-		held.remove(sessionId);
+		leases.release(sessionId);
 	}
 
 	public boolean holds(@NotNull String sessionId) {
-		return held.containsKey(sessionId);
+		return leases.holds(sessionId);
 	}
 
 	/**
-	 * Stops refreshing and forgets the held sessions.
+	 * Writes the stored record again, so a change another proxy made to it is kept, or the copy kept here when the
+	 * record is gone; the index entries are written with it when the record was gone and on every tenth refresh.
+	 * Sessions hold their lease without an end, so each refresh gives the record the store's full lifetime.
 	 */
-	@Override
-	public void shutdown() {
-		scheduler.cancel(JOB_KEY);
-		held.clear();
-	}
+	@RequiredArgsConstructor
+	private static final class SessionRecords implements LeasedRecords<Session> {
+		private final @NotNull SessionStore store;
 
-	private void refresh() {
-		for (String sessionId : held.keySet())
-			refresh(sessionId);
-	}
+		@Override
+		public @NotNull CompletableFuture<Optional<Session>> find(@NotNull String sessionId) {
+			return store.find(sessionId);
+		}
 
-	/**
-	 * Writes the stored record again, so a change another proxy made to it is kept, or the copy kept here
-	 * when the record is gone.
-	 */
-	private void refresh(@NotNull String sessionId) {
-		store.find(sessionId)
-				.thenCompose(stored -> {
-					Held refreshed = held.computeIfPresent(sessionId, (ignored, current) ->
-							new Held(stored.orElse(current.session), current.refreshes + 1));
-					if (refreshed == null) return CompletableFuture.<Void>completedFuture(null);
-
-					return stored.isEmpty() || refreshed.refreshes % REFRESHES_PER_INDEXING == 0
-							? store.put(refreshed.session)
-							: store.touch(refreshed.session);
-				})
-				.exceptionally(failure -> {
-					Logger.debug("Could not refresh session %s: %s", sessionId, failure.getMessage());
-					return null;
-				});
-	}
-
-	private record Held(@NotNull Session session, int refreshes) {
+		@Override
+		public @NotNull CompletableFuture<Void> write(@NotNull String sessionId, @NotNull Session session, @NotNull LeaseRenewal renewal) {
+			return renewal.isRestored() || renewal.getCount() % REFRESHES_PER_INDEXING == 0
+					? store.put(session)
+					: store.touch(session);
+		}
 	}
 }

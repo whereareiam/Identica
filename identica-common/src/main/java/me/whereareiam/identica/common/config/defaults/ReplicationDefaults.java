@@ -4,6 +4,7 @@ import com.google.inject.Singleton;
 import me.whereareiam.configura.merge.defaults.DefaultsProvider;
 import me.whereareiam.identica.model.config.Replication;
 
+import java.time.Duration;
 import java.util.UUID;
 
 @Singleton
@@ -12,6 +13,7 @@ public class ReplicationDefaults implements DefaultsProvider<Replication> {
 	public Replication supply(Replication replication) {
 		replication.setEnabled(false);
 		replication.setServerId(UUID.randomUUID().toString());
+		replication.setHeartbeatTimeout(Duration.ofSeconds(30));
 
 		Replication.Redis redis = new Replication.Redis();
 		redis.setHost("localhost");

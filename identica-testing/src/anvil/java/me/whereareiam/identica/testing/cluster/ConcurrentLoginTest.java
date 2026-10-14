@@ -131,7 +131,7 @@ class ConcurrentLoginTest {
 	private static final class ShortHeartbeat implements Consumer<ProxyConfiguration> {
 		@Override
 		public void accept(ProxyConfiguration proxy) {
-			proxy.settings().getSessions().setHeartbeatTimeout(HEARTBEAT_TIMEOUT);
+			proxy.replication().setHeartbeatTimeout(HEARTBEAT_TIMEOUT);
 		}
 	}
 

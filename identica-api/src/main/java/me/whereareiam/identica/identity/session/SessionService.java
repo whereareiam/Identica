@@ -17,7 +17,7 @@ import java.util.concurrent.CompletableFuture;
  *
  * <p>A session is stored once, under its own id, for as long as the proxy holding its connection keeps
  * refreshing it; the sessions of a proxy that stopped disappear after
- * {@code settings.sessions.heartbeatTimeout}. An account has one session per connection, so it has
+ * {@code replication.heartbeatTimeout}. An account has one session per connection, so it has
  * several while {@code ALLOW_MULTIPLE} lets it be online through several connections.</p>
  */
 @SuppressWarnings("unused")

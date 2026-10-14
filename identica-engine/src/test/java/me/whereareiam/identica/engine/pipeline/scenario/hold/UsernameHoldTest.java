@@ -2,6 +2,7 @@ package me.whereareiam.identica.engine.pipeline.scenario.hold;
 
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.common.replication.DefaultReplicationSystem;
+import me.whereareiam.identica.common.replication.lease.DefaultLeaseKeeper;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.base.Event;
 import me.whereareiam.identica.event.connection.LoginSupersededEvent;
@@ -21,6 +22,7 @@ import me.whereareiam.identica.model.provider.selection.ProviderClaim;
 import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import me.whereareiam.identica.pipeline.PendingScenarioService;
 import me.whereareiam.identica.replication.ReplicationAdapter;
+import me.whereareiam.identica.service.Scheduler;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.provider.ProviderClaimOrigin;
 import me.whereareiam.keystone.model.SerializerContent;
@@ -34,6 +36,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -98,8 +101,8 @@ class UsernameHoldTest {
 
 	@BeforeEach
 	void proxies() {
-		holdsOfA = new UsernameHolds(new DefaultReplicationSystem(shared), () -> replication("proxy-a"), eventsOfA);
-		UsernameHolds holdsOfB = new UsernameHolds(new DefaultReplicationSystem(shared), () -> replication("proxy-b"), eventsOfB);
+		holdsOfA = holds("proxy-a", eventsOfA);
+		UsernameHolds holdsOfB = holds("proxy-b", eventsOfB);
 		holdOfB = new UsernameHold(
 				holdsOfB,
 				identitiesOfB,
@@ -202,6 +205,11 @@ class UsernameHoldTest {
 		verify(waiting).disconnect(any());
 	}
 
+	private UsernameHolds holds(String serverId, EventManager events) {
+		DefaultLeaseKeeper leaseKeeper = new DefaultLeaseKeeper(() -> replication(serverId), mock(Scheduler.class));
+		return new UsernameHolds(new DefaultReplicationSystem(shared), () -> replication(serverId), leaseKeeper, events);
+	}
+
 	private void ownerWaitsOnProxyA() {
 		ConnectionIdentity identity = new ConnectionIdentity(account, "Alice", OWNER_ADDRESS);
 		identity.setConnectionUniqueId(connection);
@@ -244,6 +252,7 @@ class UsernameHoldTest {
 	private static Replication replication(String serverId) {
 		Replication replication = new Replication();
 		replication.setServerId(serverId);
+		replication.setHeartbeatTimeout(Duration.ofSeconds(30));
 		Replication.Cache cache = new Replication.Cache();
 		cache.setPipelineState("pipeline-state");
 		replication.setCache(cache);

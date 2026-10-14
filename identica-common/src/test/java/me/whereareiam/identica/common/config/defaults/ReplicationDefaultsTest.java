@@ -10,8 +10,11 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Replication Defaults")
@@ -31,5 +34,18 @@ class ReplicationDefaultsTest {
 		assertTrue(generated.contains("attempts:"));
 		assertTrue(generated.contains("identica:provider-attempts"));
 		assertFalse(generated.contains("sentinels: identica:sentinels"));
+	}
+
+	@DisplayName("A heartbeat timeout below three seconds is refused, and three seconds is accepted")
+	@Test
+	void heartbeatTimeoutHasAMinimum() {
+		Replication replication = new ReplicationDefaults().supply(new Replication());
+		assertEquals(30_000L, replication.heartbeatTimeoutMillis());
+
+		replication.setHeartbeatTimeout(Duration.ofSeconds(3));
+		assertEquals(3_000L, replication.heartbeatTimeoutMillis());
+
+		replication.setHeartbeatTimeout(Duration.ofMillis(2_999));
+		assertThrows(IllegalStateException.class, replication::heartbeatTimeoutMillis);
 	}
 }

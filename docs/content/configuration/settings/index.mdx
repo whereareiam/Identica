@@ -158,40 +158,23 @@ A player leaving closes only the session of their own connection, never a sessio
 
 The policy covers connections that already logged in. A connection that is still logging in when another connection of the account finishes is disconnected whatever the policy says; see [Logins in progress](../engine/index.mdx#logins-in-progress).
 
-`REJECT_NEW` does not keep refusing logins for a session nobody holds any more. A session of a proxy that stopped or crashed without closing it disappears after `heartbeatTimeout`, and the proxy that holds a connection treats its session as gone as soon as that connection is no longer online.
+`REJECT_NEW` does not keep refusing logins for a session nobody holds any more. A session of a proxy that stopped or crashed without closing it disappears after [`replication.heartbeatTimeout`](../replication/index.mdx#heartbeattimeout), and the proxy that holds a connection treats its session as gone as soon as that connection is no longer online.
 
 This is the default policy used when a session opens after authentication, registration, or migration.
 If one provider needs different behavior, set `providers.session.concurrencyPolicy` for that provider in the providers config.
-
-### heartbeatTimeout
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a duration of at least `"3s"`
-- Current default: `"30s"`
-- Affects: how long a session stays stored after the proxy holding its connection last refreshed it
-
-A session ends at once when its player disconnects.
-This setting only matters when a proxy stops without closing its sessions, for example when it crashes: the sessions it held disappear this long after it stopped. Until then other proxies still see them, list them in `/identica admin session list`, and `REJECT_NEW` still refuses a new login of those accounts.
-
-Each proxy writes every session it holds again every third of this time, every 10 seconds with the default. With Redis replication that is one read and one small write per online player per interval, which are three Redis commands, and every tenth interval the two index entries of the session are renewed as well. For 1000 online players that is about 360 Redis commands per second. A shorter timeout frees the accounts of a crashed proxy sooner and costs proportionally more commands; a longer one costs fewer.
-
-A value below `"3s"` is refused at startup. This is not an offline remember-me duration.
 
 <Tabs items={["YAML", "JSON"]}>
   <Tab value="YAML">
 ```yaml
 sessions:
   concurrencyPolicy: "REPLACE_EXISTING"
-  heartbeatTimeout: "30s"
 ```
   </Tab>
   <Tab value="JSON">
 ```json
 {
   "sessions": {
-    "concurrencyPolicy": "REPLACE_EXISTING",
-    "heartbeatTimeout": "30s"
+    "concurrencyPolicy": "REPLACE_EXISTING"
   }
 }
 ```

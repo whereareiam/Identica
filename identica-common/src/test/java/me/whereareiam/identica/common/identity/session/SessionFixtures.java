@@ -13,6 +13,7 @@ import me.whereareiam.identica.model.scheduler.PeriodicalRunnableTask;
 import me.whereareiam.identica.model.scheduler.RunnableTask;
 import me.whereareiam.identica.service.Scheduler;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -37,6 +38,7 @@ final class SessionFixtures {
 		Replication replication = new Replication();
 		replication.setEnabled(true);
 		replication.setServerId(serverId);
+		replication.setHeartbeatTimeout(Duration.ofMillis(LIFETIME_MS));
 
 		Replication.Cache cache = new Replication.Cache();
 		Replication.Sessions sessions = new Replication.Sessions();

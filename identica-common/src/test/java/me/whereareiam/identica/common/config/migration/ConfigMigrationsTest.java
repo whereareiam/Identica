@@ -129,7 +129,7 @@ class ConfigMigrationsTest {
 		assertFalse(read("engine").contains("legacy"));
 	}
 
-	@DisplayName("The session lifetime of the old layout is dropped and the heartbeat timeout gets its default")
+	@DisplayName("The session lifetime of the old layout is dropped and the replication heartbeat timeout applies with its default")
 	@Test
 	void sessionLifetimeIsReplacedByTheHeartbeatDefault() throws IOException {
 		write("settings", EXISTING_SETTINGS);
@@ -138,8 +138,8 @@ class ConfigMigrationsTest {
 
 		String settings = read("settings");
 		assertFalse(settings.contains("activeTtl"), settings);
-		assertTrue(settings.contains("heartbeatTimeout: \"30s\""), settings);
-		assertEquals(Duration.ofSeconds(30), new SettingsProvider(dataPath, registry()).get().getSessions().getHeartbeatTimeout());
+		assertFalse(settings.contains("heartbeatTimeout"), settings);
+		assertEquals(Duration.ofSeconds(30), new ReplicationProvider(dataPath, registry()).get().getHeartbeatTimeout());
 	}
 
 	@DisplayName("The session namespaces keep the names an operator chose under their new keys")

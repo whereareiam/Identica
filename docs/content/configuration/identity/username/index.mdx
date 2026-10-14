@@ -30,7 +30,7 @@ A player wants a username in two situations:
 
 When nobody holds the wanted name, the account gets it. When another account holds it, the rules settle the conflict. The joining player is the **arriving** side; the account that holds the name is the **holder**, standing on its primary provider.
 
-A conflict is decided before the proxy names the player, so a renamed player plays under the new name at once and a refused player is refused before any prompt.
+A conflict is decided before the proxy names the player, so a renamed player plays under the new name at once and a refused player is refused before any prompt. This holds when the provider is settled when the player joins: by a pending migration, a linked account, a provider hostname or a verified login. When the provider is only guessed, from an account with the same username or from a subject the provider resolves, the player can still choose another provider, so the conflict is decided once the player has chosen one.
 
 ## Default rules
 

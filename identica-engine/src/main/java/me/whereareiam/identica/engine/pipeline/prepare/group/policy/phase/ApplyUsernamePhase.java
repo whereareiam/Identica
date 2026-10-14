@@ -4,6 +4,7 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.identity.username.UsernameAssigner;
+import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.identity.Account;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.identity.provider.AccountProviderProfile;
@@ -18,21 +19,31 @@ import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceServi
 import me.whereareiam.identica.pipeline.PipelinePhase;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.prepare.PrepareGroupState;
+import me.whereareiam.identica.type.provider.ProviderClaimOrigin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 /**
  * Decides the username a joining player plays under before the proxy names the player: the account's username, or
  * a temporary one while the holder of the account's new username keeps playing. A player the username conflict
- * rules refuse is refused here, before any prompt. Nothing is written yet; the scenario that follows writes the
- * usernames.
+ * rules refuse is refused here, before any prompt, when the provider is settled. A provider only guessed from the
+ * username or from a subject it resolves may not be the one the player chooses, so such a refusal is left to the
+ * scenario, which checks the username again once the provider is chosen. Nothing is written yet; the scenario that
+ * follows writes the usernames.
  */
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class ApplyUsernamePhase implements PipelinePhase<PrepareGroupState> {
+	private static final Set<ProviderClaimOrigin> GUESSED_ORIGINS = EnumSet.of(
+			ProviderClaimOrigin.NAME_MATCH,
+			ProviderClaimOrigin.DISCOVERY
+	);
+
 	private final UsernameAssigner assigner;
 	private final ProviderLinkPersistenceService links;
 
@@ -86,12 +97,7 @@ public class ApplyUsernamePhase implements PipelinePhase<PrepareGroupState> {
 				.arrivedVia(context.getSelection().getOrigin())
 				.build());
 		if (assignment.isRefused()) {
-			pipelineState.put(PrepareDecision.KEY, PrepareDecision.deny(
-					assignment.getMessage(),
-					context,
-					candidate.getUniqueId(),
-					username
-			));
+			refuse(pipelineState, context, candidate, username, assignment);
 			return CompletableFuture.completedFuture(PhaseResult.pass(state));
 		}
 
@@ -100,6 +106,35 @@ public class ApplyUsernamePhase implements PipelinePhase<PrepareGroupState> {
 		candidate.setEffectiveUsername(assignment.getSessionUsername());
 		pipelineState.put(PrepareAccountCandidateItem.KEY, candidate);
 		return CompletableFuture.completedFuture(PhaseResult.pass(state));
+	}
+
+	/**
+	 * Refuses the player before any prompt, unless the provider is only guessed: then the player may still choose
+	 * another provider, and the scenario checks the username again once one is chosen.
+	 */
+	private static void refuse(
+			@NotNull PipelineState pipelineState,
+			@NotNull PrepareContextItem context,
+			@NotNull PrepareAccountCandidateItem candidate,
+			@NotNull String username,
+			@NotNull UsernameAssignment assignment
+	) {
+		ProviderClaimOrigin origin = context.getSelection().getOrigin();
+		if (isGuessed(origin)) {
+			Logger.debug("Prepare left a username refusal to the scenario username=%s origin=%s", username, origin);
+			return;
+		}
+
+		pipelineState.put(PrepareDecision.KEY, PrepareDecision.deny(
+				assignment.getMessage(),
+				context,
+				candidate.getUniqueId(),
+				username
+		));
+	}
+
+	private static boolean isGuessed(@Nullable ProviderClaimOrigin origin) {
+		return origin != null && GUESSED_ORIGINS.contains(origin);
 	}
 
 	private static @Nullable String knownUsername(@NotNull PrepareAccountCandidateItem candidate) {

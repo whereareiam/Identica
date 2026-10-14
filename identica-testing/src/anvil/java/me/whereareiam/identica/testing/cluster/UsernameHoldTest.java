@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.util.function.Consumer;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
+import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH_B;
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY_A;
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY_B;
@@ -86,16 +87,17 @@ class UsernameHoldTest {
 
 	/**
 	 * Two clients from one address log in at once, one through each proxy. The first to log in wins, and the other
-	 * one is disconnected.
+	 * one is disconnected. Each proxy has its own step server: on a shared one the second client would push the
+	 * first one off it.
 	 */
 	@Test
-	@IdenticaCluster
+	@IdenticaCluster(ownStepServers = true)
 	void disconnectsTheOtherClientOnceOneLogsIn(ScenarioContext anvil) {
 		Journey first = Accounts.credential(anvil, "Alice", PASSWORD, PROXY_A).rejoin()
 				.on(AUTH)
 				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt());
 		Journey second = Journey.offline(anvil, "Alice", PROXY_B).join()
-				.on(AUTH)
+				.on(AUTH_B)
 				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt());
 
 		second.login(PASSWORD)

@@ -25,6 +25,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -43,10 +44,11 @@ public final class IdenticaClusterScenarios implements AnvilScenarioFactory<Iden
 		PostgreSQLContainer database = resources.own(started(DatabaseContainers.postgres("postgres:17-alpine")));
 		RedisContainer redis = cluster.replication() ? resources.own(started(new RedisContainer(REDIS))) : null;
 
+		Map<String, String> stepServers = cluster.ownStepServers() ? Map.of(IdenticaNetwork.PROXY_B, IdenticaNetwork.AUTH_B) : Map.of();
 		Map<String, ProxyConfiguration> proxies = new LinkedHashMap<>();
 		for (String proxy : List.of(IdenticaNetwork.PROXY_A, IdenticaNetwork.PROXY_B)) {
 			ProxyConfiguration configuration = new ProxyConfiguration(proxy, JourneyMode.INTERACTIVE, JourneyPolicy.PREFER,
-					EnumSet.of(Provider.CREDENTIAL), false, true, cluster.step(), cluster.complete(), yggdrasil);
+					EnumSet.of(Provider.CREDENTIAL), false, true, step(cluster, stepServers, proxy), cluster.complete(), yggdrasil);
 			configuration.put("persistence.yml", persistence(database));
 			if (redis != null)
 				configuration.put("replication.yml", replication(proxy, redis));
@@ -55,11 +57,24 @@ public final class IdenticaClusterScenarios implements AnvilScenarioFactory<Iden
 			proxies.put(proxy, configuration);
 		}
 
-		String name = String.join("-", "identica-cluster", redis == null ? "database" : "replicated",
-				IdenticaScenarios.routing(cluster.step(), cluster.complete()),
-				Arrays.stream(cluster.configure()).map(Class::getSimpleName).collect(Collectors.joining("+")))
-				.replaceAll("-+$", "").toLowerCase(Locale.ROOT);
-		return IdenticaNetwork.velocity(name, proxies, yggdrasil.sessionServer());
+		String name = Stream.of("identica-cluster", redis == null ? "database" : "replicated",
+						cluster.ownStepServers() ? "own-step-servers" : "",
+						IdenticaScenarios.routing(cluster.step(), cluster.complete()),
+						Arrays.stream(cluster.configure()).map(Class::getSimpleName).collect(Collectors.joining("+")))
+				.filter(part -> !part.isEmpty())
+				.collect(Collectors.joining("-"))
+				.toLowerCase(Locale.ROOT);
+		return IdenticaNetwork.velocity(name, proxies, stepServers, yggdrasil.sessionServer(), false);
+	}
+
+	/**
+	 * Returns the step target of one proxy: its own step server when it has one and the cluster routes waiting
+	 * players to {@code auth}.
+	 */
+	private static String step(IdenticaCluster cluster, Map<String, String> stepServers, String proxy) {
+		if (!IdenticaNetwork.AUTH.equals(cluster.step())) return cluster.step();
+
+		return stepServers.getOrDefault(proxy, cluster.step());
 	}
 
 	private static <C extends GenericContainer<?>> C started(C container) {

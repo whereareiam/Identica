@@ -10,7 +10,8 @@ import java.util.function.Consumer;
 
 /**
  * Starts a fresh network of two Identica proxies around a test. Both proxies share one database, the
- * {@code auth} and {@code lobby} servers, and, when replicating, one Redis. Credential is the only provider and
+ * {@code auth} and {@code lobby} servers, and, when replicating, one Redis; with {@link #ownStepServers()} proxy B
+ * has an {@code auth-b} server of its own instead of {@code auth}. Credential is the only provider and
  * journeys are interactive. The proxies, the database and Redis are new in every test; the two servers keep
  * running and serve one test after another. The database and Redis run in containers, so the test is skipped
  * without Docker.
@@ -30,6 +31,13 @@ public @interface IdenticaCluster {
 	 * Whether the proxies replicate through Redis. Without it they only share the database.
 	 */
 	boolean replication() default true;
+
+	/**
+	 * Whether proxy B has a step server of its own, {@link IdenticaNetwork#AUTH_B}, and sends players there while a
+	 * step waits for them. A backend keeps only one player of a name, so a journey in which one account waits at a
+	 * step through both proxies at once needs it; the proxies still share {@code lobby}.
+	 */
+	boolean ownStepServers() default false;
 
 	/**
 	 * Server players are sent to while a step waits for them, or blank to leave them on the server they are on.

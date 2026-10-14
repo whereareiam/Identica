@@ -13,6 +13,7 @@ import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
+import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH_B;
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY_A;
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY_B;
@@ -42,16 +43,16 @@ class SharedAuthenticatorCodeTest {
 	 * the code right away.
 	 */
 	@Test
-	@IdenticaCluster(configure = {Authenticator.ShortPeriod.class, AllowMultiple.class})
+	@IdenticaCluster(ownStepServers = true, configure = {Authenticator.ShortPeriod.class, AllowMultiple.class})
 	void acceptsACodeTypedThroughBothProxiesAtOnceOnlyOnce(ScenarioContext anvil) {
-		acceptsACodeTypedThroughBothProxiesOnce(anvil, joined -> joined.on(AUTH)
+		acceptsACodeTypedThroughBothProxiesOnce(anvil, joined -> joined.on(AUTH_B)
 				.sees(m -> m.credential().getScenario().getAuthentication().getVerification().getPrompt()));
 	}
 
 	@Test
-	@IdenticaCluster(replication = false, configure = {Authenticator.ShortPeriod.class, AllowMultiple.class})
+	@IdenticaCluster(replication = false, ownStepServers = true, configure = {Authenticator.ShortPeriod.class, AllowMultiple.class})
 	void acceptsACodeTypedThroughBothProxiesAtOnceOnlyOnceWhenTheProxiesOnlyShareTheDatabase(ScenarioContext anvil) {
-		acceptsACodeTypedThroughBothProxiesOnce(anvil, SharedAuthenticatorCodeTest::verificationPrompt);
+		acceptsACodeTypedThroughBothProxiesOnce(anvil, joined -> verificationPrompt(joined, AUTH_B));
 	}
 
 	private static void refusesACodeUsedThroughTheOtherProxy(ScenarioContext anvil) {
@@ -74,13 +75,14 @@ class SharedAuthenticatorCodeTest {
 
 	/**
 	 * Alice waits at the authenticator prompt of both proxies and types the same code into both. Sessions may be
-	 * held through both proxies, so only the code decides who gets in.
+	 * held through both proxies, so only the code decides who gets in. Each proxy has its own step server: on a
+	 * shared one her second connection would push the first one off it.
 	 *
 	 * @param toTheCodePromptOfB brings the connection that proxy B just accepted to its authenticator prompt
 	 */
 	private static void acceptsACodeTypedThroughBothProxiesOnce(ScenarioContext anvil, UnaryOperator<Journey> toTheCodePromptOfB) {
 		Enrolled alice = enrolled(anvil);
-		Journey throughA = verificationPrompt(alice.journey().rejoin());
+		Journey throughA = verificationPrompt(alice.journey().rejoin(), AUTH);
 		Journey throughB = toTheCodePromptOfB.apply(Journey.offline(anvil, "Alice", PROXY_B).join());
 
 		String code = alice.app().nextCode();
@@ -91,8 +93,14 @@ class SharedAuthenticatorCodeTest {
 		boolean acceptedThroughB = accepts(throughB);
 		assertTrue(acceptedThroughA ^ acceptedThroughB,
 				"exactly one proxy must accept the code (A " + acceptedThroughA + ", B " + acceptedThroughB + ")");
-		(acceptedThroughA ? throughA : throughB).on(LOBBY);
-		(acceptedThroughA ? throughB : throughA).remainsOn(AUTH);
+		if (acceptedThroughA) {
+			throughA.on(LOBBY);
+			throughB.remainsOn(AUTH_B);
+			return;
+		}
+
+		throughB.on(LOBBY);
+		throughA.remainsOn(AUTH);
 	}
 
 	/**
@@ -130,7 +138,15 @@ class SharedAuthenticatorCodeTest {
 	 * Alice to the authenticator prompt.
 	 */
 	private static Journey verificationPrompt(Journey joined) {
-		return joined.on(AUTH)
+		return verificationPrompt(joined, AUTH);
+	}
+
+	/**
+	 * Expects the password prompt on the step server of the proxy that just accepted the connection and types the
+	 * password, which brings Alice to the authenticator prompt.
+	 */
+	private static Journey verificationPrompt(Journey joined, String stepServer) {
+		return joined.on(stepServer)
 				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
 				.login(PASSWORD)
 				.sees(m -> m.credential().getScenario().getAuthentication().getVerification().getPrompt());

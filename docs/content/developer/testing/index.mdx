@@ -106,7 +106,7 @@ void disconnectsAPlayerWhoseAccountIsDeletedOnTheOtherProxy(ScenarioContext anvi
 ```
 
 `@IdenticaCluster(replication = false)` leaves Redis out, for behaviour that must hold when the proxies only share the database. `@IdenticaCluster` takes the same `step` and `complete` routing targets as `@Identica`.
-`@IdenticaCluster(configure = ...)` applies the same configuration changes as `@Identica(configure = ...)` to both proxies; a change meant for one of them checks `proxy.name()`. Two clients with one username cannot be on the same backend, because the backend disconnects the earlier one, so a journey that needs both online keeps them on different servers.
+`@IdenticaCluster(configure = ...)` applies the same configuration changes as `@Identica(configure = ...)` to both proxies; a change meant for one of them checks `proxy.name()`. Two clients with one username cannot be on the same backend, because the backend disconnects the earlier one, so a journey that needs both online keeps them on different servers. `@IdenticaCluster(ownStepServers = true)` gives proxy B a step server of its own, `IdenticaNetwork.AUTH_B`, for a journey in which one account waits at a step through both proxies at once.
 
 ## Write a test
 

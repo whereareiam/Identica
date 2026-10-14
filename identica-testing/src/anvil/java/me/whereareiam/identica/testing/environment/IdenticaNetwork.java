@@ -31,6 +31,10 @@ public final class IdenticaNetwork {
 	public static final String PROXY_A = "proxy-a";
 	public static final String PROXY_B = "proxy-b";
 	public static final String AUTH = "auth";
+	/**
+	 * The step server of proxy B in a cluster whose proxies each have their own, in place of {@code auth}.
+	 */
+	public static final String AUTH_B = "auth-b";
 	public static final String LOBBY = "lobby";
 	/** Hostname every proxy forces to {@code lobby}; players join through another one unless they choose this one. */
 	public static final String LOBBY_HOST = "lobby.identica.test";
@@ -47,7 +51,7 @@ public final class IdenticaNetwork {
 	 * @param sessionServer session server the proxies verify online players against
 	 */
 	public static AnvilScenario velocity(String name, Map<String, ProxyConfiguration> proxies, URI sessionServer) {
-		return velocity(name, proxies, sessionServer, false);
+		return velocity(name, proxies, Map.of(), sessionServer, false);
 	}
 
 	/**
@@ -56,17 +60,38 @@ public final class IdenticaNetwork {
 	 * @param addon whether every proxy runs the example addon next to Identica
 	 */
 	public static AnvilScenario velocity(String name, Map<String, ProxyConfiguration> proxies, URI sessionServer, boolean addon) {
+		return velocity(name, proxies, Map.of(), sessionServer, addon);
+	}
+
+	/**
+	 * Builds a network of Velocity proxies in which some proxies have a step server of their own. Such a proxy
+	 * registers its own step server instead of {@code auth}, so players waiting at a step through it never meet the
+	 * ones waiting through another proxy; every proxy shares {@code lobby}.
+	 *
+	 * @param stepServers the step server of each proxy that has its own, by the proxy's name
+	 */
+	public static AnvilScenario velocity(
+			String name,
+			Map<String, ProxyConfiguration> proxies,
+			Map<String, String> stepServers,
+			URI sessionServer,
+			boolean addon
+	) {
 		AnvilScenario.AnvilScenarioBuilder scenario = AnvilScenario.builder()
 				.name(name)
-				.entrypoint(proxies.keySet().iterator().next())
-				.server(backend(AUTH))
-				.server(backend(LOBBY));
-		proxies.forEach((proxy, configuration) -> scenario.proxy(proxy(proxy, configuration, sessionServer, addon)));
+				.entrypoint(proxies.keySet().iterator().next());
+		proxies.keySet().stream()
+				.map(proxy -> stepServers.getOrDefault(proxy, AUTH))
+				.distinct()
+				.forEach(server -> scenario.server(backend(server)));
+		scenario.server(backend(LOBBY));
+		proxies.forEach((proxy, configuration) -> scenario.proxy(
+				proxy(proxy, configuration, stepServers.getOrDefault(proxy, AUTH), sessionServer, addon)));
 
 		return scenario.build();
 	}
 
-	private static MinecraftProxy proxy(String name, ProxyConfiguration configuration, URI sessionServer, boolean addon) {
+	private static MinecraftProxy proxy(String name, ProxyConfiguration configuration, String stepServer, URI sessionServer, boolean addon) {
 		WorkspacePlan.WorkspacePlanBuilder workspace = WorkspacePlan.builder()
 				.asset(artifact("identica", Path.of("plugins", "identica.jar")))
 				.asset(artifact("credential", Path.of(DATA, "providers", "credential.jar")))
@@ -93,7 +118,7 @@ public final class IdenticaNetwork {
 				.platform(Platforms.VELOCITY)
 				.distribution(Distribution.remote("3.5.1", "615"))
 				.workspace(workspace.build())
-				.server(AUTH)
+				.server(stepServer)
 				.server(LOBBY)
 				.defaultServer(LOBBY)
 				.setting("advanced.login-ratelimit", "0")

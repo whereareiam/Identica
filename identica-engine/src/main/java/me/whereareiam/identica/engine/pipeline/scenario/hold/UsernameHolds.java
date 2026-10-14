@@ -20,6 +20,7 @@ import me.whereareiam.identica.model.replication.LeaseRenewal;
 import me.whereareiam.identica.model.replication.ReplicationType;
 import me.whereareiam.identica.replication.ReplicationSystem;
 import me.whereareiam.identica.replication.cache.ReplicatedCache;
+import me.whereareiam.identica.replication.cache.Versioned;
 import me.whereareiam.identica.replication.lease.LeaseKeeper;
 import me.whereareiam.identica.replication.lease.LeasedRecords;
 import me.whereareiam.identica.replication.lease.Leases;
@@ -42,6 +43,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>A hold is a lease of the {@link LeaseKeeper}: the proxy of the connection renews it while the login waits, so
  * the holds of a proxy that stopped or crashed expire within the heartbeat timeout instead of blocking the username
  * until the login would have timed out.</p>
+ *
+ * <p>A hold is written only over the hold that was read, so of two connections from different addresses that find
+ * the username free at the same moment, on two proxies, only one takes it; {@link UsernameHold} disconnects the
+ * other.</p>
  *
  * <p>A proxy refuses a second connection of a username that one of its own players uses by itself; the holds matter
  * between the proxies of a replicated network.</p>
@@ -93,18 +98,41 @@ public class UsernameHolds implements EventListener {
 		return Optional.of(holder);
 	}
 
-	@IdenticEvent
-	public void onScenarioRequired(@NotNull ScenarioRequiredEvent event) {
+	/**
+	 * Takes the hold of the username a connection logs in under, once its login waits for the player. The hold is
+	 * written only over what was read: nothing, a hold of the same connection, or a hold from the connection's own
+	 * address, which is the same player returning. A hold of a connection from another address is kept unless the
+	 * arriving connection was proven to own the account, and of two connections that both found the username free,
+	 * only the first to write takes it.
+	 *
+	 * @param event the login that now waits for the player
+	 * @param takeOver whether a provider proved that the connection owns the account, so it takes over a hold of
+	 *                 another address
+	 * @return {@code false} when another connection holds the username, so this one must not log in under it
+	 */
+	public boolean take(@NotNull ScenarioRequiredEvent event, boolean takeOver) {
 		ConnectionIdentity identity = event.getContext().getIdentity();
 		String key = key(identity.getConnectionUsername());
 		long ttlMs = Math.min(leaseKeeper.lifetimeMs(), event.getExpiresAt() - System.currentTimeMillis());
-		if (key == null || ttlMs <= 0) return;
+		if (key == null || ttlMs <= 0) return true;
 
 		Holder holder = new Holder(serverId(), event.getConnectionUniqueId(), identity.getIp());
-		holders.get().put(key, holder, ttlMs).join();
+		Versioned<Holder> current = holders.get().read(key).join().orElse(null);
+		if (current != null && !takeOver && !mayReplace(current.getValue(), holder)) {
+			Logger.debug("Username hold refused username=%s connection=%s: held by %s", key, event.getConnectionUniqueId(),
+					current.getValue().connectionUniqueId);
+			return false;
+		}
+		if (!holders.get().write(key, current, holder, ttlMs).join()) {
+			Logger.debug("Username hold lost username=%s connection=%s: another connection took it meanwhile", key,
+					event.getConnectionUniqueId());
+			return false;
+		}
+
 		leases.hold(key, holder, event.getExpiresAt());
 		heldHere.put(event.getConnectionUniqueId(), key);
 		Logger.debug("Username hold taken username=%s connection=%s", key, event.getConnectionUniqueId());
+		return true;
 	}
 
 	@IdenticEvent
@@ -132,6 +160,14 @@ public class UsernameHolds implements EventListener {
 
 		holders.get().invalidate(key).join();
 		Logger.debug("Username hold released username=%s connection=%s", key, connectionUniqueId);
+	}
+
+	/**
+	 * Whether a connection may replace a stored hold without proof: the hold is its own, or the player holding it
+	 * connects from the same address.
+	 */
+	private static boolean mayReplace(@NotNull Holder stored, @NotNull Holder arriving) {
+		return isSameHolder(stored, arriving) || Objects.equals(stored.ip, arriving.ip);
 	}
 
 	/**

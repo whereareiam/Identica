@@ -9,6 +9,8 @@ import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.event.connection.LoginSupersededEvent;
 import me.whereareiam.identica.event.connection.UsernameHeldEvent;
+import me.whereareiam.identica.event.identity.IdentityDetachedEvent;
+import me.whereareiam.identica.event.scenario.ScenarioRequiredEvent;
 import me.whereareiam.identica.event.session.SessionOpenedEvent;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
@@ -26,7 +28,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Decides between connections that log in under one username at once. The first connection holds the username until
@@ -42,6 +46,7 @@ public class UsernameHold implements EventListener {
 	private final EventManager eventManager;
 	private final Provider<Messages> messagesProvider;
 	private final Provider<Replication> replicationProvider;
+	private final Set<UUID> provenOverHolder = ConcurrentHashMap.newKeySet();
 
 	@Inject
 	public UsernameHold(
@@ -73,6 +78,7 @@ public class UsernameHold implements EventListener {
 
 		if (isProven(request)) {
 			Logger.debug("Username hold lost to proof username=%s connection=%s", identity.getUsername(), request.getConnectionUniqueId());
+			if (request.getConnectionUniqueId() != null) provenOverHolder.add(request.getConnectionUniqueId());
 			supersede(identity.getAccountUniqueId(), identity.getConnectionUsername(), request.getConnectionUniqueId());
 			return null;
 		}
@@ -80,6 +86,28 @@ public class UsernameHold implements EventListener {
 		Logger.debug("Username held refused username=%s connection=%s ip=%s", identity.getUsername(), request.getConnectionUniqueId(), identity.getIp());
 		eventManager.call(new UsernameHeldEvent(request.getConnectionUniqueId(), identity.getConnectionUsername(), identity.getIp()));
 		return ConnectionDecision.deny(lines(messagesProvider.get().getEngine().getUsernameHeld()));
+	}
+
+	/**
+	 * Takes the username for a connection whose login now waits for the player. A connection that finds the
+	 * username taken by a connection from another address meanwhile, typically because both arrived at the same
+	 * moment on two proxies, is disconnected with {@code engine.usernameHeld}, as if it had arrived second.
+	 */
+	@IdenticEvent
+	public void onScenarioRequired(@NotNull ScenarioRequiredEvent event) {
+		UUID connectionUniqueId = event.getConnectionUniqueId();
+		if (holds.take(event, provenOverHolder.remove(connectionUniqueId))) return;
+
+		ConnectionIdentity identity = event.getContext().getIdentity();
+		eventManager.call(new UsernameHeldEvent(connectionUniqueId, identity.getConnectionUsername(), identity.getIp()));
+		identityService.findByConnectionUniqueId(connectionUniqueId).ifPresent(connection -> connection.disconnect(
+				Serializer.serialize(connection, lines(messagesProvider.get().getEngine().getUsernameHeld()))
+		));
+	}
+
+	@IdenticEvent
+	public void onIdentityDetached(@NotNull IdentityDetachedEvent event) {
+		provenOverHolder.remove(event.getUniqueId());
 	}
 
 	/**

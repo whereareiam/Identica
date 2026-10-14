@@ -47,7 +47,7 @@ Emptying either message changes only the text. The earlier connection is still d
 
 - Takes: a list of lines
 - Current default: a notice reading `This name is being logged in from another location.` and `Try again shortly.`
-- Affects: the reason shown to a connection that is refused because another connection, from another address, is logging in under the same username on another proxy of the network
+- Affects: the reason shown to a connection that is refused, or disconnected once its login waits, because another connection, from another address, is logging in under the same username on another proxy of the network
 
 See [Logins in progress](../engine/index.mdx#logins-in-progress) for when Identica refuses such a connection. Emptying the message changes only the text; the connection is still refused.
 

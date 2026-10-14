@@ -47,8 +47,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -72,6 +74,7 @@ class UsernameHoldTest {
 	private final IdentityService identitiesOfB = mock(IdentityService.class);
 	private final PendingScenarioService pendingOfB = mock(PendingScenarioService.class);
 	private UsernameHolds holdsOfA;
+	private UsernameHolds holdsOfB;
 	private UsernameHold holdOfB;
 
 	@BeforeAll
@@ -103,7 +106,7 @@ class UsernameHoldTest {
 	@BeforeEach
 	void proxies() {
 		holdsOfA = holds("proxy-a", eventsOfA);
-		UsernameHolds holdsOfB = holds("proxy-b", eventsOfB);
+		holdsOfB = holds("proxy-b", eventsOfB);
 		holdOfB = new UsernameHold(
 				holdsOfB,
 				identitiesOfB,
@@ -176,6 +179,63 @@ class UsernameHoldTest {
 		assertEquals(ConnectionDecision.Status.DENY, holdOfB.enter(request(OTHER_ADDRESS, hostname)).getStatus());
 	}
 
+	@DisplayName("Disconnects a connection from another address that finds the username taken when its login starts waiting")
+	@Test
+	void disconnectsTheConnectionThatFindsTheUsernameTakenWhenItWaits() {
+		ConnectionRequest arriving = request(OTHER_ADDRESS, ProviderSelection.empty());
+		assertNull(holdOfB.enter(arriving));
+		ownerWaitsOnProxyA();
+		Identity second = identity(arriving.getConnectionUniqueId(), "Alice");
+		when(identitiesOfB.findByConnectionUniqueId(arriving.getConnectionUniqueId())).thenReturn(Optional.of(second));
+
+		holdOfB.onScenarioRequired(required(arriving));
+
+		verify(second).disconnect(any());
+		verify(eventsOfB).call(any(UsernameHeldEvent.class));
+		assertTrue(holdsOfB.findHolder(arriving.getConnectionUniqueId(), arriving.getIdentity()).isPresent(),
+				"the owner keeps the hold");
+	}
+
+	@DisplayName("Of two connections from different addresses that both found the username free, only the first to write takes it")
+	@Test
+	void onlyOneOfTwoConnectionsThatFoundTheUsernameFreeTakesIt() {
+		ConnectionRequest arriving = request(OTHER_ADDRESS, ProviderSelection.empty());
+		assertNull(holdOfB.enter(arriving));
+		shared.beforeCompare = () -> {
+			shared.beforeCompare = () -> {};
+			ownerWaitsOnProxyA();
+		};
+
+		assertFalse(holdsOfB.take(required(arriving), false));
+		assertTrue(holdsOfB.findHolder(arriving.getConnectionUniqueId(), arriving.getIdentity()).isPresent());
+	}
+
+	@DisplayName("A connection a provider proved takes over the hold of another address")
+	@Test
+	void aProvenConnectionTakesOverTheHold() {
+		ownerWaitsOnProxyA();
+		ConnectionRequest proven = request(OTHER_ADDRESS,
+				ProviderSelection.of(ProviderClaim.verified("alpha", "subject"), List.of(), List.of()));
+		assertNull(holdOfB.enter(proven));
+		Identity provenConnection = identity(proven.getConnectionUniqueId(), "Alice");
+		when(identitiesOfB.findByConnectionUniqueId(proven.getConnectionUniqueId())).thenReturn(Optional.of(provenConnection));
+
+		holdOfB.onScenarioRequired(required(proven));
+
+		verify(provenConnection, never()).disconnect(any());
+		ConnectionIdentity owner = new ConnectionIdentity(account, "Alice", OWNER_ADDRESS);
+		assertTrue(holdsOfA.findHolder(connection, owner).isPresent(), "the owner's address now meets the proven holder");
+	}
+
+	@DisplayName("The same player returning from her address takes the hold she held")
+	@Test
+	void theSameAddressTakesItsOwnHoldAgain() {
+		ownerWaitsOnProxyA();
+		ConnectionRequest returning = request(OWNER_ADDRESS, ProviderSelection.empty());
+
+		assertTrue(holdsOfB.take(required(returning), false));
+	}
+
 	@DisplayName("Disconnects the connections still logging in when another connection won, but neither the winner nor players already logged in")
 	@Test
 	void disconnectsTheConnectionsTheWinnerSuperseded() {
@@ -218,7 +278,18 @@ class UsernameHoldTest {
 				.connectionUniqueId(connection)
 				.identity(identity)
 				.build();
-		holdsOfA.onScenarioRequired(new AuthenticationRequiredEvent(context, false, System.currentTimeMillis() + 60_000L, null));
+		assertTrue(holdsOfA.take(required(context), false));
+	}
+
+	private static AuthenticationRequiredEvent required(AuthContext context) {
+		return new AuthenticationRequiredEvent(context, false, System.currentTimeMillis() + 60_000L, null);
+	}
+
+	private static AuthenticationRequiredEvent required(ConnectionRequest request) {
+		return required(AuthContext.builder()
+				.connectionUniqueId(request.getConnectionUniqueId())
+				.identity(request.getIdentity())
+				.build());
 	}
 
 	private ConnectionRequest request(String ip, ProviderSelection selection) {
@@ -262,6 +333,8 @@ class UsernameHoldTest {
 
 	private static final class InMemoryAdapter implements ReplicationAdapter {
 		private final Map<String, byte[]> values = new ConcurrentHashMap<>();
+		/** Runs between a writer's read and its conditional write, to let another writer in. */
+		private Runnable beforeCompare = () -> {};
 
 		public boolean isAvailable() { return true; }
 
@@ -284,6 +357,7 @@ class UsernameHoldTest {
 		}
 
 		public CompletableFuture<Boolean> compareAndPut(String namespace, String key, byte[] expected, byte[] value, long ttlMs) {
+			beforeCompare.run();
 			boolean[] written = {false};
 			values.compute(namespace + ":" + key, (ignored, current) -> {
 				written[0] = expected == null ? current == null : current != null && Arrays.equals(current, expected);

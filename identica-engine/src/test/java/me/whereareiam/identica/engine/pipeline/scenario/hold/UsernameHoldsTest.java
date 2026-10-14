@@ -96,12 +96,12 @@ class UsernameHoldsTest {
 		assertFalse(proxyB.seesHolder());
 	}
 
-	@DisplayName("A hold another connection took over is no longer renewed by the proxy that had it")
+	@DisplayName("A hold a proven connection took over is no longer renewed by the proxy that had it")
 	@Test
 	void takenOverHoldIsNotRenewed() {
 		proxyA.waits(connection, "127.0.0.1");
 		UUID other = UUID.randomUUID();
-		proxyB.waits(other, "127.0.0.3");
+		proxyB.takesOver(other, "127.0.0.3");
 
 		proxyA.renew();
 		proxyB.holds.onIdentityDetached(new IdentityDetachedEvent(other));
@@ -139,6 +139,15 @@ class UsernameHoldsTest {
 		}
 
 		private void waits(UUID connectionUniqueId, String ip) {
+			take(connectionUniqueId, ip, false);
+		}
+
+		/** Takes the hold as a connection a provider proved does, over a hold of another address. */
+		private void takesOver(UUID connectionUniqueId, String ip) {
+			take(connectionUniqueId, ip, true);
+		}
+
+		private void take(UUID connectionUniqueId, String ip, boolean takeOver) {
 			ConnectionIdentity identity = new ConnectionIdentity(UUID.randomUUID(), "Alice", ip);
 			identity.setConnectionUniqueId(connectionUniqueId);
 			AuthContext context = AuthContext.builder()
@@ -146,7 +155,7 @@ class UsernameHoldsTest {
 					.identity(identity)
 					.build();
 			long expiresAt = System.currentTimeMillis() + PIPELINE_TTL.toMillis();
-			holds.onScenarioRequired(new AuthenticationRequiredEvent(context, false, expiresAt, null));
+			holds.take(new AuthenticationRequiredEvent(context, false, expiresAt, null), takeOver);
 		}
 
 		private void renew() {

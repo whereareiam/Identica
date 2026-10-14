@@ -1,5 +1,6 @@
 package me.whereareiam.identica.identity.session;
 
+import me.whereareiam.identica.identity.session.exception.ConcurrentSessionChangeException;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.SessionCloseRequest;
 import me.whereareiam.identica.model.SessionConnection;
@@ -79,12 +80,17 @@ public interface SessionService {
 	 * {@code REJECT_NEW} refuses the new session while the other one exists. A stored session whose
 	 * connection is held by this proxy and is no longer online here counts as gone and is removed.</p>
 	 *
+	 * <p>The policy decides on the account's sessions as they were read, and the session is opened only while they
+	 * are still so. When another login of the account, typically on another proxy, was opened in between, the
+	 * returned future fails with {@link ConcurrentSessionChangeException} and nothing of this login is kept.</p>
+	 *
 	 * <pre>{@code
 	 * Session stored = sessionService.open(session).join();
 	 * }</pre>
 	 *
 	 * @param session session to open
-	 * @return stored session or {@code null} when input is invalid
+	 * @return stored session or {@code null} when input is invalid or the policy refuses it; fails with
+	 * {@link ConcurrentSessionChangeException} when another login of the account was opened meanwhile
 	 */
 	@NotNull CompletableFuture<@Nullable Session> open(@Nullable Session session);
 
@@ -93,7 +99,8 @@ public interface SessionService {
 	 *
 	 * @param session session to open
 	 * @param policy concurrency policy override
-	 * @return stored session or {@code null} when rejected
+	 * @return stored session or {@code null} when rejected; fails with {@link ConcurrentSessionChangeException} when
+	 * another login of the account was opened meanwhile
 	 */
 	@NotNull CompletableFuture<@Nullable Session> open(
 			@Nullable Session session,

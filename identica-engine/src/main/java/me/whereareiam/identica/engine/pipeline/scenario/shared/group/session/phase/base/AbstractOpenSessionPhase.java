@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.session.SessionOpenedEvent;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.identity.session.exception.ConcurrentSessionChangeException;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
@@ -21,6 +22,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
 @RequiredArgsConstructor
@@ -56,7 +58,8 @@ public abstract class AbstractOpenSessionPhase<C extends ScenarioContext, S exte
 		}
 
 		return sessionService.open(session)
-				.thenApply(openedSession -> {
+				.handle((openedSession, error) -> {
+					if (error != null) return lostToAnotherLogin(state, error);
 					if (openedSession == null) {
 						state.setResult(PipelineResult.denied(concurrentLoginRefusedMessage(messagesProvider.get())));
 						return PhaseResult.pass(state);
@@ -79,6 +82,20 @@ public abstract class AbstractOpenSessionPhase<C extends ScenarioContext, S exte
 	 */
 	private @NotNull String concurrentLoginRefusedMessage(@NotNull Messages messages) {
 		return String.join("\n", messages.getEngine().getConcurrentLoginRefused());
+	}
+
+	/**
+	 * Asks the player to reconnect when another login of the account was committed while this one opened its
+	 * session; other failures fail the run.
+	 */
+	private @NotNull PhaseResult<S> lostToAnotherLogin(@NotNull S state, @NotNull Throwable error) {
+		Throwable cause = error instanceof CompletionException ? error.getCause() : error;
+		if (!(cause instanceof ConcurrentSessionChangeException))
+			throw error instanceof CompletionException completion ? completion : new CompletionException(error);
+
+		String message = String.join("\n", messagesProvider.get().getEngine().getConcurrentChangeKick());
+		state.setResult(PipelineResult.requireReconnect(message));
+		return PhaseResult.pass(state);
 	}
 
 	protected abstract @NotNull String failedMessage(@NotNull Messages messages);

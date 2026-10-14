@@ -65,7 +65,8 @@ public interface ConnectionCoordinator {
 	 * @param journey journey to start
 	 * @return {@link MigrationResultStatus#STARTED STARTED} when the journey was started,
 	 * {@link MigrationResultStatus#PENDING_EXISTS PENDING_EXISTS} when the connection already has a migration journey,
-	 * or {@link MigrationResultStatus#FAILED FAILED} when the journey cannot be kept
+	 * or {@link MigrationResultStatus#FAILED FAILED} when the journey cannot be kept or another proxy changed the
+	 * connection's pipeline state while the journey was being stored
 	 */
 	@NotNull CompletionStage<MigrationResultStatus> startMigrationJourney(@NotNull MigrationJourney journey);
 
@@ -76,7 +77,8 @@ public interface ConnectionCoordinator {
 	 * {@link me.whereareiam.identica.type.ScenarioResolution#CANCELLED CANCELLED}.
 	 *
 	 * @param connectionUniqueId connection whose journey is cancelled
-	 * @return the cancelled journey, or empty when the connection had none
+	 * @return the cancelled journey, or empty when the connection had none or another proxy changed the connection's
+	 * pipeline state while the journey was being cleared
 	 */
 	@NotNull CompletionStage<Optional<PendingMigration>> cancelMigrationJourney(@NotNull UUID connectionUniqueId);
 

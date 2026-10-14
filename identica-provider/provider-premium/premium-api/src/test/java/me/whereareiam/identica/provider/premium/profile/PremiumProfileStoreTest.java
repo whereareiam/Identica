@@ -9,6 +9,7 @@ import me.whereareiam.identica.replication.ReplicationChannel;
 import me.whereareiam.identica.replication.ReplicationSystem;
 import me.whereareiam.identica.replication.cache.LocalCache;
 import me.whereareiam.identica.replication.cache.ReplicatedCache;
+import me.whereareiam.identica.replication.cache.Versioned;
 import me.whereareiam.identica.replication.cache.base.ReplicationCacheBuilder;
 import me.whereareiam.identica.replication.codec.SnapshotCodecFactory;
 import org.jetbrains.annotations.NotNull;
@@ -124,6 +125,21 @@ class PremiumProfileStoreTest {
 		@Override
 		public @NotNull CompletableFuture<Optional<T>> get(String key) {
 			return CompletableFuture.completedFuture(Optional.ofNullable(values.get(key)));
+		}
+
+		@Override
+		public @NotNull CompletableFuture<Optional<Versioned<T>>> read(String key) {
+			throw new UnsupportedOperationException("not used by this store");
+		}
+
+		@Override
+		public @NotNull CompletableFuture<Boolean> write(String key, Versioned<T> read, @NotNull T value, long ttlMs) {
+			throw new UnsupportedOperationException("not used by this store");
+		}
+
+		@Override
+		public @NotNull CompletableFuture<Boolean> remove(String key, @NotNull Versioned<T> read) {
+			throw new UnsupportedOperationException("not used by this store");
 		}
 
 		@Override

@@ -640,6 +640,12 @@ public class Messages implements MessageDocument {
 		 * in under the same username.
 		 */
 		private @NotNull List<String> usernameHeld;
+		/**
+		 * Message shown when a connection is disconnected because its login changed elsewhere while it was being
+		 * written, typically because the same player continued on another proxy at the same moment. The player
+		 * reconnects to continue from what was written first.
+		 */
+		private @NotNull List<String> concurrentChangeKick;
 		private @NotNull Journey journey;
 		private @NotNull Prepare prepare;
 

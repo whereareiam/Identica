@@ -5,12 +5,14 @@ import com.google.common.base.Suppliers;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
+import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.config.Replication;
 import me.whereareiam.identica.model.replication.ReplicationPage;
 import me.whereareiam.identica.model.replication.ReplicationType;
 import me.whereareiam.identica.replication.ReplicationSystem;
 import me.whereareiam.identica.replication.cache.ReplicatedCache;
+import me.whereareiam.identica.replication.cache.Versioned;
 import me.whereareiam.identica.replication.codec.SnapshotCodec;
 import me.whereareiam.identica.replication.lease.LeaseKeeper;
 import org.jetbrains.annotations.NotNull;
@@ -40,6 +42,8 @@ import java.util.function.Predicate;
 public class SessionStore {
 	/** An index entry outlives the records it lists by this factor; it is renewed with {@link #index}. */
 	static final int INDEX_LIFETIMES = 10;
+	/** How often a change to an index entry is applied again when other proxies keep changing the entry first. */
+	static final int CHANGE_ATTEMPTS = 5;
 
 	private static final String SEPARATOR = "\n";
 	/** Sessions created in the same millisecond keep the order in which the index entry lists them. */
@@ -75,8 +79,52 @@ public class SessionStore {
 	 * Returns the sessions of an account, oldest first.
 	 */
 	public @NotNull CompletableFuture<List<Session>> findByAccount(@Nullable UUID uniqueId) {
+		return account(uniqueId, true).thenApply(AccountSessions::sessions);
+	}
+
+	/**
+	 * Returns the sessions of an account together with the index entry they were read from, which
+	 * {@link #commit} takes to change the account's sessions only while nobody else did. Ids whose session is gone
+	 * are left in the entry, since the commit writes the entry anyway and dropping them first would make it fail.
+	 */
+	public @NotNull CompletableFuture<AccountSessions> account(@Nullable UUID uniqueId) {
+		return account(uniqueId, false);
+	}
+
+	private @NotNull CompletableFuture<AccountSessions> account(@Nullable UUID uniqueId, boolean prune) {
 		String key = accountKey(uniqueId);
-		return resolve(stored.get().accounts(), key, session -> key.equals(accountKey(session.getUniqueId())));
+		if (key == null) return CompletableFuture.completedFuture(new AccountSessions(List.of(), null));
+
+		return stored.get().accounts().read(key).thenCompose(entry -> resolve(
+				stored.get().accounts(),
+				key,
+				entry.orElse(null),
+				session -> key.equals(accountKey(session.getUniqueId())),
+				prune
+		).thenApply(sessions -> new AccountSessions(sessions, entry.orElse(null))));
+	}
+
+	/**
+	 * Sets the sessions an account is listed with, only while its index entry is still as it was read. This is the
+	 * step that makes a login count: of two logins that read the same sessions, only the first commits and the
+	 * other is refused. Records are not written here; write the new session's record first, so the
+	 * entry never names a session whose record is still missing.
+	 *
+	 * @param uniqueId account id
+	 * @param read the account's sessions as read by {@link #account}
+	 * @param sessionIds ids the account is listed with afterwards
+	 * @return {@code true} when committed, {@code false} when the account's sessions changed since they were read
+	 */
+	public @NotNull CompletableFuture<Boolean> commit(
+			@NotNull UUID uniqueId,
+			@NotNull AccountSessions read,
+			@NotNull Set<String> sessionIds
+	) {
+		String key = accountKey(uniqueId);
+		if (sessionIds.isEmpty())
+			return read.entry() != null ? stored.get().accounts().remove(key, read.entry()) : CompletableFuture.completedFuture(true);
+
+		return stored.get().accounts().write(key, read.entry(), String.join(SEPARATOR, sessionIds));
 	}
 
 	/**
@@ -84,7 +132,15 @@ public class SessionStore {
 	 */
 	public @NotNull CompletableFuture<List<Session>> findBySubject(@Nullable String providerId, @Nullable String providerSubject) {
 		String key = subjectKey(providerId, providerSubject);
-		return resolve(stored.get().subjects(), key, session -> key.equals(subjectKey(session.getProviderId(), session.getProviderSubject())));
+		if (key == null) return CompletableFuture.completedFuture(List.of());
+
+		return stored.get().subjects().read(key).thenCompose(entry -> resolve(
+				stored.get().subjects(),
+				key,
+				entry.orElse(null),
+				session -> key.equals(subjectKey(session.getProviderId(), session.getProviderSubject())),
+				true
+		));
 	}
 
 	/**
@@ -104,7 +160,7 @@ public class SessionStore {
 
 	/**
 	 * Lists a stored session under its account and provider subject again, which also renews both entries.
-	 * An entry lost to a concurrent change or to its own expiry comes back this way.
+	 * An entry that expired, or lost the id when its proxy stopped mid-change, comes back this way.
 	 */
 	public @NotNull CompletableFuture<Void> index(@NotNull Session session) {
 		String sessionId = session.getSessionId();
@@ -121,6 +177,13 @@ public class SessionStore {
 	 */
 	public @NotNull CompletableFuture<Void> touch(@NotNull Session session) {
 		return stored.get().records().put(session.getSessionId(), session);
+	}
+
+	/**
+	 * Removes a record that no index entry lists yet, such as the record of a login that was refused after all.
+	 */
+	public @NotNull CompletableFuture<Void> discard(@NotNull Session session) {
+		return stored.get().records().invalidate(session.getSessionId());
 	}
 
 	/**
@@ -145,41 +208,58 @@ public class SessionStore {
 		return change(stored.get().subjects(), subjectKey(providerId, providerSubject), ids -> ids.remove(sessionId));
 	}
 
+	/**
+	 * Resolves the ids of an index entry against the records and, when asked, drops the ids whose session is gone or
+	 * no longer belongs under the key, unless the entry changed meanwhile.
+	 */
 	private @NotNull CompletableFuture<List<Session>> resolve(
 			@NotNull ReplicatedCache<String> index,
-			@Nullable String key,
-			@NotNull Predicate<Session> belongs
+			@NotNull String key,
+			@Nullable Versioned<String> entry,
+			@NotNull Predicate<Session> belongs,
+			boolean prune
 	) {
-		if (key == null) return CompletableFuture.completedFuture(List.of());
+		Set<String> ids = ids(entry != null ? entry.getValue() : null);
+		List<Session> sessions = new ArrayList<>();
+		Set<String> stale = new LinkedHashSet<>();
 
-		return index.getFresh(key).thenCompose(entry -> {
-			Set<String> ids = ids(entry.orElse(null));
-			List<Session> sessions = new ArrayList<>();
-			Set<String> stale = new LinkedHashSet<>();
+		CompletableFuture<Void> lookups = CompletableFuture.completedFuture(null);
+		for (String id : ids) {
+			lookups = lookups.thenCompose(ignored -> stored.get().records().getFresh(id)).thenAccept(found -> {
+				if (found.isPresent() && belongs.test(found.get())) sessions.add(found.get());
+				else stale.add(id);
+			});
+		}
 
-			CompletableFuture<Void> lookups = CompletableFuture.completedFuture(null);
-			for (String id : ids) {
-				lookups = lookups.thenCompose(ignored -> stored.get().records().getFresh(id)).thenAccept(found -> {
-					if (found.isPresent() && belongs.test(found.get())) sessions.add(found.get());
-					else stale.add(id);
+		return lookups
+				.thenCompose(ignored -> !prune || stale.isEmpty() || entry == null
+						? CompletableFuture.completedFuture(true)
+						: prune(index, key, entry, ids, stale))
+				.thenApply(ignored -> {
+					sessions.sort(OLDEST_FIRST);
+					return sessions;
 				});
-			}
+	}
 
-			return lookups
-					.thenCompose(ignored -> stale.isEmpty()
-							? CompletableFuture.<Void>completedFuture(null)
-							: change(index, key, current -> current.removeAll(stale)))
-					.thenApply(ignored -> {
-						sessions.sort(OLDEST_FIRST);
-						return sessions;
-					});
-		});
+	private @NotNull CompletableFuture<Boolean> prune(
+			@NotNull ReplicatedCache<String> index,
+			@NotNull String key,
+			@NotNull Versioned<String> entry,
+			@NotNull Set<String> ids,
+			@NotNull Set<String> stale
+	) {
+		Set<String> kept = new LinkedHashSet<>(ids);
+		kept.removeAll(stale);
+
+		return kept.isEmpty()
+				? index.remove(key, entry)
+				: index.write(key, entry, String.join(SEPARATOR, kept));
 	}
 
 	/**
-	 * Reads an index entry, applies a change to its ids and, when the change asks for it, writes the entry
-	 * back or removes it once it is empty. The read and the write are two operations: two proxies changing one entry at the same moment can
-	 * lose one change, which {@link #index} and the validation in {@link #resolve} repair.
+	 * Reads an index entry, applies a change to its ids and, when the change asks for it, writes the entry back or
+	 * removes it once it is empty. The write only succeeds while the entry is still as read; when another proxy
+	 * changed it first, the change is applied again to what that proxy wrote, a bounded number of times.
 	 */
 	private @NotNull CompletableFuture<Void> change(
 			@NotNull ReplicatedCache<String> index,
@@ -188,13 +268,28 @@ public class SessionStore {
 	) {
 		if (key == null) return CompletableFuture.completedFuture(null);
 
-		return index.getFresh(key).thenCompose(entry -> {
-			Set<String> ids = ids(entry.orElse(null));
-			if (!change.test(ids)) return CompletableFuture.completedFuture(null);
+		return change(index, key, change, 1);
+	}
 
-			return ids.isEmpty()
-					? index.invalidate(key)
-					: index.put(key, String.join(SEPARATOR, ids));
+	private @NotNull CompletableFuture<Void> change(
+			@NotNull ReplicatedCache<String> index,
+			@NotNull String key,
+			@NotNull Predicate<Set<String>> change,
+			int attempt
+	) {
+		return index.read(key).thenCompose(entry -> {
+			Set<String> ids = ids(entry.map(Versioned::getValue).orElse(null));
+			if (!change.test(ids)) return CompletableFuture.completedFuture(true);
+			if (ids.isEmpty())
+				return entry.isPresent() ? index.remove(key, entry.get()) : CompletableFuture.completedFuture(true);
+
+			return index.write(key, entry.orElse(null), String.join(SEPARATOR, ids));
+		}).thenCompose(written -> {
+			if (written) return CompletableFuture.<Void>completedFuture(null);
+			if (attempt < CHANGE_ATTEMPTS) return change(index, key, change, attempt + 1);
+
+			Logger.warn("Gave up changing session index %s after %s attempts: it kept changing", key, CHANGE_ATTEMPTS);
+			return CompletableFuture.<Void>completedFuture(null);
 		});
 	}
 
@@ -237,6 +332,12 @@ public class SessionStore {
 			throw new IllegalStateException("replication.cache.sessions." + name + " is missing");
 
 		return namespace;
+	}
+
+	/**
+	 * The sessions of an account and the index entry they were read from, or {@code null} when there was none.
+	 */
+	public record AccountSessions(@NotNull List<Session> sessions, @Nullable Versioned<String> entry) {
 	}
 
 	/**

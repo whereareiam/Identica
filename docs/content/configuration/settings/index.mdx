@@ -159,6 +159,8 @@ Any other value stops the startup with an error that names the value and the acc
 
 The policy covers connections that already logged in. A connection that is still logging in when another connection of the account finishes is disconnected whatever the policy says; see [Logins in progress](../engine/index.mdx#logins-in-progress).
 
+The policy decides on the session the account had when the login read it. When two logins of one account finish at the same moment, on one proxy or on two that share Redis, only the one that is written first counts. The other is disconnected with `engine.concurrentChangeKick` and leaves no session behind; when the player reconnects, the policy decides on the session the first login opened. See [Concurrent writes](../replication/index.mdx#concurrent-writes).
+
 `REJECT_NEW` does not keep refusing logins for a session nobody holds any more. A session of a proxy that stopped or crashed without closing it disappears after [`replication.heartbeatTimeout`](../replication/index.mdx#heartbeattimeout), and the proxy that holds a connection treats its session as gone as soon as that connection is no longer online.
 
 This is the default policy used when a session opens after authentication, registration, or migration.

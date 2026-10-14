@@ -12,6 +12,7 @@ import me.whereareiam.identica.event.identity.session.SessionClosedEvent;
 import me.whereareiam.identica.event.identity.session.SessionReplacedEvent;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.Identity;
+import me.whereareiam.identica.identity.session.exception.ConcurrentSessionChangeException;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.SessionCloseRequest;
 import me.whereareiam.identica.model.SessionConnection;
@@ -21,6 +22,8 @@ import me.whereareiam.identica.model.config.provider.Providers;
 import me.whereareiam.identica.type.session.SessionConcurrencyPolicy;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -28,6 +31,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 import static me.whereareiam.identica.common.identity.session.SessionFixtures.LIFETIME_MS;
 import static me.whereareiam.identica.common.identity.session.SessionFixtures.replication;
@@ -257,6 +262,40 @@ class DefaultSessionServiceTest {
 		assertEquals(List.of(held.getSessionId()), ids(alpha.store.findByAccount(account).join()));
 		assertEquals("Renamed", alpha.service.findBySessionId(held.getSessionId()).join().orElseThrow().getEffectiveUsername());
 		assertFalse(beta.keepalive.holds(held.getSessionId()));
+	}
+
+	@DisplayName("Of two logins at the same moment, the one committed second fails and leaves nothing behind")
+	@ParameterizedTest
+	@EnumSource(SessionConcurrencyPolicy.class)
+	void racingLoginCommittedSecondFails(SessionConcurrencyPolicy policy) {
+		Session alphaLogin = connected(account, alpha.online());
+		CompletableFuture<Session> betaLogin = racingLogin(beta, policy);
+
+		CompletionException failure = assertThrows(CompletionException.class,
+				() -> alpha.service.open(alphaLogin, policy).join());
+
+		Session admitted = betaLogin.join();
+		assertInstanceOf(ConcurrentSessionChangeException.class, failure.getCause());
+		assertEquals(List.of(admitted.getSessionId()), ids(alpha.store.findByAccount(account).join()));
+		assertTrue(alpha.store.find(alphaLogin.getSessionId()).join().isEmpty(), "the failed login leaves no record");
+		assertFalse(alpha.keepalive.holds(alphaLogin.getSessionId()));
+		assertTrue(beta.keepalive.holds(admitted.getSessionId()));
+	}
+
+	/**
+	 * Lets a login of the account on another proxy run to its end between the moment the next login read the
+	 * account's sessions and the moment it commits its own, the window two simultaneous logins share.
+	 */
+	private CompletableFuture<Session> racingLogin(Node node, SessionConcurrencyPolicy policy) {
+		CompletableFuture<Session> login = new CompletableFuture<>();
+		adapter.beforeCompare = () -> {
+			adapter.beforeCompare = () -> {};
+			node.service.open(connected(account, node.online()), policy).whenComplete((session, failure) -> {
+				if (failure != null) login.completeExceptionally(failure);
+				else login.complete(session);
+			});
+		};
+		return login;
 	}
 
 	@DisplayName("Sessions are listed by their ids")

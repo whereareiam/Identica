@@ -21,6 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * proxy is refused through the other, and of a code typed through both at once only one is accepted.
  */
 class SharedAuthenticatorCodeTest {
+	private static final int INVALID = 0;
+	private static final int ACCEPTED = 1;
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
@@ -86,28 +88,32 @@ class SharedAuthenticatorCodeTest {
 		throughA.command("2fa confirm " + code);
 		throughB.command("2fa confirm " + code);
 
-		boolean acceptedThroughA = accepts(throughA);
-		boolean acceptedThroughB = accepts(throughB);
-		assertTrue(acceptedThroughA ^ acceptedThroughB,
-				"exactly one proxy must accept the code (A " + acceptedThroughA + ", B " + acceptedThroughB + ")");
-		if (acceptedThroughA) {
+		int throughAOutcome = outcome(throughA);
+		int throughBOutcome = outcome(throughB);
+		assertTrue((throughAOutcome == ACCEPTED) ^ (throughBOutcome == ACCEPTED),
+				"exactly one proxy must accept the code (A " + throughAOutcome + ", B " + throughBOutcome + ")");
+		if (throughAOutcome == ACCEPTED) {
 			throughA.on(LOBBY);
-			throughB.remainsOn(AUTH_B);
+			if (throughBOutcome == INVALID) throughB.remainsOn(AUTH_B);
 			return;
 		}
 
 		throughB.on(LOBBY);
-		throughA.remainsOn(AUTH);
+		if (throughAOutcome == INVALID) throughA.remainsOn(AUTH);
 	}
 
 	/**
-	 * Returns whether the proxy let Alice in with the code she typed, rather than answering that it is invalid.
+	 * Returns what the proxy did with the code Alice typed: it let her in, answered that the code is invalid, or,
+	 * when the other proxy changed her login while this one was writing it, disconnected her to reconnect. Which
+	 * of the last two the losing proxy does depends on whether it finished before the winning proxy ended the
+	 * login.
 	 */
-	private static boolean accepts(Journey journey) {
-		return journey.seesAnyOf(
+	private static int outcome(Journey journey) {
+		return journey.seesAnyOfOrIsKickedWith(
+				m -> m.identica().getEngine().getConcurrentChangeKick(),
 				m -> m.verification().getCommands().getConfirm().getInvalidCode(),
 				m -> m.credential().getCompletion().getAuthentication().getBody()
-		) == 1;
+		);
 	}
 
 	/**

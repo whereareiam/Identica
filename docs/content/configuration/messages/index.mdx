@@ -51,6 +51,14 @@ Emptying either message changes only the text. The earlier connection is still d
 
 See [Logins in progress](../engine/index.mdx#logins-in-progress) for when Identica refuses such a connection. Emptying the message changes only the text; the connection is still refused.
 
+#### concurrentChangeKick
+
+- Takes: a list of lines
+- Current default: a notice reading `Reconnect to try again.`
+- Affects: the reason shown to a connection that is disconnected because its login changed elsewhere while Identica was writing it, typically because the same player continued on another proxy of the network at the same moment
+
+Identica writes a player's login progress and new sessions only over what it read. When another proxy wrote first, the connection that came second is disconnected with this message instead of overwriting the other proxy's work. See [Concurrent writes](../replication/index.mdx#concurrent-writes). Emptying the message changes only the text; the connection is still disconnected.
+
 ## routing
 
 Identica disconnects a player when the server it routes them to does not exist on the proxy. The reason comes from the scenario the player is in, and from the shared message when that scenario has none.

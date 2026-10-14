@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.session.SessionOpenedEvent;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.identity.session.exception.ConcurrentSessionChangeException;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.config.Messages;
@@ -23,6 +24,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
 @Singleton
@@ -69,7 +71,8 @@ public class OpenSessionPhase implements PipelinePhase<SessionState> {
 			return CompletableFuture.completedFuture(PhaseResult.pass(state));
 		}
 		return sessionService.open(session)
-				.thenApply(openedSession -> {
+				.handle((openedSession, error) -> {
+					if (error != null) return lostToAnotherLogin(state, error);
 					if (openedSession == null) {
 						state.setResult(PipelineResult.denied(concurrentLoginRefusedMessage()));
 						return PhaseResult.pass(state);
@@ -99,6 +102,19 @@ public class OpenSessionPhase implements PipelinePhase<SessionState> {
 				pipelineType,
 				session
 		));
+	}
+
+	/**
+	 * Asks the player to reconnect when another login of the account was committed while this one opened its
+	 * session; other failures fail the run.
+	 */
+	private @NotNull PhaseResult<SessionState> lostToAnotherLogin(@NotNull SessionState state, @NotNull Throwable error) {
+		Throwable cause = error instanceof CompletionException ? error.getCause() : error;
+		if (!(cause instanceof ConcurrentSessionChangeException))
+			throw error instanceof CompletionException completion ? completion : new CompletionException(error);
+
+		state.setResult(PipelineResult.requireReconnect(joinMessage(messagesProvider.get().getEngine().getConcurrentChangeKick())));
+		return PhaseResult.pass(state);
 	}
 
 	private @NotNull String authenticationFailedMessage() {

@@ -10,6 +10,7 @@ import me.whereareiam.identica.event.identity.session.SessionClosedEvent;
 import me.whereareiam.identica.event.identity.session.SessionReplacedEvent;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.identity.session.exception.ConcurrentSessionChangeException;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.SessionCloseRequest;
@@ -26,6 +27,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -112,8 +114,7 @@ public class DefaultSessionService implements SessionService, EventListener {
 	) {
 		if (session == null)
 			return CompletableFuture.completedFuture(null);
-		return store.findByAccount(session.getUniqueId())
-				.thenCompose(existing -> open(session, existing, policy));
+		return store.account(session.getUniqueId()).thenCompose(read -> open(session, read, policy));
 	}
 
 	@Override
@@ -165,19 +166,24 @@ public class DefaultSessionService implements SessionService, EventListener {
 			store.remove(session).join();
 	}
 
+	/**
+	 * Decides a login on the account's sessions as read, then commits it only while they are unchanged. A login whose
+	 * commit finds that another login of the account committed in between fails with
+	 * {@link ConcurrentSessionChangeException} instead of deciding again, and leaves no record behind.
+	 */
 	private @NotNull CompletableFuture<@Nullable Session> open(
 			@NotNull Session incoming,
-			@NotNull List<Session> existing,
+			@NotNull SessionStore.AccountSessions read,
 			@NotNull SessionConcurrencyPolicy policy
 	) {
 		incoming.setConnection(withServerId(incoming.getConnection()));
-		Session continued = continued(incoming, existing);
+		Session continued = continued(incoming, read.sessions());
 		if (continued != null && incoming.getSessionId() == null)
 			incoming.adoptSessionIdFrom(continued);
 
 		List<Session> others = new ArrayList<>();
 		List<Session> gone = new ArrayList<>();
-		for (Session session : existing) {
+		for (Session session : read.sessions()) {
 			if (session == continued) continue;
 			(isHeld(session) ? others : gone).add(session);
 		}
@@ -189,18 +195,50 @@ public class DefaultSessionService implements SessionService, EventListener {
 		}
 
 		complete(incoming);
-		CompletableFuture<Void> removed = closeAll(gone, concurrentClose(incoming, false));
-		for (Session other : others)
+		return store.touch(incoming)
+				.thenCompose(ignored -> store.commit(incoming.getUniqueId(), read, Set.of(incoming.getSessionId())))
+				.thenCompose(committed -> committed
+						? opened(incoming, continued, gone, others)
+						: lost(incoming, continued));
+	}
+
+	/**
+	 * Finishes a committed login: closes the sessions it ended and starts refreshing its own.
+	 */
+	private @NotNull CompletableFuture<@Nullable Session> opened(
+			@NotNull Session incoming,
+			@Nullable Session continued,
+			@NotNull List<Session> gone,
+			@NotNull List<Session> replaced
+	) {
+		for (Session other : replaced)
 			eventManager.call(new SessionReplacedEvent(other, incoming));
 
-		return removed
-				.thenCompose(ignored -> closeAll(others, concurrentClose(incoming, true)))
+		return closeAll(gone, concurrentClose(incoming, false))
+				.thenCompose(ignored -> closeAll(replaced, concurrentClose(incoming, true)))
 				.thenCompose(ignored -> unlistPreviousSubject(continued, incoming))
-				.thenCompose(ignored -> store.put(incoming))
+				.thenCompose(ignored -> store.index(incoming))
 				.thenApply(ignored -> {
 					if (refreshesHere(incoming)) keepalive.hold(incoming);
 					return incoming;
 				});
+	}
+
+	/**
+	 * Ends a login that lost its commit to another login of the account. It removes the record it wrote, unless that
+	 * record belongs to the session it continues, and fails, so the connection logs in again on what the other login
+	 * left.
+	 */
+	private @NotNull CompletableFuture<@Nullable Session> lost(@NotNull Session incoming, @Nullable Session continued) {
+		Logger.warn("Did not open a session of %s for %s: another login of the account was committed meanwhile",
+				incoming.getUniqueId(), incoming.getConnection());
+
+		CompletableFuture<Void> discarded = continued == null
+				? store.discard(incoming)
+				: CompletableFuture.completedFuture(null);
+		return discarded.thenCompose(ignored -> CompletableFuture.failedFuture(
+				new ConcurrentSessionChangeException(incoming.getUniqueId())
+		));
 	}
 
 	/**

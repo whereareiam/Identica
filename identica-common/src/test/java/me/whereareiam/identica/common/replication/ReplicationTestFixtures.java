@@ -10,6 +10,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -109,6 +110,52 @@ public final class ReplicationTestFixtures {
 				lifetimes.put(namespace + "|" + key, ttlMs);
 			}
 			return CompletableFuture.completedFuture(null);
+		}
+
+		/** Runs between a writer's read and its conditional write, to let another writer in. */
+		public Runnable beforeCompare = () -> {};
+		public int compareCalls;
+
+		@Override
+		public @NotNull CompletableFuture<Boolean> compareAndPut(
+				@NotNull String namespace,
+				@NotNull String key,
+				byte[] expected,
+				byte @NotNull [] value,
+				long ttlMs
+		) {
+			compareCalls++;
+			if (!storing) return CompletableFuture.completedFuture(false);
+			beforeCompare.run();
+
+			String stored = namespace + "|" + key;
+			byte[] current = this.stored.get(stored);
+			boolean matches = expected == null ? current == null : current != null && Arrays.equals(current, expected);
+			if (!matches) return CompletableFuture.completedFuture(false);
+
+			putCalls++;
+			lastNamespace = namespace;
+			lastKey = key;
+			lastValue = value;
+			lastTtlMs = ttlMs;
+			this.stored.put(stored, value);
+			lifetimes.put(stored, ttlMs);
+			return CompletableFuture.completedFuture(true);
+		}
+
+		@Override
+		public @NotNull CompletableFuture<Boolean> compareAndInvalidate(@NotNull String namespace, @NotNull String key, byte @NotNull [] expected) {
+			compareCalls++;
+			if (!storing) return CompletableFuture.completedFuture(false);
+			beforeCompare.run();
+
+			String stored = namespace + "|" + key;
+			byte[] current = this.stored.get(stored);
+			if (current == null || !Arrays.equals(current, expected)) return CompletableFuture.completedFuture(false);
+
+			invalidateCalls++;
+			this.stored.remove(stored);
+			return CompletableFuture.completedFuture(true);
 		}
 
 		@Override

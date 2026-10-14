@@ -7,9 +7,11 @@ import me.whereareiam.identica.model.replication.ReplicationPage;
 import me.whereareiam.identica.model.replication.ReplicationType;
 import me.whereareiam.identica.replication.ReplicationAdapter;
 import me.whereareiam.identica.replication.cache.ReplicatedCache;
+import me.whereareiam.identica.replication.cache.Versioned;
 import me.whereareiam.identica.replication.codec.SnapshotCodec;
 import me.whereareiam.identica.replication.codec.SnapshotCodecFactory;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -107,6 +109,82 @@ public final class DefaultReplicatedCache<T, S> implements ReplicatedCache<T> {
 		byte[] envelope = ReplicationEnvelope.encode(type.version(), expiresAt, payload);
 
 		return local.thenCompose(ignored -> adapter.put(name, key, envelope, ttlMs));
+	}
+
+	@Override
+	public @NotNull CompletableFuture<Optional<Versioned<T>>> read(@Nullable String key) {
+		if (key == null) return CompletableFuture.completedFuture(Optional.empty());
+		if (adapter == null || !adapter.isAvailable())
+			return CompletableFuture.completedFuture(localCache.read(key));
+
+		return adapter.get(name, key).thenCompose(payload -> {
+			if (payload.isEmpty()) return CompletableFuture.completedFuture(Optional.<Versioned<T>>empty());
+
+			byte[] stored = payload.get();
+			return decode(stored).thenCompose(value -> value.isPresent()
+					? CompletableFuture.completedFuture(value.map(found -> new Versioned<>(found, stored)))
+					: discardUnreadable(key, stored));
+		});
+	}
+
+	/**
+	 * Removes an entry that cannot be read back or has expired, as {@link #getFresh} does, but only while it still
+	 * holds those bytes, so that a value another writer stored meanwhile stays. A writer that expects no entry can
+	 * then create one.
+	 */
+	private @NotNull CompletableFuture<Optional<Versioned<T>>> discardUnreadable(@NotNull String key, byte @NotNull [] stored) {
+		return adapter.compareAndInvalidate(name, key, stored)
+				.thenCompose(ignored -> localCache.invalidate(key))
+				.thenApply(ignored -> Optional.empty());
+	}
+
+	@Override
+	public @NotNull CompletableFuture<Boolean> write(@Nullable String key, @Nullable Versioned<T> read, @NotNull T value, long ttlMs) {
+		if (key == null || ttlMs <= 0) return CompletableFuture.completedFuture(false);
+		if (adapter == null || !adapter.isAvailable())
+			return CompletableFuture.completedFuture(localCache.write(key, read, value, ttlMs));
+
+		byte[] expected = read != null ? (byte[]) read.getRevision() : null;
+		return adapter.compareAndPut(name, key, expected, envelope(value, ttlMs), ttlMs)
+				.thenCompose(written -> (written ? localCache.put(key, value, ttlMs) : localCache.invalidate(key))
+						.thenApply(ignored -> written));
+	}
+
+	@Override
+	public @NotNull CompletableFuture<Boolean> remove(@Nullable String key, @NotNull Versioned<T> read) {
+		if (key == null) return CompletableFuture.completedFuture(false);
+		if (adapter == null || !adapter.isAvailable())
+			return CompletableFuture.completedFuture(localCache.remove(key, read));
+
+		return adapter.compareAndInvalidate(name, key, (byte[]) read.getRevision())
+				.thenCompose(removed -> localCache.invalidate(key).thenApply(ignored -> removed));
+	}
+
+	/**
+	 * Decodes a stored envelope, treating one that cannot be read or has expired as no entry.
+	 */
+	private @NotNull CompletableFuture<Optional<T>> decode(byte @NotNull [] stored) {
+		try {
+			ReplicationEnvelope envelope = ReplicationEnvelope.decode(stored);
+			if (envelope == null || envelope.getVersion() != type.version())
+				return CompletableFuture.completedFuture(Optional.empty());
+			if (envelope.getExpiresAt() > 0 && envelope.getExpiresAt() <= System.currentTimeMillis())
+				return CompletableFuture.completedFuture(Optional.empty());
+
+			S snapshot = resolveCodec().decode(envelope.getPayload());
+			if (snapshot == null) return CompletableFuture.completedFuture(Optional.empty());
+
+			return type.mapper().fromSnapshot(snapshot)
+					.thenApply(Optional::ofNullable)
+					.exceptionally(ignored -> Optional.empty());
+		} catch (Exception ignored) {
+			return CompletableFuture.completedFuture(Optional.empty());
+		}
+	}
+
+	private byte @NotNull [] envelope(@NotNull T value, long ttlMs) {
+		S snapshot = type.mapper().toSnapshot(value);
+		return ReplicationEnvelope.encode(type.version(), System.currentTimeMillis() + ttlMs, resolveCodec().encode(snapshot));
 	}
 
 	@Override

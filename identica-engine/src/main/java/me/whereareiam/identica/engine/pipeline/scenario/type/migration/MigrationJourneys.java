@@ -89,10 +89,11 @@ public class MigrationJourneys {
 		));
 	}
 
+	/**
+	 * Stores the journey over the state the connection has, but only over the state it read: when another proxy
+	 * changes the connection's state in between, nothing is stored and the start fails.
+	 */
 	private @NotNull MigrationResultStatus store(@NotNull MigrationJourney journey) {
-		if (started(journey.getConnectionUniqueId(), stored(journey.getConnectionUniqueId())) != null)
-			return MigrationResultStatus.PENDING_EXISTS;
-
 		Engine.Scenario scenario = engineProvider.get().getScenarios().getMigration();
 		long ttlMs = scenario.pipelineTtlMillis();
 		if (ttlMs <= 0) return MigrationResultStatus.FAILED;
@@ -119,7 +120,17 @@ public class MigrationJourneys {
 		), ttlMs);
 		state.put(JourneyStateItem.KEY, new JourneyStateItem(journeyMode, null, 0), ttlMs);
 
-		pipelineStateStore.save(PipelineStateReference.from(context), state, ttlMs);
+		PipelineStateReference reference = PipelineStateReference.from(context);
+		PipelineState replaced = pipelineStateStore.find(reference).orElse(null);
+		if (started(journey.getConnectionUniqueId(), replaced) != null) return MigrationResultStatus.PENDING_EXISTS;
+
+		state.setRevision(replaced != null ? replaced.getRevision() : null);
+		if (!pipelineStateStore.save(reference, state, ttlMs)) {
+			Logger.warn("Did not start the migration journey of connection %s: its state changed on another proxy meanwhile",
+					journey.getConnectionUniqueId());
+			return MigrationResultStatus.FAILED;
+		}
+
 		connections.get().put(
 				journey.getConnectionUniqueId().toString(),
 				new JourneyConnection(context.getIdentity().getConnectionUsername(), journey.getIp()),
@@ -139,15 +150,24 @@ public class MigrationJourneys {
 		return MigrationResultStatus.STARTED;
 	}
 
+	/**
+	 * Clears the started journey, but only the state it read: when another proxy changes the connection's state in
+	 * between, the newer state stays and nothing is cancelled.
+	 */
 	private @NotNull Optional<PendingMigration> clear(@NotNull UUID connectionUniqueId) {
 		PipelineState state = stored(connectionUniqueId);
 		PendingMigration started = started(connectionUniqueId, state);
 		if (started == null) return Optional.empty();
 
+		if (!pipelineStateStore.clear(reference(connectionUniqueId), state)) {
+			Logger.warn("Did not cancel the migration journey of connection %s: its state changed on another proxy meanwhile",
+					connectionUniqueId);
+			return Optional.empty();
+		}
+
 		MigrationContext context = (MigrationContext) state.getScenario(PipelineType.MIGRATION);
 		if (context != null && context.getConnectionUniqueId() != null)
 			eventManager.call(new MigrationResolvedEvent(context, ScenarioResolution.CANCELLED, false));
-		pipelineStateStore.clear(reference(connectionUniqueId));
 		connections.get().invalidate(connectionUniqueId.toString()).join();
 
 		return Optional.of(started);

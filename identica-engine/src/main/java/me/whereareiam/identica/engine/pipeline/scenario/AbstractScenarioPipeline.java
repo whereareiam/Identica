@@ -92,8 +92,22 @@ public abstract class AbstractScenarioPipeline {
 		PipelineResult startResult = ensureScenario(pipelineState, request);
 		if (startResult != null)
 			return CompletableFuture.completedFuture(startResult);
+		if (pendingResolution.state() == null) startOver(pipelineState);
 
 		return run(pipelineState, pendingRequest, pendingMode);
+	}
+
+	/**
+	 * Lets a fresh run replace only the state that is stored for its player when it starts, or create one only while
+	 * there is none, so that of two runs started for one player at once, for example on two proxies, only one saves.
+	 */
+	private void startOver(@NotNull PipelineState pipelineState) {
+		ScenarioContext context = pipelineState.getScenario();
+		if (context == null) return;
+
+		pipelineStateStore.find(PipelineStateReference.from(context))
+				.map(PipelineState::getRevision)
+				.ifPresent(pipelineState::setRevision);
 	}
 
 	public @NotNull PipelineType type() {
@@ -218,36 +232,38 @@ public abstract class AbstractScenarioPipeline {
 					PipelineResult result = executionState.result;
 					if (result == null) result = failedNoCompletion();
 					result = result.withState(pipelineState);
-					persistState(pipelineState, result, pendingRequest);
+					if (!persistState(pipelineState, result, pendingRequest)) return staleRunResult(pipelineState);
 
 					return result;
 				})
 				.toCompletableFuture();
 	}
 
-	private void persistState(
+	/**
+	 * Saves or clears the state of a finished run.
+	 *
+	 * @return {@code false} when the run must wait for the player but another writer changed the player's saved
+	 * state since the run read it, so the run's state was not saved
+	 */
+	private boolean persistState(
 			@NotNull PipelineState pipelineState,
 			@NotNull PipelineResult result,
 			@Nullable ResumeRequest resumeRequest
 	) {
 		PipelineStateReference reference = resolveReference(pipelineState, result, resumeRequest);
-		if (reference == null || reference.isEmpty()) return;
+		if (reference == null || reference.isEmpty()) return true;
 
 		PipelineStatus status = result.getStatus();
 		if (status == PipelineStatus.WAITING || status == PipelineStatus.REQUIRE_RECONNECT) {
 			Engine.Scenario scenario = resolveScenario(pipelineType);
-			if (!scenario.isAllowResume()) {
-				pipelineStateStore.clear(reference);
-				return;
-			}
 			long ttlMs = scenario.pipelineTtlMillis();
-			if (ttlMs <= 0) {
-				pipelineStateStore.clear(reference);
-				return;
+			if (!scenario.isAllowResume() || ttlMs <= 0) {
+				pipelineStateStore.clear(reference, pipelineState);
+				return true;
 			}
 
 			long expiresAt = System.currentTimeMillis() + ttlMs;
-			pipelineStateStore.save(reference, pipelineState, ttlMs);
+			if (!pipelineStateStore.save(reference, pipelineState, ttlMs)) return false;
 			if (resumeRequest == null) {
 				ScenarioContext context = resolveScenarioContext(pipelineState);
 				JourneyMode journeyMode = pipelineState.get(JourneyStateItem.KEY)
@@ -256,7 +272,7 @@ public abstract class AbstractScenarioPipeline {
 
 				if (context != null) emitRequired(context, expiresAt, journeyMode);
 			}
-			return;
+			return true;
 		}
 
 		if (resumeRequest != null) {
@@ -267,7 +283,23 @@ public abstract class AbstractScenarioPipeline {
 				emitResolved(context, resolution, status == PipelineStatus.COMPLETE);
 			}
 		}
-		pipelineStateStore.clear(reference);
+		// A run that is done leaves a state another writer saved since it read its own.
+		pipelineStateStore.clear(reference, pipelineState);
+		return true;
+	}
+
+	/**
+	 * Ends a run whose state another writer changed while it ran, typically the same player starting or continuing
+	 * on another proxy. The run cannot apply its work to that state, because its steps already acted on what it
+	 * read, so instead of saving over the newer state it disconnects the player with
+	 * {@code engine.concurrentChangeKick}; the next join continues from what the other writer saved.
+	 */
+	private @NotNull PipelineResult staleRunResult(@NotNull PipelineState pipelineState) {
+		ScenarioContext context = resolveScenarioContext(pipelineState);
+		Logger.warn("%s run of connection %s was not saved: the pipeline state changed while it ran",
+				pipelineType, context != null ? context.getConnectionUniqueId() : null);
+		return PipelineResult.requireReconnect(joinMessage(messagesProvider.get().getEngine().getConcurrentChangeKick()))
+				.withState(pipelineState);
 	}
 
 	private @Nullable PipelineStateReference resolveReference(

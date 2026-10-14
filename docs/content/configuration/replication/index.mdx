@@ -157,6 +157,8 @@ Most setups should keep the defaults unless there is a namespace collision or yo
 
 Passwords that players type are never written to this namespace. While a registration waits for the password to be repeated, it holds that password's hash.
 
+A connection's state is changed only over the version Identica read, so a proxy never overwrites what another proxy saved for the same connection meanwhile; see [Concurrent writes](#concurrent-writes).
+
 #### attempts
 
 <Badge type="warning">Advanced</Badge>
@@ -196,6 +198,16 @@ A record expires after [`heartbeatTimeout`](#heartbeattimeout) unless the proxy 
 - Affects: the namespace of the index entries that list a provider subject's session ids
 
 An index entry is only a pointer. Identica checks every id it lists against the records and drops the ids whose record is gone, so an outdated entry never shows a session that ended.
+
+## Concurrent writes
+
+The same player can reach two proxies at the same moment, for example by reconnecting from the same address while a login on the other proxy is still being written. Identica writes a connection's login progress and an account's sessions only over what it read: a short Lua script stores the new value only while Redis still holds the value Identica read, or nothing when Identica found nothing, in one atomic step, and keeps the namespace's key index up to date as an ordinary write does.
+
+When another proxy wrote first, the proxy that came second does not overwrite it and does not try again on its own. The connection it served is disconnected with `engine.concurrentChangeKick`, which asks the player to reconnect; the next join continues from what the other proxy wrote and follows `settings.sessions.concurrencyPolicy` as an ordinary later login does. Changes to the index entries of sessions are applied again to what the other proxy wrote, so no session id is lost.
+
+Identica runs these scripts with `EVALSHA`, sending only the script's digest. When Redis answers `NOSCRIPT`, because it restarted or its script cache was flushed, Identica loads the script with `SCRIPT LOAD` and runs it again, so the scripts need no preparation on the Redis side. An ACL user for Identica needs the `evalsha` and `script` commands.
+
+Without Redis, a proxy keeps these values in memory and compares them the same way, so the rule holds on a single proxy too.
 
 ## Connection behavior
 

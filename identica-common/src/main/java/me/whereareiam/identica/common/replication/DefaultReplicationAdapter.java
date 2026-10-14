@@ -6,6 +6,7 @@ import com.google.inject.name.Named;
 import me.whereareiam.identica.replication.ReplicationAdapter;
 import me.whereareiam.identica.model.replication.ReplicationPage;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -57,6 +58,26 @@ public class DefaultReplicationAdapter implements ReplicationAdapter {
 		}
 
 		return provider.put(namespace, key, value, ttlMs);
+	}
+
+	@Override
+	public @NotNull CompletableFuture<Boolean> compareAndPut(
+			@NotNull String namespace,
+			@NotNull String key,
+			byte @Nullable [] expected,
+			byte @NotNull [] value,
+			long ttlMs
+	) {
+		if (!provider.isAvailable()) return CompletableFuture.completedFuture(false);
+
+		return provider.compareAndPut(namespace, key, expected, value, ttlMs);
+	}
+
+	@Override
+	public @NotNull CompletableFuture<Boolean> compareAndInvalidate(@NotNull String namespace, @NotNull String key, byte @NotNull [] expected) {
+		if (!provider.isAvailable()) return CompletableFuture.completedFuture(false);
+
+		return provider.compareAndInvalidate(namespace, key, expected);
 	}
 
 	@Override

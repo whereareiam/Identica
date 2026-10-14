@@ -2,6 +2,7 @@ package me.whereareiam.identica.replication;
 
 import me.whereareiam.identica.model.replication.ReplicationPage;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -47,6 +48,39 @@ public interface ReplicationAdapter {
 	 * @return completion journey
 	 */
 	@NotNull CompletableFuture<Void> put(@NotNull String namespace, @NotNull String key, byte[] value, long ttlMs);
+
+	/**
+	 * Stores a value only while the stored value is exactly the expected one. The comparison and the write are one
+	 * atomic step for every client of the backend.
+	 *
+	 * @param namespace logical namespace
+	 * @param key lookup key
+	 * @param expected payload that must be stored, or {@code null} when nothing may be stored under the key
+	 * @param value payload to store
+	 * @param ttlMs time-to-live in milliseconds
+	 * @return {@code true} when stored, {@code false} when the stored value differed or the backend failed
+	 */
+	@NotNull CompletableFuture<Boolean> compareAndPut(
+			@NotNull String namespace,
+			@NotNull String key,
+			byte @Nullable [] expected,
+			byte @NotNull [] value,
+			long ttlMs
+	);
+
+	/**
+	 * Removes a value only while the stored value is exactly the expected one, in one atomic step.
+	 *
+	 * @param namespace logical namespace
+	 * @param key lookup key
+	 * @param expected payload that must be stored
+	 * @return {@code true} when removed, {@code false} when the stored value differed or the backend failed
+	 */
+	@NotNull CompletableFuture<Boolean> compareAndInvalidate(
+			@NotNull String namespace,
+			@NotNull String key,
+			byte @NotNull [] expected
+	);
 
 	/**
 	 * Invalidates a cached entry.

@@ -6,14 +6,19 @@ import me.whereareiam.identica.model.replication.ReplicationEnvelope;
 import me.whereareiam.identica.model.replication.ReplicationPage;
 import me.whereareiam.identica.model.replication.ReplicationType;
 import me.whereareiam.identica.replication.codec.SnapshotCodec;
+import me.whereareiam.identica.replication.cache.Versioned;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Default Replicated Cache")
@@ -311,5 +316,114 @@ class DefaultReplicatedCacheTest {
 		ReplicationPage page = cache.listKeys(1, 10).join();
 		assertEquals(List.of("a"), page.getEntries());
 		assertEquals(0, adapter.listKeysCalls);
+	}
+
+	@DisplayName("A conditional write succeeds for the revision it read and fails for a stale one, in the shared store")
+	@Test
+	void conditionalWriteRefusesAStaleRevisionRemotely() {
+		ReplicationTestFixtures.TestReplicationAdapter adapter = new ReplicationTestFixtures.TestReplicationAdapter();
+		adapter.storing = true;
+		DefaultReplicatedCache<String, String> first = storingCache(adapter);
+		DefaultReplicatedCache<String, String> second = storingCache(adapter);
+		first.put("key", "v1", 500).join();
+
+		Versioned<String> readByFirst = first.read("key").join().orElseThrow();
+		Versioned<String> readBySecond = second.read("key").join().orElseThrow();
+
+		assertTrue(second.write("key", readBySecond, "v2", 500).join());
+		assertFalse(first.write("key", readByFirst, "v3", 500).join());
+		assertEquals(Optional.of("v2"), first.getFresh("key").join());
+		assertFalse(first.remove("key", readByFirst).join());
+		assertTrue(first.remove("key", first.read("key").join().orElseThrow()).join());
+		assertEquals(Optional.empty(), second.getFresh("key").join());
+	}
+
+	@DisplayName("A write that expects no entry succeeds once, in the shared store and locally")
+	@Test
+	void writeExpectingNoEntrySucceedsOnce() {
+		ReplicationTestFixtures.TestReplicationAdapter adapter = new ReplicationTestFixtures.TestReplicationAdapter();
+		adapter.storing = true;
+		DefaultReplicatedCache<String, String> remote = storingCache(adapter);
+		DefaultReplicatedCache<String, String> local = localCache();
+
+		for (DefaultReplicatedCache<String, String> cache : List.of(remote, local)) {
+			assertTrue(cache.write("key", null, "first", 500).join());
+			assertFalse(cache.write("key", null, "second", 500).join());
+			assertEquals("first", cache.read("key").join().orElseThrow().getValue());
+		}
+	}
+
+	@DisplayName("A conditional read removes an entry it cannot read back, so a writer expecting no entry can create one")
+	@Test
+	void conditionalReadDiscardsAnUnreadableEntry() {
+		ReplicationTestFixtures.TestReplicationAdapter adapter = new ReplicationTestFixtures.TestReplicationAdapter();
+		adapter.storing = true;
+		DefaultReplicatedCache<String, String> cache = storingCache(adapter);
+		adapter.put("namespace", "key", new byte[]{1, 2, 3}, 500).join();
+
+		assertTrue(cache.read("key").join().isEmpty());
+		assertTrue(cache.write("key", null, "fresh", 500).join());
+		assertEquals("fresh", cache.read("key").join().orElseThrow().getValue());
+	}
+
+	@DisplayName("Without the shared store, a conditional write compares and replaces the local entry atomically")
+	@Test
+	void conditionalWriteRefusesAStaleRevisionLocally() {
+		DefaultReplicatedCache<String, String> cache = localCache();
+		cache.put("key", "v1", 500).join();
+		Versioned<String> stale = cache.read("key").join().orElseThrow();
+		assertTrue(cache.write("key", cache.read("key").join().orElseThrow(), "v2", 500).join());
+
+		assertFalse(cache.write("key", stale, "v3", 500).join());
+		assertFalse(cache.remove("key", stale).join());
+		assertEquals(Optional.of("v2"), cache.get("key").join());
+	}
+
+	@DisplayName("Of many local writers that read the same entry, exactly one writes it")
+	@Test
+	void concurrentLocalWritersOnlyOneWins() throws InterruptedException {
+		DefaultReplicatedCache<String, String> cache = localCache();
+		cache.put("key", "start", 5_000).join();
+		Versioned<String> read = cache.read("key").join().orElseThrow();
+		int writers = 16;
+		CountDownLatch start = new CountDownLatch(1);
+		AtomicInteger won = new AtomicInteger();
+		List<Thread> threads = new ArrayList<>();
+		for (int writer = 0; writer < writers; writer++) {
+			String value = "writer-" + writer;
+			Thread thread = new Thread(() -> {
+				try {
+					start.await();
+				} catch (InterruptedException interrupted) {
+					Thread.currentThread().interrupt();
+				}
+				if (cache.write("key", read, value, 5_000).join()) won.incrementAndGet();
+			});
+			thread.start();
+			threads.add(thread);
+		}
+
+		start.countDown();
+		for (Thread thread : threads)
+			thread.join();
+
+		assertEquals(1, won.get());
+	}
+
+	private static DefaultReplicatedCache<String, String> storingCache(ReplicationTestFixtures.TestReplicationAdapter adapter) {
+		return new DefaultReplicatedCache<>(
+				"namespace",
+				new InMemoryLocalCache<>(),
+				adapter,
+				ReplicationTestFixtures.stringType(),
+				ReplicationTestFixtures.stringCodecFactory(),
+				0L
+		);
+	}
+
+	private static DefaultReplicatedCache<String, String> localCache() {
+		ReplicationTestFixtures.TestReplicationAdapter adapter = new ReplicationTestFixtures.TestReplicationAdapter();
+		adapter.available = false;
+		return storingCache(adapter);
 	}
 }

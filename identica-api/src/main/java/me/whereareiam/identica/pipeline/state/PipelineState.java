@@ -1,6 +1,7 @@
 package me.whereareiam.identica.pipeline.state;
 
 import lombok.Getter;
+import lombok.Setter;
 import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.migration.MigrationContext;
 import me.whereareiam.identica.model.pipeline.PipelineCursor;
@@ -43,6 +44,15 @@ public final class PipelineState {
 	@Getter
 	private long updatedAt;
 	private final @NotNull Map<String, Entry> entries = new LinkedHashMap<>();
+	/**
+	 * Revision of the saved state this one was read from, or {@code null} for a state that expects no saved state,
+	 * such as a new or a consumed one. A pipeline state store sets it when it reads or saves a state and compares it
+	 * when it saves, so that a writer whose state was changed by someone else since it read it does not save over
+	 * that change, and a writer that found nothing does not save over a state another writer created meanwhile.
+	 */
+	@Getter
+	@Setter
+	private @Nullable String revision;
 
 	private PipelineState(@Nullable PipelineType pipelineType, @NotNull PipelineCursor cursor, long updatedAt) {
 		this.pipelineType = pipelineType;

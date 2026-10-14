@@ -37,6 +37,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -280,6 +281,24 @@ class UsernameHoldTest {
 		public CompletableFuture<Void> invalidate(String namespace, String key) {
 			values.remove(namespace + ":" + key);
 			return CompletableFuture.completedFuture(null);
+		}
+
+		public CompletableFuture<Boolean> compareAndPut(String namespace, String key, byte[] expected, byte[] value, long ttlMs) {
+			boolean[] written = {false};
+			values.compute(namespace + ":" + key, (ignored, current) -> {
+				written[0] = expected == null ? current == null : current != null && Arrays.equals(current, expected);
+				return written[0] ? value : current;
+			});
+			return CompletableFuture.completedFuture(written[0]);
+		}
+
+		public CompletableFuture<Boolean> compareAndInvalidate(String namespace, String key, byte[] expected) {
+			boolean[] removed = {false};
+			values.computeIfPresent(namespace + ":" + key, (ignored, current) -> {
+				removed[0] = Arrays.equals(current, expected);
+				return removed[0] ? null : current;
+			});
+			return CompletableFuture.completedFuture(removed[0]);
 		}
 
 		public CompletableFuture<Void> publish(String channel, byte[] payload) {

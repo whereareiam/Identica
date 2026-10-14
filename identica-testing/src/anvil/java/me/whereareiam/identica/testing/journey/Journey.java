@@ -41,6 +41,7 @@ public final class Journey {
 
 	private final String name;
 	private final String source;
+	private final SimulatedPlayer player;
 	private final String initialConnection;
 	private final Session session;
 	private final Messages messages;
@@ -60,6 +61,7 @@ public final class Journey {
 
 	private Journey(ScenarioContext anvil, SimulatedPlayer player, String name, String address, String proxy) {
 		this.name = name;
+		this.player = player;
 		this.source = address != null ? "/" + address + ":" : "";
 		this.playedAs = name;
 		this.connectedPlayer = "[connected player] " + name + " (" + source;
@@ -254,6 +256,36 @@ public final class Journey {
 			if (expected.get(index).in(message)) return index;
 
 		throw new IllegalStateException("No alternative matches the received message: " + message);
+	}
+
+	/**
+	 * Waits for whichever comes first: one of several alternative messages, arrived after the previous expectation,
+	 * or the proxy disconnecting the player, which must then give the expected reason. For a race whose loser is
+	 * either answered or disconnected, depending on how the race went.
+	 *
+	 * <pre>{@code
+	 * int outcome = player.seesAnyOfOrIsKickedWith(m -> m.identica().getEngine().getConcurrentChangeKick(),
+	 *         m -> m.verification().getCommands().getConfirm().getInvalidCode());
+	 * }</pre>
+	 *
+	 * @param reason reason the proxy gives when it disconnects the player first
+	 * @return position of the alternative that arrived, starting at zero, or the number of alternatives when the
+	 * player was disconnected
+	 */
+	@SafeVarargs
+	public final int seesAnyOfOrIsKickedWith(Function<IdenticaMessages, ?> reason, Function<IdenticaMessages, ?>... alternatives) {
+		List<MessageText> expected = Arrays.stream(alternatives).map(this::text).toList();
+		Predicate<String> matcher = received -> expected.stream().anyMatch(alternative -> alternative.in(received));
+		int first;
+		try {
+			first = player.awaitFirst(TIMEOUT, messages.expectReceived(matcher, read), session.expectKicked());
+		} catch (IllegalStateException timeout) {
+			return fail(name + " neither received " + expected + " nor was disconnected; new messages: " + unread(), timeout);
+		}
+		if (first == 0) return seesAnyOf(alternatives);
+
+		kickedWith(reason);
+		return alternatives.length;
 	}
 
 	/**

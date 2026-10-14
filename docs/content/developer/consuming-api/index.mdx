@@ -240,7 +240,7 @@ A session belongs to a connection: `session.getConnection()` returns the `Sessio
 - `findByConnection(uniqueId, SessionConnection.of(player.getUniqueId()))` returns it only when that connection holds it, which a connection whose session was replaced no longer does
 - `list(page, pageSize)` pages through session ids, which `findBySessionId` resolves
 
-`SessionService.open(session)` continues a stored session only when the new session names the same connection; any other connection is a concurrent login decided by the configured concurrency policy. `close(uniqueId)` ends the account's session. To end it only when one connection holds it, for example when that player leaves, set the connection on the close request; a session another connection holds is then left alone:
+`SessionService.open(session)` continues a stored session only when the new session names the same connection; any other connection is a concurrent login decided by the configured concurrency policy. The policy decides on the session the account had when the call read it: when another login of the account, typically on another proxy, opened a session in between, the returned future fails with `ConcurrentSessionChangeException` and nothing of the call is kept, so open the session again once you have told the player. `close(uniqueId)` ends the account's session. To end it only when one connection holds it, for example when that player leaves, set the connection on the close request; a session another connection holds is then left alone:
 
 ```java
 sessionService.close(SessionCloseRequest.builder()

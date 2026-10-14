@@ -33,10 +33,12 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -71,14 +73,16 @@ class MigrationJourneysTest {
 		CompletableFuture<Optional<PendingMigration>> cancelled = journeys.cancel(connection).toCompletableFuture();
 
 		assertFalse(cancelled.isDone());
-		verify(store, never()).clear(any(PipelineStateReference.class));
+		verify(store, never()).clear(any(PipelineStateReference.class), any(PipelineState.class));
 
-		when(store.find(any(PipelineStateReference.class))).thenReturn(Optional.of(startedState()));
+		PipelineState saved = startedState();
+		when(store.find(any(PipelineStateReference.class))).thenReturn(Optional.of(saved));
+		when(store.clear(any(PipelineStateReference.class), any(PipelineState.class))).thenReturn(true);
 		running.complete(null);
 
 		PendingMigration journey = cancelled.join().orElseThrow();
 		assertEquals(account, journey.getUniqueId());
-		verify(store).clear(any(PipelineStateReference.class));
+		verify(store).clear(any(PipelineStateReference.class), eq(saved));
 		verify(events).call(argThat(event -> event instanceof MigrationResolvedEvent resolved
 				&& resolved.getReason() == ScenarioResolution.CANCELLED
 				&& account.equals(resolved.getAccountUniqueId())));
@@ -104,6 +108,7 @@ class MigrationJourneysTest {
 	@Test
 	void startsAJourney() {
 		when(store.find(any(PipelineStateReference.class))).thenReturn(Optional.empty());
+		when(store.save(any(PipelineStateReference.class), any(PipelineState.class), anyLong())).thenReturn(true);
 
 		assertEquals(MigrationResultStatus.STARTED, journeys.start(journey()).toCompletableFuture().join());
 
@@ -116,15 +121,61 @@ class MigrationJourneysTest {
 		assertEquals("premium", context.getTargetProviderId());
 		assertEquals(account, context.getAccountUniqueId());
 		assertEquals(1234L, state.get(MigrationPendingState.KEY).orElseThrow().getRequestedAt());
+		assertNull(state.getRevision(), "a connection without a state gets one only while it still has none");
 		verify(events).call(argThat(event -> event instanceof MigrationRequiredEvent required
 				&& connection.equals(required.getConnectionUniqueId())
 				&& account.equals(required.getAccountUniqueId())));
+	}
+
+	@DisplayName("Starts a journey over exactly the state the connection had when it was read")
+	@Test
+	void startReplacesTheStateItRead() {
+		PipelineState waiting = PipelineState.initial();
+		waiting.setPipelineType(PipelineType.AUTHENTICATION);
+		waiting.setRevision("read");
+		when(store.find(any(PipelineStateReference.class))).thenReturn(Optional.of(waiting));
+		when(store.save(any(PipelineStateReference.class), any(PipelineState.class), anyLong())).thenReturn(true);
+
+		assertEquals(MigrationResultStatus.STARTED, journeys.start(journey()).toCompletableFuture().join());
+
+		ArgumentCaptor<PipelineState> saved = ArgumentCaptor.forClass(PipelineState.class);
+		verify(store).save(eq(PipelineStateReference.of("PlayerOne", "127.0.0.1")), saved.capture(), anyLong());
+		assertEquals("read", saved.getValue().getRevision());
+	}
+
+	@DisplayName("A start whose save loses to another proxy fails and announces no journey")
+	@Test
+	void startThatLosesFails() {
+		when(store.find(any(PipelineStateReference.class))).thenReturn(Optional.empty());
+		when(store.save(any(PipelineStateReference.class), any(PipelineState.class), anyLong())).thenReturn(false);
+
+		assertEquals(MigrationResultStatus.FAILED, journeys.start(journey()).toCompletableFuture().join());
+
+		verify(events, never()).call(any(MigrationRequiredEvent.class));
+		assertTrue(journeys.find(connection).toCompletableFuture().join().isEmpty());
+	}
+
+	@DisplayName("A cancel whose clear loses to another proxy cancels nothing and keeps the newer state")
+	@Test
+	void cancelThatLosesCancelsNothing() {
+		when(store.save(any(PipelineStateReference.class), any(PipelineState.class), anyLong())).thenReturn(true);
+		when(store.find(any(PipelineStateReference.class))).thenReturn(Optional.empty());
+		journeys.start(journey()).toCompletableFuture().join();
+		when(store.find(any(PipelineStateReference.class))).thenReturn(Optional.of(startedState()));
+		when(store.clear(any(PipelineStateReference.class), any(PipelineState.class))).thenReturn(false);
+
+		assertTrue(journeys.cancel(connection).toCompletableFuture().join().isEmpty());
+
+		verify(store, never()).clear(any(PipelineStateReference.class));
+		verify(events, never()).call(any(MigrationResolvedEvent.class));
+		assertTrue(journeys.find(connection).toCompletableFuture().join().isPresent(), "the journey stays findable");
 	}
 
 	@DisplayName("Finds a journey in the state of the connection it was started for, its username and address")
 	@Test
 	void findsTheJourneyUnderItsConnection() {
 		when(store.find(any(PipelineStateReference.class))).thenReturn(Optional.empty());
+		when(store.save(any(PipelineStateReference.class), any(PipelineState.class), anyLong())).thenReturn(true);
 		journeys.start(journey()).toCompletableFuture().join();
 		when(store.find(PipelineStateReference.of("PlayerOne", "127.0.0.1"))).thenReturn(Optional.of(startedState()));
 

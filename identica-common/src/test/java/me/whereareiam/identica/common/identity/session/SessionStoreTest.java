@@ -7,6 +7,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import static me.whereareiam.identica.common.identity.session.SessionFixtures.LIFETIME_MS;
@@ -126,6 +127,39 @@ class SessionStoreTest {
 
 		assertTrue(beta.find(session.getSessionId()).join().isEmpty());
 		assertTrue(shortLived.findByAccount(account).join().isEmpty());
+	}
+
+	@DisplayName("Two proxies listing sessions of one account at the same moment both stay listed")
+	@Test
+	void concurrentIndexChangesAreNotLost() {
+		Session first = stored(account, "alpha", 1);
+		Session second = stored(account, "beta", 2);
+		alpha.touch(first).join();
+		beta.touch(second).join();
+		adapter.beforeCompare = () -> {
+			adapter.beforeCompare = () -> {};
+			beta.index(second).join();
+		};
+
+		alpha.index(first).join();
+
+		assertEquals(List.of(first.getSessionId(), second.getSessionId()), ids(beta.findByAccount(account).join()));
+	}
+
+	@DisplayName("A commit refuses when the account's sessions changed after they were read")
+	@Test
+	void commitRefusesAChangedAccount() {
+		Session first = stored(account, "alpha", 1);
+		Session second = stored(account, "beta", 2);
+		alpha.touch(first).join();
+		beta.touch(second).join();
+		SessionStore.AccountSessions readByAlpha = alpha.account(account).join();
+		SessionStore.AccountSessions readByBeta = beta.account(account).join();
+
+		assertTrue(beta.commit(account, readByBeta, Set.of(second.getSessionId())).join());
+		assertFalse(alpha.commit(account, readByAlpha, Set.of(first.getSessionId())).join());
+
+		assertEquals(List.of(second.getSessionId()), ids(alpha.findByAccount(account).join()));
 	}
 
 	@DisplayName("Touching a record gives it its lifetime again without writing the index entries")

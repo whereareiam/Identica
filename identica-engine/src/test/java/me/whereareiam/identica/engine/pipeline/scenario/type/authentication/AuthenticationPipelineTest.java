@@ -9,6 +9,7 @@ import me.whereareiam.identica.engine.pipeline.PipelineExecutor;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.auth.AuthContext;
+import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.request.ConnectionRequest;
 import me.whereareiam.identica.model.auth.request.ResumeRequest;
 import me.whereareiam.identica.model.config.Engine;
@@ -110,6 +111,7 @@ class AuthenticationPipelineTest {
 
 		PipelineStateStore store = mock(PipelineStateStore.class);
 		when(store.find(any(PipelineStateReference.class))).thenReturn(Optional.of(stored));
+		when(store.save(any(PipelineStateReference.class), any(PipelineState.class), anyLong())).thenReturn(true);
 		PipelineExecutor executor = mock(PipelineExecutor.class);
 		// No step takes the input, as when the step waiting for the player expects another kind of input.
 		when(executor.execute(any(), any(), any())).thenAnswer(invocation -> {
@@ -173,6 +175,79 @@ class AuthenticationPipelineTest {
 		verify(store, never()).save(any(), any(), anyLong());
 	}
 
+	@DisplayName("A fresh run replaces only the state that was stored when it started")
+	@Test
+	void freshRunSavesOverTheStateItStartedOver() {
+		EventUtil.initialize(mock(EventManager.class));
+		PipelineState leftover = PipelineState.initial();
+		leftover.setRevision("leftover");
+		PipelineStateStore store = mock(PipelineStateStore.class);
+		when(store.find(any(PipelineStateReference.class))).thenReturn(Optional.of(leftover));
+		when(store.save(any(PipelineStateReference.class), any(PipelineState.class), anyLong())).thenReturn(true);
+		TestAuthenticationPipeline pipeline = new TestAuthenticationPipeline(store, waitingExecutor());
+
+		PipelineResult result = pipeline.execute(freshRequest(), null).toCompletableFuture().join();
+
+		ArgumentCaptor<PipelineState> saved = ArgumentCaptor.forClass(PipelineState.class);
+		verify(store).save(any(PipelineStateReference.class), saved.capture(), anyLong());
+		assertEquals(PipelineStatus.WAITING, result.getStatus());
+		assertEquals("leftover", saved.getValue().getRevision());
+	}
+
+	@DisplayName("A fresh run that found no stored state saves only while there still is none")
+	@Test
+	void freshRunCreatesItsState() {
+		EventUtil.initialize(mock(EventManager.class));
+		PipelineStateStore store = mock(PipelineStateStore.class);
+		when(store.find(any(PipelineStateReference.class))).thenReturn(Optional.empty());
+		when(store.save(any(PipelineStateReference.class), any(PipelineState.class), anyLong())).thenReturn(true);
+		TestAuthenticationPipeline pipeline = new TestAuthenticationPipeline(store, waitingExecutor());
+
+		pipeline.execute(freshRequest(), null).toCompletableFuture().join();
+
+		ArgumentCaptor<PipelineState> saved = ArgumentCaptor.forClass(PipelineState.class);
+		verify(store).save(any(PipelineStateReference.class), saved.capture(), anyLong());
+		assertNull(saved.getValue().getRevision());
+	}
+
+	@DisplayName("A run whose save loses to another writer disconnects the player with engine.concurrentChangeKick")
+	@Test
+	void runThatLosesItsSaveRequiresAReconnect() {
+		EventUtil.initialize(mock(EventManager.class));
+		PipelineStateStore store = mock(PipelineStateStore.class);
+		when(store.find(any(PipelineStateReference.class))).thenReturn(Optional.empty());
+		when(store.save(any(PipelineStateReference.class), any(PipelineState.class), anyLong())).thenReturn(false);
+		TestAuthenticationPipeline pipeline = new TestAuthenticationPipeline(store, waitingExecutor());
+
+		PipelineResult result = pipeline.execute(freshRequest(), null).toCompletableFuture().join();
+
+		assertEquals(PipelineStatus.REQUIRE_RECONNECT, result.getStatus());
+		assertEquals("reconnect", result.getMessage());
+		ConnectionDecision decision = pipeline.mapDecision(result);
+		assertEquals(ConnectionDecision.Status.REQUIRE_RECONNECT, decision.getStatus());
+		assertEquals("reconnect", decision.getMessage());
+	}
+
+	private static ConnectionRequest freshRequest() {
+		UUID connectionId = UUID.randomUUID();
+		return ConnectionRequest.builder()
+				.connectionUniqueId(connectionId)
+				.identity(new ConnectionIdentity(UUID.randomUUID(), "PlayerOne", "127.0.0.1"))
+				.build();
+	}
+
+	/** Runs a pipeline whose steps end waiting for the player. */
+	private static PipelineExecutor waitingExecutor() {
+		PipelineExecutor executor = mock(PipelineExecutor.class);
+		when(executor.execute(any(), any(), any())).thenAnswer(invocation -> {
+			PipelineExecutor.ExecutionObserver observer = invocation.getArgument(2);
+			observer.onGroupCompleted(mock(PipelineGroup.class), new Object(),
+					GroupOutcome.result(PipelineResult.waiting("prompt")), null);
+			return CompletableFuture.completedFuture(null);
+		});
+		return executor;
+	}
+
 	private static JourneyOverrideItem chosenStage() {
 		return new JourneyOverrideItem(null, "chosen", 0, false, null, List.of());
 	}
@@ -208,9 +283,12 @@ class AuthenticationPipelineTest {
 			authentication.setAuthenticationFailed(List.of("failed"));
 			Messages.Scenarios scenarios = new Messages.Scenarios();
 			scenarios.setAuthentication(authentication);
+			Messages.Engine engine = new Messages.Engine();
+			engine.setConcurrentChangeKick(List.of("reconnect"));
 
 			Messages messages = new Messages();
 			messages.setScenarios(scenarios);
+			messages.setEngine(engine);
 			return messages;
 		}
 

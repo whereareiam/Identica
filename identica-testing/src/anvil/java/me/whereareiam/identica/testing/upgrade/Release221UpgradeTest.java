@@ -55,7 +55,7 @@ class Release221UpgradeTest {
 
 	@Test
 	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Release221Database.class)
-	void logsInWithThePasswordOf221AndTreatsACaseVariantAsAnotherPlayer(ScenarioContext anvil) {
+	void logsInWithThePasswordOf221AlsoInAnotherCase(ScenarioContext anvil) {
 		// The usernames move to their own tables, and the migration history 2.x kept for the credential tables goes.
 		ProcessConsole console = anvil.processes().proxy(PROXY).console();
 		console.await("Database schema identica/account: applied 1 username-layout", 0, Duration.ofSeconds(5));
@@ -70,10 +70,13 @@ class Release221UpgradeTest {
 				.sees(m -> m.credential().getCompletion().getAuthentication().getBody())
 				.leave();
 
-		// As on a database this version created: another case is another offline player, who has no account yet.
+		// Usernames are compared without regard to case: in another case it is the same player and the same account.
 		Journey.offline(anvil, "upgrader").join()
 				.on(AUTH)
-				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody());
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
 	}
 
 	@Test

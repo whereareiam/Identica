@@ -21,7 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 /**
  * An administrator reserves a UUID for a username. The next account registered under that username gets the
  * reserved UUID instead of the one {@code uniqueIdMode} would assign, here a random one, and the reservation is
- * used up.
+ * used up. An account registered from the console gets it too, which is how accounts moved from another plugin keep
+ * their UUIDs.
  */
 @Tag("identity")
 class AccountReservationTest {
@@ -36,6 +37,24 @@ class AccountReservationTest {
 				.findsReservation("Alice", reserved);
 
 		Journey alice = registered(Journey.offline(anvil, "Alice").join());
+
+		assertEquals(reserved, alice.identity().getObserved().getUniqueId());
+	}
+
+	@Test
+	@Identica(providers = Provider.CREDENTIAL)
+	void givesAnAccountRegisteredFromTheConsoleTheReservedUuid(ScenarioContext anvil) {
+		UUID reserved = offline("Alice");
+		Administrator.at(anvil, PROXY)
+				.reserves("Alice", reserved)
+				.registersCredential("Alice", PASSWORD)
+				.findsNoReservation("Alice");
+
+		Journey alice = Journey.offline(anvil, "Alice").join()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.on(LOBBY);
 
 		assertEquals(reserved, alice.identity().getObserved().getUniqueId());
 	}

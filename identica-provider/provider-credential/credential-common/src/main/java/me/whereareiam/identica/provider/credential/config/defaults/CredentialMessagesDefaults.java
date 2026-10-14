@@ -264,6 +264,8 @@ public class CredentialMessagesDefaults implements DefaultsProvider<CredentialMe
 		admin.setPasswordSet("{prefix}<white>Credential <green>updated</green>.</white>");
 		admin.setNotFound("{prefix}<white>No password account found.</white>");
 		admin.setAlreadyRegistered("{prefix}<white>Credential account already <green>registered</green>.</white>");
+		admin.setAccountExists("{prefix}<white>Account <gray>{username}</gray> [<gray>{uniqueId}</gray>] holds <gray>{target}</gray> already, so nothing was registered.</white>");
+		admin.setReservationTaken("{prefix}<white>The UUID <gray>{uniqueId}</gray> reserved for <gray>{target}</gray> belongs to account <gray>{username}</gray> already, so nothing was registered.</white>");
 		commands.setAdmin(admin);
 
 		messages.setCommands(commands);

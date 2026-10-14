@@ -1,7 +1,7 @@
 ---
 title: Настройки
 description: Подробное описание каждого поля основных настроек Identica.
-sourceHash: 2153c2b8296a9d58baab0bfef3dd03da6f6ab178
+sourceHash: af4296e6b298ffa6e96c08fb85d09df480d7e966
 ---
 
 ## Уровень логирования [#level]
@@ -100,6 +100,7 @@ level: 3
 `/identica admin reservation info <username>` показывает UUID, зарезервированный за ником, а `/identica admin reservation delete <username>` снимает резервирование.
 В режимах `RANDOM` и `OFFLINE` резервирование заменяет UUID, который назначил бы режим; `PREMIUM` всегда назначает UUID лицензионного аккаунта.
 `/identica admin clear <username>` резервирует за ником собственный UUID аккаунта, так что при повторной регистрации игрок сохранит свой UUID.
+Аккаунт, зарегистрированный из консоли командой `/identica credential register`, тоже получает UUID, зарезервированный за его ником, — так аккаунты, перенесённые из другого плагина авторизации, сохраняют свои UUID; см. [Credential](../../providers/official/credential/index.md#registering-accounts-from-the-console).
 
 ### reservationTtl
 

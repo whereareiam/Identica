@@ -195,6 +195,30 @@ public final class Administrator {
 	}
 
 	/**
+	 * Registers a Credential account for a player who has never joined, as an operator moving accounts from another
+	 * plugin does.
+	 */
+	public Administrator registersCredential(String username, String password) {
+		run("identica credential register " + username + " " + password, configured.credential().getCommands().getAdmin().getRegistered());
+		return this;
+	}
+
+	/**
+	 * Tries to register a Credential account for a username an account holds already, and expects the proxy to
+	 * refuse and name that account.
+	 *
+	 * @param holder         the username of the account that holds it
+	 * @param holderUniqueId the UUID of that account
+	 */
+	public Administrator cannotRegisterCredential(String username, String password, String holder, UUID holderUniqueId) {
+		run("identica credential register " + username + " " + password, filled(
+				configured.credential().getCommands().getAdmin().getAccountExists(),
+				Map.of("target", username, "username", holder, "uniqueId", holderUniqueId.toString())
+		));
+		return this;
+	}
+
+	/**
 	 * Sets a new password for a player's Credential account.
 	 */
 	public Administrator setsPassword(String username, String password) {

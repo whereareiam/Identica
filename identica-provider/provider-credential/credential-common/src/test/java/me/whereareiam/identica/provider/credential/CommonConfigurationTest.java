@@ -7,6 +7,7 @@ import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
 import me.whereareiam.identica.ConnectionCoordinator;
+import me.whereareiam.identica.persistence.AccountReservationPersistenceService;
 import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.persistence.provider.ProviderProfilePersistenceService;
 import me.whereareiam.identica.identity.account.AccountService;
@@ -43,6 +44,7 @@ class CommonConfigurationTest {
 			binder.bind(CredentialCommandsProvider.class).toInstance(mock(CredentialCommandsProvider.class));
 			binder.bind(ProviderLinkPersistenceService.class).toInstance(mock(ProviderLinkPersistenceService.class));
 			binder.bind(ProviderProfilePersistenceService.class).toInstance(mock(ProviderProfilePersistenceService.class));
+			binder.bind(AccountReservationPersistenceService.class).toInstance(mock(AccountReservationPersistenceService.class));
 			binder.bind(AccountService.class).toInstance(mock(AccountService.class));
 			binder.bind(EventManager.class).toInstance(mock(EventManager.class));
 			binder.bind(ConnectionCoordinator.class).toInstance(mock(ConnectionCoordinator.class));

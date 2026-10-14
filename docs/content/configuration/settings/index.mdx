@@ -99,6 +99,7 @@ To give one player a different UUID, such as their offline-mode UUID on a `RANDO
 `/identica admin reservation info <username>` shows the UUID reserved for a username, and `/identica admin reservation delete <username>` removes the reservation.
 In `RANDOM` and `OFFLINE` modes a reservation takes the place of the UUID the mode would assign; `PREMIUM` always assigns the premium UUID.
 `/identica admin clear <username>` reserves the account's own UUID for its username, so the player keeps their UUID when they register again.
+An account registered from the console with `/identica credential register` also gets the UUID reserved for its username, which is how accounts moved from another authentication plugin keep their UUIDs; see [Credential](../../providers/official/credential/index.md#registering-accounts-from-the-console).
 
 ### reservationTtl
 

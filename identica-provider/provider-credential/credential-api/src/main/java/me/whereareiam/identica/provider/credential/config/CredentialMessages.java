@@ -204,6 +204,27 @@ public class CredentialMessages implements MessageDocument {
 			private String passwordSet;
 			private String notFound;
 			private String alreadyRegistered;
+
+			/**
+			 * Message shown when {@code /identica credential register} names a username an account holds already,
+			 * in any case and through any provider, or whose Credential subject belongs to an account. Nothing is
+			 * registered or linked.
+			 * Placeholders:
+			 * - {target}: the username the command named
+			 * - {username}: the existing account's username
+			 * - {uniqueId}: the existing account's UUID
+			 */
+			private String accountExists;
+
+			/**
+			 * Message shown when {@code /identica credential register} would give the new account the UUID reserved
+			 * for its username, but another account has that UUID already. Nothing is registered.
+			 * Placeholders:
+			 * - {target}: the username the command named
+			 * - {uniqueId}: the reserved UUID
+			 * - {username}: the username of the account that has the UUID
+			 */
+			private String reservationTaken;
 		}
 	}
 }

@@ -79,15 +79,22 @@ class ConcurrentLoginTest {
 				.remainsOn(LOBBY);
 	}
 
+	/**
+	 * The later connection stays on the auth server, so the earlier one leaves on its own rather than being
+	 * disconnected by the lobby, which keeps only one player of a name.
+	 */
 	@Test
-	@IdenticaCluster(configure = AllowMultiple.class)
+	@IdenticaCluster(configure = {AllowMultiple.class, ProxyBLeavesPlayersWhereTheyAre.class})
 	void leavingOneProxyKeepsTheSessionOfTheConnectionOnTheOther(ScenarioContext anvil) {
 		Journey earlier = online(anvil);
-		Journey later = loginThroughProxyB(anvil).on(LOBBY);
+		Journey later = loginThroughProxyB(anvil)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody())
+				.remainsOn(AUTH);
+		earlier.remainsOn(LOBBY);
 
 		earlier.leave();
 
-		later.remainsOn(LOBBY);
+		later.remainsOn(AUTH);
 		Administrator.at(anvil, PROXY_A).findsSessionOf("Alice");
 	}
 

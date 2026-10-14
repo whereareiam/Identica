@@ -128,7 +128,8 @@ Do not replace these libraries with unrelated alternatives in the same area unle
 - `./gradlew test`
 - `./gradlew pluginJars`
 - `./gradlew test pluginJars`
-- `./gradlew test assembleDistribution` (what the CI checks run)
+- `./gradlew integrationTest` (the tests that start database and Redis servers in containers)
+- `./gradlew test assembleDistribution` (the quick part of the CI checks)
 
 ### Verification Guidance
 
@@ -138,12 +139,15 @@ Do not replace these libraries with unrelated alternatives in the same area unle
 - Add or update automated tests when behavior changes.
 - Prefer extending the closest existing test suite instead of creating a parallel testing style.
 - Database and replication changes may need integration-style coverage in addition to unit tests.
+- `test` needs no Docker. A test that starts a container carries `@Tag("integration")` and runs only in `integrationTest`; a test on the databases of `TestDatabases` carries `@Tag("database")` (schema tests inherit it from `DatabaseSchemaContract`), so `test` runs it on H2 and SQLite and `integrationTest` on PostgreSQL, MariaDB and MySQL as well.
 
 ### Live Tests
 
 `identica-testing` starts the packaged plugin on a real Velocity proxy with Paper backends and drives simulated players through it.
 
-- run them with `./gradlew :identica-testing:anvilTest`; `./gradlew :identica-testing:anvil` runs it and every suite; `test` and `pluginJars` do not start them
+- journeys are split into suites, each a JUnit tag on the class and an `anvil<Suite>Test` task: `join` (join, entrypoint, routing, restriction), `account` (credential, verification, recognition, security), `identity` (username, identity), `operations` (administration, migration, startup, database, example), `cluster` and `upgrade`; `journeySuites` in the module's build lists them
+- a new journey class carries the tag of its package's suite; `@IdenticaCluster` carries `cluster` itself; `anvilTest` runs only `JourneySuitesTest`, which fails when a journey is in no suite or in several
+- run them with `./gradlew :identica-testing:anvil` (every suite) or one suite, such as `./gradlew :identica-testing:anvilJoinTest --tests 'me.whereareiam.identica.testing.routing.*'`; `test` and `pluginJars` do not start them
 - they need an installed Java 21 and network access on first use; a test takes about 5 seconds and several run at once, each on its own network (`-Pidentica.journeys.parallelism=1` runs them one after another)
 - every test gets fresh proxies, while the `auth` and `lobby` servers start once and serve one test after another, so a journey must not depend on the state of a backend world
 - add or update a journey when a change affects what a joining player experiences
@@ -152,7 +156,7 @@ Do not replace these libraries with unrelated alternatives in the same area unle
 - a failed test keeps its network under `identica-testing/build/anvil/`; read the `anvil-console.log` files there, where Identica's debug logging is enabled
 - change a test proxy's files through `@Identica(configure = ...)` (both proxies of a cluster through `@IdenticaCluster(configure = ...)`), a `Consumer<ProxyConfiguration>` working on Identica's models; `omit` and `corrupt` cover new installations and unreadable files; `ProxyConfiguration.editGenerated` and `corruptGenerated` change the files of a running proxy before `Administrator` reloads it
 - `@IdenticaCluster` starts two proxies on a shared PostgreSQL and, unless turned off, one Redis; a journey names its proxy (`Journey.offline(anvil, "Alice", PROXY_B)`) and `Administrator` runs console commands on one; these tests need Docker and are skipped without it
-- journeys that start from what an earlier version of Identica left are tagged `@Tag("upgrade")` and form the `upgrade` suite (`anvil { suites { ... } }`); `anvilTest` leaves them out and `./gradlew :identica-testing:anvilUpgradeTest` runs them, by hand and in the release workflow; `ProxyConfiguration.seed(path, file)` places such a file, like the SQLite database built from the `identica-2.2.1` layouts that `EarlierInstallation` creates, before the proxy first starts
+- journeys that start from what an earlier version of Identica left are tagged `@Tag("upgrade")` and form the `upgrade` suite; `./gradlew :identica-testing:anvilUpgradeTest` runs them, by hand and in the release workflow; `ProxyConfiguration.seed(path, file)` places such a file, like the SQLite database built from the `identica-2.2.1` layouts that `EarlierInstallation` creates, before the proxy first starts
 - premium accounts come from the network's own stand-in for Mojang, a `YggdrasilMock` test parameter (`yggdrasil.register(...)`), which also verifies premium logins; never add real account credentials to the repository or CI
 
 See `docs/content/developer/testing/index.mdx`.
@@ -169,10 +173,10 @@ See `docs/content/developer/testing/index.mdx`.
 
 ### Pull Request Checks
 
-- Every pull request gets the metadata check (title and label) and the quick checks: tests and `assembleDistribution`.
+- Every pull request gets the metadata check (title and label) and the checks: `test` and `assembleDistribution`, `integrationTest`, and one job per journey suite except `upgrade`, which releases run as well.
 - Label a pull request with exactly one of `feature`, `change`, `bug`, `dependencies`, or with `skip-changelog`; `major` may accompany a category.
 - Add `provider:credential` or `provider:premium` when a pull request or issue concerns that provider's jar; work on the plugin itself carries no such label.
-- A run keeps as artifacts only what someone downloads: `identica-plugins-<version>` from a development build or release, and `test-results` when a test failed.
+- A run keeps as artifacts only what someone downloads: `identica-plugins-<version>` from a development build or release, and `test-results`, `test-results-integration` or `test-results-journeys-<suite>` when a test failed.
 - Development builds are started manually and publish a branch-qualified version. A published GitHub release publishes Maven artifacts, attaches the distribution, and publishes to the stores; a manual run of the release workflow only republishes to the stores.
 - Entry workflows only select a trigger and call `reusable-verify.yml` and `reusable-publish.yml`; shared steps come from `whereareiam/devops` and `whereareiam/blockops`.
 

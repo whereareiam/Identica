@@ -18,7 +18,7 @@ on:
         type: boolean
         default: false
       upgrade:
-        description: Also run the journeys that start a proxy on what an earlier version of Identica left.
+        description: Also run the upgrade journeys, which start a proxy on what an earlier version of Identica left.
         required: false
         type: boolean
         default: false
@@ -67,13 +67,7 @@ jobs:
       - name: Build and test
         env:
           VERSION: ${{ steps.identity.outputs.version }}
-        run: ./gradlew --no-daemon test assembleDistribution
-
-      - name: Upgrade journeys
-        if: inputs.upgrade
-        env:
-          VERSION: ${{ steps.identity.outputs.version }}
-        run: ./gradlew --no-daemon :identica-testing:anvilUpgradeTest
+        run: ./gradlew --no-daemon test :identica-testing:anvilTest assembleDistribution
 
       - uses: whereareiam/devops/primitive/report/junit/publish@v3
         if: always()
@@ -90,3 +84,59 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - uses: whereareiam/devops/primitive/setup/gradle@v3
+
+      - name: Run the tests on database and Redis servers
+        run: ./gradlew --no-daemon integrationTest
+
+      - uses: whereareiam/devops/primitive/report/junit/publish@v3
+        if: always()
+        with:
+          name: Integration test results
+          artifact-name: test-results-integration
+
+  journeys:
+    name: Journeys (${{ matrix.suite }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # The suites of identica-testing/build.gradle.kts; upgrade only when asked for.
+        suite: >-
+          ${{ fromJSON(inputs.upgrade
+          && '["join", "account", "identity", "operations", "cluster", "upgrade"]'
+          || '["join", "account", "identity", "operations", "cluster"]') }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - uses: whereareiam/devops/primitive/setup/gradle@v3
+
+      - name: Run the ${{ matrix.suite }} journeys
+        env:
+          SUITE: ${{ matrix.suite }}
+        run: ./gradlew --no-daemon ":identica-testing:anvil${SUITE^}Test"
+
+      # A failed journey keeps its network, whose console logs tell what the proxy did.
+      - uses: whereareiam/devops/primitive/report/junit/publish@v3
+        if: always()
+        with:
+          name: Journey results (${{ matrix.suite }})
+          artifact-name: test-results-journeys-${{ matrix.suite }}
+          reports: |
+            **/build/reports/tests/**
+            identica-testing/build/anvil/**/anvil-console.log

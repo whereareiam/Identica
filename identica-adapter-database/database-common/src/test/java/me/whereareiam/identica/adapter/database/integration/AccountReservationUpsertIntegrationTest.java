@@ -10,6 +10,7 @@ import me.whereareiam.identica.adapter.database.repository.account.AccountReserv
 import me.whereareiam.identica.adapter.database.testing.schema.TestDatabase;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -19,6 +20,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @DisplayName("Account reservation upsert")
+@Tag("database")
 class AccountReservationUpsertIntegrationTest {
 	private static final long CREATED_AT = 1_000L;
 	private static final long EXPIRES_AT = Long.MAX_VALUE / 2;

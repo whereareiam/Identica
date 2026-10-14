@@ -11,6 +11,7 @@ import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.logging.LoggingHelper;
 import me.whereareiam.identica.model.config.persistence.external.MysqlPersistence;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.junit.jupiter.Container;
@@ -36,6 +37,7 @@ import static org.mockito.Mockito.mock;
  */
 @Testcontainers(disabledWithoutDocker = true)
 @DisplayName("MySQL server requirement")
+@Tag("integration")
 class MysqlServerRequirementIntegrationTest {
 	@Container
 	static MySQLContainer oldest = DatabaseContainers.mysql("mysql:8.0.19");

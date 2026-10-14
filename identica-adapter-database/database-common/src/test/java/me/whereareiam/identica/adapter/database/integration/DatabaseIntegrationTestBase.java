@@ -8,6 +8,7 @@ import me.whereareiam.identica.adapter.database.testing.PostgresDatabaseFixture;
 import me.whereareiam.identica.adapter.database.testing.SqliteDatabaseFixture;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestInstance;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -19,6 +20,7 @@ import java.util.stream.Stream;
 
 @Testcontainers(disabledWithoutDocker = true)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag("integration")
 abstract class DatabaseIntegrationTestBase {
 	@Container
 static PostgreSQLContainer postgresContainer = DatabaseContainers.postgres("postgres:18.1")

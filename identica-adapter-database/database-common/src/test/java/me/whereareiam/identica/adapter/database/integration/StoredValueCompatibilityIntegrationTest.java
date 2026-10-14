@@ -18,6 +18,7 @@ import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
@@ -39,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * way.
  */
 @DisplayName("Stored value compatibility")
+@Tag("database")
 class StoredValueCompatibilityIntegrationTest {
 	@DisplayName("Stores UUIDs and booleans as Jdbi's own binding did")
 	@ParameterizedTest(name = "{0}")

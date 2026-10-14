@@ -27,10 +27,14 @@ import java.util.stream.Stream;
 
 /**
  * The databases schema tests run against: H2 and SQLite always, and PostgreSQL, MariaDB and MySQL
- * in containers when Docker is available. A container starts on first use and serves every test of
- * the run.
+ * in containers when the run asks for database servers through {@value #SERVERS_PROPERTY} and Docker
+ * is available. A container starts on first use and serves every test of the run.
+ * <p>
+ * A test class that uses these databases carries the {@code database} tag, so that
+ * {@code integrationTest}, which sets the property, runs it on the servers too.
  */
 public final class TestDatabases {
+	private static final String SERVERS_PROPERTY = "identica.test.databaseServers";
 	private static final AtomicInteger H2_NAMES = new AtomicInteger();
 
 	private static final Lazy<PostgreSQLContainer> POSTGRES = new Lazy<>(() -> DatabaseContainers.postgres("postgres:18.1"));
@@ -42,10 +46,16 @@ public final class TestDatabases {
 	 */
 	public static Stream<TestDatabase> all() {
 		List<TestDatabase> databases = new ArrayList<>(List.of(new H2(), new Sqlite()));
-		if (DockerClientFactory.instance().isDockerAvailable())
+		if (serversAvailable())
 			databases.addAll(List.of(new Postgres(), new Mariadb(), new Mysql()));
 
 		return databases.stream();
+	}
+
+	private static boolean serversAvailable() {
+		if (!Boolean.getBoolean(SERVERS_PROPERTY)) return false;
+
+		return DockerClientFactory.instance().isDockerAvailable();
 	}
 
 	private static final class H2 extends TestDatabase {

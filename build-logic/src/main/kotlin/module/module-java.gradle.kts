@@ -52,3 +52,29 @@ tasks.withType<Test>().configureEach {
         .orElse(false)
         .get()
 }
+
+// Tests tagged "integration" start servers in containers, so they run in integrationTest instead of test.
+tasks.named<Test>("test") {
+    useJUnitPlatform {
+        excludeTags("integration")
+    }
+}
+
+// Runs the container tests, and the "database" tests on database servers as well as on H2 and SQLite.
+val integrationTest = tasks.register<Test>("integrationTest") {
+    description = "Runs the tests that start database and Redis servers in containers."
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform {
+        includeTags("integration", "database")
+    }
+    systemProperty("identica.test.databaseServers", "true")
+    // Most modules have no such test.
+    failOnNoDiscoveredTests = false
+    shouldRunAfter(tasks.named("test"))
+}
+
+tasks.named("check") {
+    dependsOn(integrationTest)
+}

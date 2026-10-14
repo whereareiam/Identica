@@ -9,6 +9,7 @@ import me.whereareiam.identica.adapter.database.testing.schema.TestDatabase;
 import me.whereareiam.identica.model.identity.Account;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -18,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Account updates")
+@Tag("database")
 class AccountUpdateIntegrationTest {
 	@DisplayName("Changes the last-seen time of one account and nothing else")
 	@ParameterizedTest(name = "{0}")

@@ -6,6 +6,7 @@ import me.whereareiam.identica.model.replication.ReplicationPage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -20,8 +21,9 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 @DisplayName("Redis Replication Adapter Integration")
+@Tag("integration")
 class RedisReplicationAdapterIntegrationTest {
 	@Container
 	private static final RedisContainer REDIS = new RedisContainer(

@@ -13,6 +13,7 @@ import me.whereareiam.identica.provider.credential.model.CredentialAccountHistor
 import me.whereareiam.identica.provider.credential.type.PasswordChangeReason;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -22,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Credential persistence")
+@Tag("database")
 class DefaultCredentialAccountPersistenceServiceTest {
 	private static final int SUBJECTS = 20;
 

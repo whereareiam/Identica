@@ -2,6 +2,7 @@ package me.whereareiam.identica.adapter.database.testing.schema;
 
 import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
 import me.whereareiam.identica.database.schema.DatabaseSchema;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -23,8 +24,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * What installing an owner's {@link DatabaseSchema} guarantees on every database: a new database
  * gets exactly the tables a development build of Identica 3.0.0 created, installing again changes
  * nothing, and a database that development build created is recognised and kept with its rows.
- * Each owner's schema test extends it.
+ * Each owner's schema test extends it and inherits its {@code database} tag, which runs it on
+ * database servers in {@code integrationTest}.
  */
+@Tag("database")
 public abstract class DatabaseSchemaContract {
 	private static final String HISTORY = "strata_history";
 	private static final String LEGACY_USERNAME_STATE = "identica_account_username_state";

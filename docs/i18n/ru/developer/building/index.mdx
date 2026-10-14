@@ -1,7 +1,7 @@
 ---
 title: Сборка Identica
 description: Как собрать плагин со всеми встроенными функциями и jar-файлы его провайдеров.
-sourceHash: 8aab13bb46ca1505b94143e132e73539ed0dab3a
+sourceHash: cc1a79d141d258afb268f64f658e79018b6e3815
 ---
 
 Запускайте из корня репозитория. Исходники компилируются и тестируются установленной на машине Java 21 — той, которой запускается Gradle:
@@ -9,6 +9,15 @@ sourceHash: 8aab13bb46ca1505b94143e132e73539ed0dab3a
 ```shell
 ./gradlew check pluginJars
 ```
+
+`check` запускает модульные тесты через `test` и тесты на серверах баз данных и Redis через `integrationTest`. `test` не нужен Docker; `integrationTest` запускает PostgreSQL, MariaDB, MySQL и Redis в контейнерах и без Docker пропускает эти тесты. Тест, который запускает контейнер, помечен `@Tag("integration")` и выполняется только в `integrationTest`. Тест на базах данных `TestDatabases` помечен `@Tag("database")` — этот тег каждый тест схемы наследует от `DatabaseSchemaContract`: `test` запускает его на H2 и SQLite, а `integrationTest` — ещё и на серверах.
+
+```shell
+./gradlew test
+./gradlew integrationTest
+```
+
+Живые тесты `identica-testing` не входят в `check`; см. [Живые тесты](../testing/index.mdx).
 
 `pluginJars` собирает загрузочные jar-файлы для Velocity и BungeeCord, универсальный jar-файл (BUNDLE) и jar-файлы официальных провайдеров в `build/libs/`.
 

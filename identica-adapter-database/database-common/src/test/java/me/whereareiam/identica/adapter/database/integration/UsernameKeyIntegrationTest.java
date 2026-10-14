@@ -22,6 +22,7 @@ import me.whereareiam.identica.model.identity.username.UsernameWriteResult;
 import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -39,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * before that rule that share a username go on without one.
  */
 @DisplayName("Username keys")
+@Tag("database")
 class UsernameKeyIntegrationTest {
 	private static final UUID ALICE = UUID.fromString("00000000-0000-0000-0000-00000000000a");
 	private static final UUID LOWERCASE_ALICE = UUID.fromString("00000000-0000-0000-0000-00000000000b");

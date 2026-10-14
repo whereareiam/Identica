@@ -18,6 +18,7 @@ import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
@@ -33,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Provider link upsert")
+@Tag("database")
 class ProviderLinkUpsertIntegrationTest {
 	private static final int ACCOUNTS = 20;
 

@@ -19,6 +19,7 @@ import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.model.identity.provider.AccountProviderProfile;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
@@ -31,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Provider profile upsert")
+@Tag("database")
 class ProviderProfileUpsertIntegrationTest {
 	private static final int SUBJECTS = 20;
 

@@ -17,6 +17,7 @@ import me.whereareiam.identica.feature.verification.model.enrollment.Verificatio
 import me.whereareiam.identica.feature.verification.model.selection.VerificationSelection;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -30,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Verification persistence")
+@Tag("database")
 class DefaultVerificationPersistenceServiceTest {
 	private static final int ROUNDS = 20;
 	private static final int PROXIES = 4;

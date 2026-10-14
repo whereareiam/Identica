@@ -6,6 +6,7 @@ import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.journey.Journey;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
@@ -14,6 +15,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
 /**
  * A new offline player joins a network whose only provider is Credential.
  */
+@Tag("join")
 class CredentialFirstJoinTest {
 	private static final String PASSWORD = "Secret-123";
 

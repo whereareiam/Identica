@@ -9,6 +9,7 @@ import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -22,6 +23,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY;
  * An administrator acts on an online player after the messages for it were emptied. Emptying a message
  * silences the text; the player is disconnected all the same.
  */
+@Tag("operations")
 class SilentDisconnectTest {
 	private static final String PASSWORD = "Secret-123";
 

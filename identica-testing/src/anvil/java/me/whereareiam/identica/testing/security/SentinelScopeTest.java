@@ -10,6 +10,7 @@ import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -23,6 +24,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
  * another account. The brute-force and resume-spam sentinels both count an address and an account together, so
  * exceeding a limit locks out only that account from that address.
  */
+@Tag("account")
 class SentinelScopeTest {
 	private static final String PASSWORD = "Secret-123";
 	private static final String WRONG = "Wrong-456";

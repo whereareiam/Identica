@@ -8,6 +8,7 @@ import me.whereareiam.identica.testing.fixture.Authenticator;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
@@ -18,6 +19,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
  * from. A player who returns from the same address continues where she left; a client using her username from
  * another address starts over and leaves her progress as it was.
  */
+@Tag("account")
 class LoginProgressTest {
 	private static final String PASSWORD = "Secret-123";
 	private static final String ELSEWHERE = "127.0.0.2";

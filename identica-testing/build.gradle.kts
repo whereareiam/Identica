@@ -73,6 +73,13 @@ fun projectJar(project: ProjectDependency): Configuration =
 val journeyParallelism = providers.gradleProperty("identica.journeys.parallelism").map(String::toInt)
 	.orElse((Runtime.getRuntime().availableProcessors() / 4).coerceIn(1, 4))
 
+/**
+ * Suites the journeys are split into, each a JUnit tag: getting a player in, what happens to an account once
+ * it exists, usernames and unique ids, what administrators do, two proxies sharing a database, and starting
+ * from what an earlier version of Identica left.
+ */
+val journeySuites = listOf("join", "account", "identity", "operations", "cluster", "upgrade")
+
 anvil {
 	acceptEula()
 	engine {
@@ -89,12 +96,19 @@ anvil {
 	artifact("example-provider", pluginJar(projects.exampleProvider))
 	artifact("example-addon", projectJar(projects.exampleAddon))
 
-	// Journeys that start from what an earlier version of Identica left run in anvilUpgradeTest, not in anvilTest.
+	// Each suite runs the journeys of its tag in anvil<Suite>Test, such as anvilJoinTest.
 	suites {
-		register("upgrade") {
-			includeTags("upgrade")
+		journeySuites.forEach { suite ->
+			register(suite) {
+				includeTags(suite)
+			}
 		}
 	}
+}
+
+// Left with what no suite claims, anvilTest checks that every journey belongs to exactly one suite.
+tasks.named<AnvilTest>("anvilTest") {
+	systemProperty("identica.journeys.suites", journeySuites.joinToString(","))
 }
 
 tasks.named<Test>("test") {

@@ -9,6 +9,7 @@ import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -23,6 +24,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY;
  * signals the join restriction allows still gets through, and a provider whose join restriction is not configured
  * cannot be restricted.
  */
+@Tag("join")
 class JoinRestrictionTest {
 	private static final String PASSWORD = "Secret-123";
 

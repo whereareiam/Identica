@@ -8,6 +8,7 @@ import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
@@ -17,6 +18,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
  * Players register and log in on networks whose routing sends them to another server, or leaves them where they
  * are, while a step waits and once they are done. Players join {@code lobby}.
  */
+@Tag("join")
 class RoutingTargetJoinTest {
 	private static final String PASSWORD = "Secret-123";
 

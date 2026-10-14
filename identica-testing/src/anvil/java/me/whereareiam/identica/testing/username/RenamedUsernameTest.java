@@ -10,6 +10,7 @@ import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
@@ -20,6 +21,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY;
  * An account that lost its username in a conflict takes it back on its next join once nobody holds it. A username
  * an administrator gives an account by hand stays: neither a conflict nor a rename at Mojang changes it.
  */
+@Tag("identity")
 class RenamedUsernameTest {
 	private static final String PASSWORD = "Secret-123";
 

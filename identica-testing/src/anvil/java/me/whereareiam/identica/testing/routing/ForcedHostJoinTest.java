@@ -7,6 +7,7 @@ import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.function.Consumer;
@@ -19,6 +20,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY_
  * Players register on networks whose proxy forces {@link me.whereareiam.identica.testing.environment.IdenticaNetwork#LOBBY_HOST}
  * to {@code lobby} and whose routing has no completion server of its own. They register on {@code auth}.
  */
+@Tag("join")
 class ForcedHostJoinTest {
 	private static final String PASSWORD = "Secret-123";
 

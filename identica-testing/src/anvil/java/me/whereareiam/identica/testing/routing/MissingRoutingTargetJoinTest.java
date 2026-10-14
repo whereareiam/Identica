@@ -7,6 +7,7 @@ import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.function.Consumer;
  * Players join networks whose step server does not exist. The registration scenario has a message of its own
  * for that; authentication keeps the shared {@code routing.missingServer}.
  */
+@Tag("join")
 class MissingRoutingTargetJoinTest {
 	private static final String MISSING = "nowhere";
 	private static final String PASSWORD = "Secret-123";

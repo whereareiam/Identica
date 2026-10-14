@@ -1,6 +1,7 @@
 package me.whereareiam.identica.testing.environment;
 
 import me.whereareiam.anvil.integration.junit.AnvilEnvironment;
+import org.junit.jupiter.api.Tag;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -14,7 +15,8 @@ import java.util.function.Consumer;
  * has an {@code auth-b} server of its own instead of {@code auth}. Credential is the only provider and
  * journeys are interactive. The proxies, the database and Redis are new in every test; the two servers keep
  * running and serve one test after another. The database and Redis run in containers, so the test is skipped
- * without Docker.
+ * without Docker. The {@code cluster} tag puts every such test in the {@code cluster} suite, which
+ * {@code anvilClusterTest} runs.
  *
  * <pre>{@code
  * @Test
@@ -26,6 +28,7 @@ import java.util.function.Consumer;
 @Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 @AnvilEnvironment(IdenticaClusterScenarios.class)
+@Tag("cluster")
 public @interface IdenticaCluster {
 	/**
 	 * Whether the proxies replicate through Redis. Without it they only share the database.

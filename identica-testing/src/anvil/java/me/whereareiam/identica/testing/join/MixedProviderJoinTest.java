@@ -6,6 +6,7 @@ import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.journey.Journey;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
@@ -15,6 +16,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
  * An offline player joins a network with both providers, where Premium outranks Credential. Whether the player's
  * username belongs to a premium account decides what happens.
  */
+@Tag("join")
 class MixedProviderJoinTest {
 	private static final String PASSWORD = "Secret-123";
 

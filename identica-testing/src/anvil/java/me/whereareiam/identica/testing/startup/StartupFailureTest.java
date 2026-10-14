@@ -4,6 +4,7 @@ import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.journey.Journey;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.function.Consumer;
@@ -11,6 +12,7 @@ import java.util.function.Consumer;
 /**
  * Identica cannot finish its startup. The proxy keeps running, so Identica must keep everyone out.
  */
+@Tag("operations")
 class StartupFailureTest {
 	private static final String AUTHENTICATION_UNAVAILABLE = "multiplayer.disconnect.authservers_down";
 

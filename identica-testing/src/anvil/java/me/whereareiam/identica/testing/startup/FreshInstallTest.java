@@ -5,6 +5,7 @@ import me.whereareiam.identica.model.config.provider.Providers;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.journey.Journey;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -18,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * A proxy starts without files that an administrator would not have written yet.
  */
+@Tag("operations")
 class FreshInstallTest {
 	@Test
 	@Identica(configure = NoProvidersFile.class)

@@ -9,6 +9,7 @@ import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
@@ -19,6 +20,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
  * the Credential player's choice but the holder chose it first. When another premium account still holds the name
  * from before its own rename, that name is stale: the current owner gets it.
  */
+@Tag("identity")
 class ProviderRenameTest {
 	private static final String PASSWORD = "Secret-123";
 

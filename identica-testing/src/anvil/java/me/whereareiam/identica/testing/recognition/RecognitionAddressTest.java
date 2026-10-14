@@ -9,6 +9,7 @@ import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -22,6 +23,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
  * through the hostname it registered with or from another one. Recognition compares its default signals: the
  * username, the address and the hostname the client announced.
  */
+@Tag("account")
 class RecognitionAddressTest {
 	private static final String PASSWORD = "Secret-123";
 	private static final String HOME = "127.0.0.2";

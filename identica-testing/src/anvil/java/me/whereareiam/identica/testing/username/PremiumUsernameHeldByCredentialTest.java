@@ -7,6 +7,7 @@ import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
@@ -18,6 +19,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY;
  * both providers, where Premium outranks Credential, the account that holds the username keeps it: Premium only asks
  * for a premium login when the account of a known username prefers Premium.
  */
+@Tag("identity")
 class PremiumUsernameHeldByCredentialTest {
 	private static final String PASSWORD = "Secret-123";
 

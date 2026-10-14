@@ -8,6 +8,7 @@ import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.function.Consumer;
@@ -22,6 +23,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY;
  * Password rules are Credential's defaults; unless a test says otherwise, the new password has to be repeated and
  * the command's usage offers the repeat argument.
  */
+@Tag("account")
 class PasswordChangeTest {
 	private static final String PASSWORD = "Secret-123";
 	private static final String NEW_PASSWORD = "Changed-456";

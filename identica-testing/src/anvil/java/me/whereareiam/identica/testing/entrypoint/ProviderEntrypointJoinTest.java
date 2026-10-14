@@ -9,6 +9,7 @@ import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
@@ -21,6 +22,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
  * account the verified login already belongs to, so it never moves an account. It never lifts Premium's protection of
  * a premium name.
  */
+@Tag("join")
 class ProviderEntrypointJoinTest {
 	private static final String PASSWORD = "Secret-123";
 

@@ -7,6 +7,7 @@ import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -25,6 +26,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY;
  * premium login. An offline player with a premium username is therefore not refused first, and the owner of a
  * premium account still joins without a prompt.
  */
+@Tag("join")
 class PremiumDetectionTest {
 	private static final String PASSWORD = "Secret-123";
 

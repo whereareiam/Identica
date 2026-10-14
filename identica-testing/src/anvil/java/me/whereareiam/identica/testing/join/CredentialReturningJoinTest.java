@@ -10,6 +10,7 @@ import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.session.SessionConcurrencyPolicy;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.function.Consumer;
@@ -21,6 +22,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY;
 /**
  * An offline player with a Credential account joins a network whose only provider is Credential.
  */
+@Tag("join")
 class CredentialReturningJoinTest {
 	private static final String PASSWORD = "Secret-123";
 	/** Wrong passwords Credential's brute-force sentinel allows by default before it locks the account out. */

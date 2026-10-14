@@ -9,6 +9,7 @@ import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.identity.UniqueIdMode;
 import me.whereareiam.identica.util.UniqueIdGenerator;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
@@ -25,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
  * assigns when the account is created. Clearing an account keeps that UUID for the next registration under the
  * username; deleting it does not.
  */
+@Tag("identity")
 class UniqueIdAssignmentTest {
 	private static final String PASSWORD = "Secret-123";
 

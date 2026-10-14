@@ -7,6 +7,7 @@ import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.journey.Journey;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
@@ -19,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * The owner of a premium account joins. The account exists in the network's stand-in for Mojang, which also verifies the
  * login, so these tests need no real account.
  */
+@Tag("join")
 class PremiumAccountJoinTest {
 	@Test
 	@Identica(mode = JourneyMode.SEAMLESS)

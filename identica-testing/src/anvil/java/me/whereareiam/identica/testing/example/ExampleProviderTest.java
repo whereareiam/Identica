@@ -4,6 +4,7 @@ import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.journey.Journey;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
@@ -14,6 +15,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
  * official ones: a player registers and logs in with the passphrase in its settings, {@code OpenSesame} by
  * default. Identica creates the account, links it to the provider and opens the session.
  */
+@Tag("operations")
 class ExampleProviderTest {
 	private static final String PASSPHRASE = "OpenSesame";
 

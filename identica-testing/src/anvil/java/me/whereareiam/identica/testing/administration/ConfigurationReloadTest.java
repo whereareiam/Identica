@@ -12,6 +12,7 @@ import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -26,6 +27,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY;
  * {@code /identica admin reload}. A file that reads correctly takes effect for the next players; a file Identica cannot
  * read is reported and the configuration in use stays as it was. Credential is the network's only provider.
  */
+@Tag("operations")
 class ConfigurationReloadTest {
 	private static final String PASSWORD = "Secret-123";
 	private static final String WRONG = "Wrong-456";

@@ -16,6 +16,7 @@ import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.identity.username.UsernameHolderOnline;
 import me.whereareiam.identica.type.identity.username.UsernameRenameTooLong;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -32,6 +33,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY;
  * Credential account, which keeps logging in with its password under its new name. Joining through Premium's
  * hostname picks Premium for the owner.
  */
+@Tag("identity")
 class FirstJoinConflictTest {
 	private static final String PASSWORD = "Secret-123";
 

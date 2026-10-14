@@ -6,6 +6,7 @@ import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
@@ -18,6 +19,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY;
  * commands it lets through from the definitions marked available while pending, such as {@code /identica enroll}
  * and Credential's {@code /pass}, and reads them again when Identica reloads.
  */
+@Tag("operations")
 class ExampleAddonTest {
 	private static final String PASSWORD = "Secret-123";
 	private static final String CHAT_HELD_BACK = "Log in before you chat.";

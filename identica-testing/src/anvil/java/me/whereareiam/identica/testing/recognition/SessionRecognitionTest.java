@@ -7,6 +7,7 @@ import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -20,6 +21,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
  * from the loopback address, which recognition distrusts by default, so the networks that recognise players trust
  * every address; the default signals, username, address and virtual host, stay the same between a player's joins.
  */
+@Tag("account")
 class SessionRecognitionTest {
 	private static final String PASSWORD = "Secret-123";
 	private static final Duration VALIDITY = Duration.ofSeconds(10);

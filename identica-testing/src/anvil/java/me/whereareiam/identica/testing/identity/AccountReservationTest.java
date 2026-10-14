@@ -7,6 +7,7 @@ import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.util.UniqueIdGenerator;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
@@ -22,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
  * reserved UUID instead of the one {@code uniqueIdMode} would assign, here a random one, and the reservation is
  * used up.
  */
+@Tag("identity")
 class AccountReservationTest {
 	private static final String PASSWORD = "Secret-123";
 

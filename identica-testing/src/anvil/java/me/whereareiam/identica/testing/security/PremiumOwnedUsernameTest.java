@@ -7,6 +7,7 @@ import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
@@ -15,6 +16,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
  * Once a username belongs to a Premium account, an offline client with that username is asked for a premium login on
  * every join, whatever it was told on an earlier join.
  */
+@Tag("account")
 class PremiumOwnedUsernameTest {
 	private static final String OTHER_ADDRESS = "127.0.0.2";
 

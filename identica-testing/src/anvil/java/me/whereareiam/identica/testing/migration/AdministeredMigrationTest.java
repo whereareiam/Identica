@@ -7,6 +7,7 @@ import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
@@ -17,6 +18,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY;
  * An administrator moves a Credential player's account to Premium and takes the move back before the player
  * returns.
  */
+@Tag("operations")
 class AdministeredMigrationTest {
 	private static final String PASSWORD = "Secret-123";
 

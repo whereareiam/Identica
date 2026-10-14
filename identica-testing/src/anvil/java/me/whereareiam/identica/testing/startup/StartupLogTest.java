@@ -4,11 +4,13 @@ import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.IdenticaNetwork;
 import me.whereareiam.identica.testing.journey.Administrator;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
  * What Identica does while it starts reaches the proxy console.
  */
+@Tag("operations")
 class StartupLogTest {
 	@Test
 	@Identica

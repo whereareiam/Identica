@@ -8,6 +8,7 @@ import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -20,6 +21,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
  * A player floods the authentication step with input on a network whose resume-spam sentinel is turned on and
  * allows a handful of attempts before a short lockout.
  */
+@Tag("account")
 class ResumeSpamTest {
 	private static final String PASSWORD = "Secret-123";
 	private static final String WRONG = "Wrong-456";

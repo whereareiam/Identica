@@ -7,6 +7,7 @@ import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
@@ -17,6 +18,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
  * with the provider's own command. The account exists in the network's stand-in for Mojang, which verifies the
  * premium login. A player who cannot give that login keeps signing in with Credential.
  */
+@Tag("operations")
 class ProviderMigrationTest {
 	private static final String PASSWORD = "Secret-123";
 

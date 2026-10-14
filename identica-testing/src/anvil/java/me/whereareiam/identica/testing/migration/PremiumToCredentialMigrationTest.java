@@ -7,6 +7,7 @@ import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -22,6 +23,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
  * authenticate whether a move is absent, only requested, confirmed or expired. The account exists in the
  * network's stand-in for Mojang, which verifies the premium login.
  */
+@Tag("operations")
 class PremiumToCredentialMigrationTest {
 	private static final String PASSWORD = "Secret-123";
 	private static final Duration WINDOW = Duration.ofSeconds(5);

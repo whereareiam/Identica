@@ -10,6 +10,7 @@ import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
@@ -22,6 +23,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY;
  * Premium does, is not refused: its player gets the name, and the account that held it in another case is renamed,
  * so no two accounts share it.
  */
+@Tag("identity")
 class UniqueUsernameTest {
 	private static final String PASSWORD = "Secret-123";
 	private static final String PASSPHRASE = "OpenSesame";

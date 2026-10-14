@@ -10,30 +10,42 @@ The `identica-testing` module starts the packaged plugin and providers on a real
 Run from the repository root; a Java 21 must be installed on the machine:
 
 ```shell
-./gradlew :identica-testing:anvilTest
+./gradlew :identica-testing:anvil
 ```
 
-The task builds the plugin and provider jars, downloads the proxy and server distributions on first use, and starts a fresh proxy for every test. The first run takes several minutes; later runs reuse the downloads and Identica's own libraries. `./gradlew test` and `pluginJars` do not start these tests.
+The task runs every [suite](#suites). It builds the plugin and provider jars, downloads the proxy and server distributions on first use, and starts a fresh proxy for every test. The first run takes several minutes; later runs reuse the downloads and Identica's own libraries. `./gradlew test` and `pluginJars` do not start these tests.
 
 The `auth` and `lobby` servers are not part of what a test checks, so they start once and serve one test after another; only the proxies, with the plugin, their files and their database, are new in every test. A test that fails stops the servers it used, keeps their folders next to its own, and the next test starts new ones.
 
 Several tests run at once, each on its own network: one for every four processors of the machine, four at most. Set another number with `-Pidentica.journeys.parallelism=1`. The server and proxy processes run with a lowered priority and each assumes four processors, so the machine stays usable during a run.
 
-Run one class or one test with `--tests`:
+### Suites
+
+The journeys are split into suites. Each suite is a JUnit tag on the test classes of its packages and has a task of its own:
+
+| Suite | Task | Packages | Covers |
+| --- | --- | --- | --- |
+| `join` | `anvilJoinTest` | `join`, `entrypoint`, `routing`, `restriction` | getting a player in: registration, login, premium detection, hostnames and routing targets |
+| `account` | `anvilAccountTest` | `credential`, `verification`, `recognition`, `security` | an account once it exists: password changes, two-factor verification, recognised sessions, protection against abuse |
+| `identity` | `anvilIdentityTest` | `username`, `identity` | usernames and their conflicts, unique ids, reservations |
+| `operations` | `anvilOperationsTest` | `administration`, `migration`, `startup`, `database`, `example` | reloads, migrations, startup, database backends, the examples |
+| `cluster` | `anvilClusterTest` | `cluster` | two proxies sharing a database; needs Docker |
+| `upgrade` | `anvilUpgradeTest` | `upgrade` | starting from what an earlier version of Identica left |
+
+`./gradlew :identica-testing:anvil` runs every suite. Pull requests run every suite but `upgrade`, each in a job of its own; releases run `upgrade` as well.
+
+Run one package, class or test of a suite with `--tests`:
 
 ```shell
-./gradlew :identica-testing:anvilTest --tests '*CredentialFirstJoinTest'
+./gradlew :identica-testing:anvilJoinTest --tests 'me.whereareiam.identica.testing.routing.*'
+./gradlew :identica-testing:anvilJoinTest --tests '*CredentialFirstJoinTest'
 ```
 
-Journeys that start a proxy on what an earlier version of Identica left, such as the database of Identica 2.2.1, are tagged `@Tag("upgrade")` and form the `upgrade` suite, declared in `anvil { suites { ... } }` of the module's build. `anvilTest` leaves them out; run them by hand, and the release workflow runs them once before it publishes:
+A new test class carries the tag of its package's suite, such as `@Tag("join")`; `@IdenticaCluster` carries the `cluster` tag itself. The suites are listed in `journeySuites` of the module's build. `anvilTest` runs what no suite claims, which is only `JourneySuitesTest`: it fails when a journey belongs to no suite or to more than one.
 
-```shell
-./gradlew :identica-testing:anvilUpgradeTest
-```
+The `upgrade` journeys start a proxy on what an earlier version of Identica left, such as the database of Identica 2.2.1. Such a journey places the earlier files with `ProxyConfiguration.seed`. The databases come from `EarlierInstallation`, in the test fixtures of each schema's owner, and the configuration directories from `EarlierConfiguration`, in the test fixtures of `identica-common`, which lists the layouts of 2.2.1 and of the development builds. A journey that seeds a configuration directory omits the documents the test network would otherwise write in this version's layout.
 
-Such a journey places the earlier files with `ProxyConfiguration.seed`. The databases come from `EarlierInstallation`, in the test fixtures of each schema's owner, and the configuration directories from `EarlierConfiguration`, in the test fixtures of `identica-common`, which lists the layouts of 2.2.1 and of the development builds. A journey that seeds a configuration directory omits the documents the test network would otherwise write in this version's layout.
-
-`./gradlew :identica-testing:anvil` runs `anvilTest` and every suite. `anvilScenarios` lists the scenarios, `anvilRun --scenario=<name>` starts one to look around in, and `anvilLogin --account=<id>` and `anvilLogout --account=<id>` manage the accounts Anvil signs in with.
+`anvilScenarios` lists the scenarios, `anvilRun --scenario=<name>` starts one to look around in, and `anvilLogin --account=<id>` and `anvilLogout --account=<id>` manage the accounts Anvil signs in with.
 
 When a test fails, its network is kept under `identica-testing/build/anvil/<scenario>/<run>/`. Each process folder holds an `anvil-console.log`, and Identica's debug logging is enabled in every test network.
 

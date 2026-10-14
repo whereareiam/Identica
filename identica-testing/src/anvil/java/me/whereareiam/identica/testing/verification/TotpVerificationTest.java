@@ -8,6 +8,7 @@ import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.fixture.Authenticator;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -24,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * player who enrolled a method is asked for its code after the password, everyone else only types the password.
  * Each authenticator code is accepted once, so a journey that types a second code takes the app's next one.
  */
+@Tag("account")
 class TotpVerificationTest {
 	private static final String PASSWORD = "Secret-123";
 	/** Recovery codes Identica generates by default. */

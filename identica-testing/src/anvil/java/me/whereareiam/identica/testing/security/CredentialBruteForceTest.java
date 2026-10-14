@@ -8,6 +8,7 @@ import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -20,6 +21,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
  * A player with a Credential account types wrong passwords on a network whose brute-force sentinel allows three
  * attempts, warns from the second one and then locks the account out for a short while.
  */
+@Tag("account")
 class CredentialBruteForceTest {
 	private static final String PASSWORD = "Secret-123";
 	private static final String WRONG = "Wrong-456";

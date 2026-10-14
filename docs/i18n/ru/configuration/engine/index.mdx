@@ -1,7 +1,7 @@
 ---
 title: Движок
 description: Подробное описание каждого поля конфигурации конвейеров и прохождений Identica.
-sourceHash: a02b5b16dc16f85f361d1271444c7331c5fd42a6
+sourceHash: 93647eb2a28cc7db2012b6aca86230a669f27704
 ---
 
 Конфигурация движка задаёт время жизни состояния конвейеров, стиль прохождения, правила продолжения и поведение при параллельных попытках в каждом сценарии.
@@ -152,33 +152,12 @@ behavior:
 
 Сценарий `authentication` отвечает за определение идентичности игрока при входе и открытие сессии.
 
-#### pipelineConcurrencyPolicy
-
-<Badge type="warning">Для опытных</Badge>
-
-- Принимает: `"DENY_NEW"` или `"REPLACE_EXISTING"`
-- По умолчанию: `"DENY_NEW"`
-- Влияет на: что происходит, если для той же идентичности уже ожидает другой конвейер аутентификации
-
-Поведение в текущем исходном коде:
-
-- `DENY_NEW`: новая попытка запустить конвейер отклоняется
-- `REPLACE_EXISTING`: существующий ожидающий конвейер заменяется новой попыткой
-
 В сгенерированных значениях по умолчанию для аутентификации выбран `SEAMLESS`.
 Если вы хотите, чтобы первый вход был для игрока более понятным и явным, безопаснее переключиться на `INTERACTIVE`.
 
 ### registration
 
 Сценарий `registration` отвечает за создание новых аккаунтов и привязку провайдера.
-
-#### pipelineConcurrencyPolicy
-
-<Badge type="warning">Для опытных</Badge>
-
-- Принимает: `"DENY_NEW"` или `"REPLACE_EXISTING"`
-- По умолчанию: `"DENY_NEW"`
-- Влияет на: что происходит, если для той же идентичности уже ожидает другой конвейер регистрации
 
 #### autoSelectSingleProvider
 
@@ -205,13 +184,11 @@ scenarios:
     allowResume: true
     journeyMode: "SEAMLESS"
     journeyPolicy: "PREFER"
-    pipelineConcurrencyPolicy: "DENY_NEW"
   registration:
     pipelineTtl: "5m"
     allowResume: true
     journeyMode: "SEAMLESS"
     journeyPolicy: "PREFER"
-    pipelineConcurrencyPolicy: "DENY_NEW"
     autoSelectSingleProvider: false
   migration:
     pipelineTtl: "5m"
@@ -228,15 +205,13 @@ scenarios:
       "pipelineTtl": "5m",
       "allowResume": true,
       "journeyMode": "SEAMLESS",
-      "journeyPolicy": "PREFER",
-      "pipelineConcurrencyPolicy": "DENY_NEW"
+      "journeyPolicy": "PREFER"
     },
     "registration": {
       "pipelineTtl": "5m",
       "allowResume": true,
       "journeyMode": "SEAMLESS",
       "journeyPolicy": "PREFER",
-      "pipelineConcurrencyPolicy": "DENY_NEW",
       "autoSelectSingleProvider": false
     },
     "migration": {

@@ -113,7 +113,7 @@ class DefaultUsernameAssignerTest {
 		messages.getPipeline().getPolicy().setHolderReplaced(List.of("replaced {username} by {renamed}"));
 		when(settingsProvider.get()).thenReturn(settings);
 		when(providers.getProviders()).thenReturn(List.of(provider(OWNING, ProviderGuarantee.OWNED_USERNAME), provider(CHOOSING)));
-		when(sessions.findAllByUniqueId(any())).thenReturn(CompletableFuture.completedFuture(List.of()));
+		when(sessions.findByUniqueId(any())).thenReturn(CompletableFuture.completedFuture(Optional.empty()));
 		when(sessions.close(any(SessionCloseRequest.class))).thenReturn(CompletableFuture.completedFuture(null));
 		when(settingsProvider.mapper()).thenReturn(Config.configured().mapper());
 		conflicts.register(new RefuseOutcome());
@@ -354,7 +354,7 @@ class DefaultUsernameAssignerTest {
 	}
 
 	private void online(UUID uniqueId) {
-		when(sessions.findAllByUniqueId(uniqueId)).thenReturn(CompletableFuture.completedFuture(List.of(mock(Session.class))));
+		when(sessions.findByUniqueId(uniqueId)).thenReturn(CompletableFuture.completedFuture(Optional.of(mock(Session.class))));
 	}
 
 	private static UsernameArrival firstJoin(UUID uniqueId, String providerId, String username) {

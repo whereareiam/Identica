@@ -75,14 +75,14 @@ public final class Administrator {
 	}
 
 	/**
-	 * Asks for a player's sessions and expects the proxy to describe exactly one for each named proxy: the
-	 * sessions of the connections the account is online through.
+	 * Asks for a player's session and expects the proxy to describe the one held by the named proxy, and none
+	 * held by another.
 	 *
-	 * @param proxies proxies holding a connection of the account
+	 * @param proxy proxy holding the account's connection
 	 */
-	public Administrator findsSessionsOf(String username, String... proxies) {
+	public Administrator findsSessionOf(String username, String proxy) {
 		runHeldBy("identica admin session info " + username,
-				configured.identica().getCommands().getAdmin().getSessions().getStatus().getBody(), proxies);
+				configured.identica().getCommands().getAdmin().getSessions().getStatus().getBody(), proxy);
 		return this;
 	}
 

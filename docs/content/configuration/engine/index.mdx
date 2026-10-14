@@ -151,33 +151,12 @@ The [sentinel feature](../features/sentinel/settings/index.mdx) locks out an add
 
 The `authentication` scenario controls login-time identity resolution and session opening.
 
-#### pipelineConcurrencyPolicy
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: `"DENY_NEW"` or `"REPLACE_EXISTING"`
-- Current default: `"DENY_NEW"`
-- Affects: what happens when another authentication pipeline for the same identity is already pending
-
-Behavior in current source:
-
-- `DENY_NEW`: reject the new pipeline attempt
-- `REPLACE_EXISTING`: replace the existing pending pipeline with the new attempt
-
 The generated defaults prefer `SEAMLESS` for authentication.
 If you want a more explicit player-facing first join experience, switching to `INTERACTIVE` can be safer.
 
 ### registration
 
 The `registration` scenario controls new-account creation and provider enrollment.
-
-#### pipelineConcurrencyPolicy
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: `"DENY_NEW"` or `"REPLACE_EXISTING"`
-- Current default: `"DENY_NEW"`
-- Affects: what happens when another registration pipeline for the same identity is already pending
 
 #### autoSelectSingleProvider
 
@@ -204,13 +183,11 @@ scenarios:
     allowResume: true
     journeyMode: "SEAMLESS"
     journeyPolicy: "PREFER"
-    pipelineConcurrencyPolicy: "DENY_NEW"
   registration:
     pipelineTtl: "5m"
     allowResume: true
     journeyMode: "SEAMLESS"
     journeyPolicy: "PREFER"
-    pipelineConcurrencyPolicy: "DENY_NEW"
     autoSelectSingleProvider: false
   migration:
     pipelineTtl: "5m"
@@ -227,15 +204,13 @@ scenarios:
       "pipelineTtl": "5m",
       "allowResume": true,
       "journeyMode": "SEAMLESS",
-      "journeyPolicy": "PREFER",
-      "pipelineConcurrencyPolicy": "DENY_NEW"
+      "journeyPolicy": "PREFER"
     },
     "registration": {
       "pipelineTtl": "5m",
       "allowResume": true,
       "journeyMode": "SEAMLESS",
       "journeyPolicy": "PREFER",
-      "pipelineConcurrencyPolicy": "DENY_NEW",
       "autoSelectSingleProvider": false
     },
     "migration": {

@@ -65,7 +65,7 @@
       "priority": 60,
       "overrides": {
         "allowRecognitionOnUntrustedIp": true,
-        "sessionConcurrencyPolicy": "ALLOW_MULTIPLE",
+        "sessionConcurrencyPolicy": "REPLACE_EXISTING",
         "recognition": {
           "enabled": false,
           "signals": [

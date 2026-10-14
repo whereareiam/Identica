@@ -333,7 +333,7 @@ class EarlierConfigurationUpgradeTest {
 
 		assertEquals(connection.at("/authentication/routing/missingServer"), value(directory, "messages:/scenarios/authentication/routing/missingServer"));
 		assertEquals(connection.at("/registration/routing/missingServer"), value(directory, "messages:/scenarios/registration/routing/missingServer"));
-		assertEquals(connection.at("/migration/pipelineKick"), value(directory, "messages:/scenarios/migration/pipelineKick"));
+		assertEquals(connection.at("/migration/pipelineExpired"), value(directory, "messages:/scenarios/migration/pipelineExpired"));
 		assertEquals(connection.at("/journey/step/enrollment/body"), value(directory, "messages:/engine/journey/step/enrollment/body"));
 		assertEquals(connection.at("/resumeSentineled"), value(directory, "features/sentinel/messages:/resumeSpam/denied"));
 		assertEquals(connection.at("/authentication/errors/identity/replicationMissing"), value(directory, "identity/username/messages:/pipeline/identity/synchronizationFailed"));
@@ -357,7 +357,7 @@ class EarlierConfigurationUpgradeTest {
 				+ "\"verification\":{\"unavailableSelectionPolicy\":\"CLEAR_SELECTION\","
 				+ "\"methods\":[{\"id\":\"totp\",\"enabled\":true,\"priority\":90,\"unavailableSelectionPolicy\":\"KEEP_LOCKED\"}]}}"),
 				credential.get("features"));
-		assertEquals(json("{\"concurrencyPolicy\":\"ALLOW_MULTIPLE\"}"), credential.get("session"));
+		assertEquals(json("{\"concurrencyPolicy\":\"REPLACE_EXISTING\"}"), credential.get("session"));
 
 		ObjectNode premium = provider(directory, "premium");
 		assertEquals(json("{\"verification\":{\"enabled\":false,\"required\":true}}"), premium.get("features"));

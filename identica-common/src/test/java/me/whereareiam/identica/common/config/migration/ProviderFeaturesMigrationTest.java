@@ -61,7 +61,7 @@ class ProviderFeaturesMigrationTest {
 				  - id: "example"
 				    overrides:
 				      allowRecognitionOnUntrustedIp: false
-				      sessionConcurrencyPolicy: "ALLOW_MULTIPLE"
+				      sessionConcurrencyPolicy: "REPLACE_EXISTING"
 				      recognition:
 				        enabled: true
 				        signals: []
@@ -82,7 +82,7 @@ class ProviderFeaturesMigrationTest {
 				      verification:
 				        enabled: true
 				    session:
-				      concurrencyPolicy: "ALLOW_MULTIPLE"
+				      concurrencyPolicy: "REPLACE_EXISTING"
 				""", directory.files().get("providers/providers.yml"));
 	}
 

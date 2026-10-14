@@ -32,7 +32,7 @@ import java.util.UUID;
 import static me.whereareiam.identica.common.identity.session.SessionFixtures.LIFETIME_MS;
 import static me.whereareiam.identica.common.identity.session.SessionFixtures.replication;
 import static me.whereareiam.identica.common.identity.session.SessionFixtures.session;
-import static me.whereareiam.identica.type.session.SessionConcurrencyPolicy.ALLOW_MULTIPLE;
+import static me.whereareiam.identica.common.identity.session.SessionFixtures.stored;
 import static me.whereareiam.identica.type.session.SessionConcurrencyPolicy.REJECT_NEW;
 import static me.whereareiam.identica.type.session.SessionConcurrencyPolicy.REPLACE_EXISTING;
 import static org.junit.jupiter.api.Assertions.*;
@@ -62,7 +62,7 @@ class DefaultSessionServiceTest {
 
 			assertNotNull(again, policy.name());
 			assertEquals(first.getSessionId(), again.getSessionId(), policy.name());
-			assertEquals(1, beta.service.findAllByUniqueId(uniqueId).join().size(), policy.name());
+			assertEquals(1, beta.store.findByAccount(uniqueId).join().size(), policy.name());
 		}
 		assertTrue(alpha.closes.isEmpty());
 	}
@@ -83,21 +83,22 @@ class DefaultSessionServiceTest {
 		assertEquals(KICK, received.getRequest().getDisconnectMessage());
 		assertEquals("alpha", received.getRequest().getConnection().getServerId());
 		assertEquals(connection, received.getRequest().getConnection().getConnectionUniqueId());
-		assertEquals(List.of(later.getSessionId()), ids(alpha.service.findAllByUniqueId(account).join()));
+		assertEquals(List.of(later.getSessionId()), ids(alpha.store.findByAccount(account).join()));
 		assertFalse(alpha.keepalive.holds(earlier.getSessionId()));
 		assertTrue(beta.keepalive.holds(later.getSessionId()));
 	}
 
-	@DisplayName("REPLACE_EXISTING replaces the sessions of every other connection")
+	@DisplayName("REPLACE_EXISTING replaces every session the store still lists for the account")
 	@Test
 	void replaceClosesEveryOtherConnection() {
 		Node gamma = new Node("gamma", providers());
-		alpha.service.open(connected(account, alpha.online()), ALLOW_MULTIPLE).join();
-		beta.service.open(connected(account, beta.online()), ALLOW_MULTIPLE).join();
+		// Two logins at the same moment on two proxies can both store a session.
+		alpha.store.put(stored(account, "alpha", 1)).join();
+		beta.store.put(stored(account, "beta", 2)).join();
 
 		Session latest = gamma.service.open(connected(account, gamma.online()), REPLACE_EXISTING).join();
 
-		assertEquals(List.of(latest.getSessionId()), ids(alpha.service.findAllByUniqueId(account).join()));
+		assertEquals(List.of(latest.getSessionId()), ids(alpha.store.findByAccount(account).join()));
 		assertEquals(List.of("alpha", "beta"), alpha.closes.stream()
 				.map(close -> close.getRequest().getConnection().getServerId())
 				.toList());
@@ -112,7 +113,7 @@ class DefaultSessionServiceTest {
 		assertNull(beta.service.open(connected(account, beta.online()), REJECT_NEW).join());
 		assertNull(alpha.service.open(connected(account, alpha.online()), REJECT_NEW).join());
 
-		assertEquals(List.of(earlier.getSessionId()), ids(beta.service.findAllByUniqueId(account).join()));
+		assertEquals(List.of(earlier.getSessionId()), ids(beta.store.findByAccount(account).join()));
 		assertTrue(beta.closes.isEmpty());
 	}
 
@@ -126,7 +127,7 @@ class DefaultSessionServiceTest {
 		assertNotNull(later);
 		assertEquals(earlier.getSessionId(), alpha.closed().getSession().getSessionId());
 		assertFalse(alpha.closed().getRequest().isDisconnect());
-		assertEquals(List.of(later.getSessionId()), ids(beta.service.findAllByUniqueId(account).join()));
+		assertEquals(List.of(later.getSessionId()), ids(beta.store.findByAccount(account).join()));
 	}
 
 	@DisplayName("REJECT_NEW accepts a login once the session of a proxy that stopped has expired")
@@ -141,49 +142,47 @@ class DefaultSessionServiceTest {
 		assertNotNull(beta.service.open(connected(account, beta.online()), REJECT_NEW).join());
 	}
 
-	@DisplayName("ALLOW_MULTIPLE keeps the session of every connection")
-	@Test
-	void allowMultipleKeepsEverySession() {
-		Session earlier = alpha.service.open(connected(account, alpha.online())).join();
-
-		Session later = beta.service.open(connected(account, beta.online()), ALLOW_MULTIPLE).join();
-
-		assertEquals(List.of(earlier.getSessionId(), later.getSessionId()), ids(alpha.service.findAllByUniqueId(account).join()));
-		assertEquals(later.getSessionId(), alpha.service.findByUniqueId(account).join().orElseThrow().getSessionId());
-		assertTrue(alpha.closes.isEmpty());
-		assertTrue(beta.replaced.isEmpty());
-		assertTrue(alpha.keepalive.holds(earlier.getSessionId()));
-	}
-
-	@DisplayName("A connection finds its own session among the account's")
+	@DisplayName("Only the connection holding the account's session finds it")
 	@Test
 	void findsTheSessionOfAConnection() {
 		UUID first = alpha.online();
 		UUID second = beta.online();
-		Session earlier = alpha.service.open(connected(account, first)).join();
-		Session later = beta.service.open(connected(account, second), ALLOW_MULTIPLE).join();
+		alpha.service.open(connected(account, first)).join();
+		Session later = beta.service.open(connected(account, second)).join();
 
-		assertEquals(earlier.getSessionId(), alpha.service.findByConnection(account, SessionConnection.of(first)).join().orElseThrow().getSessionId());
 		assertEquals(later.getSessionId(), beta.service.findByConnection(account, SessionConnection.of(second)).join().orElseThrow().getSessionId());
 		assertEquals(later.getSessionId(), alpha.service.findByConnection(account, new SessionConnection("beta", second)).join().orElseThrow().getSessionId());
+		assertTrue(alpha.service.findByConnection(account, SessionConnection.of(first)).join().isEmpty());
 		assertTrue(alpha.service.findByConnection(account, SessionConnection.of(second)).join().isEmpty());
 	}
 
-	@DisplayName("A connection leaving closes its own session and keeps the other connection's")
+	@DisplayName("A replaced connection leaving keeps the session that replaced it")
 	@Test
-	void leavingClosesOnlyTheConnectionsOwnSession() {
+	void leavingAfterBeingReplacedKeepsTheNewSession() {
 		UUID connection = alpha.online();
-		Session earlier = alpha.service.open(connected(account, connection)).join();
-		Session later = beta.service.open(connected(account, connection), ALLOW_MULTIPLE).join();
+		alpha.service.open(connected(account, connection)).join();
+		Session later = beta.service.open(connected(account, connection)).join();
+		int closes = beta.closes.size();
 
 		alpha.service.close(leaving(account, connection)).join();
 
-		assertEquals(List.of(later.getSessionId()), ids(beta.service.findAllByUniqueId(account).join()));
-		assertEquals(1, beta.closes.size());
-		assertEquals(earlier.getSessionId(), beta.closed().getSession().getSessionId());
-		assertFalse(beta.closed().getRequest().isDisconnect());
-		assertFalse(alpha.keepalive.holds(earlier.getSessionId()));
+		assertEquals(List.of(later.getSessionId()), ids(beta.store.findByAccount(account).join()));
+		assertEquals(closes, beta.closes.size());
 		assertTrue(beta.keepalive.holds(later.getSessionId()));
+	}
+
+	@DisplayName("A connection leaving closes its session without disconnecting it")
+	@Test
+	void leavingClosesTheConnectionsSession() {
+		UUID connection = alpha.online();
+		Session held = alpha.service.open(connected(account, connection)).join();
+
+		alpha.service.close(leaving(account, connection)).join();
+
+		assertTrue(beta.store.findByAccount(account).join().isEmpty());
+		assertEquals(held.getSessionId(), beta.closed().getSession().getSessionId());
+		assertFalse(beta.closed().getRequest().isDisconnect());
+		assertFalse(alpha.keepalive.holds(held.getSessionId()));
 	}
 
 	@DisplayName("A connection without a session closes nothing when it leaves")
@@ -193,17 +192,18 @@ class DefaultSessionServiceTest {
 
 		alpha.service.close(leaving(account, UUID.randomUUID())).join();
 
-		assertEquals(List.of(other.getSessionId()), ids(alpha.service.findAllByUniqueId(account).join()));
+		assertEquals(List.of(other.getSessionId()), ids(alpha.store.findByAccount(account).join()));
 		assertTrue(alpha.closes.isEmpty());
 	}
 
-	@DisplayName("Closing an account closes every session and disconnects each connection where it is held")
+	@DisplayName("Closing an account closes every session the store lists and disconnects each connection where it is held")
 	@Test
 	void closingAnAccountClosesEverySession() {
-		UUID first = alpha.online();
-		UUID second = beta.online();
-		alpha.service.open(connected(account, first)).join();
-		beta.service.open(connected(account, second), ALLOW_MULTIPLE).join();
+		Session first = stored(account, "alpha", 1);
+		Session second = stored(account, "beta", 2);
+		// Two logins at the same moment on two proxies can both store a session.
+		alpha.store.put(first).join();
+		beta.store.put(second).join();
 
 		beta.service.close(SessionCloseRequest.builder()
 				.uniqueId(account)
@@ -211,9 +211,9 @@ class DefaultSessionServiceTest {
 				.disconnectMessage("ended")
 				.build()).join();
 
-		assertTrue(alpha.service.findAllByUniqueId(account).join().isEmpty());
+		assertTrue(alpha.store.findByAccount(account).join().isEmpty());
 		assertEquals(2, alpha.closes.size());
-		assertEquals(Set.of(first, second), connections(alpha.closes));
+		assertEquals(Set.of(first.getConnection().getConnectionUniqueId(), second.getConnection().getConnectionUniqueId()), connections(alpha.closes));
 		assertTrue(alpha.closes.stream().allMatch(close -> close.getRequest().isDisconnect()
 				&& "ended".equals(close.getRequest().getDisconnectMessage())));
 		assertEquals(2, alpha.closes.stream().map(SessionClosedEvent::getReplicationEventId).distinct().count());
@@ -254,7 +254,7 @@ class DefaultSessionServiceTest {
 
 		beta.service.open(read, REJECT_NEW).join();
 
-		assertEquals(List.of(held.getSessionId()), ids(alpha.service.findAllByUniqueId(account).join()));
+		assertEquals(List.of(held.getSessionId()), ids(alpha.store.findByAccount(account).join()));
 		assertEquals("Renamed", alpha.service.findBySessionId(held.getSessionId()).join().orElseThrow().getEffectiveUsername());
 		assertFalse(beta.keepalive.holds(held.getSessionId()));
 	}
@@ -263,7 +263,7 @@ class DefaultSessionServiceTest {
 	@Test
 	void listsSessionIds() {
 		Session first = alpha.service.open(connected(account, alpha.online())).join();
-		Session second = beta.service.open(connected(account, beta.online()), ALLOW_MULTIPLE).join();
+		Session second = beta.service.open(connected(UUID.randomUUID(), beta.online())).join();
 
 		assertEquals(Set.of(first.getSessionId(), second.getSessionId()), Set.copyOf(alpha.service.list(1, 10).join().entries()));
 		assertEquals(2, alpha.service.list(1, 10).join().total());

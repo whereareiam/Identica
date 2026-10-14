@@ -3,7 +3,6 @@ package me.whereareiam.identica.common.config.defaults;
 import com.google.inject.Singleton;
 import me.whereareiam.configura.merge.defaults.DefaultsProvider;
 import me.whereareiam.identica.model.config.Engine;
-import me.whereareiam.identica.type.pipeline.PipelineConcurrencyPolicy;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
 
@@ -30,7 +29,6 @@ public class EngineDefaults implements DefaultsProvider<Engine> {
 		Engine.Authentication scenario = new Engine.Authentication();
 		scenario.setPipelineTtl(Duration.ofMinutes(5));
 		scenario.setAllowResume(true);
-		scenario.setPipelineConcurrencyPolicy(PipelineConcurrencyPolicy.DENY_NEW);
 		scenario.setJourneyMode(JourneyMode.SEAMLESS);
 		scenario.setJourneyPolicy(JourneyPolicy.PREFER);
 		return scenario;
@@ -40,7 +38,6 @@ public class EngineDefaults implements DefaultsProvider<Engine> {
 		Engine.Registration scenario = new Engine.Registration();
 		scenario.setPipelineTtl(Duration.ofMinutes(5));
 		scenario.setAllowResume(true);
-		scenario.setPipelineConcurrencyPolicy(PipelineConcurrencyPolicy.DENY_NEW);
 		scenario.setAutoSelectSingleProvider(false);
 		scenario.setJourneyMode(JourneyMode.SEAMLESS);
 		scenario.setJourneyPolicy(JourneyPolicy.PREFER);

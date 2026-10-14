@@ -764,10 +764,6 @@ public class Messages implements MessageDocument {
 		@ToString
 		public static class Scenario {
 			/**
-			 * Message shown when a pipeline attempt is rejected due to concurrency.
-			 */
-			private @NotNull List<String> pipelineKick;
-			/**
 			 * Message shown when a pending pipeline expires.
 			 */
 			private @NotNull List<String> pipelineExpired;

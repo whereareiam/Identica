@@ -17,8 +17,9 @@ import java.util.concurrent.CompletableFuture;
  *
  * <p>A session is stored once, under its own id, for as long as the proxy holding its connection keeps
  * refreshing it; the sessions of a proxy that stopped disappear after
- * {@code replication.heartbeatTimeout}. An account has one session per connection, so it has
- * several while {@code ALLOW_MULTIPLE} lets it be online through several connections.</p>
+ * {@code replication.heartbeatTimeout}. An account has one active session, held by the connection
+ * that opened it; a login from another connection replaces it or is refused, as the concurrency policy
+ * says.</p>
  */
 @SuppressWarnings("unused")
 public interface SessionService {
@@ -31,25 +32,17 @@ public interface SessionService {
 	@NotNull CompletableFuture<Optional<Session>> findBySessionId(@Nullable String sessionId);
 
 	/**
-	 * Finds every session of an account, one per connection it is online through.
+	 * Finds the session of an account. Use it to learn whether an account is online or how it logged in;
+	 * a caller acting for one connection asks {@link #findByConnection(UUID, SessionConnection)}, since a
+	 * connection whose session was replaced no longer holds the account's session.
 	 *
 	 * @param uniqueId account id
-	 * @return the account's sessions, oldest first; empty when it has none
-	 */
-	@NotNull CompletableFuture<List<Session>> findAllByUniqueId(@Nullable UUID uniqueId);
-
-	/**
-	 * Finds the session an account opened last. Use it to learn whether an account is online or how it
-	 * logged in; a caller acting for one connection asks {@link #findByConnection(UUID, SessionConnection)}
-	 * and a caller acting on the whole account asks {@link #findAllByUniqueId(UUID)}.
-	 *
-	 * @param uniqueId account id
-	 * @return the account's newest session
+	 * @return the account's session
 	 */
 	@NotNull CompletableFuture<Optional<Session>> findByUniqueId(@Nullable UUID uniqueId);
 
 	/**
-	 * Finds the session of an account that belongs to one connection.
+	 * Finds the session of an account when one connection holds it.
 	 *
 	 * <pre>{@code
 	 * sessionService.findByConnection(accountUniqueId, SessionConnection.of(player.getUniqueId()));
@@ -57,7 +50,7 @@ public interface SessionService {
 	 *
 	 * @param uniqueId account id
 	 * @param connection connection holding the session; a missing server id means this proxy
-	 * @return the connection's session
+	 * @return the account's session, when that connection holds it
 	 */
 	@NotNull CompletableFuture<Optional<Session>> findByConnection(
 			@Nullable UUID uniqueId,
@@ -80,12 +73,11 @@ public interface SessionService {
 	 * Opens a session and stores it in the session cache, under the concurrency policy configured for
 	 * the session's provider.
 	 *
-	 * <p>A session from a connection that already holds a session of the account continues it. A session
-	 * from any other connection is a concurrent login: {@code REPLACE_EXISTING} closes every other
-	 * connection's session and disconnects that connection on whichever proxy holds it, {@code REJECT_NEW}
-	 * refuses the new session while another one exists, and {@code ALLOW_MULTIPLE} keeps every connection's
-	 * session. A stored session whose connection is held by this proxy and is no longer online here counts
-	 * as gone and is removed.</p>
+	 * <p>A session from the connection that already holds the account's session continues it. A session
+	 * from any other connection is a concurrent login: {@code REPLACE_EXISTING} closes the other
+	 * connection's session and disconnects that connection on whichever proxy holds it, and
+	 * {@code REJECT_NEW} refuses the new session while the other one exists. A stored session whose
+	 * connection is held by this proxy and is no longer online here counts as gone and is removed.</p>
 	 *
 	 * <pre>{@code
 	 * Session stored = sessionService.open(session).join();
@@ -109,7 +101,7 @@ public interface SessionService {
 	);
 
 	/**
-	 * Closes every session of an account, whatever connections hold them.
+	 * Closes the session of an account, whatever connection holds it.
 	 *
 	 * @param uniqueId identity id
 	 * @return completion journey

@@ -30,8 +30,9 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Decides what opening and closing a session means: which stored session a login continues, what the
- * concurrency policy does to the sessions of other connections, and which sessions a close ends.
+ * Decides what opening and closing a session means: which stored session a login continues, whether the
+ * concurrency policy lets a login from another connection replace the account's session or refuses it, and
+ * which sessions a close ends.
  * {@link SessionStore} keeps the sessions and {@link SessionKeepalive} keeps the ones held here alive.
  */
 @Singleton
@@ -70,11 +71,6 @@ public class DefaultSessionService implements SessionService, EventListener {
 	@Override
 	public @NotNull CompletableFuture<Optional<Session>> findBySessionId(@Nullable String sessionId) {
 		return store.find(sessionId);
-	}
-
-	@Override
-	public @NotNull CompletableFuture<List<Session>> findAllByUniqueId(@Nullable UUID uniqueId) {
-		return store.findByAccount(uniqueId);
 	}
 
 	@Override
@@ -193,14 +189,12 @@ public class DefaultSessionService implements SessionService, EventListener {
 		}
 
 		complete(incoming);
-		CompletableFuture<Void> closed = closeAll(gone, concurrentClose(incoming, false));
-		if (policy.replacesExisting()) {
-			for (Session other : others)
-				eventManager.call(new SessionReplacedEvent(other, incoming));
-			closed = closed.thenCompose(ignored -> closeAll(others, concurrentClose(incoming, true)));
-		}
+		CompletableFuture<Void> removed = closeAll(gone, concurrentClose(incoming, false));
+		for (Session other : others)
+			eventManager.call(new SessionReplacedEvent(other, incoming));
 
-		return closed
+		return removed
+				.thenCompose(ignored -> closeAll(others, concurrentClose(incoming, true)))
 				.thenCompose(ignored -> unlistPreviousSubject(continued, incoming))
 				.thenCompose(ignored -> store.put(incoming))
 				.thenApply(ignored -> {

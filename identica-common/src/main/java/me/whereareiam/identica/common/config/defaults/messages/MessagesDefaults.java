@@ -203,14 +203,6 @@ public class MessagesDefaults implements DefaultsProvider<Messages> {
 			Messages.Scenarios.Scenario scenario,
 			String label
 	) {
-		scenario.setPipelineKick(List.of(
-				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
-				"",
-				"<white>" + label + " is already in progress.</white>",
-				"<white>Please contact a server administrator.</white>",
-				"",
-				"<dark_gray>discord.arcadeya.com"
-		));
 		scenario.setPipelineExpired(List.of(
 				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
 				"",

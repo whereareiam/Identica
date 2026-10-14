@@ -126,18 +126,17 @@ public class SessionsCommand {
 		ResolvedTarget resolved = resolveTarget(sender, target, messages, "identica admin session info", statusMessages.getNotFound());
 		if (resolved == null) return;
 
-		List<Session> sessions = sessionService.findAllByUniqueId(resolved.uniqueId()).join();
-		if (sessions.isEmpty()) {
+		Session session = sessionService.findByUniqueId(resolved.uniqueId()).join().orElse(null);
+		if (session == null) {
 			sender.sendMessage(Serializer.serialize(sender, statusMessages.getNotFound(), Map.of("target", target)));
 			return;
 		}
 
-		for (Session session : sessions)
-			describe(sender, session, statusMessages, unknown);
+		describe(sender, session, statusMessages, unknown);
 	}
 
 	/**
-	 * Sends the details of one session; an account online through several connections has one each.
+	 * Sends the details of a session.
 	 */
 	private void describe(
 			@NotNull Actor sender,
@@ -190,13 +189,12 @@ public class SessionsCommand {
 		ResolvedTarget resolved = resolveTarget(sender, target, messages, "identica admin session end", endMessages.getNotFound());
 		if (resolved == null) return;
 
-		List<Session> sessions = sessionService.findAllByUniqueId(resolved.uniqueId()).join();
-		if (sessions.isEmpty()) {
+		Session resolvedSession = sessionService.findByUniqueId(resolved.uniqueId()).join().orElse(null);
+		if (resolvedSession == null) {
 			sender.sendMessage(Serializer.serialize(sender, endMessages.getNotFound(), Map.of("target", target)));
 			return;
 		}
 
-		Session resolvedSession = sessions.getLast();
 		sessionService.close(SessionCloseRequest.builder()
 				.uniqueId(resolvedSession.getUniqueId())
 				.disconnect(true)

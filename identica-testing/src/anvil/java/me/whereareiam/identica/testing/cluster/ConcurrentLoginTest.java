@@ -18,8 +18,8 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY_
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY_B;
 
 /**
- * An account that is online through one proxy logs in through the other. Identica replaces existing sessions by
- * default.
+ * An account that is online through one proxy logs in through the other. An account has one session, and
+ * Identica replaces it by default.
  */
 class ConcurrentLoginTest {
 	private static final Duration HEARTBEAT_TIMEOUT = Duration.ofSeconds(6);
@@ -34,6 +34,7 @@ class ConcurrentLoginTest {
 
 		earlier.kickedWith(m -> m.identica().getEngine().getConcurrentLoginKick());
 		later.on(LOBBY).remainsOn(LOBBY);
+		Administrator.at(anvil, PROXY_A).findsSessionOf("Alice", PROXY_B).listsSessionsHeldBy(PROXY_B);
 	}
 
 	@Test
@@ -79,47 +80,6 @@ class ConcurrentLoginTest {
 				.remainsOn(LOBBY);
 	}
 
-	/**
-	 * The later connection stays on the auth server, so the earlier one leaves on its own rather than being
-	 * disconnected by the lobby, which keeps only one player of a name.
-	 */
-	@Test
-	@IdenticaCluster(configure = {AllowMultiple.class, ProxyBLeavesPlayersWhereTheyAre.class})
-	void leavingOneProxyKeepsTheSessionOfTheConnectionOnTheOther(ScenarioContext anvil) {
-		Journey earlier = online(anvil);
-		Journey later = loginThroughProxyB(anvil)
-				.sees(m -> m.credential().getCompletion().getAuthentication().getBody())
-				.remainsOn(AUTH);
-		earlier.remainsOn(LOBBY);
-
-		earlier.leave();
-
-		later.remainsOn(AUTH);
-		Administrator.at(anvil, PROXY_A).findsSessionOf("Alice");
-	}
-
-	/**
-	 * The later connection stays on the auth server, because a backend keeps only one player of a name: on the
-	 * lobby it would end the earlier connection there, whatever Identica allows.
-	 */
-	@Test
-	@IdenticaCluster(configure = {AllowMultiple.class, ProxyBLeavesPlayersWhereTheyAre.class})
-	void allowingMultipleKeepsASessionForEveryConnection(ScenarioContext anvil) {
-		Journey earlier = online(anvil);
-		Journey later = loginThroughProxyB(anvil)
-				.sees(m -> m.credential().getCompletion().getAuthentication().getBody())
-				.remainsOn(AUTH);
-		earlier.remainsOn(LOBBY);
-
-		Administrator.at(anvil, PROXY_A).findsSessionsOf("Alice", PROXY_A, PROXY_B).listsSessionsHeldBy(PROXY_A, PROXY_B);
-		Administrator.at(anvil, PROXY_B).findsSessionsOf("Alice", PROXY_A, PROXY_B).listsSessionsHeldBy(PROXY_A, PROXY_B);
-
-		earlier.leave();
-
-		Administrator.at(anvil, PROXY_A).findsSessionsOf("Alice", PROXY_B).listsSessionsHeldBy(PROXY_B);
-		later.remainsOn(AUTH);
-	}
-
 	private static Journey online(ScenarioContext anvil) {
 		return Accounts.credential(anvil, "Alice", PASSWORD, PROXY_A).rejoin()
 				.on(AUTH)
@@ -146,21 +106,6 @@ class ConcurrentLoginTest {
 		@Override
 		public void accept(ProxyConfiguration proxy) {
 			proxy.settings().getSessions().setConcurrencyPolicy(SessionConcurrencyPolicy.REJECT_NEW);
-		}
-	}
-
-	private static final class ProxyBLeavesPlayersWhereTheyAre implements Consumer<ProxyConfiguration> {
-		@Override
-		public void accept(ProxyConfiguration proxy) {
-			if (proxy.name().equals(PROXY_B))
-				proxy.routing().getDefaults().getComplete().setTarget("");
-		}
-	}
-
-	private static final class AllowMultiple implements Consumer<ProxyConfiguration> {
-		@Override
-		public void accept(ProxyConfiguration proxy) {
-			proxy.settings().getSessions().setConcurrencyPolicy(SessionConcurrencyPolicy.ALLOW_MULTIPLE);
 		}
 	}
 }

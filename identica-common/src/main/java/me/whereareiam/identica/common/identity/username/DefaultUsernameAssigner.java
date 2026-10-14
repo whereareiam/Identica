@@ -413,7 +413,7 @@ public class DefaultUsernameAssigner implements UsernameAssigner {
 	}
 
 	private boolean isOnline(@NotNull UUID uniqueId) {
-		return !sessions.findAllByUniqueId(uniqueId).join().isEmpty();
+		return sessions.findByUniqueId(uniqueId).join().isPresent();
 	}
 
 	private @Nullable String primaryProvider(@NotNull UUID uniqueId) {

@@ -2,6 +2,7 @@ package me.whereareiam.identica.common.config.provider;
 
 import me.whereareiam.configura.Config;
 import me.whereareiam.configura.Configura;
+import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.Reloadable;
@@ -156,6 +157,52 @@ class ConfigDocumentsTest {
 		assertFalse(written.contains("legacy"), written);
 	}
 
+	@DisplayName("A session concurrency policy Identica does not know stops loading with the accepted values and leaves the file untouched")
+	@Test
+	void unknownSessionConcurrencyPolicyStopsLoading() throws IOException {
+		String content = "sessions:\n  concurrencyPolicy: \"ALLOW_MULTIPLE\"\n";
+		write("settings", content);
+
+		ConfigException failure = assertThrows(ConfigException.class, () -> new SettingsProvider(dataPath, registry()).get());
+
+		assertAcceptedPolicies(failure);
+		assertEquals(content, read("settings"));
+	}
+
+	@DisplayName("A provider's session concurrency policy Identica does not know stops loading with the accepted values")
+	@Test
+	void unknownProviderSessionConcurrencyPolicyStopsLoading() throws IOException {
+		Files.createDirectories(dataPath.resolve("providers"));
+		String content = """
+				providers:
+				  - id: "credential"
+				    session:
+				      concurrencyPolicy: "ALLOW_MULTIPLE"
+				""";
+		Files.writeString(dataPath.resolve("providers/providers.yml"), content);
+
+		ConfigException failure = assertThrows(ConfigException.class, () -> new ProvidersProvider(dataPath.resolve("providers"), registry()).get());
+
+		assertAcceptedPolicies(failure);
+		assertEquals(content, Files.readString(dataPath.resolve("providers/providers.yml")));
+	}
+
+	@DisplayName("A scenario's pipeline concurrency setting is dropped from the engine document")
+	@Test
+	void pipelineConcurrencyPolicyIsDropped() throws IOException {
+		write("engine", """
+				scenarios:
+				  authentication:
+				    pipelineConcurrencyPolicy: "DENY_NEW"
+				""");
+
+		new EngineProvider(dataPath, registry()).get();
+
+		String written = read("engine");
+		assertFalse(written.contains("pipelineConcurrencyPolicy"), written);
+		assertTrue(written.contains("pipelineTtl"), written);
+	}
+
 	@DisplayName("Reload reads what the user changed in the meantime")
 	@Test
 	void reloadReadsChangedDocument() throws IOException {
@@ -194,6 +241,15 @@ class ConfigDocumentsTest {
 		String written = read("commands");
 		assertTrue(written.startsWith("commands:\n"), written);
 		assertTrue(written.contains("\nbehavior:\n"), written);
+	}
+
+	private static void assertAcceptedPolicies(Throwable failure) {
+		StringBuilder messages = new StringBuilder();
+		for (Throwable cause = failure; cause != null; cause = cause.getCause())
+			messages.append(cause.getMessage()).append('\n');
+
+		assertTrue(messages.toString().contains("\"ALLOW_MULTIPLE\""), messages.toString());
+		assertTrue(messages.toString().contains("[REJECT_NEW, REPLACE_EXISTING]"), messages.toString());
 	}
 
 	private String read(String document) throws IOException {

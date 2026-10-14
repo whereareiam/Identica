@@ -2,14 +2,11 @@ package me.whereareiam.identica.testing.cluster;
 
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.identica.testing.environment.IdenticaCluster;
-import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.fixture.Authenticator;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.session.SessionConcurrencyPolicy;
 import org.junit.jupiter.api.Test;
 
-import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
@@ -43,14 +40,14 @@ class SharedAuthenticatorCodeTest {
 	 * the code right away.
 	 */
 	@Test
-	@IdenticaCluster(ownStepServers = true, configure = {Authenticator.ShortPeriod.class, AllowMultiple.class})
+	@IdenticaCluster(ownStepServers = true, configure = Authenticator.ShortPeriod.class)
 	void acceptsACodeTypedThroughBothProxiesAtOnceOnlyOnce(ScenarioContext anvil) {
 		acceptsACodeTypedThroughBothProxiesOnce(anvil, joined -> joined.on(AUTH_B)
 				.sees(m -> m.credential().getScenario().getAuthentication().getVerification().getPrompt()));
 	}
 
 	@Test
-	@IdenticaCluster(replication = false, ownStepServers = true, configure = {Authenticator.ShortPeriod.class, AllowMultiple.class})
+	@IdenticaCluster(replication = false, ownStepServers = true, configure = Authenticator.ShortPeriod.class)
 	void acceptsACodeTypedThroughBothProxiesAtOnceOnlyOnceWhenTheProxiesOnlyShareTheDatabase(ScenarioContext anvil) {
 		acceptsACodeTypedThroughBothProxiesOnce(anvil, joined -> verificationPrompt(joined, AUTH_B));
 	}
@@ -74,9 +71,9 @@ class SharedAuthenticatorCodeTest {
 	}
 
 	/**
-	 * Alice waits at the authenticator prompt of both proxies and types the same code into both. Sessions may be
-	 * held through both proxies, so only the code decides who gets in. Each proxy has its own step server: on a
-	 * shared one her second connection would push the first one off it.
+	 * Alice waits at the authenticator prompt of both proxies and types the same code into both. Neither connection
+	 * holds a session yet, so only the code decides who gets in. Each proxy has its own step server: on a shared
+	 * one her second connection would push the first one off it.
 	 *
 	 * @param toTheCodePromptOfB brings the connection that proxy B just accepted to its authenticator prompt
 	 */
@@ -153,12 +150,5 @@ class SharedAuthenticatorCodeTest {
 	}
 
 	private record Enrolled(Journey journey, Authenticator app) {
-	}
-
-	private static final class AllowMultiple implements Consumer<ProxyConfiguration> {
-		@Override
-		public void accept(ProxyConfiguration proxy) {
-			proxy.settings().getSessions().setConcurrencyPolicy(SessionConcurrencyPolicy.ALLOW_MULTIPLE);
-		}
 	}
 }

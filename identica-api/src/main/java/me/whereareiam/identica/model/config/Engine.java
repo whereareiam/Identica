@@ -3,7 +3,6 @@ package me.whereareiam.identica.model.config;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import me.whereareiam.identica.type.pipeline.PipelineConcurrencyPolicy;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
 import org.jetbrains.annotations.NotNull;
@@ -129,8 +128,6 @@ public class Engine {
 	@Setter
 	@ToString
 	public static class Authentication extends Scenario {
-		private @NotNull PipelineConcurrencyPolicy pipelineConcurrencyPolicy;
-
 		@Override
 		protected @NotNull String pathPrefix() {
 			return "engine.scenarios.authentication";
@@ -144,10 +141,6 @@ public class Engine {
 	@Setter
 	@ToString
 	public static class Registration extends Scenario {
-		/**
-		 * Policy for concurrent in-flight pipelines for the same identity.
-		 */
-		private @NotNull PipelineConcurrencyPolicy pipelineConcurrencyPolicy;
 		/**
 		 * Whether interactive registration should auto-select the only available provider.
 		 */

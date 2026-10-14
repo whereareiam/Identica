@@ -143,18 +143,19 @@ A session exists while a player is online.
 
 <Badge type="warning">Warning</Badge>
 
-- Takes: `"ALLOW_MULTIPLE"`, `"REPLACE_EXISTING"`, or `"REJECT_NEW"`
+- Takes: `"REPLACE_EXISTING"` or `"REJECT_NEW"`
 - Current default: `"REPLACE_EXISTING"`
 - Affects: the default session-opening policy used by `SessionService.open(session)`
 
-A session belongs to the connection that opened it.
+An account has one session, which belongs to the connection that opened it.
 A login from that same connection continues its session; the policy decides what happens when the account logs in from another connection while it has a session, for example through a second proxy that shares Redis:
 
-- `ALLOW_MULTIPLE`: keep a session for every connection, so the account is online through all of them
-- `REPLACE_EXISTING`: keep the new session and disconnect every other connection of the account with `engine.concurrentLoginKick`, on whichever proxy holds it
-- `REJECT_NEW`: keep the earlier sessions and refuse the new login with `engine.concurrentLoginRefused`
+- `REPLACE_EXISTING`: keep the new session and disconnect the connection that held the earlier one with `engine.concurrentLoginKick`, on whichever proxy holds it
+- `REJECT_NEW`: keep the earlier session and refuse the new login with `engine.concurrentLoginRefused`
 
-A player leaving closes only the session of their own connection, never a session of the same account that another connection holds.
+A player leaving closes only the session of their own connection. A connection whose session was replaced no longer holds one, so its leaving does not end the session that replaced it.
+
+Any other value stops the startup with an error that names the value and the accepted values, and the file is left as it is.
 
 The policy covers connections that already logged in. A connection that is still logging in when another connection of the account finishes is disconnected whatever the policy says; see [Logins in progress](../engine/index.mdx#logins-in-progress).
 

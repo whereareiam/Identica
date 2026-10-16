@@ -65,7 +65,7 @@ public class VerificationResetCommand {
 
 	private @Nullable ResolvedTarget resolveTarget(@NotNull Actor sender, @NotNull String target) {
 		UUID parsed = UniqueIdUtil.parseUniqueId(target);
-		if (parsed != null) return new ResolvedTarget(parsed, target);
+		if (parsed != null) return resolveUniqueId(sender, parsed, target);
 
 		Optional<Identity> identity = identityService.find(target);
 		if (identity.isPresent()) return new ResolvedTarget(identity.get().getUniqueId(), identity.get().getUsername());
@@ -78,6 +78,16 @@ public class VerificationResetCommand {
 
 		Account account = matches.getFirst();
 		return new ResolvedTarget(account.getUniqueId(), account.getUsername());
+	}
+
+	private @Nullable ResolvedTarget resolveUniqueId(@NotNull Actor sender, @NotNull UUID uniqueId, @NotNull String target) {
+		Optional<Account> account = accountPersistenceService.findByUniqueId(uniqueId);
+		if (account.isEmpty()) {
+			sendMessage(sender, resetMessages().getTargetNotFound(), Map.of("target", target));
+			return null;
+		}
+
+		return new ResolvedTarget(uniqueId, target);
 	}
 
 	private VerificationMessages.Commands.Admin.Reset resetMessages() {

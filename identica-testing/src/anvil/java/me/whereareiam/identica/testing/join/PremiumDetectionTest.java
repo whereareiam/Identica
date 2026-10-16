@@ -5,6 +5,7 @@ import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.anvil.environment.yggdrasil.YggdrasilMock;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
+import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
@@ -132,6 +133,37 @@ class PremiumDetectionTest {
 				.with(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getDescriptions().get("premium"));
 	}
 
+	/**
+	 * The premium username Steve moves to another account while the lookup cache still holds the old profile. With
+	 * {@code recheckOnMismatch}, the new owner's different profile is looked up again and they are offered Premium.
+	 */
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, configure = RecheckOnMismatch.class)
+	void offersPremiumToTheNewOwnerOfAMovedUsernameWithRecheckOnMismatch(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+		SessionIdentity newOwner = movedUsername(anvil, yggdrasil);
+
+		Journey.premium(anvil, newOwner).join()
+				.on(AUTH)
+				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
+				.with(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getDescriptions().get("premium"));
+	}
+
+	/**
+	 * Lets an offline client look Steve's premium profile up, which caches it, and then moves the username to another
+	 * premium account.
+	 */
+	private static SessionIdentity movedUsername(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+		SessionIdentity previousOwner = yggdrasil.register("Steve");
+		// From another address, so that the login it leaves pending is not the new owner's to continue.
+		Journey.of(anvil, Client.offline("Steve").from("127.0.0.2")).join()
+				.on(AUTH)
+				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
+				.leave();
+
+		yggdrasil.rename(previousOwner.getUniqueId(), "Steve_old");
+		return yggdrasil.register("Steve", UUID.randomUUID());
+	}
+
 	private static UUID offline(String username) {
 		return UUID.nameUUIDFromBytes(("OfflinePlayer:" + username).getBytes(StandardCharsets.UTF_8));
 	}
@@ -140,6 +172,14 @@ class PremiumDetectionTest {
 		@Override
 		public void accept(ProxyConfiguration proxy) {
 			proxy.premium().getDetection().setMethods(List.of(CLIENT_PROFILE, LOOKUP));
+		}
+	}
+
+	private static final class RecheckOnMismatch implements Consumer<ProxyConfiguration> {
+		@Override
+		public void accept(ProxyConfiguration proxy) {
+			new ClientProfileDetection().accept(proxy);
+			proxy.premium().getDetection().setRecheckOnMismatch(true);
 		}
 	}
 }

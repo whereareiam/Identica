@@ -158,6 +158,32 @@ class DefaultMigrationServiceTest {
 		assertEquals(PendingMigration.Phase.CONFIRMATION, pendingMigration.getPhase());
 	}
 
+	@DisplayName("Reports an expired request as expired once, even after looking it up")
+	@Test
+	void confirmReportsAnExpiredRequestAfterALookup() throws InterruptedException {
+		mockAvailableProviders("premium");
+		when(providerLinkPersistenceService.findByUniqueIdAndProviderId(any(UUID.class), any(String.class)))
+				.thenReturn(Optional.empty());
+		Commands commands = commands();
+		commands.getBehavior().getMigration().setConfirmTtl(Duration.ofMillis(1));
+		DefaultMigrationService service = service(this::providers, () -> commands, this::messages);
+
+		UUID connectionUniqueId = UUID.randomUUID();
+		service.request(MigrationRequest.builder()
+				.connectionUniqueId(connectionUniqueId)
+				.accountUniqueId(UUID.randomUUID())
+				.targetProviderId("premium")
+				.username("PlayerOne")
+				.ip("127.0.0.1")
+				.build());
+		Thread.sleep(20);
+
+		assertTrue(service.findPendingMigration(connectionUniqueId).isEmpty());
+		MigrationConfirm confirm = MigrationConfirm.builder().connectionUniqueId(connectionUniqueId).build();
+		assertEquals(MigrationResultStatus.EXPIRED, service.confirm(confirm).getStatus());
+		assertEquals(MigrationResultStatus.NO_PENDING, service.confirm(confirm).getStatus());
+	}
+
 	@DisplayName("Reports the started migration journey the connection's turn finds")
 	@Test
 	void findPendingMigrationReturnsTheStartedJourney() {

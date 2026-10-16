@@ -126,6 +126,9 @@ jobs:
 
       - uses: whereareiam/devops/primitive/setup/gradle@v3
 
+      # The servers and prepared workspaces the build cache job on dev left, instead of downloading them again.
+      - uses: whereareiam/anvil-actions/setup@v1
+
       - name: Run the ${{ matrix.suite }} journeys
         env:
           SUITE: ${{ matrix.suite }}

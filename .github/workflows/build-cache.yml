@@ -15,13 +15,13 @@ permissions:
   contents: read
 
 jobs:
-  # Pull requests read the cache of dev but never write one, so the checks would compile everything again.
-  # A job restores the latest entry of a job with its own id first, which makes the journey jobs, the longest
-  # of the checks, pick this one.
+  # Pull requests read the caches of dev but never write them, so the checks would compile everything and
+  # download Anvil's servers again. A job restores the latest Gradle entry of a job with its own id first, which
+  # makes the journey jobs, the longest of the checks, pick this one.
   journeys:
-    name: Compile for the checks
+    name: Prepare for the checks
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:
@@ -29,8 +29,16 @@ jobs:
 
       - uses: whereareiam/devops/primitive/setup/gradle@v3
 
+      - uses: whereareiam/anvil-actions/setup@v1
+
       # Every cacheable task the checks run before their tests.
       - name: Compile the project, its tests and journeys
         run: >-
           ./gradlew --no-daemon testClasses testFixturesClasses assembleDistribution anvilClasses
           :example-provider:shadowJar :example-addon:jar
+
+      # One journey starts the proxy and the servers every suite uses, so Anvil saves them for the journey jobs.
+      - name: Prepare the servers of the journeys
+        run: >-
+          ./gradlew --no-daemon :identica-testing:anvilIdentityTest
+          --tests 'me.whereareiam.identica.testing.identity.UniqueIdAssignmentTest'

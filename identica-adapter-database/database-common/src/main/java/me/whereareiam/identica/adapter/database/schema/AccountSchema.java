@@ -70,7 +70,8 @@ public final class AccountSchema implements DatabaseSchema {
 
 	private static final List<Migration<DatabaseContext>> MIGRATIONS = List.of(
 			new Migration<>(1, "username-layout", AccountSchema::moveUsernameLayout),
-			new Migration<>(2, "username-table", AccountSchema::moveUsernamesToTheirTable)
+			new Migration<>(2, "username-table", AccountSchema::moveUsernamesToTheirTable),
+			new Migration<>(3, "orphaned-profiles", AccountSchema::deleteOrphanedProfiles)
 	);
 
 	@Override
@@ -176,6 +177,22 @@ public final class AccountSchema implements DatabaseSchema {
 				new DropColumn(AccountTable.NAME, LEGACY_USERNAME),
 				new DropTable(LEGACY_STATE)
 		);
+	}
+
+	/**
+	 * Deletes the provider profiles whose link is gone. SQLite kept them when an account or link was deleted, before
+	 * Identica turned its foreign keys on; the other databases deleted them with the link. Belongs to the upgrade
+	 * paths of 3.0.x and goes with them.
+	 */
+	static void deleteOrphanedProfiles(DatabaseContext database) throws SQLException {
+		database.update("""
+				DELETE FROM identica_provider_profiles
+				WHERE NOT EXISTS (
+					SELECT 1 FROM identica_provider_links
+					WHERE identica_provider_links.provider_id = identica_provider_profiles.provider_id
+					AND identica_provider_links.provider_subject = identica_provider_profiles.provider_subject
+				)
+				""");
 	}
 
 	private static void writeUsernames(DatabaseContext database) throws SQLException {

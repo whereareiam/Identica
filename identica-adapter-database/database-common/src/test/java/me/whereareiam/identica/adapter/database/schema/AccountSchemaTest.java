@@ -177,7 +177,7 @@ class AccountSchemaTest extends DatabaseSchemaContract {
 		install(database);
 
 		assertEquals(expected, database.connect(SchemaSnapshot::everyTable));
-		assertEquals(List.of("1 username-layout", "2 username-table"), history(database));
+		assertEquals(List.of("1 username-layout", "2 username-table", "3 orphaned-profiles"), history(database));
 	}
 
 	@ParameterizedTest(name = "{0}")
@@ -327,7 +327,7 @@ class AccountSchemaTest extends DatabaseSchemaContract {
 				statement.execute("INSERT INTO " + STATE + " (unique_id, source, updated_at) VALUES ('" + LOWERCASE_DAVE + "', 'manual', 2300)");
 				statement.execute("UPDATE identica_account_usernames SET username_key = NULL, source = 'system' WHERE unique_id = '" + DAVE + "'");
 				statement.execute("DELETE FROM identica_account_usernames WHERE unique_id = '" + LOWERCASE_DAVE + "'");
-				statement.execute("DELETE FROM strata_history WHERE stream = 'identica/account' AND version = 2");
+				statement.execute("DELETE FROM strata_history WHERE stream = 'identica/account' AND version >= 2");
 			}
 			if (!connection.getAutoCommit()) connection.commit();
 			return null;
@@ -336,7 +336,7 @@ class AccountSchemaTest extends DatabaseSchemaContract {
 		install(database);
 
 		assertEquals(expected, database.connect(SchemaSnapshot::everyTable));
-		assertEquals(List.of("1 username-layout", "2 username-table"), history(database));
+		assertEquals(List.of("1 username-layout", "2 username-table", "3 orphaned-profiles"), history(database));
 		assertEquals(Stream.of(DAVE + " dave provider", LOWERCASE_DAVE + " null manual").sorted().toList(), rows(database,
 				"SELECT unique_id, username_key, source FROM identica_account_usernames WHERE username IN ('Dave', 'dave')").stream().sorted().toList());
 	}

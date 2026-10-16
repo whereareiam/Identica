@@ -69,6 +69,29 @@ class DefaultSessionRecognitionStoreTest {
 		assertTrue(store.find("premium", "subject-2").isEmpty());
 	}
 
+	@DisplayName("A newer snapshot saved through another proxy replaces the one this proxy saw")
+	@Test
+	void findsTheLatestSnapshotSavedAnywhere() {
+		TestReplicationSystem replication = new TestReplicationSystem();
+		DefaultSessionRecognitionStore here = new DefaultSessionRecognitionStore(this::settings, this::replication, replication);
+		DefaultSessionRecognitionStore elsewhere = new DefaultSessionRecognitionStore(this::settings, this::replication, replication);
+
+		here.save(snapshot("127.0.0.2"));
+		elsewhere.save(snapshot("127.0.0.3"));
+
+		assertEquals("127.0.0.3", here.find("credential", "alice").orElseThrow().getLastIp());
+	}
+
+	private static SessionRecognitionSnapshot snapshot(String ip) {
+		return SessionRecognitionSnapshot.builder()
+				.providerId("credential")
+				.providerSubject("alice")
+				.providerUsername("Alice")
+				.lastIp(ip)
+				.capturedAt(System.currentTimeMillis())
+				.build();
+	}
+
 	private Replication replication() {
 		Replication replication = new Replication();
 		replication.setEnabled(true);
@@ -146,8 +169,16 @@ class DefaultSessionRecognitionStoreTest {
 			this.defaultTtlMs = defaultTtlMs;
 		}
 
+		/**
+		 * A proxy's own copy, which may be older than the shared store; the store must never read it.
+		 */
 		@Override
 		public @NotNull CompletableFuture<Optional<T>> get(@Nullable String key) {
+			throw new UnsupportedOperationException("a snapshot is read from the shared store");
+		}
+
+		@Override
+		public @NotNull CompletableFuture<Optional<T>> getFresh(@Nullable String key) {
 			return CompletableFuture.completedFuture(Optional.ofNullable(value(key)));
 		}
 

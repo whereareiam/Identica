@@ -66,7 +66,7 @@ class RecognitionFeatureTest {
 		ReplicatedCache<SessionRecognitionSnapshot> snapshots = mock(ReplicatedCache.class);
 		when(replication.cache(settings.getReplication().getSnapshotNamespace())).thenReturn(snapshotBuilder);
 		doReturn(snapshots).when(snapshotBuilder).replicated(any());
-		when(snapshots.get("premium|subject")).thenReturn(CompletableFuture.completedFuture(Optional.of(SessionRecognitionSnapshot.builder()
+		when(snapshots.getFresh("premium|subject")).thenReturn(CompletableFuture.completedFuture(Optional.of(SessionRecognitionSnapshot.builder()
 				.providerId("premium")
 				.providerSubject("subject")
 				.providerUsername("Player")

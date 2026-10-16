@@ -104,7 +104,8 @@ jobs:
           release-body: ${{ needs.resolve.outputs.body }}
           output-file: distribution/release-notes-bbcode.txt
 
-      # The proxy jars on their own are for Modrinth; the release ships both proxies in the platforms archive.
+      # The proxy jars on their own are for Modrinth; the release ships both proxies in the platforms archive and
+      # the addon's bundle.
       - name: Upload files
         env:
           GH_TOKEN: ${{ github.token }}
@@ -112,7 +113,8 @@ jobs:
           VERSION: ${{ needs.verify.outputs.version }}
         run: |
           set -euo pipefail
-          rm "distribution/Identica-BUNGEECORD-$VERSION.jar" "distribution/Identica-VELOCITY-$VERSION.jar"
+          rm "distribution/Identica-BUNGEECORD-$VERSION.jar" "distribution/Identica-VELOCITY-$VERSION.jar" \
+            "distribution/Identica-Dialogs-BUNGEECORD-$VERSION.jar" "distribution/Identica-Dialogs-VELOCITY-$VERSION.jar"
           gh release upload "$TAG" distribution/* --clobber --repo "$GITHUB_REPOSITORY"
 
   plan:

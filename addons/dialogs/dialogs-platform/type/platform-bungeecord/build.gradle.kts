@@ -1,5 +1,8 @@
+import org.gradle.jvm.tasks.Jar
+
+// The addon on this proxy alone, for stores that take one jar per proxy; the bundle ships both.
 plugins {
-    id("module-java")
+    id("packaging-addon-jar")
 }
 
 dependencies {
@@ -18,4 +21,8 @@ tasks.named<ProcessResources>("processResources") {
     filesMatching("bungee.yml") {
         expand("version" to version)
     }
+}
+
+tasks.named<Jar>("shadowJar").configure {
+    archiveBaseName.set("Identica-Dialogs-BUNGEECORD")
 }

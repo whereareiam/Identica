@@ -26,7 +26,7 @@ To get the files a development build or a release ships, under their final names
 ./gradlew assembleDistribution
 ```
 
-It writes `Identica-BUNDLE-<version>.jar`, `Identica-BUNGEECORD-<version>.jar`, `Identica-VELOCITY-<version>.jar`, `Identica-PLATFORMS-<version>.zip` with both proxy jars, and the two provider jars to `build/distribution/`. The version comes from the `VERSION` environment variable and defaults to `dev`.
+It writes `Identica-BUNDLE-<version>.jar`, `Identica-BUNGEECORD-<version>.jar`, `Identica-VELOCITY-<version>.jar`, `Identica-PLATFORMS-<version>.zip` with both proxy jars, the two provider jars, and the dialogs addon as `Identica-Dialogs-<version>.jar` with `Identica-Dialogs-BUNGEECORD-<version>.jar` and `Identica-Dialogs-VELOCITY-<version>.jar` to `build/distribution/`. The version comes from the `VERSION` environment variable and defaults to `dev`.
 
 Every plugin build includes all built-in feature implementations and the username identity subsystem. Operators configure feature use globally and per provider; they do not install feature jars or choose which implementations are compiled.
 

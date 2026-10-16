@@ -1,7 +1,7 @@
 ---
 title: Живые тесты
 description: Запуск и написание прохождений игрока для собранного плагина на настоящем прокси.
-sourceHash: 013a1190dfc54f3da5755c9ac6f5e76be33a33a8
+sourceHash: fb7fcc0496eba8a1d37a95f5ef63640598f6ad3e
 ---
 
 Модуль `identica-testing` запускает собранный плагин и провайдеры на настоящем прокси Velocity с бэкенд-серверами Paper и проводит через них симулированных игроков с помощью [Anvil](https://github.com/whereareiam/anvil). Модульные тесты остаются в своих модулях, а эти тесты проверяют то, что видит игрок при входе на сервер.
@@ -154,6 +154,8 @@ void registersOnTheLobbyWithoutAnyRouting(ScenarioContext anvil) {
 			.remainsOn(LOBBY);
 }
 ```
+
+`IdenticaNetwork.CLOSED` — сервер с белым списком, в котором никого нет, поэтому он не пускает ни одного игрока. Он появляется в сети только тогда, когда тест направляет туда игроков, например `@Identica(complete = IdenticaNetwork.CLOSED)`, — для сценариев, в которых сервер отказывает игрокам.
 
 `database` выбирает, где прокси хранит аккаунты: `Database.SQLITE` (по умолчанию), `Database.H2` — файл H2 в каталоге данных Identica, или `Database.MARIADB` — сервер MariaDB в контейнере, который останавливается вместе с сетью и к которому Identica подключается через свой бэкенд MySQL. Тесту на MariaDB нужен Docker, а без него тест пропускается.
 

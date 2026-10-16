@@ -117,6 +117,14 @@ public final class ProxyConfiguration {
 		return (Routing) documents.get(ROUTING);
 	}
 
+	/**
+	 * Returns whether players are sent to a server while a step waits for them or once they are done.
+	 */
+	boolean routesTo(String server) {
+		Routing.Defaults defaults = routing().getDefaults();
+		return server.equals(defaults.getStep().getTarget()) || server.equals(defaults.getComplete().getTarget());
+	}
+
 	public Settings settings() {
 		return (Settings) documents.get(SETTINGS);
 	}

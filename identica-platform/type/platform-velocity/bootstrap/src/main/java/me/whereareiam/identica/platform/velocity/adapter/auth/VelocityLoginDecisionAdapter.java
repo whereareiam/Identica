@@ -6,6 +6,7 @@ import com.velocitypowered.api.event.ResultedEvent;
 import com.velocitypowered.api.event.connection.LoginEvent;
 import com.velocitypowered.api.proxy.Player;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.identica.checkpoint.Checkpoints;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.platform.common.adapter.PlatformLoginDecisionAdapter;
@@ -22,6 +23,7 @@ import java.util.UUID;
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class VelocityLoginDecisionAdapter implements PlatformLoginDecisionAdapter<LoginEvent> {
 	private final @NotNull LoginDecisionProcessor processor;
+	private final @NotNull Checkpoints checkpoints;
 
 	@Override
 	public void process(@NotNull LoginEvent event) {
@@ -66,7 +68,7 @@ public class VelocityLoginDecisionAdapter implements PlatformLoginDecisionAdapte
 					@NotNull String username,
 					ConnectionIdentity.@Nullable Origin origin
 			) {
-				return new VelocityCommandPlayer(player.getUniqueId(), accountUniqueId, player, username, origin);
+				return new VelocityCommandPlayer(player.getUniqueId(), accountUniqueId, player, username, origin, checkpoints);
 			}
 		};
 	}

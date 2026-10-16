@@ -70,10 +70,9 @@ public @interface Identica {
 	Database database() default Database.SQLITE;
 
 	/**
-	 * Whether the proxy also runs the example addon, which holds back chat and commands until a player has
-	 * authenticated.
+	 * Addons the proxy runs next to Identica.
 	 */
-	boolean addon() default false;
+	Addon[] addons() default {};
 
 	/**
 	 * Changes to the proxy's configuration files that the other attributes do not cover, applied in order. Each

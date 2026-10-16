@@ -201,8 +201,8 @@ public class UsernameHolds implements EventListener {
 	 */
 	private final class HolderRecords implements LeasedRecords<Holder> {
 		@Override
-		public @NotNull CompletableFuture<Optional<Holder>> find(@NotNull String key) {
-			return holders.get().getFresh(key);
+		public @NotNull CompletableFuture<Optional<Versioned<Holder>>> find(@NotNull String key) {
+			return holders.get().read(key);
 		}
 
 		@Override
@@ -210,9 +210,18 @@ public class UsernameHolds implements EventListener {
 			return !isSameHolder(held, stored);
 		}
 
+		/**
+		 * Writes the hold only while it is as the renewal read it, so a renewal never brings back a hold that was
+		 * released or replaces one another connection took over meanwhile.
+		 */
 		@Override
-		public @NotNull CompletableFuture<Void> write(@NotNull String key, @NotNull Holder holder, @NotNull LeaseRenewal renewal) {
-			return holders.get().put(key, holder, renewal.getTtlMs());
+		public @NotNull CompletableFuture<Boolean> write(
+				@NotNull String key,
+				@Nullable Versioned<Holder> found,
+				@NotNull Holder holder,
+				@NotNull LeaseRenewal renewal
+		) {
+			return holders.get().write(key, found, holder, renewal.getTtlMs());
 		}
 	}
 

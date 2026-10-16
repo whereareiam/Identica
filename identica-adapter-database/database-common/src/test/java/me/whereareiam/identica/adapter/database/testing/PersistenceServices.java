@@ -8,7 +8,6 @@ import me.whereareiam.identica.adapter.database.entity.account.AccountEntity;
 import me.whereareiam.identica.adapter.database.entity.username.UsernameEntity;
 import me.whereareiam.identica.adapter.database.entity.username.UsernameHistoryEntity;
 import me.whereareiam.identica.adapter.database.repository.account.AccountRepository;
-import me.whereareiam.identica.adapter.database.repository.username.UsernameHistoryRepository;
 import me.whereareiam.identica.adapter.database.repository.username.UsernameRepository;
 import me.whereareiam.identica.adapter.database.username.DefaultAccountUsernameDuplicatePersistenceService;
 import me.whereareiam.identica.adapter.database.username.DefaultAccountUsernamePersistenceService;
@@ -27,7 +26,6 @@ public final class PersistenceServices {
 				Providers.of(EntityAccess.of(jdbi, Dialectica.entity(UsernameEntity.class))),
 				Providers.of(jdbi.onDemand(AccountRepository.class)),
 				Providers.of(jdbi.onDemand(UsernameRepository.class)),
-				Providers.of(jdbi.onDemand(UsernameHistoryRepository.class)),
 				Mockito.mock(EventManager.class)
 		);
 	}

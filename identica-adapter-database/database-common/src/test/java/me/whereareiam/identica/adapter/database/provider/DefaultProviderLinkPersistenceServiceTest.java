@@ -6,11 +6,6 @@ import me.whereareiam.identica.adapter.database.entity.account.AccountProviderLi
 import me.whereareiam.identica.adapter.database.mapper.account.AccountProviderLinkMapper;
 import me.whereareiam.identica.adapter.database.repository.provider.ProviderLinkRepository;
 import me.whereareiam.identica.adapter.database.testing.TestDataFactory;
-import me.whereareiam.identica.event.EventManager;
-import me.whereareiam.identica.event.account.AccountClearEvent;
-import me.whereareiam.identica.event.account.AccountDeleteEvent;
-import me.whereareiam.identica.event.account.AccountLifecycleEvent;
-import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -33,14 +28,12 @@ class DefaultProviderLinkPersistenceServiceTest {
 	private EntityAccess<AccountProviderLinkEntity> links;
 	@Mock
 	private ProviderLinkRepository repository;
-	@Mock
-	private EventManager eventManager;
 
 	private DefaultProviderLinkPersistenceService service;
 
 	@BeforeEach
 	void setUp() {
-		service = new DefaultProviderLinkPersistenceService(Providers.of(links), Providers.of(repository), eventManager);
+		service = new DefaultProviderLinkPersistenceService(Providers.of(links), Providers.of(repository));
 	}
 
 	@DisplayName("Refuses blank provider IDs and subjects when looking up links by subject")
@@ -141,40 +134,5 @@ class DefaultProviderLinkPersistenceServiceTest {
 		service.deleteAll(uniqueId);
 
 		verify(repository).deleteAll(uniqueId);
-	}
-
-	@DisplayName("Deletes provider links when an account is cleared")
-	@Test
-	void onAccountLifecycleDeletesOnClear() {
-		UUID uniqueId = UUID.randomUUID();
-		ConnectionIdentity identity = new ConnectionIdentity(uniqueId, "Player", null);
-		AccountLifecycleEvent event = new AccountClearEvent(identity);
-
-		service.onAccountLifecycle(event);
-
-		verify(repository).deleteAll(uniqueId);
-	}
-
-	@DisplayName("Deletes provider links when an account is deleted")
-	@Test
-	void onAccountLifecycleDeletesOnDelete() {
-		UUID uniqueId = UUID.randomUUID();
-		ConnectionIdentity identity = new ConnectionIdentity(uniqueId, "Player", null);
-		AccountLifecycleEvent event = new AccountDeleteEvent(identity);
-
-		service.onAccountLifecycle(event);
-
-		verify(repository).deleteAll(uniqueId);
-	}
-
-	@DisplayName("Ignores lifecycle events without an account UUID when deleting links")
-	@Test
-	void onAccountLifecycleIgnoresNullUniqueId() {
-		ConnectionIdentity identity = new ConnectionIdentity(null, "Player", null);
-		AccountLifecycleEvent event = new AccountClearEvent(identity);
-
-		service.onAccountLifecycle(event);
-
-		verify(repository, never()).deleteAll(org.mockito.ArgumentMatchers.any());
 	}
 }

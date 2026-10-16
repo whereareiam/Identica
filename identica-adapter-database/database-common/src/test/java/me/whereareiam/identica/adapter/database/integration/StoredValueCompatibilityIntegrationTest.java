@@ -12,7 +12,6 @@ import me.whereareiam.identica.adapter.database.repository.provider.ProviderLink
 import me.whereareiam.identica.adapter.database.testing.PersistenceServices;
 import me.whereareiam.identica.adapter.database.testing.TestDataFactory;
 import me.whereareiam.identica.adapter.database.testing.schema.TestDatabase;
-import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.model.identity.Account;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import org.jdbi.v3.core.Jdbi;
@@ -21,7 +20,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.Mockito;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -187,8 +185,7 @@ class StoredValueCompatibilityIntegrationTest {
 	private static DefaultProviderLinkPersistenceService links(Jdbi jdbi) {
 		return new DefaultProviderLinkPersistenceService(
 				Providers.of(EntityAccess.of(jdbi, Dialectica.entity(AccountProviderLinkEntity.class))),
-				Providers.of(jdbi.onDemand(ProviderLinkRepository.class)),
-				Mockito.mock(EventManager.class)
+				Providers.of(jdbi.onDemand(ProviderLinkRepository.class))
 		);
 	}
 

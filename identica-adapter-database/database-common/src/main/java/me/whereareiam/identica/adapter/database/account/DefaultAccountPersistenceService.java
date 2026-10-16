@@ -10,7 +10,6 @@ import me.whereareiam.identica.adapter.database.entity.username.UsernameEntity;
 import me.whereareiam.identica.adapter.database.mapper.account.AccountMapper;
 import me.whereareiam.identica.adapter.database.mapper.username.UsernameMapper;
 import me.whereareiam.identica.adapter.database.repository.account.AccountRepository;
-import me.whereareiam.identica.adapter.database.repository.username.UsernameHistoryRepository;
 import me.whereareiam.identica.adapter.database.repository.username.UsernameRepository;
 import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.EventManager;
@@ -32,7 +31,7 @@ import java.util.UUID;
 
 /**
  * Keeps accounts in {@code identica_accounts} and their usernames in {@code identica_account_usernames}: an account
- * is read with its username, and created and deleted with it in one transaction.
+ * is read with its username and created with it in one transaction.
  */
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
@@ -42,7 +41,6 @@ public class DefaultAccountPersistenceService implements AccountPersistenceServi
 	private final Provider<EntityAccess<UsernameEntity>> usernames;
 	private final Provider<AccountRepository> accountRepository;
 	private final Provider<UsernameRepository> usernameRepository;
-	private final Provider<UsernameHistoryRepository> usernameHistoryRepository;
 	private final EventManager eventManager;
 
 	@Inject
@@ -119,17 +117,13 @@ public class DefaultAccountPersistenceService implements AccountPersistenceServi
 	}
 
 	/**
-	 * Deletes an account with its username and username history in one transaction. The rows that reference the
-	 * account are deleted here as well, because SQLite leaves foreign keys unenforced.
+	 * Deletes an account. Its username, username history, provider links and every other row that references the
+	 * account go with it through their foreign keys.
 	 */
 	@Override
 	public void delete(@NotNull UUID uniqueId) {
 		try {
-			jdbi.get().useTransaction(handle -> {
-				usernameHistoryRepository.get().deleteAll(uniqueId);
-				usernames.get().delete(uniqueId);
-				accounts.get().delete(uniqueId);
-			});
+			accounts.get().delete(uniqueId);
 		} catch (Exception e) {
 			Logger.warn(e, "Failed to delete account %s", uniqueId);
 		}

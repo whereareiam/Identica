@@ -34,7 +34,8 @@ public class RestrictionActivationStore {
 		String key = key(type, providerId);
 		if (key == null) return false;
 
-		return cache.get().get(key).join().orElse(false);
+		// Read through to the shared store: another proxy may have lifted the restriction since this one last saw it.
+		return cache.get().getFresh(key).join().orElse(false);
 	}
 
 	public void enable(@NotNull RestrictionType type, @Nullable String providerId) {

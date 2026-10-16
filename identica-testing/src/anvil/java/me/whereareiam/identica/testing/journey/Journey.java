@@ -16,6 +16,7 @@ import me.whereareiam.identica.testing.environment.Provider;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -357,6 +358,19 @@ public final class Journey {
 	/**
 	 * Returns the identity the player's current backend observes.
 	 */
+	/**
+	 * Returns when the proxy connected this player to a backend since the journey began, as the times of its console
+	 * lines. A connection the backend refused counts as well, so this tells how often the proxy tried.
+	 */
+	public List<LocalTime> connectionsTo(String backend) {
+		String connected = "[server connection] " + playedAs + " -> " + backend + " has connected";
+		return proxy.read(created, 2000).getLines().stream()
+				.map(line -> line.getText())
+				.filter(line -> line.contains(connected))
+				.map(line -> LocalTime.parse(line.substring(1, 9)))
+				.toList();
+	}
+
 	public PlayerIdentity identity() {
 		return server.identity();
 	}

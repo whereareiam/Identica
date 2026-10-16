@@ -24,6 +24,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Default Routing Coordinator")
 class DefaultRoutingCoordinatorTest {
@@ -76,6 +77,61 @@ class DefaultRoutingCoordinatorTest {
 		assertEquals(0, capture.completionReached);
 		assertEquals(0, capture.cleared);
 		assertEquals(RoutingIntentStatus.REACHED, store.peek(connectionUniqueId).orElseThrow().getStatus());
+	}
+
+	@DisplayName("An attempt beyond the policy exhausts the route and clears it when consumeOnExhausted is set")
+	@Test
+	void exhaustedRouteIsClearedWhenConsumed() {
+		DefaultRoutingIntentStore store = new DefaultRoutingIntentStore();
+		EventController events = new EventController();
+		ReachedCapture capture = new ReachedCapture();
+		events.register(capture);
+		DefaultRoutingCoordinator coordinator = new DefaultRoutingCoordinator(null, store, events);
+		UUID connectionUniqueId = UUID.randomUUID();
+		store.put(spent(intent(connectionUniqueId, "lobby", RoutingReason.COMPLETION, RoutingAttemptPolicy.defaultCompletion())));
+
+		RoutingAttemptDecision decision = coordinator.decide(new RoutingAttemptRequest(
+				connectionUniqueId,
+				RoutingAttemptTrigger.SCHEDULED_RETRY,
+				"auth"
+		));
+
+		assertFalse(decision.isAllowed());
+		assertTrue(decision.isExhausted());
+		assertEquals(1, capture.cleared);
+		assertEquals(RoutingClearReason.EXHAUSTED, capture.clearReason);
+		assertFalse(store.peek(connectionUniqueId).isPresent());
+	}
+
+	@DisplayName("An exhausted route stays stored without consumeOnExhausted, and is never attempted again")
+	@Test
+	void exhaustedRouteIsKeptWhenNotConsumed() {
+		DefaultRoutingIntentStore store = new DefaultRoutingIntentStore();
+		EventController events = new EventController();
+		ReachedCapture capture = new ReachedCapture();
+		events.register(capture);
+		DefaultRoutingCoordinator coordinator = new DefaultRoutingCoordinator(null, store, events);
+		UUID connectionUniqueId = UUID.randomUUID();
+		RoutingAttemptPolicy policy = RoutingAttemptPolicy.defaultCompletion();
+		policy.setConsumeOnExhausted(false);
+		store.put(spent(intent(connectionUniqueId, "lobby", RoutingReason.COMPLETION, policy)));
+		RoutingAttemptRequest request = new RoutingAttemptRequest(connectionUniqueId, RoutingAttemptTrigger.SCHEDULED_RETRY, "auth");
+
+		assertTrue(coordinator.decide(request).isExhausted());
+		assertEquals(0, capture.cleared);
+		assertEquals(RoutingIntentStatus.EXHAUSTED, store.peek(connectionUniqueId).orElseThrow().getStatus());
+
+		RoutingAttemptDecision again = coordinator.decide(request);
+		assertFalse(again.isAllowed());
+		assertEquals("intent-not-pending", again.getReason());
+	}
+
+	/**
+	 * Marks every attempt the intent's policy allows as made.
+	 */
+	private static RoutingIntent spent(RoutingIntent intent) {
+		intent.getAttemptState().setAttempts(1);
+		return intent;
 	}
 
 	private RoutingIntent intent(

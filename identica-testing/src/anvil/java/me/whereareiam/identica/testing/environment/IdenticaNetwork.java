@@ -125,6 +125,7 @@ public final class IdenticaNetwork {
 				.source(AssetSource.text(content))
 				.target(Path.of(data, file))
 				.build()));
+		configuration.plugins().forEach((file, artifact) -> workspace.asset(artifact(artifact, Path.of("plugins", file))));
 		configuration.seeds().forEach((file, source) -> workspace.asset(WorkspaceAsset.builder()
 				.group("identica-seed")
 				.source(AssetSource.path(source))

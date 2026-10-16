@@ -34,10 +34,13 @@ public final class DatabaseSchemaInstaller implements SchemaInstaller {
 	 */
 	public DatabaseSchemaInstaller(@NotNull Jdbi jdbi) {
 		this.jdbi = Objects.requireNonNull(jdbi, "jdbi");
+		Logger.debug("Database libraries: %s", SharedLibraries.describe());
 	}
 
 	@Override
 	public synchronized void install(@NotNull DatabaseSchema schema) {
+		SharedLibraries.requireShared(schema.getClass());
+
 		String stream = schema.stream();
 		Set<String> missing = new LinkedHashSet<>(schema.requires());
 		missing.removeAll(installed);

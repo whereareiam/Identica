@@ -84,6 +84,7 @@ public final class ProxyConfiguration {
 	private final Map<String, Object> documents = new LinkedHashMap<>();
 	private final Map<String, String> unreadable = new LinkedHashMap<>();
 	private final Map<String, Path> seeds = new LinkedHashMap<>();
+	private final Map<String, String> plugins = new LinkedHashMap<>();
 
 	ProxyConfiguration(
 			String name,
@@ -277,6 +278,16 @@ public final class ProxyConfiguration {
 	}
 
 	/**
+	 * Installs another plugin next to Identica, such as one that bundles a library Identica also uses.
+	 *
+	 * @param file file name inside the proxy's plugin directory
+	 * @param artifact the Anvil artifact of the plugin jar, as the module's build names it
+	 */
+	public void plugin(String file, String artifact) {
+		plugins.put(file, artifact);
+	}
+
+	/**
 	 * Reads a file as the running proxy left it, into one of Identica's models.
 	 *
 	 * @param anvil running network
@@ -331,6 +342,13 @@ public final class ProxyConfiguration {
 	 */
 	Map<String, Path> seeds() {
 		return Map.copyOf(seeds);
+	}
+
+	/**
+	 * Returns the other plugins to install, by file name inside the proxy's plugin directory.
+	 */
+	Map<String, String> plugins() {
+		return Map.copyOf(plugins);
 	}
 
 	/**

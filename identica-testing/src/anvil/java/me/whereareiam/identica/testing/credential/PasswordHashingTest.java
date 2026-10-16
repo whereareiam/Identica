@@ -62,6 +62,22 @@ class PasswordHashingTest {
 		logsIn(Accounts.credential(anvil, "Alice", PASSWORD));
 	}
 
+	/**
+	 * Bcrypt only reads 72 bytes of a password. A longer one, allowed once an administrator raises the length limit,
+	 * still registers and logs in.
+	 */
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = LongPasswords.class)
+	void registersAndLogsInWithAPasswordLongerThanBcryptReads(ScenarioContext anvil) {
+		String password = "Secret-123" + "x".repeat(80);
+
+		Accounts.credential(anvil, "Alice", password).rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(password)
+				.on(LOBBY);
+	}
+
 	private static void switchTo(ScenarioContext anvil, String algorithm, boolean autoupgrade) {
 		ProxyConfiguration.editGenerated(anvil, SETTINGS, CredentialSettings.class, settings -> {
 			settings.getCryptography().setAlgorithm(algorithm);
@@ -78,6 +94,13 @@ class PasswordHashingTest {
 				.on(LOBBY)
 				.sees(m -> m.credential().getCompletion().getAuthentication().getBody())
 				.leave();
+	}
+
+	static final class LongPasswords implements Consumer<ProxyConfiguration> {
+		@Override
+		public void accept(ProxyConfiguration proxy) {
+			proxy.credential().getScenario().getRegistration().getPassword().setMaxLength(100);
+		}
 	}
 
 	static final class Argon2 implements Consumer<ProxyConfiguration> {

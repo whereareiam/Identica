@@ -1,5 +1,6 @@
 package me.whereareiam.identica.provider.credential.cryptography.bcrypt;
 
+import at.favre.lib.crypto.bcrypt.BCrypt;
 import me.whereareiam.identica.provider.credential.model.CryptographyOptions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,44 @@ class BcryptCryptographyAlgorithmTest {
 
 		assertTrue(first.startsWith("$2a$05$"), first);
 		assertNotEquals(first, second);
+	}
+
+	@DisplayName("Hashes and verifies a password longer than the 72 bytes bcrypt reads")
+	@Test
+	void verifiesALongPassword() {
+		String password = "Secret-123" + "x".repeat(80);
+		String hash = bcrypt.hash(password, options(4));
+
+		assertTrue(bcrypt.verify(password, hash));
+		assertFalse(bcrypt.verify("Secret-124" + "x".repeat(80), hash));
+	}
+
+	@DisplayName("Counts bytes, not characters, so a long multi-byte password works too")
+	@Test
+	void verifiesALongMultiBytePassword() {
+		String password = "Пароль-123" + "密".repeat(30);
+		String hash = bcrypt.hash(password, options(4));
+
+		assertTrue(bcrypt.verify(password, hash));
+	}
+
+	@DisplayName("Reads only the first 72 bytes, like every common bcrypt implementation")
+	@Test
+	void readsOnlyTheFirst72Bytes() {
+		String prefix = "Secret-123" + "x".repeat(62);
+		String hash = bcrypt.hash(prefix + "first", options(4));
+
+		assertTrue(bcrypt.verify(prefix + "second", hash));
+	}
+
+	@DisplayName("Verifies hashes of every bcrypt version")
+	@Test
+	void verifiesEveryVersion() {
+		for (BCrypt.Version version : new BCrypt.Version[] {BCrypt.Version.VERSION_2A, BCrypt.Version.VERSION_2B, BCrypt.Version.VERSION_2Y}) {
+			String hash = BCrypt.with(version).hashToString(4, "Secret-123".toCharArray());
+
+			assertTrue(bcrypt.verify("Secret-123", hash), hash);
+		}
 	}
 
 	@DisplayName("Refuses a cost that is not positive")

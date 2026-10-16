@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SharedAuthenticatorCodeTest {
 	private static final int INVALID = 0;
 	private static final int ACCEPTED = 1;
+	private static final int ENDED = 2;
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
@@ -94,25 +95,27 @@ class SharedAuthenticatorCodeTest {
 				"exactly one proxy must accept the code (A " + throughAOutcome + ", B " + throughBOutcome + ")");
 		if (throughAOutcome == ACCEPTED) {
 			throughA.on(LOBBY);
-			if (throughBOutcome == INVALID) throughB.remainsOn(AUTH_B);
+			if (throughBOutcome == INVALID || throughBOutcome == ENDED) throughB.remainsOn(AUTH_B);
 			return;
 		}
 
 		throughB.on(LOBBY);
-		if (throughAOutcome == INVALID) throughA.remainsOn(AUTH);
+		if (throughAOutcome == INVALID || throughAOutcome == ENDED) throughA.remainsOn(AUTH);
 	}
 
 	/**
-	 * Returns what the proxy did with the code Alice typed: it let her in, answered that the code is invalid, or,
-	 * when the other proxy changed her login while this one was writing it, disconnected her to reconnect. Which
-	 * of the last two the losing proxy does depends on whether it finished before the winning proxy ended the
-	 * login.
+	 * Returns what the proxy did with the code Alice typed: it let her in, answered that the code is invalid,
+	 * answered that nothing waits for a code, or, when the other proxy changed her login while this one was writing
+	 * it, disconnected her to reconnect. Which of the last three the losing proxy does depends on when it handles the
+	 * code: before the winning proxy ended the login, while it ended it, or after. With Redis both connections
+	 * share one login, so once the winning proxy ended it the losing one finds nothing waiting for a code.
 	 */
 	private static int outcome(Journey journey) {
 		return journey.seesAnyOfOrIsKickedWith(
 				m -> m.identica().getEngine().getConcurrentChangeKick(),
 				m -> m.verification().getCommands().getConfirm().getInvalidCode(),
-				m -> m.credential().getCompletion().getAuthentication().getBody()
+				m -> m.credential().getCompletion().getAuthentication().getBody(),
+				m -> m.verification().getCommands().getConfirm().getNoPending()
 		);
 	}
 

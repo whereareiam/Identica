@@ -131,8 +131,50 @@ public class VelocityRoutingIntentListener implements EventListener {
 
 		Logger.debug("Velocity routing intent %s applying player=%s current=%s target=%s",
 				source, player.getUniqueId(), currentServer, targetServer);
-		player.createConnectionRequest(server.get()).connect()
+		ConnectionRequestBuilder request = player.createConnectionRequest(server.get());
+		if (isLastAttempt(currentIntent)) {
+			// Velocity tells the player why a server refused them, and fires KickedFromServerEvent for other plugins,
+			// only for a connection it handles itself. The last attempt therefore leaves a refusal to Velocity.
+			request.connectWithIndication()
+					.whenComplete((connected, throwable) -> handleIndicatedResult(player, targetServer, trigger, connected, throwable));
+			return;
+		}
+
+		request.connect()
 				.whenComplete((result, throwable) -> handleAsyncResult(player, targetServer, trigger, result, throwable));
+	}
+
+	private static boolean isLastAttempt(@NotNull RoutingIntent intent) {
+		return !intent.getAttemptPolicy().allowsAttempt(intent.getAttemptState().getAttempts() + 1);
+	}
+
+	private void handleIndicatedResult(
+			@NotNull Player player,
+			@NotNull String targetServer,
+			@NotNull RoutingAttemptTrigger trigger,
+			Boolean connected,
+			Throwable throwable
+	) {
+		if (throwable != null) {
+			Logger.debug("Velocity routing last connect failed player=%s target=%s trigger=%s reason=%s",
+					player.getUniqueId(), targetServer, trigger, throwable.toString());
+			recordAttempt(player, trigger, false, targetServer, RoutingAttemptFailureReason.CONNECTION_EXCEPTION);
+			return;
+		}
+		if (connected == null) {
+			recordAttempt(player, trigger, false, targetServer, RoutingAttemptFailureReason.CONNECTION_RESULT_MISSING);
+			return;
+		}
+
+		Logger.debug("Velocity routing last connect finished player=%s target=%s trigger=%s connected=%s",
+				player.getUniqueId(), targetServer, trigger, connected);
+		// Velocity only says whether the player arrived; it has already handled any refusal itself.
+		if (connected) {
+			recordAttempt(player, trigger, true, targetServer, null);
+			return;
+		}
+
+		recordAttempt(player, trigger, false, targetServer, RoutingAttemptFailureReason.SERVER_DISCONNECTED);
 	}
 
 	private void handleAsyncResult(

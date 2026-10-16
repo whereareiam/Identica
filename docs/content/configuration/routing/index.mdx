@@ -296,6 +296,8 @@ Behavior in current source:
 - `RETRY_LIMITED`: allow attempts until `maxAttempts` is reached
 - `UNTIL_REACHED`: never exhaust by attempt count
 
+When the target server refuses a player, for example because of its whitelist, Identica retries quietly while the policy allows another attempt. A refusal of the last attempt is left to the proxy, which handles it like any other refused connection: the player stays on their current server and sees the server's reason, unless another plugin, such as a hub or balancer plugin, sends them elsewhere through `KickedFromServerEvent` on Velocity or `ServerKickEvent` on BungeeCord. BungeeCord already does this for every refused attempt. `UNTIL_REACHED` has no last attempt, so a player it routes keeps waiting for the target to accept them.
+
 ### maxAttempts
 
 <Badge type="warning">Advanced</Badge>

@@ -18,6 +18,7 @@ import me.whereareiam.identica.routing.RoutingAttemptService;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.routing.reason.RoutingAttemptFailureReason;
 import me.whereareiam.identica.type.routing.RoutingAttemptTrigger;
+import me.whereareiam.identica.type.routing.RoutingRetryMode;
 import me.whereareiam.identica.type.routing.reason.RoutingReason;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -102,13 +104,76 @@ class VelocityRoutingIntentListenerTest {
 		assertNull(report.getFailureReason());
 	}
 
+	@DisplayName("Leaves the last attempt to Velocity, which tells the player why a server refused them")
+	@Test
+	void lastAttemptLeavesARefusalToVelocity() {
+		ProxyServer proxyServer = mock(ProxyServer.class);
+		RoutingAttemptService routingAttemptService = mock(RoutingAttemptService.class);
+		me.whereareiam.identica.common.event.EventController eventController = new me.whereareiam.identica.common.event.EventController();
+		new VelocityRoutingIntentListener(proxyServer, routingAttemptService, eventController);
+
+		RoutingIntent intent = intent(RoutingAttemptPolicy.defaultCompletion());
+		Player player = player(intent.getConnectionUniqueId(), "auth");
+		RegisteredServer registeredServer = registeredServer("lobby");
+		ConnectionRequestBuilder connectionRequest = mock(ConnectionRequestBuilder.class);
+
+		when(proxyServer.getPlayer(intent.getConnectionUniqueId())).thenReturn(Optional.of(player));
+		when(proxyServer.getServer("lobby")).thenReturn(Optional.of(registeredServer));
+		when(routingAttemptService.decide(any())).thenReturn(RoutingAttemptDecision.allowed(intent));
+		when(player.createConnectionRequest(registeredServer)).thenReturn(connectionRequest);
+		when(connectionRequest.connectWithIndication()).thenReturn(CompletableFuture.completedFuture(false));
+
+		eventController.call(new RoutingIntentStartedEvent(intent));
+
+		verify(connectionRequest, never()).connect();
+		ArgumentCaptor<RoutingAttemptReport> reportCaptor = ArgumentCaptor.forClass(RoutingAttemptReport.class);
+		verify(routingAttemptService).record(reportCaptor.capture());
+
+		RoutingAttemptReport report = reportCaptor.getValue();
+		assertFalse(report.isAccepted());
+		assertEquals("lobby", report.getServer());
+		assertEquals(RoutingAttemptFailureReason.SERVER_DISCONNECTED, report.getFailureReason());
+	}
+
+	@DisplayName("Keeps every attempt of a route retried until it is reached to itself")
+	@Test
+	void routeRetriedUntilReachedNeverLeavesAnAttemptToVelocity() {
+		ProxyServer proxyServer = mock(ProxyServer.class);
+		RoutingAttemptService routingAttemptService = mock(RoutingAttemptService.class);
+		me.whereareiam.identica.common.event.EventController eventController = new me.whereareiam.identica.common.event.EventController();
+		new VelocityRoutingIntentListener(proxyServer, routingAttemptService, eventController);
+
+		RoutingAttemptPolicy untilReached = new RoutingAttemptPolicy();
+		untilReached.setMode(RoutingRetryMode.UNTIL_REACHED);
+		RoutingIntent intent = intent(untilReached);
+		Player player = player(intent.getConnectionUniqueId(), "auth");
+		RegisteredServer registeredServer = registeredServer("lobby");
+		ConnectionRequestBuilder connectionRequest = mock(ConnectionRequestBuilder.class);
+		ConnectionRequestBuilder.Result result = mock(ConnectionRequestBuilder.Result.class);
+
+		when(proxyServer.getPlayer(intent.getConnectionUniqueId())).thenReturn(Optional.of(player));
+		when(proxyServer.getServer("lobby")).thenReturn(Optional.of(registeredServer));
+		when(routingAttemptService.decide(any())).thenReturn(RoutingAttemptDecision.allowed(intent));
+		when(player.createConnectionRequest(registeredServer)).thenReturn(connectionRequest);
+		when(connectionRequest.connect()).thenReturn(CompletableFuture.completedFuture(result));
+		when(result.getStatus()).thenReturn(ConnectionRequestBuilder.Status.SERVER_DISCONNECTED);
+
+		eventController.call(new RoutingIntentRetryEvent(intent));
+
+		verify(connectionRequest, never()).connectWithIndication();
+	}
+
 	private RoutingIntent intent() {
+		return intent(new RoutingAttemptPolicy());
+	}
+
+	private RoutingIntent intent(RoutingAttemptPolicy policy) {
 		return new RoutingIntent(
 				UUID.randomUUID(),
 				UUID.randomUUID(),
 				new RoutingEndpoint("lobby"),
 				RoutingReason.STEP,
-				new RoutingAttemptPolicy(),
+				policy,
 				new RoutingAttemptState(),
 				PipelineType.AUTHENTICATION,
 				null,

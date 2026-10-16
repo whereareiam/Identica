@@ -171,13 +171,24 @@ public final class Journey {
 	}
 
 	/**
-	 * Expects the player to stay on a backend for a while, without the proxy connecting it anywhere else.
+	 * Expects the player to stay on a backend for a while, without the proxy connecting it anywhere else. A
+	 * connection another server refused, which the proxy reports as connected and then disconnected, is no move.
 	 */
 	public Journey remainsOn(String backend) {
 		server.stayed(backend, SETTLE);
-		List<String> moves = proxy.read(console, 200).getLines().stream().map(line -> line.getText())
-				.filter(line -> line.contains("[server connection] " + playedAs + " -> ") && line.contains("has connected"))
-				.toList();
+		String connection = "[server connection] " + playedAs + " -> ";
+		List<String> lines = proxy.read(console, 200).getLines().stream().map(line -> line.getText()).toList();
+		List<String> moves = new ArrayList<>();
+		for (int index = 0; index < lines.size(); index++) {
+			String line = lines.get(index);
+			if (!line.contains(connection) || !line.contains("has connected")) continue;
+
+			String target = line.substring(line.indexOf(connection) + connection.length(), line.indexOf(" has connected"));
+			boolean refused = lines.subList(index + 1, lines.size()).stream()
+					.anyMatch(later -> later.contains(connection + target + " has disconnected"));
+			if (!refused)
+				moves.add(line);
+		}
 		assertEquals(List.of(), moves, name + " must stay on " + backend);
 		assertTrue(session.state().connected(), name + " must stay connected");
 		return this;

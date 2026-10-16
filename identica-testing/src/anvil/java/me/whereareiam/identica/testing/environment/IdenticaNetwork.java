@@ -36,6 +36,11 @@ public final class IdenticaNetwork {
 	 */
 	public static final String AUTH_B = "auth-b";
 	public static final String LOBBY = "lobby";
+	/**
+	 * A server with a whitelist nobody is on, so it refuses every player. A network only has it when a proxy routes
+	 * players there, such as with {@code @Identica(complete = CLOSED)}.
+	 */
+	public static final String CLOSED = "closed";
 	/** Hostname every proxy forces to {@code lobby}; players join through another one unless they choose this one. */
 	public static final String LOBBY_HOST = "lobby.identica.test";
 
@@ -83,15 +88,26 @@ public final class IdenticaNetwork {
 		proxies.keySet().stream()
 				.map(proxy -> stepServers.getOrDefault(proxy, AUTH))
 				.distinct()
-				.forEach(server -> scenario.server(backend(server)));
-		scenario.server(backend(LOBBY));
+				.forEach(server -> scenario.server(backend(server).build()));
+		scenario.server(backend(LOBBY).build());
+
+		boolean closed = proxies.values().stream().anyMatch(configuration -> configuration.routesTo(CLOSED));
+		if (closed)
+			scenario.server(closedBackend());
 		proxies.forEach((proxy, configuration) -> scenario.proxy(
-				proxy(proxy, configuration, stepServers.getOrDefault(proxy, AUTH), sessionServer, addon)));
+				proxy(proxy, configuration, stepServers.getOrDefault(proxy, AUTH), sessionServer, addon, closed)));
 
 		return scenario.build();
 	}
 
-	private static MinecraftProxy proxy(String name, ProxyConfiguration configuration, String stepServer, URI sessionServer, boolean addon) {
+	private static MinecraftProxy proxy(
+			String name,
+			ProxyConfiguration configuration,
+			String stepServer,
+			URI sessionServer,
+			boolean addon,
+			boolean closed
+	) {
 		WorkspacePlan.WorkspacePlanBuilder workspace = WorkspacePlan.builder()
 				.asset(artifact("identica", Path.of("plugins", "identica.jar")))
 				.asset(artifact("credential", Path.of(DATA, "providers", "credential.jar")))
@@ -113,7 +129,7 @@ public final class IdenticaNetwork {
 				.mode(AssetInstallMode.SEED_ONCE)
 				.build()));
 
-		return MinecraftProxy.builder()
+		MinecraftProxy.MinecraftProxyBuilder proxy = MinecraftProxy.builder()
 				.name(name)
 				.platform(Platforms.VELOCITY)
 				.distribution(Distribution.remote("3.5.1", "615"))
@@ -127,21 +143,34 @@ public final class IdenticaNetwork {
 				.setting("advanced.command-rate-limit", "0")
 				.setting("advanced.forward-commands-if-rate-limited", "false")
 				.setting("forced-hosts.\"" + LOBBY_HOST + "\"", "[\"" + LOBBY + "\"]")
-				.sessionServer(sessionServer)
-				.build();
+				.sessionServer(sessionServer);
+		if (closed)
+			proxy.server(CLOSED);
+
+		return proxy.build();
 	}
 
 	/**
 	 * A backend only has to be there for players to stand on, so it keeps running for the test run and serves one
 	 * network after another instead of starting for every test.
 	 */
-	private static MinecraftServer backend(String name) {
+	private static MinecraftServer.MinecraftServerBuilder backend(String name) {
 		return MinecraftServer.builder()
 				.name(name)
 				.platform(Platforms.PAPER)
 				.distribution(Distribution.remote("1.21.11", "132"))
 				.memoryMegabytes(768)
-				.lifetime(ProcessLifetime.ENGINE)
+				.lifetime(ProcessLifetime.ENGINE);
+	}
+
+	/**
+	 * Its whitelist stays empty, so the server refuses every player while they connect, as a whitelisted server
+	 * refuses a player who is not on it.
+	 */
+	private static MinecraftServer closedBackend() {
+		return backend(CLOSED)
+				.setting("white-list", "true")
+				.setting("enforce-whitelist", "true")
 				.build();
 	}
 

@@ -6,8 +6,11 @@ import me.whereareiam.identica.model.config.persistence.H2Persistence;
 import me.whereareiam.identica.model.config.persistence.Persistence;
 import me.whereareiam.identica.model.config.persistence.SqlitePersistence;
 import me.whereareiam.identica.model.config.persistence.external.MysqlPersistence;
+import me.whereareiam.identica.model.config.persistence.external.PostgresPersistence;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.mariadb.MariaDBContainer;
+import org.testcontainers.mysql.MySQLContainer;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -38,6 +41,40 @@ public enum Database {
 			container.start();
 
 			MysqlPersistence persistence = new MysqlPersistence();
+			persistence.setHost(container.getHost());
+			persistence.setPort(container.getFirstMappedPort());
+			persistence.setDatabase(container.getDatabaseName());
+			persistence.setUsername(container.getUsername());
+			persistence.setPassword(container.getPassword());
+			return persistence;
+		}
+	},
+	/** A MySQL server in a container that stops with the network; needs Docker. */
+	MYSQL {
+		@Override
+		Persistence persistence(ScenarioResources resources) {
+			assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "A MySQL database needs Docker");
+			MySQLContainer container = resources.own(DatabaseContainers.mysql("mysql:8.0"));
+			container.start();
+
+			MysqlPersistence persistence = new MysqlPersistence();
+			persistence.setHost(container.getHost());
+			persistence.setPort(container.getFirstMappedPort());
+			persistence.setDatabase(container.getDatabaseName());
+			persistence.setUsername(container.getUsername());
+			persistence.setPassword(container.getPassword());
+			return persistence;
+		}
+	},
+	/** A PostgreSQL server in a container that stops with the network; needs Docker. */
+	POSTGRESQL {
+		@Override
+		Persistence persistence(ScenarioResources resources) {
+			assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "A PostgreSQL database needs Docker");
+			PostgreSQLContainer container = resources.own(DatabaseContainers.postgres("postgres:18.1"));
+			container.start();
+
+			PostgresPersistence persistence = new PostgresPersistence();
 			persistence.setHost(container.getHost());
 			persistence.setPort(container.getFirstMappedPort());
 			persistence.setDatabase(container.getDatabaseName());

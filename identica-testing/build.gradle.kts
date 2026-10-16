@@ -80,6 +80,29 @@ val journeyParallelism = providers.gradleProperty("identica.journeys.parallelism
  */
 val journeySuites = listOf("join", "account", "identity", "operations", "cluster", "upgrade")
 
+/**
+ * A plugin that bundles an earlier Dialectica without relocating it, which journeys install next to Identica to
+ * check that Identica names the conflict.
+ */
+val clashing: SourceSet by sourceSets.creating
+val clashingLibraries: Configuration by configurations.creating {
+	isTransitive = false
+}
+
+dependencies {
+	clashingLibraries(libs.dialectica.clashing.api)
+	clashingLibraries(libs.dialectica.clashing.common)
+}
+
+val clashingPluginJar by tasks.registering(Jar::class) {
+	archiveFileName.set("clashing-plugin.jar")
+	destinationDirectory.set(layout.buildDirectory.dir("clashing-plugin"))
+	from(clashing.output)
+	from(clashingLibraries.elements.map { jars -> jars.map { zipTree(it) } }) {
+		exclude("META-INF/MANIFEST.MF", "META-INF/*.SF", "META-INF/*.RSA", "META-INF/*.DSA")
+	}
+}
+
 anvil {
 	acceptEula()
 	engine {
@@ -95,6 +118,7 @@ anvil {
 	artifact("premium", pluginJar(projects.providerPremiumRuntime))
 	artifact("example-provider", pluginJar(projects.exampleProvider))
 	artifact("example-addon", projectJar(projects.exampleAddon))
+	artifact("clashing-plugin", files(clashingPluginJar))
 
 	// Each suite runs the journeys of its tag in anvil<Suite>Test, such as anvilJoinTest.
 	suites {

@@ -31,6 +31,8 @@ dependencies {
 
 Identica loads Dialectica and Strata under their own package names and shares them with its add-ons, so the add-on's plain jar uses them as they are: it neither bundles nor relocates them. The add-on needs no Jdbi of its own; Identica keeps its Jdbi inside the plugin.
 
+Another plugin on the proxy that bundles Dialectica or Strata without relocating them can hand its copy to the add-on's classes in place of Identica's. Identica then refuses to install the add-on's schema and names the add-on's jar and the jar the other copy comes from; that plugin has to relocate its copy, or be removed.
+
 ## Declaring the tables
 
 Each table is an entity class with Dialectica annotations. A table that belongs to an account references Identica's account table by name, through `AccountTable`, so that its rows go when the account goes:

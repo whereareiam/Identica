@@ -3,6 +3,7 @@ package me.whereareiam.identica.testing.identity;
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
+import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
@@ -10,7 +11,9 @@ import me.whereareiam.identica.util.UniqueIdGenerator;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
@@ -27,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 @Tag("identity")
 class AccountReservationTest {
 	private static final String PASSWORD = "Secret-123";
+	private static final Duration RESERVATION_TTL = Duration.ofSeconds(3);
 
 	@Test
 	@Identica(providers = Provider.CREDENTIAL)
@@ -111,6 +115,20 @@ class AccountReservationTest {
 		assertNotEquals(reserved, bob.identity().getObserved().getUniqueId());
 	}
 
+	@Test
+	@Identica(providers = Provider.CREDENTIAL, configure = ShortReservations.class)
+	void forgetsAReservationNobodyUsedWithinReservationTtl(ScenarioContext anvil) {
+		UUID reserved = offline("Alice");
+		Administrator.at(anvil, PROXY)
+				.reserves("alice", reserved)
+				.findsReservation("Alice", reserved);
+
+		Journey alice = Journey.offline(anvil, "Alice").waits(RESERVATION_TTL);
+		registered(alice.join());
+
+		assertNotEquals(reserved, alice.identity().getObserved().getUniqueId());
+	}
+
 	private static Journey loggedIn(Journey player) {
 		return player.rejoin()
 				.on(AUTH)
@@ -129,5 +147,12 @@ class AccountReservationTest {
 
 	private static UUID offline(String username) {
 		return UniqueIdGenerator.offlinePlayerUniqueId(username);
+	}
+
+	static final class ShortReservations implements Consumer<ProxyConfiguration> {
+		@Override
+		public void accept(ProxyConfiguration proxy) {
+			proxy.settings().getIdentity().setReservationTtl(RESERVATION_TTL);
+		}
 	}
 }

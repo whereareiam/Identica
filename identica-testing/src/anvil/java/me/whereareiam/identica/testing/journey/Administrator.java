@@ -336,6 +336,47 @@ public final class Administrator {
 		return this;
 	}
 
+	/**
+	 * Lists the provider links of an account and expects each provider in it, the primary one marked as such.
+	 */
+	public Administrator listsLinksOf(String username, Provider primary, Provider... others) {
+		run("identica migration list " + username, migration().getList().getBody());
+		seesOnConsole(primary.getId(), "primary");
+		for (Provider other : others)
+			seesOnConsole(other.getId());
+
+		return this;
+	}
+
+	public Administrator makesPrimary(String username, Provider provider) {
+		run("identica migration primary " + username + " " + provider.getId(),
+				filled(migration().getPrimary().getSet(), Map.of("target", username, "provider", provider.getId())));
+		return this;
+	}
+
+	public Administrator findsAlreadyPrimary(String username, Provider provider) {
+		run("identica migration primary " + username + " " + provider.getId(),
+				filled(migration().getPrimary().getAlreadyPrimary(), Map.of("target", username, "provider", provider.getId())));
+		return this;
+	}
+
+	public Administrator dropsLink(String username, Provider provider) {
+		run("identica migration drop " + username + " " + provider.getId(),
+				filled(migration().getDrop().getDropped(), Map.of("target", username, "provider", provider.getId())));
+		return this;
+	}
+
+	public Administrator cannotDropPrimaryLink(String username, Provider provider) {
+		run("identica migration drop " + username + " " + provider.getId(), migration().getDrop().getPrimaryDenied());
+		return this;
+	}
+
+	public Administrator findsNoLink(String username, Provider provider) {
+		run("identica migration drop " + username + " " + provider.getId(),
+				filled(migration().getLinks().getNotLinked(), Map.of("target", username, "provider", provider.getId())));
+		return this;
+	}
+
 	private Messages.Commands.Migration migration() {
 		return configured.identica().getCommands().getMigration();
 	}

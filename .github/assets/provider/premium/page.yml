@@ -1,0 +1,65 @@
+# The Premium provider's description page, rendered by Pictura: pictura render <this folder>
+name: Identica Premium Provider
+accent: "#FF961F"
+images: https://github.com/whereareiam/Identica/blob/dev/.github/assets/provider/premium/render/{file}?raw=true
+
+views:
+  - header:
+      logo: {text: IDENTICA, small: PREMIUM PROVIDER, creeper: 7, color: "#FF7A00", small_border: 0, width: 620}
+      pitch: >-
+        Players with a <accent>premium Minecraft account</> join without a password and keep their identity
+        when they change their name, as a provider for Identica.
+      badge: badge-light
+      badge_font: minecraft-ten
+      badge_width: 104
+      badge_gap: 39
+      platforms: [Velocity, BungeeCord]
+      versions: "Supported versions: 1.7+"
+      versions_badge: button-green-rim
+      versions_gap: 25
+
+  - board:
+      title: Dependencies & Information
+      cards:
+        - {title: Identica, text: "A provider for Identica. Put it into Identica's providers folder, from the same release as Identica."}
+        - {title: Mojang, text: "Accounts are checked against Mojang; answers are cached for 5 minutes and shared between proxies with Redis."}
+        - {title: Good to know, tone: warning, text: "A player who joins under a premium account's name without a premium login is refused once; their next join from the same address goes to the next provider."}
+
+  - feature:
+      title: Names that belong to their owner
+      icon: diamond
+      text: A premium account <accent>owns its username</>, and Identica follows it.
+      points:
+        - {label: Name changes, text: "a player renamed at Mojang keeps their account under the new name."}
+        - {label: Protection, text: "anyone joining with a premium account's name has to log in as premium."}
+        - {label: Priority, text: "a premium owner takes their name from an account that does not own it, which is renamed."}
+
+  - feature:
+      title: Switch either way
+      icon: key
+      text: Players move <accent>their own account</> to Premium and away again, without losing it.
+      points:
+        - {label: To Premium, text: "a command moves an existing account to Premium, after confirmation."}
+        - {label: Away again, text: "another provider's move command takes the account back."}
+
+  - grid:
+      title: Supports Identica's features
+      tiles:
+        - {icon: shield, title: Verification, text: "A second step such as TOTP after the login."}
+        - {icon: check, title: Recognition, text: "Returning players skip the full login while their signals match."}
+        - {icon: warning, title: Sentinel, text: "Watches for repeated or risky actions."}
+        - {icon: gear, title: Restriction, text: "Lets admins temporarily block new joins through this provider."}
+
+  - steps:
+      title: Getting started
+      steps:
+        - {title: Install, text: "Install Identica, then put Identica-Premium into its providers folder."}
+        - {title: Start, text: "Start the proxy once, then stop it."}
+        - {title: Enable, text: "Enable the provider in Identica's configuration and start the proxy."}
+
+  - support:
+      style: panel
+      player: whereareiam
+      link: https://discord.arcadeya.com/
+      text: Stuck? The team and the community answer fast.
+      button: Join Discord

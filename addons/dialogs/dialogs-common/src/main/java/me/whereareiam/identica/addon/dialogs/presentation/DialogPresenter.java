@@ -2,12 +2,15 @@ package me.whereareiam.identica.addon.dialogs.presentation;
 
 import me.whereareiam.identica.addon.dialogs.model.Dialog;
 import me.whereareiam.identica.addon.dialogs.model.DialogRule;
+import me.whereareiam.identica.addon.dialogs.model.LoadingScreenRule;
 import me.whereareiam.identica.addon.dialogs.platform.DialogPlatform;
 import me.whereareiam.identica.addon.dialogs.trigger.TriggerContext;
 import me.whereareiam.identica.addon.dialogs.trigger.TriggerSink;
+import me.whereareiam.identica.command.CommandService;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.model.checkpoint.CheckpointRequest;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -26,7 +29,9 @@ import java.util.function.Supplier;
 public final class DialogPresenter implements TriggerSink, DialogPlatform.Listener {
 	private final DialogPlatform platform;
 	private final IdentityService identities;
+	private final CommandService commands;
 	private final Supplier<List<DialogRule>> rules;
+	private final Supplier<LoadingScreenRule> loadingScreen;
 	private final Supplier<Map<String, Dialog>> dialogs;
 	private final Map<UUID, Wanted> wanted = new ConcurrentHashMap<>();
 	private final Set<UUID> chat = ConcurrentHashMap.newKeySet();
@@ -36,18 +41,24 @@ public final class DialogPresenter implements TriggerSink, DialogPlatform.Listen
 	 *
 	 * @param platform the proxy's dialogs
 	 * @param identities Identica's identities, for rendering text as Identica renders it for the player
+	 * @param commands Identica's commands, for the command lines of the dialogs' buttons
 	 * @param rules the current rules
+	 * @param loadingScreen the current loading-screen rule
 	 * @param dialogs the current dialogs by ID
 	 */
 	public DialogPresenter(
 			@NotNull DialogPlatform platform,
 			@NotNull IdentityService identities,
+			@NotNull CommandService commands,
 			@NotNull Supplier<List<DialogRule>> rules,
+			@NotNull Supplier<LoadingScreenRule> loadingScreen,
 			@NotNull Supplier<Map<String, Dialog>> dialogs
 	) {
 		this.platform = platform;
 		this.identities = identities;
+		this.commands = commands;
 		this.rules = rules;
+		this.loadingScreen = loadingScreen;
 		this.dialogs = dialogs;
 	}
 
@@ -58,17 +69,22 @@ public final class DialogPresenter implements TriggerSink, DialogPlatform.Listen
 
 		String dialog = RuleMatcher.first(rules.get(), context).map(DialogRule::getDialog).orElse(null);
 		if (dialog == null) {
-			settle(connectionUniqueId, context.getTrigger());
+			unasked(connectionUniqueId, context.getTrigger());
 			return;
 		}
 		if (!dialogs.get().containsKey(dialog)) {
 			Logger.warn("A dialog rule names the dialog %s, which no file in dialogs/ defines", dialog);
-			settle(connectionUniqueId, context.getTrigger());
+			unasked(connectionUniqueId, context.getTrigger());
 			return;
 		}
 
 		wanted.put(connectionUniqueId, new Wanted(dialog, context.getPlaceholders(), context.getTrigger()));
 		present(connectionUniqueId);
+	}
+
+	@Override
+	public boolean beforeJoin(@NotNull CheckpointRequest request) {
+		return !chat.contains(request.getConnectionUniqueId()) && RuleMatcher.beforeJoin(loadingScreen.get(), request);
 	}
 
 	@Override
@@ -131,7 +147,16 @@ public final class DialogPresenter implements TriggerSink, DialogPlatform.Listen
 		if (dialog == null) return;
 
 		Identity identity = identities.findByConnectionUniqueId(connectionUniqueId).orElse(null);
-		platform.show(connectionUniqueId, dialog, new PlayerText(identity, current.placeholders()));
+		platform.show(connectionUniqueId, dialog, new PlayerText(identity, current.placeholders(), commands));
+	}
+
+	/**
+	 * Settles a moment no dialog asks about, so the player answers Identica's prompt in chat, wherever the platform
+	 * lets them.
+	 */
+	private void unasked(UUID connectionUniqueId, String trigger) {
+		settle(connectionUniqueId, trigger);
+		platform.unasked(connectionUniqueId);
 	}
 
 	/**

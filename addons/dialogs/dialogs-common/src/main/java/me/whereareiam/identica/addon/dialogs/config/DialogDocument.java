@@ -120,11 +120,26 @@ public class DialogDocument {
 	public static class Action {
 		private @Nullable String label;
 		private @Nullable ActionType type;
+		/**
+		 * The definition ID of the Identica command a {@link ActionType#COMMAND} button runs, such as {@code login}.
+		 */
+		private @Nullable String command;
+		/**
+		 * The arguments of the Identica command, each {@code $(key)} replaced by the value of that input.
+		 */
+		private @Nullable List<String> arguments;
+		/**
+		 * The command line of a {@link ActionType#RUN} button, the URL to open or the text to copy.
+		 */
 		private @Nullable String value;
 
 		DialogAction toAction() {
-			return new DialogAction(Objects.requireNonNullElse(label, ""), Objects.requireNonNullElse(type, ActionType.CLOSE),
-					Objects.requireNonNullElse(value, ""));
+			ActionType actionType = Objects.requireNonNullElse(type, ActionType.CLOSE);
+			if (actionType == ActionType.COMMAND)
+				return new DialogAction(Objects.requireNonNullElse(label, ""), actionType, Objects.requireNonNullElse(command, ""),
+						List.copyOf(Objects.requireNonNullElse(arguments, List.of())));
+
+			return new DialogAction(Objects.requireNonNullElse(label, ""), actionType, Objects.requireNonNullElse(value, ""), List.of());
 		}
 	}
 }

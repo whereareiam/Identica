@@ -7,8 +7,10 @@ The dialogs addon shows Identica's prompts as Minecraft dialogs: a window with a
 instead of a chat message asking the player to type `/login <password>`. The button runs the same command a
 player would type, so Identica handles the answer exactly as it handles chat.
 
-Players keep Identica's chat prompts underneath. A player whose client has no dialogs, such as Minecraft 1.21.5 or
-older, or who presses **Use chat instead**, answers in chat as before.
+On Velocity, players are asked on the loading screen, before they join any server: the proxy keeps them there until
+they are in and then sends them straight to where they play. Players keep Identica's chat prompts as the fallback. A
+player whose client has no dialogs, such as Minecraft 1.21.5 or older, answers on the authentication server in chat,
+and so does a player who presses **Use chat instead** on a dialog shown there.
 
 ## Install it
 
@@ -26,8 +28,8 @@ On the first start the addon writes its files to `plugins/identica-dialogs/` on 
 registration and migration prompts, and two-factor codes. With them, players of a network that uses Credential see
 dialogs right away.
 
-To check it works, join with a 1.21.6 or newer client: instead of the registration message in chat, a window titled
-**Identica** asks for a password. If it does not appear, check the proxy log for `identica-dialogs` on Velocity, and
+To check it works, join with a 1.21.6 or newer client: a window titled **Identica** asks for a password, on the
+loading screen on Velocity and on the authentication server on BungeeCord. If it does not appear, check the proxy log for `identica-dialogs` on Velocity, and
 that PacketEvents loaded before it, or for `Identica-Dialogs` on BungeeCord.
 
 ## How it decides which dialog to show
@@ -69,6 +71,31 @@ covers everyone else. The last one keeps two-factor codes in chat: `dialog: none
 Values are compared without regard to letter case. A rule without `on` reacts to waiting steps; other values of
 `on` belong to triggers that other plugins add.
 
+### Ask on the loading screen
+
+`loadingScreen` in `rules.yml` decides which players are asked before they join any server. It works on Velocity
+only; on BungeeCord players are always asked on the authentication server.
+
+```yaml
+loadingScreen:
+  enabled: true
+  when:
+    host: play.example.net
+```
+
+The addon decides once per connection, when the player's first step waits, so `when` takes the conditions known
+then: `scenario`, `provider`, `host` and `server`. Without `when`, every player with a 1.21.6 or newer client is
+asked on the loading screen. Set `enabled: false` to ask everyone on the authentication server instead.
+
+While a player is on the loading screen:
+
+- a step whose rule shows no dialog, such as one with `dialog: none`, sends the player to the authentication server,
+  where they answer in chat and see the remaining dialogs;
+- buttons of type `RUN` and `CHAT` are left out, because a player there cannot run commands or open chat;
+- Identica's chat messages to the player are held back;
+- a player who does not answer is disconnected once their journey expires, after the scenario's `pipelineTtl` in
+  Identica's engine settings.
+
 ### The shipped rules
 
 | Step | Dialog |
@@ -99,7 +126,9 @@ inputs:
 actions:
   - label: "<green>Log in"
     type: COMMAND
-    value: "login $(password)"
+    command: login
+    arguments:
+      - "$(password)"
 exitAction:
   label: "<gray>Use chat instead"
   type: CHAT
@@ -111,8 +140,12 @@ Text is MiniMessage, as in Identica's messages, with Identica's placeholders suc
 
 - `{message}` holds Identica's answer to the player's previous attempt at the same step, such as **Invalid
   password**. On the first prompt it is empty, and a body line that renders empty is left out.
-- `value` of a `COMMAND` button is the command without its slash. `$(password)` is replaced with what the player
-  typed into the input with the key `password`. If you renamed Identica's commands, change the command here too.
+- `command` of a `COMMAND` button names an Identica command by its ID in Identica's command settings, such as
+  Credential's `login`, `pass` and `passconfirm`, or `verification-confirm`. The button runs it under the name you
+  gave it, so renaming a command needs no change here. `$(password)` in `arguments` is replaced with what the player
+  typed into the input with the key `password`.
+- `value` of a `RUN` button is any command line without its slash, such as another plugin's command, with the same
+  `$(key)` placeholders.
 - `afterAction: NONE` keeps the dialog open after a button: after a wrong password the addon shows it again with
   `{message}`, and once the step is done the addon closes it.
 
@@ -120,7 +153,7 @@ Text is MiniMessage, as in Identica's messages, with Identica's placeholders suc
 |---|---|
 | `type` | `MULTI_ACTION` (any number of `actions`, `exitAction` below them), `NOTICE` (the first action only), `CONFIRMATION` (the first action and `exitAction`) |
 | `inputs[].type` | `TEXT` (`initial`, `maxLength`), `BOOLEAN` (`checked`, `onTrue`, `onFalse`), `SINGLE_OPTION` (`options` with `id`, `display`, `initial`), `NUMBER_RANGE` (`start`, `end`, `step`) |
-| `actions[].type` | `COMMAND`, `URL`, `COPY` (copies `value`), `CLOSE`, `CHAT` |
+| `actions[].type` | `COMMAND` (`command`, `arguments`), `RUN` (`value`), `URL` (opens `value`), `COPY` (copies `value`), `CLOSE`, `CHAT` |
 | `afterAction` | `NONE`, `CLOSE`, `WAIT_FOR_RESPONSE` |
 
 A text input does not hide what the player types, as typing a password into chat does not either.
@@ -131,12 +164,7 @@ After editing, run `/identica admin reload`. The new texts appear the next time 
 
 A button with `type: CHAT` closes the dialog and shows that player no more dialogs until they reconnect. The
 shipped dialogs have it as **Use chat instead** below the form. Remove it from a dialog to keep players in
-dialogs.
-
-## Limits
-
-- A client sees a dialog only once it is on a server, so a dialog appears just after the player arrives on the
-  authentication server.
+dialogs. On the loading screen the button is left out.
 
 ## Use it from another plugin
 

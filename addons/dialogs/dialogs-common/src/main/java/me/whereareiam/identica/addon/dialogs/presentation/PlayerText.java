@@ -1,7 +1,10 @@
 package me.whereareiam.identica.addon.dialogs.presentation;
 
 import me.whereareiam.identica.Serializer;
+import me.whereareiam.identica.addon.dialogs.model.DialogAction;
 import me.whereareiam.identica.addon.dialogs.platform.DialogText;
+import me.whereareiam.identica.addon.dialogs.type.ActionType;
+import me.whereareiam.identica.command.CommandService;
 import me.whereareiam.identica.identity.actor.Identity;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
@@ -17,10 +20,12 @@ import java.util.Map;
 final class PlayerText implements DialogText {
 	private final @Nullable Identity identity;
 	private final Map<String, String> placeholders;
+	private final CommandService commands;
 
-	PlayerText(@Nullable Identity identity, @NotNull Map<String, String> placeholders) {
+	PlayerText(@Nullable Identity identity, @NotNull Map<String, String> placeholders, @NotNull CommandService commands) {
 		this.identity = identity;
 		this.placeholders = Map.copyOf(placeholders);
+		this.commands = commands;
 	}
 
 	/**
@@ -38,5 +43,17 @@ final class PlayerText implements DialogText {
 
 		if (identity == null) return Serializer.serialize(filled);
 		return Serializer.serialize(identity, filled);
+	}
+
+	/**
+	 * Resolves an Identica command by its definition, with the name an administrator gave it.
+	 */
+	@Override
+	public @Nullable String command(@NotNull DialogAction action) {
+		if (action.getType() != ActionType.COMMAND) return DialogText.super.command(action);
+
+		return commands.getCommandLine(action.getValue())
+				.map(line -> action.getArguments().isEmpty() ? line : line + " " + String.join(" ", action.getArguments()))
+				.orElse(null);
 	}
 }

@@ -2,7 +2,6 @@ package me.whereareiam.identica.addon.dialogs.config.defaults;
 
 import me.whereareiam.configura.merge.defaults.DefaultsProvider;
 import me.whereareiam.identica.addon.dialogs.config.DialogDocument;
-import me.whereareiam.identica.addon.dialogs.type.ActionType;
 
 import java.util.List;
 
@@ -19,7 +18,7 @@ public class VerificationDialogDefaults implements DefaultsProvider<DialogDocume
 						DialogParts.MESSAGE
 				),
 				DialogParts.text("code", "<white>Code", 32),
-				DialogParts.action("<green>Confirm", ActionType.COMMAND, "2fa confirm $(code)")
+				DialogParts.command("<green>Confirm", "verification-confirm", "$(code)")
 		);
 	}
 }

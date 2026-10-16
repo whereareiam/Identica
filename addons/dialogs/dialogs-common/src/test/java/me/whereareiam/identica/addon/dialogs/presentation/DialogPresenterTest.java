@@ -2,12 +2,22 @@ package me.whereareiam.identica.addon.dialogs.presentation;
 
 import me.whereareiam.identica.addon.dialogs.model.Dialog;
 import me.whereareiam.identica.addon.dialogs.model.DialogRule;
+import me.whereareiam.identica.addon.dialogs.model.LoadingScreenRule;
 import me.whereareiam.identica.addon.dialogs.platform.DialogPlatform;
 import me.whereareiam.identica.addon.dialogs.platform.DialogText;
 import me.whereareiam.identica.addon.dialogs.trigger.TriggerContext;
 import me.whereareiam.identica.addon.dialogs.type.AfterAction;
 import me.whereareiam.identica.addon.dialogs.type.DialogType;
+import me.whereareiam.identica.command.CommandService;
 import me.whereareiam.identica.identity.IdentityService;
+import me.whereareiam.identica.identity.actor.ConnectionIdentity;
+import me.whereareiam.identica.model.checkpoint.CheckpointRequest;
+import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
+import me.whereareiam.identica.model.provider.ProviderContext;
+import me.whereareiam.identica.pipeline.ScenarioContext;
+import me.whereareiam.identica.pipeline.journey.step.Step;
+import me.whereareiam.identica.type.pipeline.PipelineType;
+import me.whereareiam.identica.type.pipeline.journey.StageType;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
@@ -20,7 +30,9 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -37,8 +49,9 @@ class DialogPresenterTest {
 	);
 
 	private final RecordingPlatform platform = new RecordingPlatform();
-	private final DialogPresenter presenter = new DialogPresenter(platform, identities(), () -> RULES,
-			() -> Map.of("login", LOGIN, "register", REGISTER));
+	private LoadingScreenRule loadingScreen = LoadingScreenRule.builder().enabled(true).build();
+	private final DialogPresenter presenter = new DialogPresenter(platform, identities(), mock(CommandService.class), () -> RULES,
+			() -> loadingScreen, () -> Map.of("login", LOGIN, "register", REGISTER));
 
 	@Test
 	void showsTheDialogOfTheFirstMatchingRuleWithTheMomentsPlaceholders() {
@@ -62,7 +75,7 @@ class DialogPresenterTest {
 	}
 
 	@Test
-	void closesTheDialogWhenTheMomentSettlesOrNoRuleShowsOne() {
+	void closesTheDialogWhenTheMomentSettlesAndTellsThePlatformWhenNoDialogAsks() {
 		platform.supported.add(ALICE);
 		presenter.fire(waiting("password-registration", ""));
 		presenter.settle(ALICE, "other-trigger");
@@ -74,7 +87,28 @@ class DialogPresenterTest {
 		presenter.fire(waiting("password-recognition", ""));
 		presenter.fire(waiting("password-unknown", ""));
 
-		assertEquals(List.of("show register {message=}", "clear", "show login {message=}", "clear"), platform.calls);
+		assertEquals(List.of("show register {message=}", "clear", "show login {message=}", "clear", "unasked", "unasked", "unasked"),
+				platform.calls);
+	}
+
+	@Test
+	void asksOnTheLoadingScreenWhenTheRuleMatchesTheConnection() {
+		assertTrue(presenter.beforeJoin(request("credential", "play.example.com")));
+
+		loadingScreen = LoadingScreenRule.builder().enabled(true).when("provider", "Credential").when("host", "play.example.com").build();
+		assertTrue(presenter.beforeJoin(request("credential", "play.example.com")));
+		assertFalse(presenter.beforeJoin(request("premium", "play.example.com")));
+		assertFalse(presenter.beforeJoin(request("credential", "other.example.com")));
+
+		loadingScreen = LoadingScreenRule.builder().enabled(false).build();
+		assertFalse(presenter.beforeJoin(request("credential", "play.example.com")));
+	}
+
+	@Test
+	void asksNoPlayerWhoSwitchedToChatOnTheLoadingScreen() {
+		presenter.switchedToChat(ALICE);
+
+		assertFalse(presenter.beforeJoin(request("credential", "play.example.com")));
 	}
 
 	@Test
@@ -111,6 +145,17 @@ class DialogPresenterTest {
 				.attribute("step", step)
 				.placeholder("message", message)
 				.build();
+	}
+
+	private static CheckpointRequest request(String provider, String host) {
+		ConnectionIdentity identity = new ConnectionIdentity("Alice", "127.0.0.1");
+		identity.setOrigin(new ConnectionIdentity.Origin(host, 25565));
+		ProviderContext providerContext = mock(ProviderContext.class);
+		when(providerContext.getProviderId()).thenReturn(provider);
+		ScenarioContext context = mock(ScenarioContext.class);
+		when(context.getIdentity()).thenReturn(identity);
+		when(context.getProvider()).thenReturn(providerContext);
+		return new CheckpointRequest(ALICE, context, PipelineType.AUTHENTICATION, StageType.PROVIDER, mock(Step.class), StepResult.waiting(""));
 	}
 
 	private static Dialog dialog(String id) {
@@ -152,6 +197,11 @@ class DialogPresenterTest {
 		@Override
 		public void clear(@NotNull UUID connectionUniqueId) {
 			calls.add("clear");
+		}
+
+		@Override
+		public void unasked(@NotNull UUID connectionUniqueId) {
+			calls.add("unasked");
 		}
 	}
 }

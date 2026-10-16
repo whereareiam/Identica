@@ -26,7 +26,7 @@ final class DialogParts {
 		dialog.setBody(body);
 		dialog.setInputs(List.of(input));
 		dialog.setActions(List.of(submit));
-		dialog.setExitAction(action("<gray>Use chat instead", ActionType.CHAT, ""));
+		dialog.setExitAction(chat("<gray>Use chat instead"));
 		dialog.setCloseWithEscape(false);
 		dialog.setAfterAction(AfterAction.NONE);
 		return dialog;
@@ -41,11 +41,22 @@ final class DialogParts {
 		return input;
 	}
 
-	static DialogDocument.Action action(String label, ActionType type, String value) {
+	/**
+	 * A button that runs an Identica command, named by its definition, with the given arguments.
+	 */
+	static DialogDocument.Action command(String label, String definition, String... arguments) {
 		DialogDocument.Action action = new DialogDocument.Action();
 		action.setLabel(label);
-		action.setType(type);
-		action.setValue(value);
+		action.setType(ActionType.COMMAND);
+		action.setCommand(definition);
+		action.setArguments(List.of(arguments));
+		return action;
+	}
+
+	private static DialogDocument.Action chat(String label) {
+		DialogDocument.Action action = new DialogDocument.Action();
+		action.setLabel(label);
+		action.setType(ActionType.CHAT);
 		return action;
 	}
 }

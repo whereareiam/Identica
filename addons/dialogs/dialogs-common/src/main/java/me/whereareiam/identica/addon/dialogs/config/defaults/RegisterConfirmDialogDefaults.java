@@ -2,7 +2,6 @@ package me.whereareiam.identica.addon.dialogs.config.defaults;
 
 import me.whereareiam.configura.merge.defaults.DefaultsProvider;
 import me.whereareiam.identica.addon.dialogs.config.DialogDocument;
-import me.whereareiam.identica.addon.dialogs.type.ActionType;
 
 import java.util.List;
 
@@ -19,7 +18,7 @@ public class RegisterConfirmDialogDefaults implements DefaultsProvider<DialogDoc
 						DialogParts.MESSAGE
 				),
 				DialogParts.text("password", "<white>Password", 64),
-				DialogParts.action("<green>Register", ActionType.COMMAND, "passconfirm $(password)")
+				DialogParts.command("<green>Register", "passconfirm", "$(password)")
 		);
 	}
 }

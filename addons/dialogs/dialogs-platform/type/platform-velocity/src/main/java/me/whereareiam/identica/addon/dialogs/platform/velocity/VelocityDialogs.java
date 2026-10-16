@@ -33,6 +33,7 @@ public final class VelocityDialogs {
 	private final ProxyServer proxy;
 	private final Path folder;
 	private volatile @Nullable DialogsAddon addon;
+	private volatile @Nullable VelocityDialogPlatform platform;
 
 	@Inject
 	public VelocityDialogs(ProxyServer proxy, @DataDirectory Path folder) {
@@ -46,11 +47,15 @@ public final class VelocityDialogs {
 	}
 
 	private void start(IdenticaAPI identica) {
-		addon = DialogsAddon.start(identica, new VelocityDialogPlatform(proxy, this), folder);
+		VelocityDialogPlatform started = new VelocityDialogPlatform(proxy, this, identica.getCheckpoints());
+		platform = started;
+		addon = DialogsAddon.start(identica, started, folder);
 	}
 
 	@Subscribe
 	public void onShutdown(ProxyShutdownEvent event) {
+		VelocityDialogPlatform started = platform;
+		if (started != null) started.stop();
 		DialogsAddon running = addon;
 		if (running != null) running.stop();
 	}

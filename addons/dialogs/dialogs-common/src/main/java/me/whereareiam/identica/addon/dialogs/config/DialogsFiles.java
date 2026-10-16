@@ -10,6 +10,7 @@ import me.whereareiam.identica.addon.dialogs.config.defaults.RulesDefaults;
 import me.whereareiam.identica.addon.dialogs.config.defaults.VerificationDialogDefaults;
 import me.whereareiam.identica.addon.dialogs.model.Dialog;
 import me.whereareiam.identica.addon.dialogs.model.DialogRule;
+import me.whereareiam.identica.addon.dialogs.model.LoadingScreenRule;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -37,6 +38,7 @@ public final class DialogsFiles implements Reloadable {
 	private final Configura configura;
 	private final Path folder;
 	private volatile List<DialogRule> rules = List.of();
+	private volatile LoadingScreenRule loadingScreen = LoadingScreenRule.builder().enabled(false).build();
 	private volatile Map<String, Dialog> dialogs = Map.of();
 
 	/**
@@ -56,12 +58,18 @@ public final class DialogsFiles implements Reloadable {
 		Path dialogsFolder = folder.resolve("dialogs");
 		if (Files.notExists(dialogsFolder)) writeShipped(dialogsFolder);
 
-		rules = configura.withDefaults(RulesDefaults.class).update(folder.resolve("rules"), RulesDocument.class).toRules();
+		RulesDocument document = configura.withDefaults(RulesDefaults.class).update(folder.resolve("rules"), RulesDocument.class);
+		rules = document.toRules();
+		loadingScreen = document.toLoadingScreen();
 		dialogs = readDialogs(dialogsFolder);
 	}
 
 	public @NotNull List<DialogRule> rules() {
 		return rules;
+	}
+
+	public @NotNull LoadingScreenRule loadingScreen() {
+		return loadingScreen;
 	}
 
 	public @NotNull Map<String, Dialog> dialogs() {

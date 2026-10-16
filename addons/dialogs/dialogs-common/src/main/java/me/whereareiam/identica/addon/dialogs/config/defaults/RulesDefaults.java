@@ -13,6 +13,10 @@ import java.util.Map;
 public class RulesDefaults implements DefaultsProvider<RulesDocument> {
 	@Override
 	public RulesDocument supply(RulesDocument rules) {
+		RulesDocument.LoadingScreen loadingScreen = new RulesDocument.LoadingScreen();
+		loadingScreen.setEnabled(true);
+		loadingScreen.setWhen(Map.of());
+		rules.setLoadingScreen(loadingScreen);
 		rules.setRules(List.of(
 				step("password-authentication-password", "login"),
 				step("password-credential-presence", "login"),

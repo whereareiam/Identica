@@ -6,6 +6,7 @@ import me.whereareiam.configura.type.Format;
 import me.whereareiam.identica.addon.dialogs.model.Dialog;
 import me.whereareiam.identica.addon.dialogs.model.DialogAction;
 import me.whereareiam.identica.addon.dialogs.model.DialogRule;
+import me.whereareiam.identica.addon.dialogs.model.LoadingScreenRule;
 import me.whereareiam.identica.addon.dialogs.type.ActionType;
 import me.whereareiam.identica.addon.dialogs.type.AfterAction;
 import org.junit.jupiter.api.Test;
@@ -36,8 +37,9 @@ class DialogsFilesTest {
 		assertEquals(9, files.rules().size());
 
 		Dialog login = files.dialogs().get("login");
-		assertEquals(List.of(new DialogAction("<green>Log in", ActionType.COMMAND, "login $(password)")), login.getActions());
-		assertEquals(new DialogAction("<gray>Use chat instead", ActionType.CHAT, ""), login.getExitAction());
+		assertEquals(List.of(new DialogAction("<green>Log in", ActionType.COMMAND, "login", List.of("$(password)"))), login.getActions());
+		assertEquals(new DialogAction("<gray>Use chat instead", ActionType.CHAT, "", List.of()), login.getExitAction());
+		assertEquals(LoadingScreenRule.builder().enabled(true).build(), files.loadingScreen());
 		assertEquals("<green><bold>Identica", login.getTitle());
 		assertEquals("password", login.getInputs().getFirst().getKey());
 		assertEquals(64, login.getInputs().getFirst().getMaxLength());

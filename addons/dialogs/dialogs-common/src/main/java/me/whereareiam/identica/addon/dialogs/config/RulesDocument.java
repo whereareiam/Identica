@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import me.whereareiam.identica.addon.dialogs.model.DialogRule;
+import me.whereareiam.identica.addon.dialogs.model.LoadingScreenRule;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -19,6 +20,7 @@ import java.util.Objects;
 @Setter
 @ToString
 public class RulesDocument {
+	private @Nullable LoadingScreen loadingScreen;
 	private @Nullable List<Rule> rules;
 
 	/**
@@ -28,6 +30,32 @@ public class RulesDocument {
 	 */
 	public @NotNull List<DialogRule> toRules() {
 		return Objects.requireNonNullElse(rules, List.<Rule>of()).stream().map(Rule::toRule).toList();
+	}
+
+	/**
+	 * Returns whether and for which connections players are asked on the loading screen.
+	 *
+	 * @return the loading-screen rule; without one in the file, the loading screen is not used
+	 */
+	public @NotNull LoadingScreenRule toLoadingScreen() {
+		if (loadingScreen == null) return LoadingScreenRule.builder().enabled(false).build();
+
+		return LoadingScreenRule.builder()
+				.enabled(Boolean.TRUE.equals(loadingScreen.enabled))
+				.when(Objects.requireNonNullElse(loadingScreen.when, Map.of()))
+				.build();
+	}
+
+	/**
+	 * Asking players on the loading screen, before they join any server. A player whose client has no dialogs, or
+	 * whose step has no dialog, answers on the step's server in chat.
+	 */
+	@Getter
+	@Setter
+	@ToString
+	public static class LoadingScreen {
+		private @Nullable Boolean enabled;
+		private @Nullable Map<String, String> when;
 	}
 
 	/**

@@ -37,7 +37,8 @@ public final class DialogsAddon {
 		DialogsFiles files = new DialogsFiles(identica.getConfigura(), folder);
 		identica.getReloadables().register(files);
 
-		DialogPresenter presenter = new DialogPresenter(platform, identica.getIdentityService(), files::rules, files::dialogs);
+		DialogPresenter presenter = new DialogPresenter(platform, identica.getIdentityService(), identica.getCommandService(), files::rules,
+				files::loadingScreen, files::dialogs);
 		platform.start(presenter);
 		TriggerRegistry triggers = new TriggerRegistry(presenter);
 		triggers.register(new StepWaitingTrigger(identica.getEventManager()));

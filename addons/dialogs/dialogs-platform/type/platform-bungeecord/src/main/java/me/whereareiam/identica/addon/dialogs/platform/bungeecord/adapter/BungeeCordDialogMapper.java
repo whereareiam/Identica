@@ -32,6 +32,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Builds BungeeCord's dialog from the addon's: rendered text, its inputs, and a button per action. A command is a
@@ -52,8 +53,11 @@ final class BungeeCordDialogMapper {
 				.pause(false)
 				.afterAction(DialogBase.AfterAction.valueOf(dialog.getAfterAction().name()));
 
-		List<ActionButton> actions = dialog.getActions().stream().map(action -> button(action, text)).toList();
-		ActionButton exit = dialog.getExitAction() == null ? null : button(dialog.getExitAction(), text);
+		List<ActionButton> actions = dialog.getActions().stream()
+				.map(action -> button(action, text))
+				.flatMap(Optional::stream)
+				.toList();
+		ActionButton exit = dialog.getExitAction() == null ? null : button(dialog.getExitAction(), text).orElse(null);
 		return switch (dialog.getType()) {
 			case NOTICE -> actions.isEmpty() ? new NoticeDialog(base) : new NoticeDialog(base, actions.getFirst());
 			case CONFIRMATION -> new ConfirmationDialog(base, actions.getFirst(), exit);
@@ -85,18 +89,20 @@ final class BungeeCordDialogMapper {
 		};
 	}
 
-	private static ActionButton button(DialogAction action, DialogText text) {
-		return new ActionButton(bungee(text.render(action.getLabel())), null, BUTTON_WIDTH, action(action));
-	}
-
-	private static @Nullable Action action(DialogAction action) {
+	/**
+	 * Builds a button, or none for a command that is unavailable, such as one an administrator disabled.
+	 */
+	private static Optional<ActionButton> button(DialogAction action, DialogText text) {
+		BaseComponent label = bungee(text.render(action.getLabel()));
 		String value = action.getValue();
 		return switch (action.getType()) {
-			case COMMAND -> new RunCommandAction(value);
-			case URL -> new StaticAction(new ClickEvent(ClickEvent.Action.OPEN_URL, value));
-			case COPY -> new StaticAction(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, value));
-			case CLOSE -> null;
-			case CHAT -> new CustomClickAction(ChatSwitchListener.CHAT_CLICK);
+			case COMMAND, RUN -> Optional.ofNullable(text.command(action))
+					.map(command -> new ActionButton(label, null, BUTTON_WIDTH, new RunCommandAction(command)));
+			case URL -> Optional.of(new ActionButton(label, null, BUTTON_WIDTH, new StaticAction(new ClickEvent(ClickEvent.Action.OPEN_URL, value))));
+			case COPY -> Optional.of(new ActionButton(label, null, BUTTON_WIDTH,
+					new StaticAction(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, value))));
+			case CLOSE -> Optional.of(new ActionButton(label, null, BUTTON_WIDTH, null));
+			case CHAT -> Optional.of(new ActionButton(label, null, BUTTON_WIDTH, new CustomClickAction(ChatSwitchListener.CHAT_CLICK)));
 		};
 	}
 

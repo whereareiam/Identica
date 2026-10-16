@@ -1,6 +1,7 @@
 package me.whereareiam.identica.addon.dialogs.platform;
 
 import me.whereareiam.identica.addon.dialogs.model.Dialog;
+import me.whereareiam.identica.model.checkpoint.CheckpointRequest;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
@@ -44,9 +45,27 @@ public interface DialogPlatform {
 	void clear(@NotNull UUID connectionUniqueId);
 
 	/**
+	 * Tells the platform that Identica waits for the player's answer to a prompt no dialog asks for. A platform that
+	 * holds the player where chat cannot be used, such as on the loading screen, sends the player to the step's
+	 * server, where they answer in chat.
+	 *
+	 * @param connectionUniqueId the unique id of the player's connection on the proxy
+	 */
+	void unasked(@NotNull UUID connectionUniqueId);
+
+	/**
 	 * What a {@link DialogPlatform} reports about players.
 	 */
 	interface Listener {
+		/**
+		 * Tells whether a player whose step waits is asked before joining a server, on the loading screen, as the
+		 * addon's {@code loadingScreen} rule decides for the connection.
+		 *
+		 * @param request the waiting step of the player's journey
+		 * @return whether the player is asked on the loading screen
+		 */
+		boolean beforeJoin(@NotNull CheckpointRequest request);
+
 		/**
 		 * Reports that a player connected to a server, after which a dialog reaches their client. A server switch
 		 * closes every dialog on the client, so a dialog the player should see is shown again.

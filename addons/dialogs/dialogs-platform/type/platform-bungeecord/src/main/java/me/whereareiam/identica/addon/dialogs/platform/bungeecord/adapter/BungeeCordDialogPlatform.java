@@ -57,4 +57,12 @@ public final class BungeeCordDialogPlatform implements DialogPlatform {
 		ProxiedPlayer online = plugin.getProxy().getPlayer(connectionUniqueId);
 		if (online != null) online.clearDialog();
 	}
+
+	/**
+	 * Does nothing: BungeeCord holds no player before their first server, so a player whose prompt no dialog asks for
+	 * is on the step's server and answers there in chat.
+	 */
+	@Override
+	public void unasked(@NotNull UUID connectionUniqueId) {
+	}
 }

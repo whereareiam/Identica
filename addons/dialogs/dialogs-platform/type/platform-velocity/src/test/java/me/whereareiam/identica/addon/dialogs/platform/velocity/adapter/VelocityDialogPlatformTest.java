@@ -10,6 +10,7 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import me.whereareiam.identica.addon.dialogs.platform.DialogPlatform;
 import me.whereareiam.identica.addon.dialogs.platform.velocity.listener.VelocityConnectionListener;
+import me.whereareiam.identica.checkpoint.Checkpoints;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -24,6 +25,7 @@ import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -33,7 +35,7 @@ class VelocityDialogPlatformTest {
 	private final ProxyServer proxy = mock(ProxyServer.class);
 	private final EventManager events = mock(EventManager.class);
 	private final Object plugin = new Object();
-	private final VelocityDialogPlatform platform = new VelocityDialogPlatform(proxy, plugin);
+	private final VelocityDialogPlatform platform = new VelocityDialogPlatform(proxy, plugin, mock(Checkpoints.class));
 	private final Player alice = mock(Player.class);
 	private VelocityConnectionListener connections;
 
@@ -48,9 +50,13 @@ class VelocityDialogPlatformTest {
 			platform.start(mock(DialogPlatform.Listener.class));
 		}
 
-		ArgumentCaptor<Object> listener = ArgumentCaptor.forClass(Object.class);
-		verify(events).register(same(plugin), listener.capture());
-		connections = (VelocityConnectionListener) listener.getValue();
+		ArgumentCaptor<Object> listeners = ArgumentCaptor.forClass(Object.class);
+		verify(events, times(2)).register(same(plugin), listeners.capture());
+		connections = listeners.getAllValues().stream()
+				.filter(VelocityConnectionListener.class::isInstance)
+				.map(VelocityConnectionListener.class::cast)
+				.findFirst()
+				.orElseThrow();
 	}
 
 	@Test

@@ -18,8 +18,10 @@ public interface SchemaInstaller {
 	 *
 	 * @param schema the schema to install
 	 * @throws IllegalStateException when a stream the schema {@linkplain DatabaseSchema#requires()
-	 *                               requires} has not been installed before it, or when the database
-	 *                               is not open
+	 *                               requires} has not been installed before it, when the database is
+	 *                               not open, or when the schema's classes use another copy of
+	 *                               Dialectica or Strata than Identica's, such as one another plugin
+	 *                               bundles without relocating it
 	 * @throws MigrationException    when the schema could not be brought up to date, for example
 	 *                               because a migration failed or a newer build wrote the database;
 	 *                               Identica must not continue on that schema

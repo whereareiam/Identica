@@ -16,6 +16,8 @@ configura = "2.0.1"
 commandant = "dev-642fe14"
 keystone = "dev-790a33e"
 dialectica = "4.0.0"
+# An earlier Dialectica that a plugin in the live journeys bundles unrelocated, to clash with Identica's.
+dialectica-clashing = "3.1.0"
 strata = "3.2.0"
 
 guice = "7.0.0"
@@ -85,6 +87,8 @@ strata-adapter-database-dialectica = { group = "me.whereareiam", name = "strata-
 dialectica = { group = "me.whereareiam", name = "dialectica", version.ref = "dialectica" }
 dialectica-bundle = { group = "me.whereareiam", name = "dialectica-bundle", version.ref = "dialectica" }
 dialectica-adapter-jdbi = { group = "me.whereareiam", name = "dialectica-adapter-jdbi", version.ref = "dialectica" }
+dialectica-clashing-api = { group = "me.whereareiam", name = "dialectica-api", version.ref = "dialectica-clashing" }
+dialectica-clashing-common = { group = "me.whereareiam", name = "dialectica-common", version.ref = "dialectica-clashing" }
 jedis = { group = "redis.clients", name = "jedis", version.ref = "jedis" }
 statistica-common = { group = "me.whereareiam", name = "statistica-common", version.ref = "statistica" }
 statistica-adapter-jdbc = { group = "me.whereareiam", name = "statistica-adapter-jdbc", version.ref = "statistica" }

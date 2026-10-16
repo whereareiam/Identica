@@ -1,7 +1,7 @@
 ---
 title: Живые тесты
 description: Запуск и написание прохождений игрока для собранного плагина на настоящем прокси.
-sourceHash: 13887aee89f8159ea9f29a99948aadbe180038c2
+sourceHash: b3bfba60db0ace5b5029868415609509b0ae723d
 ---
 
 Модуль `identica-testing` запускает собранный плагин и провайдеры на настоящем прокси Velocity с бэкенд-серверами Paper и проводит через них симулированных игроков с помощью [Anvil](https://github.com/whereareiam/anvil). Модульные тесты остаются в своих модулях, а эти тесты проверяют то, что видит игрок при входе на сервер.
@@ -85,7 +85,7 @@ private static final class NoDisconnectMessages implements Consumer<ProxyConfigu
 }
 ```
 
-`proxy.engine()`, `proxy.routing()`, `proxy.commands()`, `proxy.settings()`, `proxy.providers()`, `proxy.messages()`, `proxy.credential()` (настройки провайдера Credential), `proxy.sentinel()`, `proxy.recognition()`, `proxy.verification()` и `proxy.joinRestriction()` (общие настройки этих функций) возвращают модели, которые изменяет тест. `proxy.put(path, model)` добавляет ещё один файл, `proxy.omit(path)` исключает файл, `proxy.corrupt(path, content)` записывает файл, который Identica не сможет прочитать, `proxy.seed(path, file)` кладёт файл, например базу данных, оставленную более ранней версией, до первого запуска прокси, а `ProxyConfiguration.generated(anvil, path, type)` читает файл в том виде, в каком его оставил работающий прокси. Пока сеть работает, `ProxyConfiguration.editGenerated(anvil, path, type, change)` изменяет файл через его модель, а `ProxyConfiguration.corruptGenerated(anvil, path, content)` заменяет его содержимым, которое Identica не сможет прочитать; после этого `Administrator.at(anvil, PROXY).reloads()` и `.failsToReload()` перезагружают конфигурацию и ожидают соответствующий настроенный ответ.
+`proxy.engine()`, `proxy.routing()`, `proxy.commands()`, `proxy.settings()`, `proxy.providers()`, `proxy.messages()`, `proxy.credential()` (настройки провайдера Credential), `proxy.sentinel()`, `proxy.recognition()`, `proxy.verification()` и `proxy.joinRestriction()` (общие настройки этих функций) возвращают модели, которые изменяет тест. `proxy.put(path, model)` добавляет ещё один файл, `proxy.omit(path)` исключает файл, `proxy.corrupt(path, content)` записывает файл, который Identica не сможет прочитать, `proxy.plugin(file, artifact)` устанавливает рядом с Identica другой плагин, например артефакт `clashing-plugin`, который включает в себя более раннюю Dialectica, не перемещая её, `proxy.seed(path, file)` кладёт файл, например базу данных, оставленную более ранней версией, до первого запуска прокси, а `ProxyConfiguration.generated(anvil, path, type)` читает файл в том виде, в каком его оставил работающий прокси. Пока сеть работает, `ProxyConfiguration.editGenerated(anvil, path, type, change)` изменяет файл через его модель, а `ProxyConfiguration.corruptGenerated(anvil, path, content)` заменяет его содержимым, которое Identica не сможет прочитать; после этого `Administrator.at(anvil, PROXY).reloads()` и `.failsToReload()` перезагружают конфигурацию и ожидают соответствующий настроенный ответ.
 
 Прохождение, проверяющее блокировку или срок действия, задаёт короткую длительность и пропускает её с помощью `.waits(duration)`; ожидание никогда не используется, чтобы дать прокси время отреагировать, потому что каждый другой шаг и так этого дожидается:
 

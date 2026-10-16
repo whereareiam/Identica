@@ -42,7 +42,8 @@ public final class CredentialSchema implements DatabaseSchema {
 	private static final List<Migration<DatabaseContext>> MIGRATIONS = List.of(
 			// Changes nothing: version 1 is the layout the provider created before migrations existed.
 			new Migration<>(1, "initial-layout", database -> {}),
-			SchemaMigration.of(2, "legacy-migration-history", new DropTable(LEGACY_MIGRATIONS))
+			SchemaMigration.of(2, "legacy-migration-history", new DropTable(LEGACY_MIGRATIONS)),
+			new Migration<>(3, "orphaned-history", CredentialSchema::deleteOrphanedHistory)
 	);
 
 	@Override
@@ -73,6 +74,22 @@ public final class CredentialSchema implements DatabaseSchema {
 			throw olderThan221(LEGACY_SCOPE + " is at version " + recorded.getAsInt() + " of " + LEGACY_LATEST);
 
 		return database.tableExists("identica_provider_credential_accounts") ? OptionalInt.of(1) : OptionalInt.empty();
+	}
+
+	/**
+	 * Deletes the password history of credential accounts that are gone, with the hashes it holds. SQLite kept it
+	 * when a credential account was deleted, before Identica turned its foreign keys on; the other databases deleted
+	 * it with the account. Belongs to the upgrade paths of 3.0.x and goes with them.
+	 */
+	static void deleteOrphanedHistory(DatabaseContext database) throws SQLException {
+		database.update("""
+				DELETE FROM identica_provider_credential_accounts_history
+				WHERE NOT EXISTS (
+					SELECT 1 FROM identica_provider_credential_accounts
+					WHERE identica_provider_credential_accounts.provider_id = identica_provider_credential_accounts_history.provider_id
+					AND identica_provider_credential_accounts.provider_subject = identica_provider_credential_accounts_history.provider_subject
+				)
+				""");
 	}
 
 	/** Returns the last version 2.x recorded for its credential migrations, if it recorded any. */

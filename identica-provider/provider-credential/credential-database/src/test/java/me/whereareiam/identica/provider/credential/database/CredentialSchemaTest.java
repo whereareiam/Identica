@@ -77,7 +77,7 @@ class CredentialSchemaTest extends DatabaseSchemaContract {
 		install(database);
 
 		assertEquals(expected, database.connect(SchemaSnapshot::everyTable));
-		assertEquals(List.of("1 baseline", "2 legacy-migration-history"), history(database));
+		assertEquals(List.of("1 baseline", "2 legacy-migration-history", "3 orphaned-history"), history(database));
 	}
 
 	@ParameterizedTest(name = "{0}")

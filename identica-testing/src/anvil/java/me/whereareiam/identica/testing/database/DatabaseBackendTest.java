@@ -4,6 +4,7 @@ import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.identica.model.config.persistence.H2Persistence;
 import me.whereareiam.identica.model.config.persistence.Persistence;
 import me.whereareiam.identica.model.config.persistence.external.MysqlPersistence;
+import me.whereareiam.identica.model.config.persistence.external.PostgresPersistence;
 import me.whereareiam.identica.testing.environment.Database;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
@@ -30,6 +31,18 @@ class DatabaseBackendTest {
 	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, database = Database.MARIADB)
 	void registersAndLogsInOnMariaDb(ScenarioContext anvil) {
 		registersAndLogsIn(anvil, MysqlPersistence.class, DatabaseType.MYSQL);
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, database = Database.MYSQL)
+	void registersAndLogsInOnMySql(ScenarioContext anvil) {
+		registersAndLogsIn(anvil, MysqlPersistence.class, DatabaseType.MYSQL);
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, database = Database.POSTGRESQL)
+	void registersAndLogsInOnPostgreSql(ScenarioContext anvil) {
+		registersAndLogsIn(anvil, PostgresPersistence.class, DatabaseType.POSTGRES);
 	}
 
 	@Test

@@ -465,12 +465,8 @@ public class DefaultMigrationService implements MigrationService {
 
 	private @Nullable PendingMigration findConfirmationPendingMigration(@NotNull UUID connectionUniqueId) {
 		PendingConfirmationMigration pendingMigration = pending.get(connectionUniqueId);
-		if (pendingMigration == null) return null;
-
-		if (isExpired(pendingMigration)) {
-			pending.remove(connectionUniqueId);
-			return null;
-		}
+		// An expired request is no longer pending, but it stays stored so that confirming it reports it expired.
+		if (pendingMigration == null || isExpired(pendingMigration)) return null;
 
 		return PendingMigration.builder()
 				.uniqueId(pendingMigration.uniqueId())

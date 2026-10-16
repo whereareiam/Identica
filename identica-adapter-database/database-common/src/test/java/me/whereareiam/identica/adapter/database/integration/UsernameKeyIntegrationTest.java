@@ -1,13 +1,16 @@
 package me.whereareiam.identica.adapter.database.integration;
 
+import com.google.inject.util.Providers;
 import me.whereareiam.dialectica.Dialectica;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.DefaultDatabaseService;
 import me.whereareiam.identica.adapter.database.account.DefaultAccountPersistenceService;
 import me.whereareiam.identica.adapter.database.entity.account.AccountEntity;
 import me.whereareiam.identica.adapter.database.entity.username.UsernameEntity;
+import me.whereareiam.identica.adapter.database.entity.username.UsernameHistoryEntity;
 import me.whereareiam.identica.adapter.database.mapper.account.AccountMapper;
 import me.whereareiam.identica.adapter.database.mapper.username.UsernameMapper;
+import me.whereareiam.identica.adapter.database.repository.username.UsernameRepository;
 import me.whereareiam.identica.adapter.database.testing.PersistenceServices;
 import me.whereareiam.identica.adapter.database.testing.SimultaneousCalls;
 import me.whereareiam.identica.adapter.database.testing.TestDataFactory;
@@ -25,9 +28,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.Mockito;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.UUID;
 
@@ -97,6 +102,58 @@ class UsernameKeyIntegrationTest {
 			UsernameWriteResult refused = results.stream().filter(result -> !result.isWritten()).findFirst().orElseThrow();
 			assertEquals(created, refused.getHolderUniqueId());
 			assertTrue(duplicates.findAll().isEmpty());
+		});
+	}
+
+	@DisplayName("Reports a username another rename took between the check and the write as taken by that account")
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
+	void reportsARenameThatLostARaceAsTaken(TestDatabase database) {
+		withServices(database, (accounts, usernames, duplicates, jdbi) -> {
+			accounts.create(TestDataFactory.account(ALICE, "Alice"), AccountUsernameSource.PROVIDER, null);
+			accounts.create(TestDataFactory.account(BOB, "Bob"), AccountUsernameSource.PROVIDER, null);
+			assertTrue(usernames.rename(change(ALICE, "Alice", "Carol")).isWritten());
+
+			// The check sees the username free, as it did before Alice's rename landed.
+			UsernameRepository repository = jdbi.onDemand(UsernameRepository.class);
+			UsernameRepository late = Mockito.mock(UsernameRepository.class);
+			Mockito.when(late.findByUsernameKey(Mockito.anyString()))
+					.thenReturn(Optional.empty())
+					.thenAnswer(call -> repository.findByUsernameKey(call.getArgument(0)));
+			DefaultAccountUsernamePersistenceService racing = new DefaultAccountUsernamePersistenceService(
+					Providers.of(jdbi),
+					Providers.of(EntityAccess.of(jdbi, Dialectica.entity(UsernameEntity.class))),
+					Providers.of(EntityAccess.of(jdbi, Dialectica.entity(UsernameHistoryEntity.class))),
+					Providers.of(late)
+			);
+
+			UsernameWriteResult result = racing.rename(change(BOB, "Bob", "carol"));
+
+			assertFalse(result.isWritten());
+			assertEquals(ALICE, result.getHolderUniqueId());
+			assertEquals("Bob", usernames.find(BOB).orElseThrow().getUsername());
+		});
+	}
+
+	@DisplayName("Of two renames at once to one username in two cases, exactly one renames and the other is told taken")
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("me.whereareiam.identica.adapter.database.testing.schema.TestDatabases#all")
+	void renamesOneOfTwoSimultaneousRenamesToAUsername(TestDatabase database) {
+		withServices(database, (accounts, usernames, duplicates, jdbi) -> {
+			accounts.create(TestDataFactory.account(ALICE, "Alice"), AccountUsernameSource.PROVIDER, null);
+			accounts.create(TestDataFactory.account(BOB, "Bob"), AccountUsernameSource.PROVIDER, null);
+			List<UUID> uniqueIds = List.of(ALICE, BOB);
+			List<String> olds = List.of("Alice", "Bob");
+			List<String> news = List.of("Carol", "carol");
+
+			List<UsernameWriteResult> results = SimultaneousCalls.run(2, party ->
+					usernames.rename(change(uniqueIds.get(party), olds.get(party), news.get(party))));
+
+			assertEquals(1, results.stream().filter(UsernameWriteResult::isWritten).count(), results.toString());
+			UUID renamed = keys(jdbi).entrySet().stream().filter(entry -> entry.getValue().equals("carol"))
+					.map(Map.Entry::getKey).findFirst().orElseThrow();
+			UsernameWriteResult refused = results.stream().filter(result -> !result.isWritten()).findFirst().orElseThrow();
+			assertEquals(renamed, refused.getHolderUniqueId());
 		});
 	}
 

@@ -5,6 +5,7 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
+import me.whereareiam.dialectica.exception.KeyConflictException;
 import me.whereareiam.identica.adapter.database.entity.username.UsernameEntity;
 import me.whereareiam.identica.adapter.database.entity.username.UsernameHistoryEntity;
 import me.whereareiam.identica.adapter.database.mapper.username.UsernameHistoryMapper;
@@ -68,13 +69,23 @@ public class DefaultAccountUsernamePersistenceService implements AccountUsername
 	/**
 	 * Renames an account in one transaction with its history entry, unless another row holds the new username's
 	 * key. The key's unique index still refuses a username another account takes between the check and the
-	 * write; the database's error is thrown then, because Dialectica 4.0.0 reports such a conflict of an update as
-	 * an ordinary statement failure.
+	 * write; the rename then reports the username taken by that account, outside the failed transaction.
 	 */
 	@Override
 	public @NotNull UsernameWriteResult rename(@NotNull AccountUsernameHistoryEntry change) {
 		if (change.getNewUsername().isBlank()) throw new IllegalArgumentException("A username must not be blank");
 
+		try {
+			return renameInTransaction(change);
+		} catch (KeyConflictException conflict) {
+			String key = UsernameMapper.usernameKey(change.getNewUsername());
+			return usernameRepository.get().findByUsernameKey(key)
+					.map(holder -> UsernameWriteResult.taken(holder.getUniqueId()))
+					.orElseThrow(() -> conflict);
+		}
+	}
+
+	private @NotNull UsernameWriteResult renameInTransaction(@NotNull AccountUsernameHistoryEntry change) {
 		return jdbi.get().inTransaction(handle -> {
 			Optional<UsernameEntity> holder = usernameRepository.get()
 					.findByUsernameKey(UsernameMapper.usernameKey(change.getNewUsername()))

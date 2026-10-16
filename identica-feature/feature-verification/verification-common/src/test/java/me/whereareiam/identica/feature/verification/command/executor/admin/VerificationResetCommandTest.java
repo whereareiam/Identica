@@ -108,6 +108,18 @@ class VerificationResetCommandTest {
 		assertEquals("not-found", sent());
 	}
 
+	@DisplayName("A unique id without an account is reported and resets nothing")
+	@Test
+	void unknownUniqueId() {
+		UUID unknown = UUID.randomUUID();
+		when(accounts.findByUniqueId(unknown)).thenReturn(Optional.empty());
+
+		command.reset(admin, unknown.toString(), null);
+
+		verify(verification, never()).reset(any(UUID.class), any());
+		assertEquals("not-found", sent());
+	}
+
 	private String sent() {
 		ArgumentCaptor<Component> message = ArgumentCaptor.forClass(Component.class);
 		verify(admin).sendMessage(message.capture());

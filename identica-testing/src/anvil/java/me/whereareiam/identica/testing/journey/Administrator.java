@@ -374,6 +374,14 @@ public final class Administrator {
 	}
 
 	/**
+	 * Tries to reset the two-step verification of an account that does not exist and is told it was not found.
+	 */
+	public Administrator findsNoVerificationToResetOf(String target) {
+		run("identica admin 2fa reset " + target, configured.verification().getCommands().getAdmin().getReset().getTargetNotFound());
+		return this;
+	}
+
+	/**
 	 * Lifts the join restriction of a provider.
 	 */
 	public Administrator liftsJoinRestriction(Provider provider) {

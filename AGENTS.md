@@ -179,6 +179,7 @@ See `docs/content/developer/testing/index.mdx`.
 - A run keeps as artifacts only what someone downloads: `identica-plugins-<version>` from a development build or release, and `test-results`, `test-results-integration` or `test-results-journeys-<suite>` when a test failed.
 - Development builds are started manually and publish a branch-qualified version. A published GitHub release publishes Maven artifacts, attaches the distribution, and publishes to the stores; a manual run of the release workflow only republishes to the stores.
 - Entry workflows only select a trigger and call `reusable-verify.yml` and `reusable-publish.yml`; shared steps come from `whereareiam/devops` and `whereareiam/blockops`.
+- The Gradle build cache is on. Pull requests only read the cache, so `build-cache.yml` compiles on every push to `dev` and writes it; when the checks start running other tasks before their tests, add those tasks to its command.
 
 ### Issues
 

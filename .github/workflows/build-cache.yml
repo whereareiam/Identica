@@ -1,0 +1,36 @@
+name: Build cache
+run-name: "Build cache of ${{ github.ref_name }}"
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+concurrency:
+  group: build-cache-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Pull requests read the cache of dev but never write one, so the checks would compile everything again.
+  # A job restores the latest entry of a job with its own id first, which makes the journey jobs, the longest
+  # of the checks, pick this one.
+  journeys:
+    name: Compile for the checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: whereareiam/devops/primitive/setup/gradle@v3
+
+      # Every cacheable task the checks run before their tests.
+      - name: Compile the project, its tests and journeys
+        run: >-
+          ./gradlew --no-daemon testClasses testFixturesClasses assembleDistribution anvilClasses
+          :example-provider:shadowJar :example-addon:jar

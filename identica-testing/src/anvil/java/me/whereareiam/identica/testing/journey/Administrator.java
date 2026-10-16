@@ -423,6 +423,14 @@ public final class Administrator {
 	}
 
 	/**
+	 * Asks for the command help and expects every given text in the answer, such as the commands it lists.
+	 */
+	public Administrator readsHelpWith(String... texts) {
+		run("identica help", configured.identica().getCommands().getHelp().getFormat());
+		return seesOnConsole(texts);
+	}
+
+	/**
 	 * Lifts the join restriction of a provider.
 	 */
 	public Administrator liftsJoinRestriction(Provider provider) {

@@ -98,6 +98,14 @@ public final class Administrator {
 	/**
 	 * Clears an account's provider data and confirms it.
 	 */
+	/**
+	 * Resets the two-step verification of an account, by username or unique id, as {@code /identica admin 2fa reset}.
+	 */
+	public Administrator resetsVerificationOf(String target) {
+		run("identica admin 2fa reset " + target, configured.verification().getCommands().getAdmin().getReset().getCompleted());
+		return this;
+	}
+
 	public Administrator clears(String username) {
 		Messages.Commands.Admin.Clear clear = configured.identica().getCommands().getAdmin().getClear();
 		run("identica admin clear " + username, clear.getConfirm());

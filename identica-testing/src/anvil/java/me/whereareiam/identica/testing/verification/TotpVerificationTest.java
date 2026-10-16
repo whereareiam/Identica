@@ -6,6 +6,7 @@ import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.fixture.Authenticator;
+import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
@@ -17,6 +18,7 @@ import java.util.function.Consumer;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
+import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -286,6 +288,55 @@ class TotpVerificationTest {
 	 * Registers Alice, logs her in and enrolls an authenticator app: she reads the secret, confirms it with the
 	 * app's code, keeps the recovery codes and confirms she saved them. Alice ends on the lobby, logged in.
 	 */
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	void anAdministratorResetLetsThePlayerInWithThePasswordAlone(ScenarioContext anvil) {
+		Enrolled alice = enrolled(anvil);
+		alice.journey().leave();
+
+		Administrator.at(anvil, PROXY).resetsVerificationOf("Alice");
+
+		alice.journey().rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	void anAdministratorResetOfAnOnlinePlayerLetsThemInWithThePasswordAlone(ScenarioContext anvil) {
+		Enrolled alice = enrolled(anvil);
+
+		Administrator.at(anvil, PROXY).resetsVerificationOf("Alice");
+
+		alice.journey().leave()
+				.rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	void anAdministratorResetByUniqueIdLetsThePlayerInWithThePasswordAlone(ScenarioContext anvil) {
+		Enrolled alice = enrolled(anvil);
+		String uniqueId = alice.journey().identity().getObserved().getUniqueId().toString();
+		alice.journey().leave();
+
+		Administrator.at(anvil, PROXY).resetsVerificationOf(uniqueId);
+
+		alice.journey().rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
+	}
+
 	private static Enrolled enrolled(ScenarioContext anvil) {
 		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)

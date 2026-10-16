@@ -121,10 +121,15 @@ public final class ProxyConfiguration {
 	}
 
 	/**
-	 * Returns whether players are sent to a server while a step waits for them or once they are done.
+	 * Returns whether players are sent to a server while a step waits for them or once they are done, as far as
+	 * the test writes the routing file.
 	 */
 	boolean routesTo(String server) {
-		Routing.Defaults defaults = routing().getDefaults();
+		// A journey that seeds a directory of an earlier version leaves the routing file out.
+		Routing routing = routing();
+		if (routing == null) return false;
+
+		Routing.Defaults defaults = routing.getDefaults();
 		return server.equals(defaults.getStep().getTarget()) || server.equals(defaults.getComplete().getTarget());
 	}
 

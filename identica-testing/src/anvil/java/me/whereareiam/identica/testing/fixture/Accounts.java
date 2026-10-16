@@ -2,14 +2,12 @@ package me.whereareiam.identica.testing.fixture;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import me.whereareiam.anvil.api.process.ProcessConsole;
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.identica.testing.environment.IdenticaNetwork;
 import me.whereareiam.identica.testing.environment.Provider;
+import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
-
-import java.time.Duration;
 
 /**
  * Creates accounts that a test about returning players starts from.
@@ -21,10 +19,7 @@ public final class Accounts {
 	 * proxy confirms it. The player has never joined.
 	 */
 	public static void credentialByAdmin(ScenarioContext anvil, String username, String password) {
-		ProcessConsole console = anvil.processes().proxy(IdenticaNetwork.PROXY).console();
-		long before = console.checkpoint();
-		console.sendCommand("identica credential register " + username + " " + password);
-		console.await("Credential account registered.", before, Duration.ofSeconds(15));
+		Administrator.at(anvil, IdenticaNetwork.PROXY).registersCredential(username, password);
 	}
 
 	/**

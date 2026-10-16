@@ -46,7 +46,7 @@ public final class IdenticaClusterScenarios implements AnvilScenarioFactory<Iden
 		Map<String, String> stepServers = cluster.ownStepServers() ? Map.of(IdenticaNetwork.PROXY_B, IdenticaNetwork.AUTH_B) : Map.of();
 		Map<String, ProxyConfiguration> proxies = new LinkedHashMap<>();
 		for (String proxy : List.of(IdenticaNetwork.PROXY_A, IdenticaNetwork.PROXY_B)) {
-			ProxyConfiguration configuration = new ProxyConfiguration(proxy, JourneyMode.INTERACTIVE, JourneyPolicy.PREFER,
+			ProxyConfiguration configuration = new ProxyConfiguration(proxy, Platform.VELOCITY, JourneyMode.INTERACTIVE, JourneyPolicy.PREFER,
 					EnumSet.of(Provider.CREDENTIAL), false, true, step(cluster, stepServers, proxy), cluster.complete(), yggdrasil);
 			configuration.put("persistence.yml", persistence(database));
 			if (redis != null)
@@ -63,7 +63,7 @@ public final class IdenticaClusterScenarios implements AnvilScenarioFactory<Iden
 				.filter(part -> !part.isEmpty())
 				.collect(Collectors.joining("-"))
 				.toLowerCase(Locale.ROOT);
-		return IdenticaNetwork.velocity(name, proxies, stepServers, yggdrasil.sessionServer(), false);
+		return IdenticaNetwork.of(name, Platform.VELOCITY, proxies, stepServers, yggdrasil.sessionServer(), false);
 	}
 
 	/**

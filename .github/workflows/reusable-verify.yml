@@ -116,8 +116,8 @@ jobs:
         # The suites of identica-testing/build.gradle.kts; upgrade only when asked for.
         suite: >-
           ${{ fromJSON(inputs.upgrade
-          && '["join", "account", "identity", "operations", "cluster", "upgrade"]'
-          || '["join", "account", "identity", "operations", "cluster"]') }}
+          && '["join", "account", "identity", "operations", "cluster", "platform", "upgrade"]'
+          || '["join", "account", "identity", "operations", "cluster", "platform"]') }}
     steps:
       - uses: actions/checkout@v7
         with:

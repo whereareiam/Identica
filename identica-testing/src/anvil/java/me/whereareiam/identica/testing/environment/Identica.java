@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
 import java.util.function.Consumer;
 
 /**
- * Starts a fresh Identica network around a test: a Velocity proxy with the packaged plugin and providers, an
+ * Starts a fresh Identica network around a test: a proxy with the packaged plugin and providers, an
  * {@code auth} server for authentication and registration steps, and a {@code lobby} that completed players reach.
  * The proxy is new in every test; the two servers keep running and serve one test after another.
  * {@link #step()} and {@link #complete()} change where players are routed.
@@ -27,6 +27,12 @@ import java.util.function.Consumer;
 @Retention(RetentionPolicy.RUNTIME)
 @AnvilEnvironment(IdenticaScenarios.class)
 public @interface Identica {
+	/**
+	 * Platform the proxy runs on. A BungeeCord proxy verifies premium logins against Mojang's own session server,
+	 * so only offline players join it, and it forces no hostname to {@code lobby}.
+	 */
+	Platform platform() default Platform.VELOCITY;
+
 	/**
 	 * Journey mode of the authentication and registration scenarios.
 	 */
@@ -71,7 +77,7 @@ public @interface Identica {
 
 	/**
 	 * Whether the proxy also runs the example addon, which holds back chat and commands until a player has
-	 * authenticated.
+	 * authenticated. The addon is a Velocity plugin.
 	 */
 	boolean addon() default false;
 

@@ -11,7 +11,7 @@ import me.whereareiam.anvil.capability.messages.Messages;
 import me.whereareiam.anvil.capability.messages.model.ReceivedMessage;
 import me.whereareiam.anvil.capability.server.Server;
 import me.whereareiam.anvil.capability.session.Session;
-import me.whereareiam.identica.testing.environment.IdenticaNetwork;
+import me.whereareiam.identica.testing.environment.Platform;
 import me.whereareiam.identica.testing.environment.Provider;
 
 import java.time.Duration;
@@ -43,7 +43,7 @@ public final class Journey {
 	private final String name;
 	private final String source;
 	private final SimulatedPlayer player;
-	private final String initialConnection;
+	private final ProxyReports reports;
 	private final Session session;
 	private final Messages messages;
 	private final Server server;
@@ -52,11 +52,12 @@ public final class Journey {
 	private final long created;
 
 	private String playedAs;
-	private String connectedPlayer;
 	private int read;
 	private long console;
 	private long attempted;
 	private int connections;
+	/** Whether the proxy has named the player of the current connection on its console. */
+	private boolean named;
 	private String matched = "";
 	private MessageText matchedMessage;
 
@@ -65,13 +66,12 @@ public final class Journey {
 		this.player = player;
 		this.source = address != null ? "/" + address + ":" : "";
 		this.playedAs = name;
-		this.connectedPlayer = "[connected player] " + name + " (" + source;
-		this.initialConnection = "[initial connection] " + source;
+		this.reports = ProxyReports.of(Platform.of(anvil, proxy));
 		this.session = player.capability(Session.class);
 		this.messages = player.capability(Messages.class);
 		this.server = player.capability(Server.class);
 		this.proxy = anvil.processes().proxy(proxy).console();
-		this.configured = new IdenticaMessages(anvil.processes().proxy(proxy).workDirectory().resolve(IdenticaNetwork.DATA));
+		this.configured = new IdenticaMessages(Platform.dataDirectory(anvil, proxy));
 		this.console = this.proxy.checkpoint();
 		this.created = console;
 		this.read = messages.checkpoint();
@@ -122,6 +122,7 @@ public final class Journey {
 	 */
 	public Journey attempt() {
 		attempted = proxy.checkpoint();
+		named = false;
 		session.connect();
 		return this;
 	}
@@ -131,6 +132,7 @@ public final class Journey {
 	 */
 	public Journey attemptAgain() {
 		attempted = proxy.checkpoint();
+		named = false;
 		session.rejoin();
 		return this;
 	}
@@ -139,6 +141,7 @@ public final class Journey {
 	 * Connects and expects the proxy to accept the connection.
 	 */
 	public Journey join() {
+		named = false;
 		session.connect();
 		return accepted();
 	}
@@ -147,6 +150,7 @@ public final class Journey {
 	 * Reconnects after a disconnect or kick and expects the proxy to accept the connection.
 	 */
 	public Journey rejoin() {
+		named = false;
 		session.rejoin();
 		return accepted();
 	}
@@ -157,7 +161,7 @@ public final class Journey {
 	public Journey leave() {
 		session.disconnect();
 		session.disconnected(TIMEOUT);
-		reported(connectedPlayer, "has disconnected");
+		reported(reports.disconnected(playedAs, source), playedAs + " has disconnected");
 		return this;
 	}
 
@@ -167,7 +171,8 @@ public final class Journey {
 	public Journey on(String backend) {
 		PlayerIdentity identity = server.joined(backend, TIMEOUT);
 		assertEquals(backend, identity.getRoute().getServer());
-		reported("[server connection] " + playedAs + " -> " + backend, "has connected");
+		reported(reports.connected(playedAs, backend), playedAs + " has connected to " + backend);
+		named = true;
 		return this;
 	}
 
@@ -177,16 +182,15 @@ public final class Journey {
 	 */
 	public Journey remainsOn(String backend) {
 		server.stayed(backend, SETTLE);
-		String connection = "[server connection] " + playedAs + " -> ";
-		List<String> lines = proxy.read(console, 200).getLines().stream().map(line -> line.getText()).toList();
+		List<String> lines = ConsoleLines.read(proxy, console, 200);
 		List<String> moves = new ArrayList<>();
 		for (int index = 0; index < lines.size(); index++) {
 			String line = lines.get(index);
-			if (!line.contains(connection) || !line.contains("has connected")) continue;
+			String target = reports.connectedTo(line, playedAs);
+			if (target == null) continue;
 
-			String target = line.substring(line.indexOf(connection) + connection.length(), line.indexOf(" has connected"));
 			boolean refused = lines.subList(index + 1, lines.size()).stream()
-					.anyMatch(later -> later.contains(connection + target + " has disconnected"));
+					.anyMatch(later -> reports.disconnectedFrom(later, playedAs, target));
 			if (!refused)
 				moves.add(line);
 		}
@@ -322,16 +326,23 @@ public final class Journey {
 	 * disconnected for that cause, and the proxy reports the closed initial connection without ever reporting
 	 * this client as connected. Connections of another client with the same username before this journey
 	 * started are not counted, and neither are later ones when this client connects from an address of its own.
+	 * On a platform that reports neither, the client alone tells.
 	 */
 	public Journey authenticationRequired() {
-		reported(initialConnection, "has disconnected");
+		Predicate<String> refused = reports.refused(source);
+		if (refused != null)
+			reported(refused, "the initial connection of " + name + " has disconnected");
 		session.kicked(TIMEOUT);
 		assertEquals(DisconnectCause.AUTHENTICATION_REQUIRED, session.state().disconnectCause());
 		assertFalse(session.state().connected(), name + " must not be connected");
-		List<String> accepted = proxy.read(created, 2000).getLines().stream().map(line -> line.getText())
-				.filter(line -> line.contains(connectedPlayer) && line.contains("has connected"))
+
+		Predicate<String> accepted = reports.accepted(playedAs, source);
+		if (accepted == null) return this;
+
+		List<String> acceptedLines = ConsoleLines.read(proxy, created, 2000).stream()
+				.filter(accepted)
 				.toList();
-		assertEquals(connections, accepted.size(), "The proxy must not accept " + name + "; console: " + accepted);
+		assertEquals(connections, acceptedLines.size(), "The proxy must not accept " + name + "; console: " + acceptedLines);
 		return this;
 	}
 
@@ -343,7 +354,6 @@ public final class Journey {
 	 */
 	public Journey named(String username) {
 		playedAs = username;
-		connectedPlayer = "[connected player] " + username + " (" + source;
 		return this;
 	}
 
@@ -363,11 +373,9 @@ public final class Journey {
 	 * lines. A connection the backend refused counts as well, so this tells how often the proxy tried.
 	 */
 	public List<LocalTime> connectionsTo(String backend) {
-		String connected = "[server connection] " + playedAs + " -> " + backend + " has connected";
-		return proxy.read(created, 2000).getLines().stream()
-				.map(line -> line.getText())
-				.filter(line -> line.contains(connected))
-				.map(line -> LocalTime.parse(line.substring(1, 9)))
+		return ConsoleLines.read(proxy, created, 2000).stream()
+				.filter(reports.connected(playedAs, backend))
+				.map(reports::time)
 				.toList();
 	}
 
@@ -435,7 +443,9 @@ public final class Journey {
 	 */
 	public Journey refusedWith(Function<IdenticaMessages, ?> message) {
 		MessageText reason = text(message);
-		reported(initialConnection, "has disconnected");
+		Predicate<String> refused = reports.refused(source);
+		if (refused != null)
+			reported(refused, "the initial connection of " + name + " has disconnected");
 
 		String received = session.kicked(TIMEOUT);
 		assertFalse(session.state().connected(), name + " must not be connected");
@@ -445,17 +455,16 @@ public final class Journey {
 	}
 
 	/**
-	 * Expects the proxy to disconnect the player for a reason. The proxy reports the disconnect and the reason, on
-	 * the same console line for a single-line reason and on the following lines otherwise. The client receives the
-	 * same reason, unless the proxy closed the connection while the client was switching protocol state: such a
-	 * client only sees the connection end, so the reason is compared whenever the client attributes the disconnect
-	 * to the server.
+	 * Expects the proxy to disconnect the player for a reason. Velocity reports the disconnect and the reason, on
+	 * the same console line for a single-line reason and on the following lines otherwise; BungeeCord reports the
+	 * reason first, and nothing about a player it never named. The client receives the same reason, unless the
+	 * proxy closed the connection while the client was switching protocol state: such a client only sees the
+	 * connection end, so the reason is compared whenever the client attributes the disconnect to the server.
 	 */
 	public Journey kickedWith(Function<IdenticaMessages, ?> message) {
 		MessageText reason = text(message);
-		String disconnect = reported(connectedPlayer, "has disconnected");
-		if (!disconnect.contains(reason.signature()))
-			reported(reason.signature(), "");
+		if (reports.namesLogins() || named)
+			reportedKick(reason);
 
 		String received = session.kicked(TIMEOUT);
 		assertFalse(session.state().connected(), name + " must be disconnected");
@@ -472,8 +481,8 @@ public final class Journey {
 	public Journey refusedAtLoginWith(Function<IdenticaMessages, ?> message) {
 		kickedWith(message);
 		assertEquals(DisconnectCause.SERVER, session.state().disconnectCause(), name + " must be refused by the proxy");
-		List<String> routed = proxy.read(attempted, 500).getLines().stream().map(line -> line.getText())
-				.filter(line -> line.contains("[server connection] " + name + " -> "))
+		List<String> routed = ConsoleLines.read(proxy, attempted, 500).stream()
+				.filter(line -> reports.connectedTo(line, name) != null)
 				.toList();
 		assertEquals(List.of(), routed, name + " must be refused before reaching a backend");
 		assertEquals(List.of(), unread(), name + " must be refused before receiving a message");
@@ -499,9 +508,24 @@ public final class Journey {
 	 */
 	public Journey disconnected() {
 		session.disconnected(TIMEOUT);
-		reported(connectedPlayer, "has disconnected");
+		if (reports.namesLogins() || named)
+			reported(reports.disconnected(playedAs, source), playedAs + " has disconnected");
 		assertFalse(session.state().connected(), name + " must be disconnected");
 		return this;
+	}
+
+	private void reportedKick(MessageText reason) {
+		Predicate<String> disconnected = reports.disconnected(playedAs, source);
+		String description = playedAs + " has disconnected";
+		if (!reports.reasonFollows()) {
+			reported(line -> line.contains(reason.signature()), reason.signature());
+			reported(disconnected, description);
+			return;
+		}
+
+		String disconnect = reported(disconnected, description);
+		if (!disconnect.contains(reason.signature()))
+			reported(line -> line.contains(reason.signature()), reason.signature());
 	}
 
 	private MessageText text(Function<IdenticaMessages, ?> message) {
@@ -523,27 +547,36 @@ public final class Journey {
 
 	private Journey accepted() {
 		session.connected(Duration.ofSeconds(30));
-		reported(connectedPlayer, "has connected");
+		Predicate<String> accepted = reports.accepted(playedAs, source);
+		if (accepted != null) {
+			reported(accepted, playedAs + " has connected");
+			named = true;
+		}
 		connections++;
 		return this;
 	}
 
 	/**
 	 * Waits for a proxy console line after the last one this journey matched and returns it.
+	 *
+	 * @param report matches the line
+	 * @param description what the line reports, for the failure message
 	 */
-	private String reported(String subject, String event) {
+	private String reported(Predicate<String> report, String description) {
 		Instant deadline = Instant.now().plus(TIMEOUT);
 		while (true) {
 			var output = proxy.read(console, 500);
-			for (var line : output.getLines())
-				if (line.getText().contains(subject) && line.getText().contains(event)) {
-					console = line.getSequence();
-					return line.getText();
-				}
+			for (var line : output.getLines()) {
+				String text = ConsoleLines.plain(line.getText());
+				if (!report.test(text)) continue;
+
+				console = line.getSequence();
+				return text;
+			}
 
 			if (Instant.now().isAfter(deadline))
-				fail("The proxy did not report \"" + subject + " ... " + event + "\"; console: "
-						+ output.getLines().stream().map(line -> line.getText()).toList());
+				fail("The proxy did not report \"" + description + "\"; console: "
+						+ output.getLines().stream().map(line -> ConsoleLines.plain(line.getText())).toList());
 			sleep(Duration.ofMillis(100));
 		}
 	}

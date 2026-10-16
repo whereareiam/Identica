@@ -158,4 +158,5 @@ anvil = { id = "me.whereareiam.anvil", version.ref = "anvil" }
 anvil-junit = { id = "me.whereareiam.anvil.junit", version.ref = "anvil" }
 anvil-capability-default = { id = "me.whereareiam.anvil.capability.default", version.ref = "anvil" }
 anvil-platform-paper = { id = "me.whereareiam.anvil.platform.paper", version.ref = "anvil" }
+anvil-platform-bungeecord = { id = "me.whereareiam.anvil.platform.bungeecord", version.ref = "anvil" }
 anvil-platform-velocity = { id = "me.whereareiam.anvil.platform.velocity", version.ref = "anvil" }

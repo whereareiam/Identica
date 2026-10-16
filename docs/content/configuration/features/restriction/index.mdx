@@ -8,6 +8,28 @@ The `restriction` feature provides the compiled framework for restriction types,
 Shared restriction settings live under `features/restriction/settings`.
 Provider-specific restriction overrides live under `providers[].features.restriction`.
 
+## Settings
+
+### toggleTtl
+
+- Takes: a positive duration
+- Current default: `"365d"`
+- Affects: how long a restriction an administrator turned on stays active before it lifts itself
+
+A restriction lasts until an administrator lifts it or this duration passes, whichever comes first.
+
+Active restrictions are not stored in the database. With [replication](../../replication/index.mdx), they live in Redis: every proxy of the network sees a restriction as soon as it is turned on or lifted, and a restarted proxy keeps seeing it as long as Redis keeps it. Without replication, they live in the memory of the proxy, so restarting the proxy lifts every restriction; turn them on again after a restart.
+
+### replication.toggleNamespace
+
+<Badge type="warning">Advanced</Badge>
+
+- Takes: a non-blank string
+- Current default: `"identica:restriction:toggle"`
+- Affects: the name under which active restrictions are shared through replication
+
+Proxies that should share their restrictions use the same value.
+
 ## Restriction types
 
 [Join restriction](./join/index.mdx) is provided by the separate `restriction-join` feature. It requires `restriction` to be selected too. Selecting the framework alone does not install join commands or enforcement.

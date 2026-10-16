@@ -66,6 +66,7 @@ class ScenarioRegistryTest {
 		when(migrationPipeline.type()).thenReturn(PipelineType.MIGRATION);
 		when(registrationPipeline.isPending(any())).thenReturn(true);
 		when(registrationPipeline.matchesNewScenario(any())).thenReturn(true);
+		when(registrationPipeline.acceptsRejoin(any())).thenReturn(true);
 		when(providerManager.getProviders()).thenReturn(List.of(provider("alpha", 10), provider("beta", 20)));
 
 		selector = new DefaultProviderSelector(new ProviderClaimRanking(providerManager));
@@ -146,6 +147,18 @@ class ScenarioRegistryTest {
 		ScenarioSelection selection = registry.select(request(ProviderClaim.verified("beta", "beta-proof")));
 
 		assertResumed(selection);
+	}
+
+	@DisplayName("Starts over instead of resuming when the pending pipeline accepts no rejoin")
+	@Test
+	void startsOverWhenThePendingPipelineAcceptsNoRejoin() {
+		pending("alpha", ProviderSelection.empty());
+		when(registrationPipeline.acceptsRejoin(any())).thenReturn(false);
+
+		ScenarioSelection selection = registry.select(request(ProviderClaim.of("alpha", ProviderClaimOrigin.DISCOVERY)));
+
+		assertFalse(selection.isResume());
+		verify(pipelineStateStore).clear(any(PipelineStateReference.class));
 	}
 
 	private void assertResumed(ScenarioSelection selection) {

@@ -57,7 +57,7 @@ behavior:
 The three scenario sections share most fields:
 
 - `pipelineTtl`: how long a waiting pipeline can be resumed
-- `allowResume`: whether waiting state is stored and resumable
+- `allowResume`: whether a player who leaves during a login continues it when they come back
 - `journeyMode`: whether the preferred flow style is `SEAMLESS` or `INTERACTIVE`
 - `journeyPolicy`: whether that mode is only preferred or strictly required
 
@@ -77,9 +77,11 @@ When a flow is pending, this TTL becomes the expiry time for its saved pipeline 
 
 - Takes: `true` or `false`
 - Current default: `true`
-- Affects: whether waiting scenario state is saved and whether resume requests are accepted
+- Affects: whether a player who leaves while logging in or registering continues where they stopped when they join again
 
-If this is `false`, waiting or reconnect-required state is cleared instead of saved.
+A login that waits for the player, for a password or an authenticator code, is always saved for up to `pipelineTtl`, and the connection that started it always continues it. With `true`, a player who leaves and joins again within that time continues as well, for example with the password confirmation instead of the first password. With `false`, such a player starts over.
+
+A reconnect the login itself asks for, such as the rejoin after choosing Premium in `INTERACTIVE` mode, always continues the login, whatever this setting says.
 
 Whether a resumed authentication or registration flow may bypass an active join restriction is controlled by [join restriction settings](../features/restriction/join/index.mdx#settings).
 

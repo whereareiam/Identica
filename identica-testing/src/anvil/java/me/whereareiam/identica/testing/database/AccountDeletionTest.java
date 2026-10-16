@@ -2,6 +2,7 @@ package me.whereareiam.identica.testing.database;
 
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.identica.testing.environment.Identica;
+import me.whereareiam.identica.testing.environment.Platform;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.fixture.Authenticator;
@@ -20,7 +21,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
-import static me.whereareiam.identica.testing.environment.IdenticaNetwork.DATA;
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.PROXY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -67,7 +67,7 @@ class AccountDeletionTest {
 				.setsPassword("Alice", "Changed-456")
 				.deletes("Alice");
 
-		Path database = anvil.processes().proxy(PROXY).workDirectory().resolve(DATA).resolve("identica.db");
+		Path database = Platform.dataDirectory(anvil, PROXY).resolve("identica.db");
 		try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + database)) {
 			assertEquals(List.of(), foreignKeyViolations(connection));
 			for (String table : ACCOUNT_TABLES) assertEquals(0, count(connection, table), table);

@@ -8,6 +8,7 @@ plugins {
 	alias(libs.plugins.anvil.capability.default)
 	alias(libs.plugins.anvil.platform.paper)
 	alias(libs.plugins.anvil.platform.velocity)
+	alias(libs.plugins.anvil.platform.bungeecord)
 }
 
 description = "Live player journeys against packaged Identica artifacts"
@@ -75,10 +76,10 @@ val journeyParallelism = providers.gradleProperty("identica.journeys.parallelism
 
 /**
  * Suites the journeys are split into, each a JUnit tag: getting a player in, what happens to an account once
- * it exists, usernames and unique ids, what administrators do, two proxies sharing a database, and starting
- * from what an earlier version of Identica left.
+ * it exists, usernames and unique ids, what administrators do, two proxies sharing a database, starting
+ * from what an earlier version of Identica left, and proxies other than Velocity.
  */
-val journeySuites = listOf("join", "account", "identity", "operations", "cluster", "upgrade")
+val journeySuites = listOf("join", "account", "identity", "operations", "cluster", "upgrade", "platform")
 
 anvil {
 	acceptEula()

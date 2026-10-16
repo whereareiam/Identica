@@ -44,7 +44,11 @@ public class SettingsDefaults implements DefaultsProvider<Settings> {
 		return defaultListenerEvents(PlatformType.getType());
 	}
 
-	Map<String, Event> defaultListenerEvents(PlatformType platformType) {
+	/**
+	 * Returns the listener events registered by default on a platform, for a configuration written outside the
+	 * platform it is for.
+	 */
+	public Map<String, Event> defaultListenerEvents(PlatformType platformType) {
 		return switch (platformType) {
 			case BUNGEECORD -> defaultBungeeCordListenerEvents();
 			case VELOCITY, UNKNOWN -> defaultVelocityListenerEvents();

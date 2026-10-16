@@ -5,6 +5,7 @@ import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.identica.feature.restriction.join.config.JoinRestrictionMessages;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.testing.environment.IdenticaNetwork;
+import me.whereareiam.identica.testing.environment.Platform;
 import me.whereareiam.identica.testing.environment.Provider;
 
 import java.time.Duration;
@@ -30,7 +31,7 @@ public final class Administrator {
 
 	private Administrator(ScenarioContext anvil, String proxy) {
 		this.console = anvil.processes().proxy(proxy).console();
-		this.configured = new IdenticaMessages(anvil.processes().proxy(proxy).workDirectory().resolve(IdenticaNetwork.DATA));
+		this.configured = new IdenticaMessages(Platform.dataDirectory(anvil, proxy));
 	}
 
 	/**
@@ -405,7 +406,7 @@ public final class Administrator {
 		List<String> expected = List.of(texts);
 		Instant deadline = Instant.now().plus(TIMEOUT);
 		while (true) {
-			List<String> lines = console.read(lastCommand, 2000).getLines().stream().map(line -> line.getText()).toList();
+			List<String> lines = ConsoleLines.read(console, lastCommand, 2000);
 			if (lines.stream().anyMatch(line -> expected.stream().allMatch(line::contains))) return this;
 			if (Instant.now().isAfter(deadline))
 				fail("The console did not show a line with " + expected + "; console: " + lines);
@@ -455,7 +456,7 @@ public final class Administrator {
 			console.sendCommand(command);
 			pause(500);
 
-			String answer = String.join("\n", console.read(before, 500).getLines().stream().map(line -> line.getText()).toList());
+			String answer = String.join("\n", ConsoleLines.read(console, before, 500));
 			boolean exact = true;
 			for (String proxy : List.of(IdenticaNetwork.PROXY_A, IdenticaNetwork.PROXY_B))
 				exact &= heldBy(message, proxy).in(answer) == holding.contains(proxy);
@@ -496,7 +497,7 @@ public final class Administrator {
 
 		Instant deadline = Instant.now().plus(TIMEOUT);
 		while (true) {
-			List<String> lines = console.read(before, 500).getLines().stream().map(line -> line.getText()).toList();
+			List<String> lines = ConsoleLines.read(console, before, 500);
 			if (expected.in(String.join("\n", lines))) return;
 			if (Instant.now().isAfter(deadline))
 				fail("The proxy did not answer \"" + command + "\" with " + expected + "; console: " + lines);

@@ -3,7 +3,7 @@ title: Live tests
 description: Run and write player journeys against the packaged plugin on a real proxy.
 ---
 
-The `identica-testing` module starts the packaged plugin and providers on a real Velocity proxy with Paper backends and drives simulated players through them with [Anvil](https://github.com/whereareiam/anvil). Unit tests stay in their own modules; these tests cover what a player experiences when joining.
+The `identica-testing` module starts the packaged plugin and providers on a real Velocity or BungeeCord proxy with Paper backends and drives simulated players through them with [Anvil](https://github.com/whereareiam/anvil). Unit tests stay in their own modules; these tests cover what a player experiences when joining.
 
 ## Run the tests
 
@@ -31,6 +31,7 @@ The journeys are split into suites. Each suite is a JUnit tag on the test classe
 | `operations` | `anvilOperationsTest` | `administration`, `migration`, `startup`, `database`, `example` | reloads, migrations, startup, database backends, the examples |
 | `cluster` | `anvilClusterTest` | `cluster` | two proxies sharing a database; needs Docker |
 | `upgrade` | `anvilUpgradeTest` | `upgrade` | starting from what an earlier version of Identica left |
+| `platform` | `anvilPlatformTest` | `platform` | proxies other than Velocity: joining through BungeeCord |
 
 `./gradlew :identica-testing:anvil` runs every suite. Pull requests run every suite but `upgrade`, each in a job of its own; releases run `upgrade` as well.
 
@@ -120,6 +121,31 @@ void disconnectsAPlayerWhoseAccountIsDeletedOnTheOtherProxy(ScenarioContext anvi
 `@IdenticaCluster(replication = false)` leaves Redis out, for behaviour that must hold when the proxies only share the database. `@IdenticaCluster` takes the same `step` and `complete` routing targets as `@Identica`.
 `@IdenticaCluster(configure = ...)` applies the same configuration changes as `@Identica(configure = ...)` to both proxies; a change meant for one of them checks `proxy.name()`. Two clients with one username cannot be on the same backend, because the backend disconnects the earlier one, so a journey that needs both online keeps them on different servers. `@IdenticaCluster(ownStepServers = true)` gives proxy B a step server of its own, `IdenticaNetwork.AUTH_B`, for a journey in which one account waits at a step through both proxies at once.
 
+## Other proxies
+
+Every network runs on Velocity unless a test names another platform. `@Identica(platform = Platform.BUNGEECORD)` starts the same network on a BungeeCord proxy:
+
+```java
+@Test
+@Identica(platform = Platform.BUNGEECORD, mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL)
+void registersWithTheOnlyProviderInSeamlessMode(ScenarioContext anvil) {
+	Journey.offline(anvil, "Alice").join()
+			.on(AUTH)
+			.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
+			.register("Secret-123")
+			.on(LOBBY);
+}
+```
+
+A BungeeCord network differs from a Velocity one where BungeeCord or Anvil leave no choice:
+
+- BungeeCord verifies premium logins against Mojang's own session server, which Anvil cannot replace with the network's stand-in, so no premium player joins it. The Premium provider still asks the stand-in which usernames are premium, so an offline player with a premium username is asked for a premium login first, as on Velocity.
+- Anvil writes the proxy's listener itself, without forced hosts, so `LOBBY_HOST` is forced nowhere.
+- The example addon is a Velocity plugin; `addon = true` fails on another platform.
+- BungeeCord names a player on its console only once the player reaches a backend, so the journey checks a login it refuses, such as one a join restriction refuses, on the client alone.
+
+The journeys on BungeeCord are in the `platform` package and suite.
+
 ## Write a test
 
 A test declares its network with `@Identica` and describes a player with `Journey`:
@@ -139,7 +165,7 @@ void registersWithCredential(ScenarioContext anvil) {
 }
 ```
 
-`@Identica` sets the journey mode and policy, the enabled providers, provider entrypoints, `autoSelectSingleProvider`, and the routing targets. The network is one Velocity proxy, an `auth` server for authentication and registration steps, and a `lobby` that completed players reach. Players join `lobby`; `step` and `complete` name the servers they are routed to while a step waits and once they are done, `auth` and `lobby` unless the test changes them, and a blank target leaves them where they are:
+`@Identica` sets the journey mode and policy, the enabled providers, provider entrypoints, `autoSelectSingleProvider`, and the routing targets. The network is one proxy, Velocity unless the test names [another platform](#other-proxies), an `auth` server for authentication and registration steps, and a `lobby` that completed players reach. Players join `lobby`; `step` and `complete` name the servers they are routed to while a step waits and once they are done, `auth` and `lobby` unless the test changes them, and a blank target leaves them where they are:
 
 ```java
 @Test
@@ -158,7 +184,7 @@ void registersOnTheLobbyWithoutAnyRouting(ScenarioContext anvil) {
 
 `database` picks where the proxy stores its accounts: `Database.SQLITE`, the default, `Database.H2`, the H2 file in Identica's data directory, or a server in a container that stops with the network: `Database.MARIADB`, reached through Identica's MySQL backend, `Database.MYSQL` or `Database.POSTGRESQL`. A test on a database server needs Docker and is skipped without it.
 
-Every test proxy forces the hostname `IdenticaNetwork.LOBBY_HOST` to `lobby`; every journey that names no hostname joins through one without a forced host.
+Every Velocity test proxy forces the hostname `IdenticaNetwork.LOBBY_HOST` to `lobby`; every journey that names no hostname joins through one without a forced host.
 
 `Journey.of(anvil, client)` creates a player from a `Client` description: `Client.offline(username)` or `Client.premium(account)`, then `.through(host)` for the hostname the client announces, such as `LOBBY_HOST` or a provider's entrypoint, `.from(address)` for the loopback address it connects from, such as `127.0.0.2`, and `.at(proxy)` for a proxy of a cluster. Without `.from(...)` every player connects from `127.0.0.1`, so two clients that should look like different machines name different addresses. Clients of one username need different addresses or proxies:
 

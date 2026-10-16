@@ -20,19 +20,22 @@ import java.util.stream.Collectors;
 public final class IdenticaScenarios implements AnvilScenarioFactory<Identica> {
 	@Override
 	public @NotNull AnvilScenario create(@NotNull Identica identica, @NotNull ScenarioResources resources) {
+		if (identica.addon() && identica.platform() != Platform.VELOCITY)
+			throw new IllegalArgumentException("The example addon is a Velocity plugin");
+
 		Set<Provider> enabled = EnumSet.noneOf(Provider.class);
 		enabled.addAll(Arrays.asList(identica.providers()));
 
 		// Each network has its own stand-in for Mojang; the test receives it to register premium accounts.
 		YggdrasilMock yggdrasil = resources.own(YggdrasilMock.start());
-		ProxyConfiguration proxy = new ProxyConfiguration(IdenticaNetwork.PROXY, identica.mode(), identica.policy(), enabled, identica.entrypoints(),
+		ProxyConfiguration proxy = new ProxyConfiguration(IdenticaNetwork.PROXY, identica.platform(), identica.mode(), identica.policy(), enabled, identica.entrypoints(),
 				identica.autoSelectSingleProvider(), identica.step(), identica.complete(), yggdrasil);
 		proxy.put("persistence.yml", identica.database().persistence(resources));
 		for (Class<? extends Consumer<ProxyConfiguration>> change : identica.configure())
 			instantiate(change).accept(proxy);
 
-		return IdenticaNetwork.velocity(name(identica, enabled), Map.of(IdenticaNetwork.PROXY, proxy), yggdrasil.sessionServer(),
-				identica.addon());
+		return IdenticaNetwork.of(name(identica, enabled), identica.platform(), Map.of(IdenticaNetwork.PROXY, proxy),
+				yggdrasil.sessionServer(), identica.addon());
 	}
 
 	static Consumer<ProxyConfiguration> instantiate(Class<? extends Consumer<ProxyConfiguration>> change) {
@@ -47,7 +50,9 @@ public final class IdenticaScenarios implements AnvilScenarioFactory<Identica> {
 
 	private static String name(Identica identica, Set<Provider> enabled) {
 		String providers = enabled.stream().map(Provider::getId).collect(Collectors.joining("+"));
-		return String.join("-", "identica", identica.mode().name(), identica.policy().name(), providers,
+		// Only a network on another platform than the default names it.
+		String network = identica.platform() == Platform.VELOCITY ? "identica" : "identica-" + identica.platform().name();
+		return String.join("-", network, identica.mode().name(), identica.policy().name(), providers,
 				identica.entrypoints() ? "entrypoints" : "direct",
 				identica.autoSelectSingleProvider() ? "autoselect" : "choice",
 				routing(identica.step(), identica.complete()),

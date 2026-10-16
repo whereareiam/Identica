@@ -87,6 +87,7 @@ public final class ProxyConfiguration {
 
 	ProxyConfiguration(
 			String name,
+			Platform platform,
 			JourneyMode mode,
 			JourneyPolicy policy,
 			Set<Provider> enabled,
@@ -99,7 +100,7 @@ public final class ProxyConfiguration {
 		this.name = name;
 		documents.put(ENGINE, defaultEngine(mode, policy, autoSelectSingleProvider));
 		documents.put(ROUTING, defaultRouting(step, complete));
-		documents.put(SETTINGS, defaultSettings());
+		documents.put(SETTINGS, defaultSettings(platform));
 		documents.put(PROVIDERS, defaultProviders(enabled, entrypoints));
 		documents.put(PREMIUM, defaultPremium(yggdrasil));
 	}
@@ -322,7 +323,7 @@ public final class ProxyConfiguration {
 	}
 
 	private static Path dataDirectory(ScenarioContext anvil) {
-		return anvil.processes().proxy(anvil.definition().getEntrypoint()).workDirectory().resolve(IdenticaNetwork.DATA);
+		return Platform.dataDirectory(anvil, anvil.definition().getEntrypoint());
 	}
 
 	/**
@@ -374,9 +375,15 @@ public final class ProxyConfiguration {
 		return routing;
 	}
 
-	private static Settings defaultSettings() {
-		Settings settings = new SettingsDefaults().supply(new Settings());
+	/**
+	 * The defaults name the listener events of the platform they run on, which a test is not, so the proxy's
+	 * platform names them instead.
+	 */
+	private static Settings defaultSettings(Platform platform) {
+		SettingsDefaults defaults = new SettingsDefaults();
+		Settings settings = defaults.supply(new Settings());
 		settings.setLevel(DEBUG_LEVEL);
+		settings.getListeners().setEvents(defaults.defaultListenerEvents(platform.getType()));
 
 		return settings;
 	}

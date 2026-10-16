@@ -8,6 +8,7 @@ import me.whereareiam.configura.Config;
 import me.whereareiam.configura.Configura;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.identica.common.config.IdenticaModule;
+import me.whereareiam.identica.common.config.defaults.CommandsDefaults;
 import me.whereareiam.identica.common.config.defaults.EngineDefaults;
 import me.whereareiam.identica.common.config.defaults.ReplicationDefaults;
 import me.whereareiam.identica.common.config.defaults.RoutingDefaults;
@@ -16,6 +17,7 @@ import me.whereareiam.identica.common.config.defaults.messages.MessagesDefaults;
 import me.whereareiam.identica.common.config.defaults.provider.ProvidersDefaults;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.config.Commands;
 import me.whereareiam.identica.model.config.Replication;
 import me.whereareiam.identica.model.config.Routing;
 import me.whereareiam.identica.model.config.Settings;
@@ -67,6 +69,7 @@ public final class ProxyConfiguration {
 	private static final String SETTINGS = "settings.yml";
 	private static final String MESSAGES = "messages.yml";
 	private static final String REPLICATION = "replication.yml";
+	private static final String COMMANDS = "commands.yml";
 	private static final String PROVIDERS = "providers/providers.yml";
 	private static final String PREMIUM = "providers/Premium/settings.yml";
 	private static final String CREDENTIAL = "providers/Credential/settings.yml";
@@ -159,6 +162,14 @@ public final class ProxyConfiguration {
 	 */
 	public CredentialSettings credential() {
 		return (CredentialSettings) documents.computeIfAbsent(CREDENTIAL, ignored -> new CredentialSettingsDefaults().supply(new CredentialSettings()));
+	}
+
+	/**
+	 * Returns Identica's own command settings, such as how long an administrator has to confirm a deletion,
+	 * starting from their defaults. The proxy only gets this file from the test once a test asks for it.
+	 */
+	public Commands commands() {
+		return (Commands) documents.computeIfAbsent(COMMANDS, ignored -> new CommandsDefaults().supply(new Commands()));
 	}
 
 	/**

@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -63,7 +64,7 @@ public final class IdenticaClusterScenarios implements AnvilScenarioFactory<Iden
 				.filter(part -> !part.isEmpty())
 				.collect(Collectors.joining("-"))
 				.toLowerCase(Locale.ROOT);
-		return IdenticaNetwork.of(name, Platform.VELOCITY, proxies, stepServers, yggdrasil.sessionServer(), false);
+		return IdenticaNetwork.of(name, Platform.VELOCITY, proxies, stepServers, yggdrasil.sessionServer(), Set.of());
 	}
 
 	/**

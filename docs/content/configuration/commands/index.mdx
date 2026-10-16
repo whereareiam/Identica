@@ -33,9 +33,9 @@ If this is `0` or lower, those suggestions are effectively disabled.
 
 - Takes: a duration
 - Current default: `"60s"`
-- Affects: how long a pending admin clear confirmation stays valid
+- Affects: how long a pending admin clear or delete confirmation stays valid
 
-This is the time window between requesting an account clear and confirming it.
+This is the time window between requesting an account clear or deletion (`/identica admin clear` or `/identica admin delete`) and confirming it. A later confirmation is refused and nothing is changed.
 
 ### sessions
 

@@ -44,9 +44,34 @@ public final class Administrator {
 	 * Deletes an account and confirms the deletion.
 	 */
 	public Administrator deletes(String username) {
-		Messages.Commands.Admin.Delete delete = configured.identica().getCommands().getAdmin().getDelete();
-		run("identica admin delete " + username, delete.getConfirm());
-		run("identica admin delete confirm", delete.getSuccess());
+		requestsDeletionOf(username);
+		run("identica admin delete confirm", delete().getSuccess());
+		return this;
+	}
+
+	/**
+	 * Asks to delete an account and leaves the request waiting for confirmation.
+	 */
+	public Administrator requestsDeletionOf(String username) {
+		run("identica admin delete " + username, delete().getConfirm());
+		return this;
+	}
+
+	public Administrator cancelsDeletion() {
+		run("identica admin delete cancel", delete().getCancelled());
+		return this;
+	}
+
+	/**
+	 * Confirms a deletion requested longer ago than the confirmation window, which deletes nothing.
+	 */
+	public Administrator confirmsExpiredDeletion() {
+		run("identica admin delete confirm", delete().getExpired());
+		return this;
+	}
+
+	public Administrator findsNoDeletionToConfirm() {
+		run("identica admin delete confirm", delete().getNoPending());
 		return this;
 	}
 
@@ -107,9 +132,26 @@ public final class Administrator {
 	}
 
 	public Administrator clears(String username) {
-		Messages.Commands.Admin.Clear clear = configured.identica().getCommands().getAdmin().getClear();
-		run("identica admin clear " + username, clear.getConfirm());
-		run("identica admin clear confirm", clear.getSuccess());
+		requestsClearOf(username);
+		run("identica admin clear confirm", clear().getSuccess());
+		return this;
+	}
+
+	/**
+	 * Asks to clear an account and leaves the request waiting for confirmation.
+	 */
+	public Administrator requestsClearOf(String username) {
+		run("identica admin clear " + username, clear().getConfirm());
+		return this;
+	}
+
+	public Administrator cancelsClear() {
+		run("identica admin clear cancel", clear().getCancelled());
+		return this;
+	}
+
+	public Administrator findsNoClearToConfirm() {
+		run("identica admin clear confirm", clear().getNoPending());
 		return this;
 	}
 
@@ -185,6 +227,14 @@ public final class Administrator {
 
 	private Messages.Commands.Admin.Username.Duplicates duplicates() {
 		return configured.identica().getCommands().getAdmin().getUsername().getDuplicates();
+	}
+
+	private Messages.Commands.Admin.Delete delete() {
+		return configured.identica().getCommands().getAdmin().getDelete();
+	}
+
+	private Messages.Commands.Admin.Clear clear() {
+		return configured.identica().getCommands().getAdmin().getClear();
 	}
 
 	private Messages.Commands.Admin.Reservation reservation() {

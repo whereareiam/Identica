@@ -43,6 +43,9 @@ public final class DataSourceFactory {
 				hikariConfigObj.setUsername(external.getUsername());
 				hikariConfigObj.setPassword(external.getPassword());
 			}
+			// SQLite checks foreign keys, and cascades deletes along them, only on connections that turn them on.
+			if (persistence.getType() == DatabaseType.SQLITE)
+				hikariConfigObj.setConnectionInitSql("PRAGMA foreign_keys = ON");
 
 			// Apply HikariCP pool settings from config
 			hikariConfigObj.setPoolName(hikariConfig.getPoolName());

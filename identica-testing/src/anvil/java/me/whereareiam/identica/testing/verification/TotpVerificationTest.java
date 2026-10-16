@@ -12,6 +12,7 @@ import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
@@ -32,6 +33,8 @@ class TotpVerificationTest {
 	private static final String PASSWORD = "Secret-123";
 	/** Recovery codes Identica generates by default. */
 	private static final int RECOVERY_CODES = 8;
+	/** A validity window short enough for a journey to let it pass. */
+	private static final Duration SHORT_TTL = Duration.ofSeconds(6);
 
 	@Test
 	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
@@ -337,7 +340,138 @@ class TotpVerificationTest {
 				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
 	}
 
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	void statusShowsAMethodOnlyOnceEnrolled(ScenarioContext anvil) {
+		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.on(LOBBY)
+				.command("2fa status")
+				.sees(m -> m.verification().getCommands().getStatus().getBody())
+				.with(m -> m.verification().getCommands().getStatus().getEmptyEnrollments());
+
+		Authenticator app = Authenticator.of(alice.command("2fa enroll totp")
+				.sees(m -> m.verification().getMethods().getTotp().getPending())
+				.reads("secret"));
+		alice.command("2fa enroll confirm " + app.code())
+				.sees(m -> m.verification().getCommands().getConfirm().getRecoveryCodes().getBody())
+				.command("2fa enroll confirm saved")
+				.sees(m -> m.verification().getCommands().getConfirm().getEnabled())
+				.command("2fa status")
+				.sees(m -> m.verification().getCommands().getStatus().getBody())
+				.without(m -> m.verification().getCommands().getStatus().getEmptyEnrollments());
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	void cancellingAnEnrollmentLeavesTheAccountWithoutVerification(ScenarioContext anvil) {
+		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.on(LOBBY);
+		Authenticator app = Authenticator.of(alice.command("2fa enroll totp")
+				.sees(m -> m.verification().getMethods().getTotp().getPending())
+				.reads("secret"));
+
+		alice.command("2fa enroll cancel")
+				.sees(m -> m.verification().getCommands().getCancel().getCancelled())
+				.command("2fa enroll confirm " + app.code())
+				.sees(m -> m.verification().getCommands().getConfirm().getNoPending())
+				.command("2fa enroll cancel")
+				.sees(m -> m.verification().getCommands().getCancel().getNoPending())
+				.leave()
+				.rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.on(LOBBY);
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = ShortEnrollment.class)
+	void anEnrollmentConfirmedTooLateLeavesTheAccountWithoutVerification(ScenarioContext anvil) {
+		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.on(LOBBY);
+		Authenticator app = Authenticator.of(alice.command("2fa enroll totp")
+				.sees(m -> m.verification().getMethods().getTotp().getPending())
+				.reads("secret"));
+
+		alice.waits(SHORT_TTL)
+				.command("2fa enroll confirm " + app.code())
+				.sees(m -> m.verification().getCommands().getConfirm().getNoPending())
+				.leave()
+				.rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.on(LOBBY);
+	}
+
+	/**
+	 * A code typed after {@code challengeTtl} answers no challenge and does not log Alice in. Her password asks for a
+	 * new code, which does.
+	 */
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = ShortChallenge.class)
+	void aCodeTypedAfterTheChallengeExpiredDoesNotLogIn(ScenarioContext anvil) {
+		Enrolled alice = enrolled(anvil);
+
+		alice.journey().leave()
+				.rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.sees(m -> m.credential().getScenario().getAuthentication().getVerification().getPrompt())
+				.waits(SHORT_TTL)
+				.command("2fa confirm " + alice.app().nextCode())
+				.sees(m -> m.verification().getCommands().getConfirm().getNoPending())
+				.remainsOn(AUTH)
+				.login(PASSWORD)
+				.sees(m -> m.credential().getScenario().getAuthentication().getVerification().getPrompt())
+				.command("2fa confirm " + alice.app().nextCode())
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = TwoRecoveryCodes.class)
+	void usingUpEveryRecoveryCodeStillLeavesTheAuthenticator(ScenarioContext anvil) {
+		Enrolled alice = enrolled(anvil, 2);
+		Journey journey = alice.journey();
+
+		for (String recoveryCode : alice.recoveryCodes())
+			journey.leave()
+					.rejoin()
+					.on(AUTH)
+					.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+					.login(PASSWORD)
+					.sees(m -> m.credential().getScenario().getAuthentication().getVerification().getPrompt())
+					.command("2fa confirm " + recoveryCode)
+					.on(LOBBY);
+
+		journey.leave()
+				.rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
+				.login(PASSWORD)
+				.sees(m -> m.credential().getScenario().getAuthentication().getVerification().getPrompt())
+				.command("2fa confirm " + alice.recoveryCodes().getFirst())
+				.sees(m -> m.verification().getCommands().getConfirm().getInvalidCode())
+				.command("2fa confirm " + alice.app().nextCode())
+				.on(LOBBY);
+	}
+
 	private static Enrolled enrolled(ScenarioContext anvil) {
+		return enrolled(anvil, RECOVERY_CODES);
+	}
+
+	private static Enrolled enrolled(ScenarioContext anvil, int recoveryCodeCount) {
 		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)
 				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
@@ -351,7 +485,7 @@ class TotpVerificationTest {
 				.sees(m -> m.verification().getCommands().getConfirm().getRecoveryCodes().getBody())
 				.reads("entries")
 				.split("\\s+"));
-		assertEquals(RECOVERY_CODES, recoveryCodes.size(), "Alice must be shown every recovery code: " + recoveryCodes);
+		assertEquals(recoveryCodeCount, recoveryCodes.size(), "Alice must be shown every recovery code: " + recoveryCodes);
 
 		alice.command("2fa enroll confirm saved")
 				.sees(m -> m.verification().getCommands().getConfirm().getEnabled())
@@ -377,6 +511,30 @@ class TotpVerificationTest {
 		@Override
 		public void accept(ProxyConfiguration proxy) {
 			proxy.verification().getDefaults().setRequired(true);
+		}
+	}
+
+	static final class ShortEnrollment implements Consumer<ProxyConfiguration> {
+		@Override
+		public void accept(ProxyConfiguration proxy) {
+			new Authenticator.ShortPeriod().accept(proxy);
+			proxy.verification().setEnrollmentTtl(SHORT_TTL);
+		}
+	}
+
+	static final class ShortChallenge implements Consumer<ProxyConfiguration> {
+		@Override
+		public void accept(ProxyConfiguration proxy) {
+			new Authenticator.ShortPeriod().accept(proxy);
+			proxy.verification().setChallengeTtl(SHORT_TTL);
+		}
+	}
+
+	static final class TwoRecoveryCodes implements Consumer<ProxyConfiguration> {
+		@Override
+		public void accept(ProxyConfiguration proxy) {
+			new Authenticator.ShortPeriod().accept(proxy);
+			proxy.verification().getTotp().getRecoveryCodes().setAmount(2);
 		}
 	}
 }

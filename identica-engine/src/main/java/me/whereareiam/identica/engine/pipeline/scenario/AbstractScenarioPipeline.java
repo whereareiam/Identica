@@ -21,6 +21,7 @@ import me.whereareiam.identica.pipeline.state.PipelineInput;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.PipelineStateReference;
 import me.whereareiam.identica.pipeline.state.PipelineStateStore;
+import me.whereareiam.identica.pipeline.state.StateKey;
 import me.whereareiam.identica.pipeline.state.exception.UnreadablePipelineStateException;
 import me.whereareiam.identica.type.ScenarioResolution;
 import me.whereareiam.identica.type.pipeline.PipelineStatus;
@@ -38,6 +39,12 @@ import java.util.concurrent.CompletionStage;
 
 @RequiredArgsConstructor
 public abstract class AbstractScenarioPipeline {
+	/**
+	 * When a run asked the player to reconnect. Saved with the waiting state, so that the reconnecting player
+	 * continues it even where a rejoin would start over.
+	 */
+	static final StateKey<Long> RECONNECT_REQUESTED = StateKey.persisted("engine:reconnect-requested", Long.class);
+
 	private final PipelineRegistry registry;
 	private final Provider<Messages> messagesProvider;
 	private final Provider<Engine> engineProvider;
@@ -257,10 +264,15 @@ public abstract class AbstractScenarioPipeline {
 		if (status == PipelineStatus.WAITING || status == PipelineStatus.REQUIRE_RECONNECT) {
 			Engine.Scenario scenario = resolveScenario(pipelineType);
 			long ttlMs = scenario.pipelineTtlMillis();
-			if (!scenario.isAllowResume() || ttlMs <= 0) {
+			if (ttlMs <= 0) {
 				pipelineStateStore.clear(reference, pipelineState);
 				return true;
 			}
+
+			// A waiting run is saved whatever allowResume says: the connection that started it continues from it once
+			// it reaches the step server or types an answer. allowResume only decides whether a rejoin may.
+			if (status == PipelineStatus.REQUIRE_RECONNECT) pipelineState.put(RECONNECT_REQUESTED, System.currentTimeMillis());
+			else pipelineState.remove(RECONNECT_REQUESTED);
 
 			long expiresAt = System.currentTimeMillis() + ttlMs;
 			if (!pipelineStateStore.save(reference, pipelineState, ttlMs)) return false;
@@ -391,13 +403,6 @@ public abstract class AbstractScenarioPipeline {
 			@Nullable ConnectionRequest request,
 			@NotNull ResumeRequest resumeRequest
 	) {
-		PipelineStateReference resumeReference = PipelineStateReference.from(resumeRequest);
-		Engine.Scenario scenario = resolveScenario(pipelineType);
-		if (!scenario.isAllowResume()) {
-			pipelineStateStore.clear(resumeReference);
-			return resumeUnavailable(request);
-		}
-
 		PipelineState stored = pipelineStateStore.consume(resumeRequest).orElse(null);
 		if (stored == null) {
 			return resumeUnavailable(request);
@@ -419,6 +424,17 @@ public abstract class AbstractScenarioPipeline {
 		applyInput(stored, resumeRequest);
 
 		return new ResumeResolution(stored, null);
+	}
+
+	/**
+	 * Whether a new connection of the player may continue a login another connection saved. It may while
+	 * {@code allowResume} is on, and always when the saved login asked the player to reconnect.
+	 *
+	 * @param stored the saved login
+	 * @return {@code true} when a joining player continues the saved login instead of starting over
+	 */
+	public boolean acceptsRejoin(@NotNull PipelineState stored) {
+		return resolveScenario(pipelineType).isAllowResume() || stored.has(RECONNECT_REQUESTED);
 	}
 
 	private @NotNull ResumeResolution resolveAdvance(

@@ -56,6 +56,17 @@ public class ScenarioRegistry {
 				pipelineStateStore.clear(PipelineStateReference.from(resumeRequest));
 				resumeRunner = null;
 			}
+			if (resumeRunner != null && !acceptsRejoin(resumeRunner, resumeRequest)) {
+				// A join is a new connection: it continues another connection's login only where allowResume lets it.
+				Logger.debug(
+						"Scenario select started over instead of resuming pipeline=%s connection=%s key=%s",
+						resumeRunner.type(),
+						resumeRequest.getConnectionUniqueId(),
+						resumeRequest.getIdentity() != null ? resumeRequest.getIdentity().connectionKey() : null
+				);
+				pipelineStateStore.clear(PipelineStateReference.from(resumeRequest));
+				resumeRunner = null;
+			}
 
 			if (resumeRunner != null) {
 				Logger.debug(
@@ -184,6 +195,12 @@ public class ScenarioRegistry {
 				resumeRequest.getIdentity() != null ? resumeRequest.getIdentity().connectionKey() : null
 		);
 		return true;
+	}
+
+	private boolean acceptsRejoin(@NotNull AbstractScenarioPipeline runner, @NotNull ResumeRequest resumeRequest) {
+		return pipelineStateStore.find(PipelineStateReference.from(resumeRequest))
+				.map(runner::acceptsRejoin)
+				.orElse(false);
 	}
 
 	private static boolean isBlank(@Nullable String value) {

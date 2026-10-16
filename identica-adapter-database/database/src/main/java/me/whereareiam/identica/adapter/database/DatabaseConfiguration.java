@@ -19,7 +19,6 @@ import me.whereareiam.identica.adapter.database.provider.DefaultProviderProfileP
 import me.whereareiam.identica.adapter.database.repository.account.AccountRepository;
 import me.whereareiam.identica.adapter.database.repository.account.AccountReservationRepository;
 import me.whereareiam.identica.adapter.database.repository.provider.ProviderLinkRepository;
-import me.whereareiam.identica.adapter.database.repository.username.UsernameHistoryRepository;
 import me.whereareiam.identica.adapter.database.repository.username.UsernameRepository;
 import me.whereareiam.identica.adapter.database.username.DefaultAccountUsernameDuplicatePersistenceService;
 import me.whereareiam.identica.adapter.database.username.DefaultAccountUsernamePersistenceService;
@@ -119,12 +118,6 @@ public class DatabaseConfiguration extends AbstractModule {
 	@Singleton
 	public UsernameRepository provideUsernameRepository(Jdbi jdbi) {
 		return jdbi.onDemand(UsernameRepository.class);
-	}
-
-	@Provides
-	@Singleton
-	public UsernameHistoryRepository provideUsernameHistoryRepository(Jdbi jdbi) {
-		return jdbi.onDemand(UsernameHistoryRepository.class);
 	}
 
 	private static DefaultDatabaseService open(DefaultDatabaseService databaseService) {

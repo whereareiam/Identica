@@ -4,9 +4,6 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
-import me.whereareiam.identica.event.EventListener;
-import me.whereareiam.identica.event.account.AccountLifecycleEvent;
-import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.feature.verification.database.entity.VerificationEnrollmentEntity;
 import me.whereareiam.identica.feature.verification.database.entity.VerificationRecoveryCodeEntity;
 import me.whereareiam.identica.feature.verification.database.entity.VerificationSelectionEntity;
@@ -19,7 +16,6 @@ import me.whereareiam.identica.feature.verification.database.repository.Verifica
 import me.whereareiam.identica.feature.verification.model.VerificationRecoveryCode;
 import me.whereareiam.identica.feature.verification.model.enrollment.VerificationEnrollment;
 import me.whereareiam.identica.feature.verification.model.selection.VerificationSelection;
-import me.whereareiam.identica.type.event.EventOrder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -28,7 +24,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Singleton
-public class DefaultVerificationPersistenceService implements VerificationPersistenceService, EventListener {
+public class DefaultVerificationPersistenceService implements VerificationPersistenceService {
 	private final Provider<EntityAccess<VerificationEnrollmentEntity>> enrollments;
 	private final Provider<EntityAccess<VerificationSelectionEntity>> selections;
 	private final Provider<EntityAccess<VerificationRecoveryCodeEntity>> recoveryCodes;
@@ -167,12 +163,5 @@ public class DefaultVerificationPersistenceService implements VerificationPersis
 		}
 
 		selections.get().delete(uniqueId, providerId);
-	}
-
-	@IdenticEvent(EventOrder.HIGH)
-	public void onAccountLifecycle(@NotNull AccountLifecycleEvent event) {
-		UUID uniqueId = event.getIdentity().getAccountUniqueId();
-		if (uniqueId == null) return;
-		deleteAll(uniqueId);
 	}
 }

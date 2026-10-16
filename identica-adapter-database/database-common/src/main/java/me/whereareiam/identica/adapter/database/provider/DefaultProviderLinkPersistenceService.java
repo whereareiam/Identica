@@ -8,30 +8,23 @@ import me.whereareiam.identica.adapter.database.entity.account.AccountProviderLi
 import me.whereareiam.identica.adapter.database.mapper.account.AccountProviderLinkMapper;
 import me.whereareiam.identica.adapter.database.repository.provider.ProviderLinkRepository;
 import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
-import me.whereareiam.identica.event.EventListener;
-import me.whereareiam.identica.event.EventManager;
-import me.whereareiam.identica.event.account.AccountLifecycleEvent;
-import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
-import me.whereareiam.identica.type.event.EventOrder;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
 @Singleton
-public class DefaultProviderLinkPersistenceService implements ProviderLinkPersistenceService, EventListener {
+public class DefaultProviderLinkPersistenceService implements ProviderLinkPersistenceService {
 	private final Provider<EntityAccess<AccountProviderLinkEntity>> links;
 	private final Provider<ProviderLinkRepository> repository;
 
 	@Inject
 	public DefaultProviderLinkPersistenceService(
 			Provider<EntityAccess<AccountProviderLinkEntity>> links,
-			Provider<ProviderLinkRepository> repository,
-			EventManager eventManager
+			Provider<ProviderLinkRepository> repository
 	) {
 		this.links = links;
 		this.repository = repository;
-		eventManager.register(this);
 	}
 
 	@Override
@@ -95,13 +88,5 @@ public class DefaultProviderLinkPersistenceService implements ProviderLinkPersis
 	@Override
 	public void deleteAll(@NotNull UUID uniqueId) {
 		repository.get().deleteAll(uniqueId);
-	}
-
-	@IdenticEvent(EventOrder.HIGH)
-	public void onAccountLifecycle(@NotNull AccountLifecycleEvent event) {
-		UUID uniqueId = event.getIdentity().getAccountUniqueId();
-		if (uniqueId == null) return;
-
-		deleteAll(uniqueId);
 	}
 }

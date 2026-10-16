@@ -10,7 +10,6 @@ import me.whereareiam.identica.config.ConfigProvider;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.feature.IdenticaFeature;
 import me.whereareiam.identica.database.schema.SchemaInstaller;
-import me.whereareiam.identica.feature.verification.database.DefaultVerificationPersistenceService;
 import me.whereareiam.identica.feature.verification.challenge.VerificationChallengeStore;
 import me.whereareiam.identica.feature.verification.command.VerificationCommandRegistrar;
 import me.whereareiam.identica.feature.verification.config.provider.VerificationCommandsProvider;
@@ -66,9 +65,6 @@ public final class VerificationFeatureBootstrap implements IdenticaFeature {
 		shutdownActions.push(challenges::clearAll);
 		VerificationSessionLifecycle listener = injector.getInstance(VerificationSessionLifecycle.class);
 		EventManager events = injector.getInstance(EventManager.class);
-		DefaultVerificationPersistenceService persistence = injector.getInstance(DefaultVerificationPersistenceService.class);
-		shutdownActions.push(() -> events.unregister(persistence));
-		events.register(persistence);
 		shutdownActions.push(() -> events.unregister(listener));
 		events.register(listener);
 		VerificationCommandRegistrar commands = injector.getInstance(VerificationCommandRegistrar.class);

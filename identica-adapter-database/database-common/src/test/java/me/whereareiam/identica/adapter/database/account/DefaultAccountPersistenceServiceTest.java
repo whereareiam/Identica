@@ -6,7 +6,6 @@ import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.entity.account.AccountEntity;
 import me.whereareiam.identica.adapter.database.entity.username.UsernameEntity;
 import me.whereareiam.identica.adapter.database.repository.account.AccountRepository;
-import me.whereareiam.identica.adapter.database.repository.username.UsernameHistoryRepository;
 import me.whereareiam.identica.adapter.database.repository.username.UsernameRepository;
 import me.whereareiam.identica.adapter.database.testing.TestDataFactory;
 import me.whereareiam.identica.event.EventManager;
@@ -18,7 +17,6 @@ import me.whereareiam.identica.model.identity.Account;
 import me.whereareiam.identica.model.identity.username.UsernameWriteResult;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.HandleCallback;
-import org.jdbi.v3.core.HandleConsumer;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -50,8 +48,6 @@ class DefaultAccountPersistenceServiceTest {
 	@Mock
 	private UsernameRepository usernameRepository;
 	@Mock
-	private UsernameHistoryRepository usernameHistoryRepository;
-	@Mock
 	private EventManager eventManager;
 
 	private DefaultAccountPersistenceService service;
@@ -64,7 +60,6 @@ class DefaultAccountPersistenceServiceTest {
 				Providers.of(usernames),
 				Providers.of(accountRepository),
 				Providers.of(usernameRepository),
-				Providers.of(usernameHistoryRepository),
 				eventManager
 		);
 	}
@@ -169,32 +164,27 @@ class DefaultAccountPersistenceServiceTest {
 	@DisplayName("Swallows repository errors when deleting an account")
 	@Test
 	void deleteSwallowsExceptions() {
-		runTransactions();
 		UUID uniqueId = UUID.randomUUID();
 		doThrow(new RuntimeException("boom")).when(accounts).delete(uniqueId);
 
 		assertDoesNotThrow(() -> service.delete(uniqueId));
 	}
 
-	@DisplayName("Deletes persisted account data when an account is cleared")
+	@DisplayName("Deletes the account when it is cleared")
 	@Test
 	void onAccountLifecycleDeletesOnClear() {
-		runTransactions();
 		UUID uniqueId = UUID.randomUUID();
 		ConnectionIdentity identity = new ConnectionIdentity(uniqueId, "Player", null);
 		AccountLifecycleEvent event = new AccountClearEvent(identity);
 
 		service.onAccountLifecycle(event);
 
-		verify(usernameHistoryRepository).deleteAll(uniqueId);
-		verify(usernames).delete(uniqueId);
 		verify(accounts).delete(uniqueId);
 	}
 
-	@DisplayName("Deletes persisted account data when an account is deleted")
+	@DisplayName("Deletes the account when it is deleted")
 	@Test
 	void onAccountLifecycleDeletesOnDelete() {
-		runTransactions();
 		UUID uniqueId = UUID.randomUUID();
 		ConnectionIdentity identity = new ConnectionIdentity(uniqueId, "Player", null);
 		AccountLifecycleEvent event = new AccountDeleteEvent(identity);
@@ -223,12 +213,5 @@ class DefaultAccountPersistenceServiceTest {
 		Handle handle = mock(Handle.class);
 		doAnswer(call -> call.getArgument(0, HandleCallback.class).withHandle(handle)).when(jdbi).inTransaction(any());
 		return handle;
-	}
-
-	private void runTransactions() {
-		doAnswer(call -> {
-			call.getArgument(0, HandleConsumer.class).useHandle(mock(Handle.class));
-			return null;
-		}).when(jdbi).useTransaction(any());
 	}
 }

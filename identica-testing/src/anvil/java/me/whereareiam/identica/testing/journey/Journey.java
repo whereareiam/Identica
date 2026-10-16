@@ -7,6 +7,7 @@ import me.whereareiam.anvil.api.player.SimulatedPlayer;
 import me.whereareiam.anvil.api.process.ProcessConsole;
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.anvil.api.type.DisconnectCause;
+import me.whereareiam.anvil.capability.cookies.Cookies;
 import me.whereareiam.anvil.capability.dialogs.Dialogs;
 import me.whereareiam.anvil.capability.dialogs.model.dialog.DialogButton;
 import me.whereareiam.anvil.capability.dialogs.model.dialog.ShownDialog;
@@ -441,6 +442,34 @@ public final class Journey {
 	 */
 	public Journey presses(Function<Dialog, DialogAction> button) {
 		return presses(button, Map.of());
+	}
+
+	/**
+	 * Expects the dialog matched by the previous {@link #seesDialog} to be shown on the loading screen, during the
+	 * configuration phase, before the player joined any server.
+	 */
+	public Journey onLoadingScreen() {
+		assertTrue(openDialog().isConfiguration(), name + " must see the dialog on the loading screen");
+		return this;
+	}
+
+	/**
+	 * Expects that the player never joined a backend since the journey began, after giving the proxy time to send
+	 * them there: no join of the backend is in the player's history, however briefly they would have stayed.
+	 */
+	public Journey neverJoins(String backend) {
+		server.notJoined(backend, 0, SETTLE);
+		return this;
+	}
+
+	/**
+	 * Expects that the proxy asked the client for a cookie since the journey began.
+	 *
+	 * @param key the cookie's key, with its namespace
+	 */
+	public Journey askedForCookie(String key) {
+		player.capability(Cookies.class).requested(key, 0, TIMEOUT);
+		return this;
 	}
 
 	/**

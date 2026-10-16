@@ -24,6 +24,7 @@ class DialogsAddonTest {
 	@Test
 	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, autoSelectSingleProvider = true, addons = Addon.DIALOGS)
 	void registersAndLogsInThroughDialogs(ScenarioContext anvil) {
+		InGameDialogs.use(anvil);
 		Journey alice = Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
 				.seesDialog("register")
@@ -48,6 +49,7 @@ class DialogsAddonTest {
 	@Test
 	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, autoSelectSingleProvider = true, addons = Addon.DIALOGS)
 	void answersInChatAfterSwitchingToChat(ScenarioContext anvil) {
+		InGameDialogs.use(anvil);
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
 				.seesDialog("register")
@@ -67,6 +69,7 @@ class DialogsAddonTest {
 	@Test
 	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, autoSelectSingleProvider = true, addons = Addon.DIALOGS)
 	void showsDialogsAgainAfterReconnectingFromChat(ScenarioContext anvil) {
+		InGameDialogs.use(anvil);
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
 				.seesDialog("register")
@@ -90,6 +93,7 @@ class DialogsAddonTest {
 	@Test
 	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, autoSelectSingleProvider = true, addons = Addon.DIALOGS)
 	void followsAnswersTypedInChatWhileADialogIsOpen(ScenarioContext anvil) {
+		InGameDialogs.use(anvil);
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
 				.seesDialog("register")

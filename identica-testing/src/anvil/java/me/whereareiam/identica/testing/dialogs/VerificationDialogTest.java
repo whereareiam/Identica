@@ -37,6 +37,7 @@ class VerificationDialogTest {
 			configure = Authenticator.ShortPeriod.class
 	)
 	void showsAWrongCodeInTheVerificationDialog(ScenarioContext anvil) {
+		InGameDialogs.use(anvil);
 		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)
 				.login(PASSWORD)
@@ -61,6 +62,7 @@ class VerificationDialogTest {
 	@Test
 	@Identica(mode = JourneyMode.SEAMLESS, addons = Addon.DIALOGS, configure = Authenticator.ShortPeriod.class)
 	void asksAPremiumPlayerForTheCodeInTheVerificationDialog(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+		InGameDialogs.use(anvil);
 		SessionIdentity account = yggdrasil.register("Steve");
 		Journey steve = Journey.premium(anvil, account).join()
 				.on(LOBBY)

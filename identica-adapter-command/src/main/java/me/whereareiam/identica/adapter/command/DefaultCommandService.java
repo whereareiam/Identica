@@ -43,6 +43,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -254,6 +255,20 @@ public class DefaultCommandService implements CommandService, RuntimeLifecycle {
 		}
 
 		return commands;
+	}
+
+	@Override
+	public @NotNull Optional<String> getCommandLine(@NotNull String definitionId) {
+		CommandDefinition definition = lookupDefinition(definitionId);
+		if (definition == null || !definition.isEnabled()) return Optional.empty();
+
+		List<String> aliases = aliases(definition);
+		if (aliases.isEmpty()) return Optional.empty();
+		if (!isSubcommand(definition)) return Optional.of(aliases.getFirst());
+
+		return aliases(lookupDefinition("main")).stream()
+				.findFirst()
+				.map(root -> root + " " + aliases.getFirst());
 	}
 
 	private void registerInternal(Object... commandInstances) {

@@ -4,6 +4,7 @@ import me.whereareiam.identica.model.CommandDefinition;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -121,4 +122,20 @@ public interface CommandService {
 	 */
 	@NotNull
 	Set<String> getCommandsAvailableWhilePending();
+
+	/**
+	 * Returns how a player types the command of a definition, with its configured name: the definition's first alias,
+	 * behind the first alias of {@code main} for a subcommand of Identica's main command. Its arguments follow after a
+	 * space. An addon that runs a command for a player names it by its definition, so it keeps working when an
+	 * administrator renames the command.
+	 *
+	 * <pre>{@code
+	 * String login = identica.getCommandService().getCommandLine("login").orElseThrow();
+	 * player.runCommand(login + " " + password);
+	 * }</pre>
+	 *
+	 * @param definitionId definition ID, such as {@code login}
+	 * @return the command without a leading slash, or empty when no enabled definition has the ID or it has no alias
+	 */
+	@NotNull Optional<String> getCommandLine(@NotNull String definitionId);
 }

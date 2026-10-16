@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -270,6 +271,24 @@ class DefaultCommandServiceTest {
 		service.registerCommandInstance("enroll", definition("{command}", "enroll"), new EnrollCommand());
 
 		assertEquals(Set.of("login", "l", "identica enroll", "id enroll"), service.getCommandsAvailableWhilePending());
+	}
+
+	@Test
+	void tellsHowAPlayerTypesTheCommandOfADefinition() {
+		service.registerCommandInstance("provider", definition("", "Login", "l"), new ProviderCommand());
+		service.registerCommandInstance("enroll", definition("{command}", "enroll"), new EnrollCommand());
+
+		assertEquals(Optional.of("Login"), service.getCommandLine("provider"));
+		assertEquals(Optional.of("identica enroll"), service.getCommandLine("enroll"));
+		assertEquals(Optional.empty(), service.getCommandLine("unknown"));
+	}
+
+	@Test
+	void tellsNoCommandForADisabledDefinition() {
+		CommandDefinition disabled = definition("", "login").toBuilder().enabled(false).build();
+		service.registerCommandInstance("provider", disabled, new ProviderCommand());
+
+		assertEquals(Optional.empty(), service.getCommandLine("provider"));
 	}
 
 	@Test

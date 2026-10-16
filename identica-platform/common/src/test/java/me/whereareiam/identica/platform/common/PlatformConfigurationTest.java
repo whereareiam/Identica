@@ -15,10 +15,12 @@ import me.whereareiam.identica.handshake.HandshakeContext;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.model.auth.handshake.HandshakeInstruction;
+import me.whereareiam.identica.platform.adapter.PlatformCheckpointAdapter;
 import me.whereareiam.identica.platform.adapter.PlatformForcedHostAdapter;
 import me.whereareiam.identica.platform.adapter.PlatformHandshakeApplierContributor;
 import me.whereareiam.identica.platform.adapter.PlatformHandshakeApplierRegistry;
 import me.whereareiam.identica.service.PlatformDeliveryAdapter;
+import me.whereareiam.identica.type.checkpoint.CheckpointPlacement;
 import me.whereareiam.identica.type.messaging.DeliveryCheckpoint;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -48,6 +50,7 @@ class PlatformConfigurationTest {
 		assertInstanceOf(TestProfile.class, injector.getInstance(Key.get(new TypeLiteral<PlatformProfileAdapter<LoginEvent>>() {})));
 		assertInstanceOf(TestDelivery.class, injector.getInstance(PlatformDeliveryAdapter.class));
 		assertInstanceOf(TestForcedHost.class, injector.getInstance(PlatformForcedHostAdapter.class));
+		assertInstanceOf(TestCheckpoint.class, injector.getInstance(PlatformCheckpointAdapter.class));
 	}
 
 	@DisplayName("The handshake applier registry answers as one instance under both of its contracts")
@@ -76,6 +79,11 @@ class PlatformConfigurationTest {
 
 	private static final class TestConfiguration extends PlatformConfiguration<TestContext> {
 		private static final String MARKER = "platform";
+
+		@Override
+		protected @NotNull Class<TestCheckpoint> checkpoint() {
+			return TestCheckpoint.class;
+		}
 
 		@Override
 		protected @NotNull Class<TestDelivery> delivery() {
@@ -139,6 +147,13 @@ class PlatformConfigurationTest {
 
 		@Override
 		public void clear(@NotNull UUID connectionUniqueId) {
+		}
+	}
+
+	private static final class TestCheckpoint implements PlatformCheckpointAdapter {
+		@Override
+		public @NotNull Set<CheckpointPlacement> placements() {
+			return Set.of();
 		}
 	}
 

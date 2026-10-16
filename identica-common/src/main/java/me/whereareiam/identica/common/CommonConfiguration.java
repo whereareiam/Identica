@@ -8,6 +8,7 @@ import me.whereareiam.configura.Config;
 import me.whereareiam.configura.Configura;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.identica.Serializer;
+import me.whereareiam.identica.common.checkpoint.CheckpointConfiguration;
 import me.whereareiam.identica.common.config.ConfigBindings;
 import me.whereareiam.identica.common.config.migration.ConfigMigrations;
 import me.whereareiam.identica.common.config.ConfigurationLifecycle;
@@ -73,6 +74,7 @@ public class CommonConfiguration extends AbstractModule {
 		install(new IdentityConfiguration());
 		install(new SessionConfiguration());
 		install(new RoutingConfiguration());
+		install(new CheckpointConfiguration());
 		install(new ConflictConfiguration());
 		install(new ProviderConfiguration());
 		install(new ListenerConfiguration());

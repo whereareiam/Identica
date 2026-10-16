@@ -9,6 +9,7 @@ import me.whereareiam.identica.integration.statistics.StatisticsPlatform;
 import me.whereareiam.identica.platform.common.PlatformConfiguration;
 import me.whereareiam.identica.listener.ListenerRegistrar;
 import me.whereareiam.identica.logging.LoggingHelper;
+import me.whereareiam.identica.platform.bungeecord.adapter.BungeeCordCheckpointAdapter;
 import me.whereareiam.identica.platform.bungeecord.adapter.BungeeCordPlatformHandshakeApplierRegistry;
 import me.whereareiam.identica.platform.bungeecord.adapter.auth.BungeeCordHandshakeDecisionAdapter;
 import me.whereareiam.identica.platform.bungeecord.adapter.auth.BungeeCordLoginDecisionAdapter;
@@ -61,6 +62,11 @@ public class BungeeCordConfiguration extends PlatformConfiguration<BungeeCordHan
 
 		bind(StatisticsPlatform.class).to(BungeeCordStatisticsPlatform.class);
 		install(new StatisticsConfiguration());
+	}
+
+	@Override
+	protected @NotNull Class<BungeeCordCheckpointAdapter> checkpoint() {
+		return BungeeCordCheckpointAdapter.class;
 	}
 
 	@Override

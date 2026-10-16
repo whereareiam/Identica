@@ -11,6 +11,7 @@ import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.IdenticaAPI;
 import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.Reloadable;
+import me.whereareiam.identica.checkpoint.Checkpoints;
 import me.whereareiam.identica.command.CommandService;
 import me.whereareiam.identica.config.ConfigCatalog;
 import me.whereareiam.identica.event.EventManager;
@@ -116,6 +117,11 @@ public class DefaultIdenticaAPI implements IdenticaAPI {
 	@Override
 	public @NotNull PendingScenarioService getPendingScenarioService() {
 		return injector.getInstance(PendingScenarioService.class);
+	}
+
+	@Override
+	public @NotNull Checkpoints getCheckpoints() {
+		return injector.getInstance(Checkpoints.class);
 	}
 
 	@Override

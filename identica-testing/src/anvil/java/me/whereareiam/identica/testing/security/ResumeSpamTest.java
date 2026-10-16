@@ -54,6 +54,25 @@ class ResumeSpamTest {
 	}
 
 	/**
+	 * With the lockout turned off, sending more input than the sentinel allows never disconnects the player.
+	 */
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = NoLockout.class)
+	void neverDisconnectsWithTheLockoutTurnedOff(ScenarioContext anvil) {
+		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
+
+		Journey alice = Journey.offline(anvil, "Alice").join()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt());
+		for (int attempt = 0; attempt < ATTEMPTS * 2; attempt++)
+			alice.login(WRONG);
+
+		alice.remainsOn(AUTH)
+				.login(PASSWORD)
+				.on(LOBBY);
+	}
+
+	/**
 	 * Joining and every command count as attempts, so sending as many commands as the sentinel allows attempts
 	 * always exceeds it.
 	 */
@@ -76,6 +95,16 @@ class ResumeSpamTest {
 			resumeSpam.setEnabled(true);
 			resumeSpam.setMaxAttempts(ATTEMPTS);
 			resumeSpam.getLockout().setDuration(LOCKOUT);
+		}
+	}
+
+	private static final class NoLockout implements Consumer<ProxyConfiguration> {
+		@Override
+		public void accept(ProxyConfiguration proxy) {
+			new FewResumes().accept(proxy);
+			proxy.sentinel().getSentinels().getResumeSpam().getLockout().setEnabled(false);
+			// The wrong passwords must not lock the account out through Credential's own brute-force protection.
+			proxy.credential().getScenario().getAuthentication().getBruteforce().getLockout().setEnabled(false);
 		}
 	}
 }

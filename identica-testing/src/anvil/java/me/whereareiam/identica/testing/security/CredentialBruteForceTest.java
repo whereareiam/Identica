@@ -64,6 +64,28 @@ class CredentialBruteForceTest {
 	}
 
 	/**
+	 * With the lockout turned off, wrong passwords never lock the account: the player keeps their connection and the
+	 * right password still logs them in.
+	 */
+	@Test
+	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = NoLockout.class)
+	void neverLocksOutWithTheLockoutTurnedOff(ScenarioContext anvil) {
+		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
+
+		Journey alice = Journey.offline(anvil, "Alice").join()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt());
+		for (int attempt = 0; attempt < 5; attempt++)
+			alice.login(WRONG)
+					.sees(m -> m.credential().getScenario().getAuthentication().getStatus().getInvalid());
+
+		alice.remainsOn(AUTH)
+				.login(PASSWORD)
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
+	}
+
+	/**
 	 * Uses up every attempt. The proxy disconnects the player on the last one; the reason it gives is checked by
 	 * {@code CredentialReturningJoinTest#locksTheAccountOutWithTheConfiguredMessageAfterTheLastAllowedWrongPassword}.
 	 */
@@ -86,6 +108,14 @@ class CredentialBruteForceTest {
 			bruteforce.setMaxAttempts(3);
 			bruteforce.getLockout().setDuration(LOCKOUT);
 			bruteforce.getWarning().setThresholdPercentage(50);
+		}
+	}
+
+	private static final class NoLockout implements Consumer<ProxyConfiguration> {
+		@Override
+		public void accept(ProxyConfiguration proxy) {
+			new ThreeAttempts().accept(proxy);
+			proxy.credential().getScenario().getAuthentication().getBruteforce().getLockout().setEnabled(false);
 		}
 	}
 }

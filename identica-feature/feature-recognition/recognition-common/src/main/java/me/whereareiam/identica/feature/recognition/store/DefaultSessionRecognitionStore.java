@@ -38,7 +38,8 @@ public class DefaultSessionRecognitionStore implements SessionRecognitionStore {
 		String key = key(providerId, providerSubject);
 		if (key == null) return Optional.empty();
 
-		return cache.get().get(key).join();
+		// Read through to the shared store: the player's latest login may have happened on another proxy.
+		return cache.get().getFresh(key).join();
 	}
 
 	@Override

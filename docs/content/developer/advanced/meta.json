@@ -3,6 +3,7 @@
   "pages": [
     "pipeline-layout",
     "events",
+    "checkpoints",
     "database-schema"
   ]
 }

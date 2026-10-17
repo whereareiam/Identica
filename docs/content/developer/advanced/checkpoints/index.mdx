@@ -1,0 +1,87 @@
+---
+title: Checkpoints
+description: Hold a player somewhere other than the step's server while Identica waits for them, and ask them there.
+---
+
+When a step of a journey waits for the player, for example for a password, Identica normally sends the player to the step's server, where the provider asks in chat and the player answers with the provider's commands. A checkpoint lets an addon hold the player somewhere else instead and ask them there, without changing any provider.
+
+The dialogs addon uses one to ask players on the loading screen, before they join any server.
+
+## Where a player can be held
+
+| Placement | Where the player waits | Platforms |
+| --- | --- | --- |
+| `STEP_SERVER` | On the step's server, answering in the game. This is what happens when no checkpoint takes the step. | Every platform |
+| `PROXY` | On the proxy, before it chooses the player's first server. No server sees the player until the journey has finished, and the player then joins the server the journey completes on directly. | Velocity |
+
+A player held on the proxy is in the client's configuration phase, on the loading screen. The client cannot open chat there, so the checkpoint has to show the player the prompts itself, for example as dialogs, and Identica holds back its own chat messages to the player while they are held. A checkpoint whose placement the platform cannot hold is never picked: on BungeeCord, players always wait on the step's server.
+
+Velocity keeps a held player connected by asking the client for a cookie every 10 seconds, which a client from Minecraft 1.20.5 on answers; an older client cannot be held this way.
+
+## Register a checkpoint
+
+Implement `Checkpoint` and register it through `identica.getCheckpoints()` once Identica is ready. Identica asks the most recently registered checkpoints first.
+
+```java
+import me.whereareiam.identica.IdenticaAPI;
+import me.whereareiam.identica.checkpoint.Checkpoint;
+import me.whereareiam.identica.checkpoint.CheckpointStop;
+import me.whereareiam.identica.model.checkpoint.CheckpointRequest;
+import me.whereareiam.identica.type.checkpoint.CheckpointPlacement;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+public final class LoadingScreenCheckpoint implements Checkpoint {
+    private final Map<UUID, CheckpointStop> stops = new ConcurrentHashMap<>();
+
+    @Override
+    public @NotNull String id() {
+        return "loading-screen";
+    }
+
+    @Override
+    public @NotNull CheckpointPlacement placement() {
+        return CheckpointPlacement.PROXY;
+    }
+
+    @Override
+    public boolean accepts(@NotNull CheckpointRequest request) {
+        return canShowPrompts(request.getConnectionUniqueId());
+    }
+
+    @Override
+    public void arrived(@NotNull CheckpointStop stop) {
+        stops.put(stop.getConnectionUniqueId(), stop);
+        stop.released().whenComplete((ignored, error) -> stops.remove(stop.getConnectionUniqueId(), stop));
+        stop.resume();
+    }
+
+    private boolean canShowPrompts(UUID connectionUniqueId) {
+        return true; // for example: the client's version can show dialogs
+    }
+}
+```
+
+```java
+IdenticaAPI.whenReady(identica -> identica.getCheckpoints().register(checkpoint));
+```
+
+Unregister the checkpoint when your plugin disables. Players it already holds stay held until their journeys finish.
+
+## What happens to a held player
+
+1. A step waits for the player, at login or later. Identica asks the checkpoints whether one takes the connection: `accepts` receives the connection, the journey's context and scenario, the stage, the step and its result. The first step that waits is often one that only waits for the player to be online, so decide by the connection, such as its scenario, provider or hostname, rather than by the step. Once a checkpoint holds a connection, it keeps it for every later step of the journey.
+2. When the platform holds the player, `arrived` receives a `CheckpointStop`. Call `resume()` to continue the journey there: steps that waited for the player to be online run, and the next step that waits for input asks for it.
+3. Show the player what the step asks for. Listen to Identica's `StepFinishedEvent`: a result with the status `WAITING` and a wait reason other than `ONLINE` is a prompt, and its message holds Identica's answer to a wrong attempt, such as an invalid password.
+4. Answer through the provider's own command with `answer(...)`, for example `stop.answer("login " + password)`. The command runs as the player, so the provider takes the answer exactly as if the player had typed it.
+5. For a step you cannot ask about, call `handOver()`: the hold ends, the player goes to the step's server, is asked there in chat as without a checkpoint, and waits there for the rest of the journey.
+6. The hold ends when the journey has finished: the player goes on to the server the journey completes on. `released()` completes then, and also when the player leaves. A journey that expires, is denied or fails disconnects the player instead; the journey's `pipelineTtl` limits how long a player can be held.
+
+## When something goes wrong
+
+- **The player is sent to the step's server.** No checkpoint accepted the step, or the platform cannot hold its placement. Check that the checkpoint is registered before players join and that `accepts` returns `true`.
+- **The player waits on the loading screen with nothing shown.** The checkpoint did not show the prompt. Check that it listens to `StepFinishedEvent`, that it called `resume()` in `arrived`, and that it hands over the steps it cannot show.
+- **The answer has no effect.** `answer` runs a command as the player; check the command name and its arguments, and the provider's answer in the next `StepFinishedEvent`.

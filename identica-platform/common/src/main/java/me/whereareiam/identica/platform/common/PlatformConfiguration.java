@@ -10,6 +10,7 @@ import me.whereareiam.identica.platform.common.adapter.PlatformProfileAdapter;
 import me.whereareiam.identica.platform.common.adapter.PlatformResumeDecisionAdapter;
 import me.whereareiam.identica.handshake.HandshakeApplierRegistry;
 import me.whereareiam.identica.handshake.HandshakeContext;
+import me.whereareiam.identica.platform.adapter.PlatformCheckpointAdapter;
 import me.whereareiam.identica.platform.adapter.PlatformForcedHostAdapter;
 import me.whereareiam.identica.platform.adapter.PlatformHandshakeApplierContributor;
 import me.whereareiam.identica.platform.adapter.PlatformHandshakeApplierRegistry;
@@ -32,6 +33,7 @@ import java.lang.reflect.Type;
 public abstract class PlatformConfiguration<C extends HandshakeContext> extends AbstractModule {
 	@Override
 	protected final void configure() {
+		bind(PlatformCheckpointAdapter.class).to(checkpoint());
 		bind(PlatformDeliveryAdapter.class).to(delivery());
 		bind(PlatformForcedHostAdapter.class).to(forcedHost());
 		bindAdapter(PlatformHandshakeDecisionAdapter.class, handshakeDecision());
@@ -42,6 +44,11 @@ public abstract class PlatformConfiguration<C extends HandshakeContext> extends 
 
 		configurePlatform();
 	}
+
+	/**
+	 * Returns the adapter that tells where the platform can hold a connection whose step waits.
+	 */
+	protected abstract @NotNull Class<? extends PlatformCheckpointAdapter> checkpoint();
 
 	/**
 	 * Returns the adapter that coordinates when messages can reach a joining player.

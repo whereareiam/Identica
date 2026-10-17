@@ -6,6 +6,7 @@ import com.velocitypowered.api.event.player.ServerPostConnectEvent;
 import com.velocitypowered.api.proxy.Player;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.ConnectionCoordinator;
+import me.whereareiam.identica.checkpoint.Checkpoints;
 import me.whereareiam.identica.platform.common.decision.ConnectionDecisionApplier;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
@@ -19,9 +20,12 @@ import me.whereareiam.identica.platform.common.adapter.PlatformResumeDecisionAda
 import me.whereareiam.identica.platform.velocity.actor.VelocityCommandPlayer;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
@@ -30,15 +34,48 @@ public class VelocityResumeDecisionAdapter implements PlatformResumeDecisionAdap
 	private final @NotNull IdentityService identityService;
 	private final @NotNull PrepareStateStore prepareStateStore;
 	private final @NotNull ConnectionDecisionApplier decisionApplier;
+	private final @NotNull Checkpoints checkpoints;
+	private final Set<UUID> resumedBeforeJoin = ConcurrentHashMap.newKeySet();
 
+	/**
+	 * Resumes the journey of a player who reached their first server, unless the journey already resumed while the
+	 * player was held before it.
+	 */
 	public void resume(@NotNull ServerPostConnectEvent event) {
 		if (event.getPreviousServer() != null) return;
 
 		Player player = event.getPlayer();
-		String ip = resolveIp(player);
-		String intendedServer = player.getCurrentServer()
+		if (resumedBeforeJoin.remove(player.getUniqueId())) return;
+
+		resume(player, player.getCurrentServer()
 				.map(server -> server.getServerInfo().getName())
-				.orElse(null);
+				.orElse(null));
+	}
+
+	/**
+	 * Resumes the journey of a player held at a checkpoint before their first server. Reaching that server later
+	 * does not resume it again.
+	 *
+	 * @param player the held player
+	 * @return the journey's decision
+	 */
+	public @Nullable ConnectionDecision resumeBeforeJoin(@NotNull Player player) {
+		resumedBeforeJoin.add(player.getUniqueId());
+		return resume(player, null);
+	}
+
+	/**
+	 * Lets reaching the first server resume the player's journey again: for a player who left before reaching it, or
+	 * one handed over to the step's server, where the journey still waits.
+	 *
+	 * @param player the player
+	 */
+	public void forget(@NotNull Player player) {
+		resumedBeforeJoin.remove(player.getUniqueId());
+	}
+
+	private @Nullable ConnectionDecision resume(@NotNull Player player, @Nullable String intendedServer) {
+		String ip = resolveIp(player);
 		PrepareDecision prepared = prepareStateStore.peek(player.getUniqueId()).orElse(null);
 
 		ProviderContext provider = prepared != null ? prepared.getProvider() : null;
@@ -88,11 +125,12 @@ public class VelocityResumeDecisionAdapter implements PlatformResumeDecisionAdap
 				accountUniqueId,
 				player,
 				identity.getUsername(),
-				identity.getOrigin()
+				identity.getOrigin(),
+				checkpoints
 		);
 		liveIdentity.setConnectionUsername(identity.getConnectionUsername());
 		if (decision == null || decision.getStatus() == ConnectionDecision.Status.NO_PENDING)
-			return;
+			return decision;
 
 		decisionApplier.applyOrQueueWait(
 				decision,
@@ -103,10 +141,11 @@ public class VelocityResumeDecisionAdapter implements PlatformResumeDecisionAdap
 
 		ConnectionDecision.Status status = decision.getStatus();
 		if (status == ConnectionDecision.Status.DENY || status == ConnectionDecision.Status.REQUIRE_RECONNECT)
-			return;
+			return decision;
 
 		if (status == ConnectionDecision.Status.ALLOW || status == ConnectionDecision.Status.WAIT)
 			identityService.attach(player.getUniqueId(), accountUniqueId, liveIdentity);
+		return decision;
 	}
 
 	private String resolveIp(@NotNull Player player) {

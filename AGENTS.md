@@ -174,6 +174,8 @@ See `docs/content/developer/testing/index.mdx`.
 ### Pull Request Checks
 
 - Every pull request gets the metadata check (title and label) and the checks: `test` and `assembleDistribution`, `integrationTest`, and one job per journey suite except `upgrade`, which releases run as well.
+- The `dev` ruleset requires every one of these checks, so no pull request merges with a failing or missing check unless an administrator bypasses it.
+- Dependabot groups minor and patch updates into one pull request per ecosystem, and `dependabot-auto-merge.yml` turns on auto-merge for it, so it merges once the checks pass; a major update gets a pull request of its own and waits for review. The merge goes through a GitHub App, because a merge by `GITHUB_TOKEN` would not start the workflows of the push to `dev`; its `MERGE_APP_CLIENT_ID` and `MERGE_APP_PRIVATE_KEY` are Dependabot secrets, since a run Dependabot starts gets no Actions secrets. When the checks gain or rename a job, update the required checks of the ruleset.
 - Label a pull request with exactly one of `feature`, `change`, `bug`, `dependencies`, or with `skip-changelog`; `major` may accompany a category.
 - Add `provider:credential` or `provider:premium` when a pull request or issue concerns that provider's jar; work on the plugin itself carries no such label.
 - A run keeps as artifacts only what someone downloads: `identica-plugins-<version>` from a development build or release, and `test-results`, `test-results-integration` or `test-results-journeys-<suite>` when a test failed.

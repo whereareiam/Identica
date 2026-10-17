@@ -30,7 +30,7 @@ public class MigrationCommandDefinitions implements CommandDefinitions {
 				.description(description)
 				.usage("{command} {alias} " + argumentsUsage)
 				.arguments(arguments)
-				.cooldown(globalCooldown())
+				.cooldown(defaultCooldown())
 				.build();
 	}
 }

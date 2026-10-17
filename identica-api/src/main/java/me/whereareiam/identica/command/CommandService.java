@@ -5,6 +5,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Registers definition-driven commands and named suggestion providers.
@@ -121,4 +122,12 @@ public interface CommandService {
 	 */
 	@NotNull
 	Set<String> getCommandsAvailableWhilePending();
+
+	/**
+	 * Ends every command cooldown of a player, so that a cooldown does not outlast the connection it was earned on.
+	 * The platforms call this when a player leaves the proxy.
+	 *
+	 * @param uniqueId unique ID of the player's connection
+	 */
+	void clearCooldowns(@NotNull UUID uniqueId);
 }

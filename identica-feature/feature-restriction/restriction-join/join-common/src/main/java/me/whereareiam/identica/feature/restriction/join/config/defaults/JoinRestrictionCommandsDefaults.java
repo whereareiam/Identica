@@ -49,7 +49,6 @@ public class JoinRestrictionCommandsDefaults implements DefaultsProvider<JoinRes
 				.cooldown(CommandDefinition.Cooldown.builder()
 						.enabled(true)
 						.duration(2)
-						.group("global")
 						.build()
 				)
 				.build();

@@ -42,7 +42,9 @@ class SentinelScopeTest {
 				.on(AUTH)
 				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt());
 		for (int attempt = 1; attempt < BRUTE_FORCE_ATTEMPTS; attempt++)
-			guesser.login(WRONG).sees(m -> m.credential().getScenario().getAuthentication().getStatus().getInvalid());
+			guesser.login(WRONG)
+					.sees(m -> m.credential().getScenario().getAuthentication().getStatus().getInvalid())
+					.waitsForCooldown();
 		guesser.login(WRONG)
 				.kickedWith(m -> m.credential().getScenario().getAuthentication().getBruteforce().getExceeded());
 
@@ -65,8 +67,9 @@ class SentinelScopeTest {
 		Journey flooder = Journey.of(anvil, Client.offline("Alice").from(FIRST)).join()
 				.on(AUTH)
 				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt());
-		for (int attempt = 0; attempt < RESUME_ATTEMPTS; attempt++)
-			flooder.login(WRONG);
+		// Joining is the first attempt.
+		for (int attempt = 1; attempt < RESUME_ATTEMPTS; attempt++)
+			flooder.waitsForCooldown().login(WRONG);
 		flooder.kickedWith(m -> m.sentinel().getResumeSpam().getDenied());
 
 		logsIn(Journey.of(anvil, Client.offline("Bob").from(FIRST)));

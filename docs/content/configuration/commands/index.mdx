@@ -170,25 +170,35 @@ Example:
 #### cooldown
 
 - Takes: a cooldown object
-- Affects: per-command cooldown behavior through the command adapter
+- Affects: how soon a player can run the command again
+
+A command on cooldown refuses a player who ran it less than `duration` seconds ago: it does nothing and the player gets the `commands.exceptions.cooldown` message from `messages.yml`, with the seconds left in `{content}`. The cooldown starts when the command is accepted, whether it then succeeds or not, so a mistyped password still counts. A command with invalid syntax or a missing permission starts no cooldown.
+
+Cooldowns are kept per player in the proxy's memory: they end when the player leaves the proxy or the proxy restarts, and each proxy of a network keeps its own. The console never waits. When the cooldown message is empty, the command is refused without a message.
+
+Identica's default commands have a cooldown of two seconds of their own. Commands without a `cooldown` section have none.
 
 ##### enabled
 
 - Takes: `true` or `false`
-- Affects: whether the cooldown is active
+- Current default: `false` when the section leaves it out
+- Affects: whether the command has a cooldown
 
 ##### duration
 
-- Takes: an integer
-- Affects: the cooldown duration used by the command system
+- Takes: an integer number of seconds
+- Current default: `0` when the section leaves it out
+- Affects: how long the command stays on cooldown after a player ran it
+
+A duration of `0` or less means no cooldown, even when `enabled` is `true`.
 
 ##### group
 
 - Takes: a string
-- Current default: `"default"`
-- Affects: which cooldown group the command belongs to
+- Current default: `""`
+- Affects: which commands share the cooldown
 
-Commands in the same group can share cooldown behavior depending on the command framework rules.
+An empty group gives the command a cooldown of its own, shared by its aliases. Commands with the same group share one cooldown, even across `commands.yml` files: running any of them puts all of them on cooldown for that player, for the duration of the command that was run.
 
 #### arguments
 

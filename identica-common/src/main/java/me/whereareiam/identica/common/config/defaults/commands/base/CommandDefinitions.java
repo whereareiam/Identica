@@ -6,11 +6,13 @@ import org.jetbrains.annotations.NotNull;
 public interface CommandDefinitions {
 	void register(@NotNull Registry registry);
 
-	default CommandDefinition.Cooldown globalCooldown() {
+	/**
+	 * Cooldown of a command of its own: the command refuses a sender who ran it in the last two seconds.
+	 */
+	default CommandDefinition.Cooldown defaultCooldown() {
 		return CommandDefinition.Cooldown.builder()
 				.enabled(true)
 				.duration(2)
-				.group("global")
 				.build();
 	}
 

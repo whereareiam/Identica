@@ -7,6 +7,7 @@ import com.google.inject.Singleton;
 import me.whereareiam.commandant.Commandant;
 import me.whereareiam.commandant.CommandantKeys;
 import me.whereareiam.commandant.CommandantSyntaxFormatter;
+import me.whereareiam.commandant.cooldown.CommandCooldowns;
 import me.whereareiam.commandant.exception.ExceptionHandlerRegistrar;
 import me.whereareiam.commandant.exception.format.CloudPermissionFormatters;
 import me.whereareiam.commandant.exception.format.ExceptionFormatting;
@@ -63,6 +64,7 @@ public class DefaultCommandService implements CommandService, RuntimeLifecycle {
 	private final Set<String> definitionIdsAvailableWhilePending = new LinkedHashSet<>();
 	private final Map<String, AtomicReference<SuggestionProvider<Actor>>> suggestionProviders = new HashMap<>();
 	private IdenticaAnnotationParser<Actor> annotationParser;
+	private CommandCooldowns<Actor> cooldowns;
 
 	@Inject
 	public DefaultCommandService(
@@ -89,7 +91,8 @@ public class DefaultCommandService implements CommandService, RuntimeLifecycle {
 	}
 
 	/**
-	 * Registers the core commands, their suggestions and the exception handlers.
+	 * Registers the core commands, their suggestions, the exception handlers and the enforcement of the commands'
+	 * cooldowns.
 	 */
 	@Override
 	public void initialize() {
@@ -113,14 +116,19 @@ public class DefaultCommandService implements CommandService, RuntimeLifecycle {
 		);
 
 		registerExceptionHandlers(commandManager);
+		registerCooldowns(commandManager);
 	}
 
 	/**
-	 * Leaves the commands registered: the proxy removes them with the plugin, and the features and providers
-	 * unregister their own when they stop.
+	 * Stops clearing expired cooldowns and leaves the commands registered: the proxy removes them with the plugin,
+	 * and the features and providers unregister their own when they stop.
 	 */
 	@Override
 	public void shutdown() {
+		if (cooldowns == null) return;
+
+		cooldowns.close();
+		cooldowns = null;
 	}
 
 	@Override
@@ -256,6 +264,13 @@ public class DefaultCommandService implements CommandService, RuntimeLifecycle {
 		return commands;
 	}
 
+	@Override
+	public void clearCooldowns(@NotNull UUID uniqueId) {
+		if (cooldowns == null) return;
+
+		cooldowns.clear(uniqueId);
+	}
+
 	private void registerInternal(Object... commandInstances) {
 		CommandManager<Actor> commandManager = commandManagerProvider.get();
 		if (annotationParser == null) {
@@ -359,6 +374,16 @@ public class DefaultCommandService implements CommandService, RuntimeLifecycle {
 		Commands commands = commandsProvider.get();
 
 		return commands.getCommands().get(key);
+	}
+
+	private void registerCooldowns(@NotNull CommandManager<Actor> commandManager) {
+		SerializerEngine scopedSerializer = new ScopedSerializerEngine(serializer.get(), Serializer.SCOPE);
+		cooldowns = CommandCooldowns.register(
+				commandManager,
+				() -> messagesProvider.get().getCommands().getExceptions(),
+				scopedSerializer,
+				Actor::getAudience
+		);
 	}
 
 	private void registerExceptionHandlers(@NotNull CommandManager<Actor> commandManager) {

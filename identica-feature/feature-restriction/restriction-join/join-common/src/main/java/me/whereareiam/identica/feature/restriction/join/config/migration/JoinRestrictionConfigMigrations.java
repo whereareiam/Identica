@@ -47,6 +47,7 @@ public final class JoinRestrictionConfigMigrations {
 				// Changes nothing: the development builds before migrations wrote version 1 into this document.
 				.migration(1, "initial-layout", files -> {})
 				.migration(JoinRestrictionLayoutMigration.VERSION, JoinRestrictionLayoutMigration.NAME, new JoinRestrictionLayoutMigration(extension))
+				.migration(JoinRestrictionCommandCooldownsMigration.VERSION, JoinRestrictionCommandCooldownsMigration.NAME, new JoinRestrictionCommandCooldownsMigration(extension))
 				.build();
 	}
 }

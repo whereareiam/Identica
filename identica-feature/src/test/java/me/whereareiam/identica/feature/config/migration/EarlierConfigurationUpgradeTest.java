@@ -98,6 +98,9 @@ class EarlierConfigurationUpgradeTest {
 			VerificationConfigMigrations::on
 	);
 
+	/** The streams whose latest migration is not 2, with that migration's number. */
+	private static final Map<String, Integer> FEATURE_LATEST = Map.of(JoinRestrictionConfigMigrations.ID, 3);
+
 	/** The streams of those migrations with the document each keeps its version in. */
 	private static final Map<String, String> FEATURE_VERSIONS = Map.of(
 			RecognitionConfigMigrations.ID, "features/recognition/settings",
@@ -165,10 +168,10 @@ class EarlierConfigurationUpgradeTest {
 
 		MigrationReport report = directory.migrate(FEATURES);
 
-		assertEquals(IntStream.rangeClosed(core + 1, 9).boxed().toList(), versions(report, ConfigMigrations.ID));
-		assertEquals(9, directory.tree("settings").path(StrataFeature.VERSION_KEY).asInt());
+		assertEquals(IntStream.rangeClosed(core + 1, 10).boxed().toList(), versions(report, ConfigMigrations.ID));
+		assertEquals(10, directory.tree("settings").path(StrataFeature.VERSION_KEY).asInt());
 		FEATURE_VERSIONS.forEach((stream, document) ->
-				assertEquals(2, directory.tree(document).path(StrataFeature.VERSION_KEY).asInt(), stream));
+				assertEquals(latest(stream), directory.tree(document).path(StrataFeature.VERSION_KEY).asInt(), stream));
 	}
 
 	@DisplayName("Nothing is left where the current layout has no place for it")
@@ -250,9 +253,9 @@ class EarlierConfigurationUpgradeTest {
 		}
 		MigrationReport again = directory.migrate(FEATURES);
 
-		assertEquals(IntStream.rangeClosed(2, 9).boxed().toList(), versions(again, ConfigMigrations.ID));
+		assertEquals(IntStream.rangeClosed(2, 10).boxed().toList(), versions(again, ConfigMigrations.ID));
 		for (String stream : FEATURE_VERSIONS.keySet())
-			assertEquals(List.of(2), versions(again, stream), stream);
+			assertEquals(IntStream.rangeClosed(2, latest(stream)).boxed().toList(), versions(again, stream), stream);
 		assertEquals(migrated, directory.files());
 	}
 
@@ -416,11 +419,13 @@ class EarlierConfigurationUpgradeTest {
 	/**
 	 * Returns the values of a directory before its upgrade, without those the migrations drop on purpose: values
 	 * with no counterpart, the usages {@link ReservationUsernameMigration} rewrites, the session policy
-	 * {@code ALLOW_MULTIPLE}, which becomes {@code REPLACE_EXISTING}, and what 2.2.1 wrote into the entries of
+	 * {@code ALLOW_MULTIPLE}, which becomes {@code REPLACE_EXISTING}, the cooldown group {@code global} of the
+	 * cooldowns left as written, which the cooldown migrations empty, and what 2.2.1 wrote into the entries of
 	 * {@code credential} and {@code premium} by default, which the core's migrations drop.
 	 */
 	private Map<String, JsonNode> kept(DataDirectory directory) {
 		Map<String, JsonNode> values = new TreeMap<>(directory.values());
+		values.keySet().removeIf(path -> isEarlierCooldownGroup(directory, path));
 		values.keySet().removeIf(path -> DROPPED.stream().anyMatch(pattern -> pattern.matcher(path).matches()));
 		values.keySet().removeIf(path -> path.matches("^commands:/commands/admin-reservation-\\w+/usage$"));
 		values.entrySet().removeIf(value -> value.getKey().matches(".*/(c|sessionC)oncurrencyPolicy$")
@@ -440,6 +445,21 @@ class EarlierConfigurationUpgradeTest {
 		}
 
 		return values;
+	}
+
+	/** Returns whether a value is the group of a cooldown the core's or join restriction's migration empties. */
+	private static boolean isEarlierCooldownGroup(DataDirectory directory, String path) {
+		var matcher = Pattern.compile("^(commands|features/restriction/join/commands):(/commands/[^/]+/cooldown)/group$").matcher(path);
+		if (!matcher.matches()) return false;
+
+		JsonNode cooldown = directory.at(matcher.group(1), matcher.group(2));
+		return cooldown.path("enabled").asBoolean(false)
+				&& cooldown.path("duration").asInt(0) == 2
+				&& cooldown.path("group").asText("").equals("global");
+	}
+
+	private static int latest(String stream) {
+		return FEATURE_LATEST.getOrDefault(stream, 2);
 	}
 
 	/** Returns the verification settings 2.2.1 wrote into every provider entry it shipped. */

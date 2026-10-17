@@ -33,8 +33,8 @@ public class MessagesCommandDefaults {
 		exceptionMessages.setInvalidSyntaxNumber("{prefix}<white>You tried to use <gray>{content}</gray> as a number, but it's not a valid value, please use a valid number.</white>");
 		exceptionMessages.setInvalidSyntaxString("{prefix}<white>You tried to use <gray>{content}</gray> as a string, but it's not a valid value, please use a valid string.</white>");
 		exceptionMessages.setInvalidSender("{prefix}<white>You cannot execute this command from this context.</white>");
+		exceptionMessages.setCooldown("{prefix}<white>Please wait <gray>{content}s</gray> before using this command again.</white>");
 		commands.setExceptions(exceptionMessages);
-
 	}
 
 	private void applyPagination(Messages.Commands commands) {

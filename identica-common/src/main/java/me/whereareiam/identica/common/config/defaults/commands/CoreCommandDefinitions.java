@@ -15,7 +15,7 @@ public class CoreCommandDefinitions implements CommandDefinitions {
 				.permission("")
 				.description("Main command")
 				.usage("{alias}")
-				.cooldown(globalCooldown())
+				.cooldown(defaultCooldown())
 				.hide(true)
 				.build());
 
@@ -26,7 +26,7 @@ public class CoreCommandDefinitions implements CommandDefinitions {
 				.description("Help command")
 				.usage("{command} {alias} [page]")
 				.arguments(Map.of("page", "Page"))
-				.cooldown(globalCooldown())
+				.cooldown(defaultCooldown())
 				.build());
 
 		registry.register("enroll", CommandDefinition.builder()
@@ -46,7 +46,7 @@ public class CoreCommandDefinitions implements CommandDefinitions {
 				.description("Check username availability")
 				.usage("{command} {alias} <username>")
 				.arguments(Map.of("username", "Username"))
-				.cooldown(globalCooldown())
+				.cooldown(defaultCooldown())
 				.build());
 	}
 }

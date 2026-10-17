@@ -21,7 +21,6 @@ public class PremiumCommandsDefaults implements DefaultsProvider<PremiumCommands
 				.cooldown(CommandDefinition.Cooldown.builder()
 						.enabled(true)
 						.duration(2)
-						.group("global")
 						.build())
 				.build();
 

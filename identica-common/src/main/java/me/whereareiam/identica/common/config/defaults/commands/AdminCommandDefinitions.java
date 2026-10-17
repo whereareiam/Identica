@@ -15,7 +15,7 @@ public class AdminCommandDefinitions implements CommandDefinitions {
 				.permission("identica.admin")
 				.description("Admin commands")
 				.usage("{command} {alias}")
-				.cooldown(globalCooldown())
+				.cooldown(defaultCooldown())
 				.build());
 
 		registry.register("admin-reload", CommandDefinition.builder()
@@ -24,7 +24,7 @@ public class AdminCommandDefinitions implements CommandDefinitions {
 				.permission("identica.admin")
 				.description("Reload command")
 				.usage("{command} {alias}")
-				.cooldown(globalCooldown())
+				.cooldown(defaultCooldown())
 				.build());
 
 		registerClear(registry);
@@ -42,7 +42,7 @@ public class AdminCommandDefinitions implements CommandDefinitions {
 				.description("Clear account data while preserving UUID")
 				.usage("{command} {alias} <target>")
 				.arguments(Map.of("target", "Player/UUID"))
-				.cooldown(globalCooldown())
+				.cooldown(defaultCooldown())
 				.build());
 
 		registry.register("admin-clear-confirm", CommandDefinition.builder()
@@ -72,7 +72,7 @@ public class AdminCommandDefinitions implements CommandDefinitions {
 				.description("Delete account data and UUID")
 				.usage("{command} {alias} <target>")
 				.arguments(Map.of("target", "Player/UUID"))
-				.cooldown(globalCooldown())
+				.cooldown(defaultCooldown())
 				.build());
 
 		registry.register("admin-delete-confirm", CommandDefinition.builder()
@@ -102,7 +102,7 @@ public class AdminCommandDefinitions implements CommandDefinitions {
 				.description("Reserve a UUID for a username")
 				.usage("{command} {alias} <username> <uniqueId>")
 				.arguments(Map.of("username", "Username", "uniqueId", "UUID"))
-				.cooldown(globalCooldown())
+				.cooldown(defaultCooldown())
 				.build());
 
 		registry.register("admin-reservation-info", CommandDefinition.builder()
@@ -112,7 +112,7 @@ public class AdminCommandDefinitions implements CommandDefinitions {
 				.description("Show the UUID reserved for a username")
 				.usage("{command} {alias} <username>")
 				.arguments(Map.of("username", "Username"))
-				.cooldown(globalCooldown())
+				.cooldown(defaultCooldown())
 				.build());
 
 		registry.register("admin-reservation-delete", CommandDefinition.builder()
@@ -122,7 +122,7 @@ public class AdminCommandDefinitions implements CommandDefinitions {
 				.description("Delete the reservation of a username")
 				.usage("{command} {alias} <username>")
 				.arguments(Map.of("username", "Username"))
-				.cooldown(globalCooldown())
+				.cooldown(defaultCooldown())
 				.build());
 	}
 
@@ -133,7 +133,7 @@ public class AdminCommandDefinitions implements CommandDefinitions {
 				.permission("identica.admin.username")
 				.description("List usernames shared by several accounts")
 				.usage("{command} {alias}")
-				.cooldown(globalCooldown())
+				.cooldown(defaultCooldown())
 				.build());
 
 		registry.register("admin-username-rename", CommandDefinition.builder()
@@ -143,7 +143,7 @@ public class AdminCommandDefinitions implements CommandDefinitions {
 				.description("Rename an account by hand")
 				.usage("{command} {alias} <target> <username>")
 				.arguments(Map.of("target", "Target", "username", "Username"))
-				.cooldown(globalCooldown())
+				.cooldown(defaultCooldown())
 				.build());
 	}
 
@@ -156,7 +156,7 @@ public class AdminCommandDefinitions implements CommandDefinitions {
 				.usage("{command} {alias} [page]")
 				.arguments(Map.of("page", "Page"))
 				.hide(true)
-				.cooldown(globalCooldown())
+				.cooldown(defaultCooldown())
 				.build());
 
 		registry.register("admin-session-list", CommandDefinition.builder()
@@ -166,7 +166,7 @@ public class AdminCommandDefinitions implements CommandDefinitions {
 				.description("List active sessions")
 				.usage("{command} {alias} [page]")
 				.arguments(Map.of("page", "Page"))
-				.cooldown(globalCooldown())
+				.cooldown(defaultCooldown())
 				.build());
 
 		registry.register("admin-session-info", CommandDefinition.builder()
@@ -176,7 +176,7 @@ public class AdminCommandDefinitions implements CommandDefinitions {
 				.description("Show session details")
 				.usage("{command} {alias} <target>")
 				.arguments(Map.of("target", "Player/UUID"))
-				.cooldown(globalCooldown())
+				.cooldown(defaultCooldown())
 				.build());
 
 		registry.register("admin-session-end", CommandDefinition.builder()
@@ -186,7 +186,7 @@ public class AdminCommandDefinitions implements CommandDefinitions {
 				.description("End an active session")
 				.usage("{command} {alias} <target>")
 				.arguments(Map.of("target", "Player/UUID"))
-				.cooldown(globalCooldown())
+				.cooldown(defaultCooldown())
 				.build());
 	}
 

@@ -85,6 +85,7 @@ class ConfigurationReloadTest {
 				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
 				.login(WRONG)
 				.sees(m -> m.credential().getScenario().getAuthentication().getStatus().getInvalid())
+				.waitsForCooldown()
 				.login(WRONG)
 				.kickedWith(m -> m.credential().getScenario().getAuthentication().getBruteforce().getExceeded());
 	}
@@ -110,6 +111,7 @@ class ConfigurationReloadTest {
 				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
 				.login(WRONG)
 				.sees(m -> m.credential().getScenario().getAuthentication().getStatus().getInvalid())
+				.waitsForCooldown()
 				.login(WRONG)
 				.kickedWith(m -> m.credential().getScenario().getAuthentication().getBruteforce().getExceeded());
 	}
@@ -126,6 +128,7 @@ class ConfigurationReloadTest {
 				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
 				.login(WRONG)
 				.sees(m -> m.credential().getScenario().getAuthentication().getStatus().getInvalid())
+				.waitsForCooldown()
 				.login(WRONG)
 				.kickedWith(m -> m.credential().getScenario().getAuthentication().getBruteforce().getExceeded());
 	}

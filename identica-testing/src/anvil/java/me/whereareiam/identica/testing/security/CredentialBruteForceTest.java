@@ -38,6 +38,7 @@ class CredentialBruteForceTest {
 				.login(WRONG)
 				.sees(m -> m.credential().getScenario().getAuthentication().getStatus().getInvalid())
 				.without(m -> m.credential().getScenario().getAuthentication().getBruteforce().getRemaining())
+				.waitsForCooldown()
 				.login(WRONG)
 				.sees(m -> m.credential().getScenario().getAuthentication().getStatus().getInvalid())
 				.with(m -> m.credential().getScenario().getAuthentication().getBruteforce().getRemaining())
@@ -77,7 +78,8 @@ class CredentialBruteForceTest {
 				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt());
 		for (int attempt = 0; attempt < 5; attempt++)
 			alice.login(WRONG)
-					.sees(m -> m.credential().getScenario().getAuthentication().getStatus().getInvalid());
+					.sees(m -> m.credential().getScenario().getAuthentication().getStatus().getInvalid())
+					.waitsForCooldown();
 
 		alice.remainsOn(AUTH)
 				.login(PASSWORD)
@@ -95,10 +97,12 @@ class CredentialBruteForceTest {
 		Journey alice = Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
 				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt());
-		for (int attempt = 0; attempt < 3; attempt++)
-			alice.login(WRONG);
+		for (int attempt = 0; attempt < 2; attempt++)
+			alice.login(WRONG)
+					.sees(m -> m.credential().getScenario().getAuthentication().getStatus().getInvalid())
+					.waitsForCooldown();
 
-		return alice.disconnected();
+		return alice.login(WRONG).disconnected();
 	}
 
 	private static final class ThreeAttempts implements Consumer<ProxyConfiguration> {

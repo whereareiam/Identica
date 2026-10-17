@@ -41,6 +41,7 @@ class PasswordChangeTest {
 				.login(PASSWORD)
 				.sees(m -> m.credential().getScenario().getAuthentication().getStatus().getInvalid())
 				.remainsOn(AUTH)
+				.waitsForCooldown()
 				.login(NEW_PASSWORD)
 				.on(LOBBY)
 				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
@@ -121,6 +122,7 @@ class PasswordChangeTest {
 				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt())
 				.login(PASSWORD)
 				.sees(m -> m.credential().getScenario().getAuthentication().getStatus().getInvalid())
+				.waitsForCooldown()
 				.login(NEW_PASSWORD)
 				.on(LOBBY)
 				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());

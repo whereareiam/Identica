@@ -193,11 +193,12 @@ Examples:
   name="cooldown"
   depth={4}
   takes="`enabled`, `duration` and `group`"
-  affects="nothing yet"
-  flag="reserved"
+  affects="how soon a player can run the command again"
 >
 
-Identica reads these fields but does not apply command cooldowns yet. Leave them as they are.
+A command on cooldown refuses a player who ran it less than `duration` seconds ago and sends them `commands.exceptions.cooldown` from `messages.yml`, with the seconds left in `{content}`; an empty message refuses it silently. The cooldown starts once the command is accepted, whether it succeeds or not, so a mistyped password counts too; invalid syntax or a missing permission starts none.
+
+Cooldowns are kept per player in the proxy's memory, end when the player leaves or the proxy restarts, and each proxy of a network keeps its own. The console never waits. Identica's default commands have a cooldown of two seconds of their own; commands without a `cooldown` section have none.
 
 </Setting>
 
@@ -206,6 +207,7 @@ Identica reads these fields but does not apply command cooldowns yet. Leave them
   depth={5}
   takes="`true` or `false`"
   default="`false`"
+  affects="whether the command has a cooldown"
 >
 
 </Setting>
@@ -213,9 +215,12 @@ Identica reads these fields but does not apply command cooldowns yet. Leave them
 <Setting
   name="duration"
   depth={5}
-  takes="an integer"
+  takes="an integer number of seconds"
   default="`0`"
+  affects="how long the command stays on cooldown after a player ran it"
 >
+
+A duration of `0` or less means no cooldown, even when `enabled` is `true`.
 
 </Setting>
 
@@ -223,8 +228,11 @@ Identica reads these fields but does not apply command cooldowns yet. Leave them
   name="group"
   depth={5}
   takes="a string"
-  default='`"default"`'
+  default='`""`'
+  affects="which commands share the cooldown"
 >
+
+An empty group gives the command a cooldown of its own, shared by its aliases. Commands with the same group share one cooldown, even across `commands.yml` files: running any of them puts all of them on cooldown for that player, for the duration of the command that was run.
 
 </Setting>
 

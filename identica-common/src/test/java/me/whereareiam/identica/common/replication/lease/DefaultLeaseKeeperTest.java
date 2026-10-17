@@ -6,7 +6,9 @@ import me.whereareiam.identica.model.scheduler.PeriodicalRunnableTask;
 import me.whereareiam.identica.replication.lease.LeasedRecords;
 import me.whereareiam.identica.replication.lease.Leases;
 import me.whereareiam.identica.service.Scheduler;
+import me.whereareiam.identica.replication.cache.Versioned;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -185,6 +187,28 @@ class DefaultLeaseKeeperTest {
 		assertFalse(leases.holds("a"));
 	}
 
+	@DisplayName("A renewal does not bring back a record that was removed after the renewal read it")
+	@Test
+	void renewalDoesNotRestoreARecordRemovedMeanwhile() {
+		hold("a", "mine");
+		records.meanwhile = () -> records.stored.remove("a");
+
+		tick();
+
+		assertFalse(records.stored.containsKey("a"));
+	}
+
+	@DisplayName("A renewal does not overwrite a record another owner took over after the renewal read it")
+	@Test
+	void renewalDoesNotOverwriteATakeoverMeanwhile() {
+		hold("a", "mine");
+		records.meanwhile = () -> records.stored.put("a", "theirs");
+
+		tick();
+
+		assertEquals("theirs", records.stored.get("a"));
+	}
+
 	private void hold(String key, String record) {
 		records.stored.put(key, record);
 		leases.hold(key, record);
@@ -206,12 +230,14 @@ class DefaultLeaseKeeperTest {
 		private final List<Write> writes = new ArrayList<>();
 		private String owner;
 		private boolean failing;
+		/** What another proxy changes after a renewal read the record and before its write lands. */
+		private Runnable meanwhile = () -> { };
 
 		@Override
-		public @NotNull CompletableFuture<Optional<String>> find(@NotNull String key) {
+		public @NotNull CompletableFuture<Optional<Versioned<String>>> find(@NotNull String key) {
 			if (failing) return CompletableFuture.failedFuture(new IllegalStateException("unreachable"));
 
-			return CompletableFuture.completedFuture(Optional.ofNullable(stored.get(key)));
+			return CompletableFuture.completedFuture(Optional.ofNullable(stored.get(key)).map(value -> new Versioned<>(value, value)));
 		}
 
 		@Override
@@ -220,10 +246,22 @@ class DefaultLeaseKeeperTest {
 		}
 
 		@Override
-		public @NotNull CompletableFuture<Void> write(@NotNull String key, @NotNull String record, @NotNull LeaseRenewal renewal) {
+		/**
+		 * Writes only while the stored value is the one found, as a store with revisions does.
+		 */
+		public @NotNull CompletableFuture<Boolean> write(
+				@NotNull String key,
+				@Nullable Versioned<String> found,
+				@NotNull String record,
+				@NotNull LeaseRenewal renewal
+		) {
+			meanwhile.run();
+			if (!Objects.equals(stored.get(key), found != null ? found.getValue() : null))
+				return CompletableFuture.completedFuture(false);
+
 			writes.add(new Write(key, record, renewal));
 			stored.put(key, record);
-			return CompletableFuture.completedFuture(null);
+			return CompletableFuture.completedFuture(true);
 		}
 
 		private Write only() {

@@ -87,6 +87,7 @@ class BungeeCordJoinTest {
 				.login("Wrong-456")
 				.sees(m -> m.credential().getScenario().getAuthentication().getStatus().getInvalid())
 				.remainsOn(AUTH)
+				.waitsForCooldown()
 				.login(PASSWORD)
 				.on(LOBBY)
 				.sees(m -> m.credential().getCompletion().getAuthentication().getBody());
@@ -101,7 +102,9 @@ class BungeeCordJoinTest {
 				.on(AUTH)
 				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt());
 		for (int attempt = 1; attempt < ALLOWED_ATTEMPTS; attempt++)
-			alice.login("Wrong-456").sees(m -> m.credential().getScenario().getAuthentication().getStatus().getInvalid());
+			alice.login("Wrong-456")
+					.sees(m -> m.credential().getScenario().getAuthentication().getStatus().getInvalid())
+					.waitsForCooldown();
 
 		alice.login("Wrong-456").kickedWith(m -> m.credential().getScenario().getAuthentication().getBruteforce().getExceeded());
 	}

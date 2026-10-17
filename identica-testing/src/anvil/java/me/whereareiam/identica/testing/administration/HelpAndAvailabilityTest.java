@@ -42,6 +42,7 @@ class HelpAndAvailabilityTest {
 		loggedIn(anvil, "Alice")
 				.command("identica availability username bob")
 				.sees(m -> m.identica().getCommands().getAvailability().getUsername().getTaken())
+				.waitsForCooldown()
 				.command("identica availability username Carol")
 				.sees(m -> m.identica().getCommands().getAvailability().getUsername().getFree());
 	}

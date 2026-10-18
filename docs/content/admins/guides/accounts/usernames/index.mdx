@@ -1,0 +1,104 @@
+---
+title: Usernames and conflicts
+description: How accounts get their usernames, and how Identica settles two accounts wanting one name.
+---
+
+Every account has one username, and it follows the account's provider: a Premium account plays under its Mojang name, a Credential account under the name its player registered with.
+
+## Providers that own names
+
+Some providers guarantee that each name belongs to one of their players and check that the player joining with it really owns it. Premium does: only the owner of the Mojang account `Steve` can join through Premium as `Steve`. Credential does not, because its players choose their own names.
+
+In the configuration this guarantee is called `OWNED_USERNAME`. It is part of what a provider is and cannot be turned on in a file. The rules below use it to decide who keeps a name.
+
+## Unique usernames
+
+Usernames are unique without regard to case, as Minecraft usernames are: while an account holds `Alice`, no other account gets `alice` or `ALICE`. When a player wants a name another account holds, the conflict rules decide what happens. No outcome ever lets one player into another player's account: a rule only decides which of the two accounts keeps the name and which one is renamed, or refuses the joining player.
+
+## When a conflict comes up
+
+A player wants a username in two situations:
+
+- **First join** (`FIRST_JOIN`): the player joins through a provider for the first time and wants its name. This is a new account, and also an account that moves to another provider, such as with `/premium`, and takes its name from that provider from then on.
+- **Rename at the provider** (`PROVIDER_RENAME`): the provider of a known account gives it a new name, such as after a rename at Mojang.
+
+When nobody holds the wanted name, the account gets it. When another account holds it, the rules settle the conflict. The joining player is the **arriving** side; the account that holds the name is the **holder**.
+
+A conflict is decided before the proxy names the player, so a renamed player plays under the new name at once and a refused player is refused before any prompt. This holds when the provider is settled when the player joins: by a pending migration, a linked account, a provider hostname or a verified login. When the provider is only guessed, from an account with the same username or from what a provider found for the name, the player can still choose another provider, so the conflict is decided once they have chosen.
+
+## The default rules
+
+| Arriving player's provider | Holder's provider | Situation | Outcome |
+| --- | --- | --- | --- |
+| owns names | does not own names | first join | the arriving player gets the name, the holder is renamed |
+| owns names | does not own names | rename at the provider | the holder chose the name first and keeps it, the arriving account is renamed |
+| does not own names | any | any | the arriving player is refused |
+| any | any | any | the arriving player is refused; this last rule settles every conflict no other rule covers |
+
+For example, a Credential player registered `Steve`. When the owner of the premium account `Steve` joins through Premium for the first time, the owner gets `Steve` and the Credential account becomes `Steve_credential`. The Credential player keeps logging in with the same client name and password and plays as `Steve_credential` from then on.
+
+A premium player who joins through Premium's [hostname](../../logins/provider-selection/index.mdx#hostnames) reaches the first rule. A premium player who joins without one may be sent to the Credential account's password prompt, because the name matches that account; see [How a provider is picked](../../logins/provider-selection/index.mdx).
+
+The default rules name guarantees only, never providers, so they also cover providers added later.
+
+## Changing the rules
+
+The rules live in `identity/username/conflicts.yml`. Each rule names what it asks of the arriving player and of the holder, and the outcome. Some common changes:
+
+**Disconnect an online holder** instead of letting them play on under the old name until they leave:
+
+```yaml
+outcomes:
+  rename-holder:
+    holderOnline: KICK_HOLDER
+```
+
+**Rename Credential accounts differently** from all others:
+
+```yaml
+providers:
+  credential:
+    rename-holder:
+      pattern: "{username}_offline"
+```
+
+**Refuse instead of renaming** for one pair of providers, by adding a rule that names them. A rule naming providers is more specific than the default rules and wins over them:
+
+```yaml
+rules:
+  - arriving: { providers: [premium] }
+    holder: { providers: [credential] }
+    outcome: refuse
+```
+
+[`identity/username`](../../../../configuration/identity/username/index.mdx) describes every field, which rule wins when several apply, and how renamed names are made.
+
+## Rules that never change
+
+- No outcome lets a player into another player's account.
+- A username an administrator set by hand is never changed by Identica. When a rule would rename such a holder, the arriving account is renamed instead.
+- An account that a conflict renamed takes its own name back on a later join once nobody holds it.
+
+## Renaming an account by hand
+
+`/identica admin username rename <account> <username>` renames an account, named by its username or unique id. The new username must be 3 to 16 letters, digits or `_`, and nobody may hold it in any case. Identica keeps a name set this way: neither a conflict nor a rename at the provider changes it. The player plays under it from the next join on.
+
+## Accounts that share a username
+
+A database from before usernames were unique may still have accounts that share one. When it is upgraded, the oldest account of each username holds it; the others keep logging in through their own providers but do not count as holding the name. Each start warns in the console about every username several accounts share, naming its accounts with their unique ids, providers and last logins:
+
+```text
+Duplicate usernames: steve is shared by steve (…, providers credential, last seen …), Steve (…, providers premium, last seen …). …
+```
+
+`/identica admin username duplicates` lists the same accounts. To leave a username to one account, rename the others by hand.
+
+## Messages
+
+`identity/username/messages.yml` holds what players see:
+
+| Message | Shown when |
+| --- | --- |
+| `pipeline.policy.taken` | a rule refuses the arriving player; `{username}` is the name they wanted |
+| `pipeline.policy.holderReplaced` | an online holder is disconnected under `KICK_HOLDER`; `{username}` is the lost name, `{renamed}` the new one |
+| `pipeline.identity.synchronizationFailed` | Identica cannot update the account's username |

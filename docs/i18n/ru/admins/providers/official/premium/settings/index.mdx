@@ -1,0 +1,125 @@
+---
+title: Настройки
+description: Все настройки файла providers/Premium/settings.yml.
+sourceHash: 40bd5438688a70400907565f8229e8d5de600437
+---
+
+`providers/Premium/settings.yml` содержит настройки провайдера Premium. Как настройки определения работают вместе, объясняет страница [Определение лицензионных аккаунтов](../detection/index.mdx).
+
+```yaml
+detection:
+  methods:
+    - LOOKUP
+  recheckOnMismatch: false
+  lookup:
+    profileEndpoint: "https://api.mojang.com/users/profiles/minecraft/%s"
+    timeout: "3s"
+    cacheTtl: "5m"
+profileSnapshotTtl: "10m"
+replication:
+  cache:
+    profile: "premium-profile"
+    profileSnapshot: "premium-profile-snapshot"
+```
+
+## detection
+
+<Setting
+  name="methods"
+  takes="список из `CLIENT_PROFILE` и `LOOKUP`"
+  default='`["LOOKUP"]`'
+  affects="как игрок с ником, не привязанным ни к одному аккаунту, распознаётся как лицензионный"
+>
+
+Premium пробует методы сверху вниз. См. [Методы](../detection/index.mdx#methods).
+
+</Setting>
+
+<Setting
+  name="recheckOnMismatch"
+  takes="`true` или `false`"
+  default="`false`"
+  affects="ищет ли `CLIENT_PROFILE` ник повторно, в обход кэша, если идентификатор профиля клиента отличается от профиля в кэше"
+>
+
+</Setting>
+
+### lookup
+
+Как Premium ищет лицензионный профиль ника. Его используют оба метода определения и выбор провайдера в прохождении `INTERACTIVE`.
+
+<Setting
+  name="profileEndpoint"
+  depth={4}
+  takes="URL с `%s` или `{username}` на месте ника"
+  default='`"https://api.mojang.com/users/profiles/minecraft/%s"`'
+  affects="где ищутся лицензионные профили"
+  flag="advanced"
+>
+
+Адрес отвечает профилем в формате JSON, где идентификатор находится в поле `id`, либо кодом `204` или `404`, если у ника нет профиля. Если значение пустое, считается, что ни у одного ника нет лицензионного профиля.
+
+</Setting>
+
+<Setting
+  name="timeout"
+  depth={4}
+  takes="длительность"
+  default='`"3s"`'
+  affects="сколько может длиться поиск"
+  flag="advanced"
+>
+
+Если поиск завершился ошибкой или по тайм-ауту, считается, что у ника нет лицензионного профиля, и такой ответ не кэшируется. При нулевом или отрицательном значении ожидание не ограничено.
+
+</Setting>
+
+<Setting
+  name="cacheTtl"
+  depth={4}
+  takes="длительность"
+  default='`"5m"`'
+  affects="сколько хранятся ответы на поиск"
+>
+
+При нулевом или отрицательном значении каждый ник ищется заново.
+
+</Setting>
+
+<Setting
+  name="profileSnapshotTtl"
+  depth={2}
+  takes="длительность"
+  default='`"10m"`'
+  affects="сколько Premium помнит лицензионный профиль, который он видел для ника"
+>
+
+При нулевом или отрицательном значении ничего не запоминается.
+
+</Setting>
+
+## replication.cache
+
+<Badge type="warning">Для опытных</Badge>
+
+Имена, под которыми Premium делится результатами поиска между прокси через [репликацию](../../../../guides/network/several-proxies/index.mdx). Все прокси сети используют одни и те же имена.
+
+<Setting
+  name="profile"
+  takes="непустую строку"
+  default='`"premium-profile"`'
+  affects="имя общих ответов на поиск"
+>
+
+</Setting>
+
+<Setting
+  name="profileSnapshot"
+  takes="непустую строку"
+  default='`"premium-profile-snapshot"`'
+  affects="имя общих снимков профилей"
+>
+
+Если значение пустое, Premium не загружается.
+
+</Setting>

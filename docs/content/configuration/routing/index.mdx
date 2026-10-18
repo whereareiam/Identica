@@ -1,31 +1,37 @@
 ---
-title: Routing
-description: Field-by-field explanation of Identica's routing configuration area.
+title: routing.yml
+description: Every setting of routing.yml.
 ---
 
-The routing configuration decides where players should be sent while a scenario is waiting and where they should land after it completes.
+`routing.yml` names the servers players are sent to while a login waits for them (`step`) and once they are logged in (`complete`). [Routing players](../../admins/guides/network/routing/index.mdx) explains them with examples.
+
+Every target has the same fields: `target`, `forcedHosts` and `attempts`.
 
 ## defaults
 
-`defaults` provides the fallback targets used when no scenario-specific override applies.
+The targets for every scenario that does not set its own.
 
-### step
+<Setting
+  name="step"
+  takes="a target"
+  default='`"auth"`'
+  affects="where a player is sent while their login waits for them, such as for a password"
+>
 
-- Takes: a target name and an attempt policy
-- Current default target: `"auth"`
-- Affects: the fallback route used when a step finishes in a waiting state and no scenario-specific override applies
+A blank target, with no scenario target either, leaves the player where they are.
 
-If this target is blank and no scenario target resolves, Identica clears the current routing intent with a `NO_TARGET` reason instead of routing the player.
+</Setting>
 
-### complete
+<Setting
+  name="complete"
+  takes="a target"
+  default='`"survival"`'
+  affects="where a player goes once their login is done"
+>
 
-- Takes: a target name and an attempt policy
-- Current default target: `"survival"`
-- Affects: the fallback route used when a scenario completes and no scenario-specific completion target applies
+A blank target, with no scenario target either, leaves the player where they are. A player who finished while joining receives the completion messages on the first server they reach.
 
-This is usually the place to send players back into the normal network after authentication, registration, or migration is done.
-
-If this target is blank and no scenario target resolves, the player is not moved. A player who completes the scenario while already on a server receives the completion messages there; a player who completes it while joining receives them once connected to the first server.
+</Setting>
 
 <Tabs items={["YAML", "JSON"]}>
   <Tab value="YAML">
@@ -36,6 +42,7 @@ defaults:
   complete:
     target: "survival"
     forcedHosts: false
+scenarios: {}
 ```
   </Tab>
   <Tab value="JSON">
@@ -49,149 +56,135 @@ defaults:
       "target": "survival",
       "forcedHosts": false
     }
-  }
+  },
+  "scenarios": {}
 }
 ```
   </Tab>
 </Tabs>
 
-## forcedHosts
+## Target fields
 
-- Takes: `true` or `false`
-- Current default: `false` on `defaults.complete`
-- Affects: whether a target sends players to the server the proxy forces for the hostname they joined through
+<Setting
+  name="target"
+  takes={"a server name from the proxy's configuration, or `\"\"`"}
+  affects="the server the player is sent to"
+>
 
-Forced hosts stay in the proxy's own configuration: `[forced-hosts]` in `velocity.toml`, or `forced_hosts` of a listener in BungeeCord's `config.yml`. Identica does not have a hostname list of its own.
+A server the proxy does not know disconnects the player with [`routing.missingServer`](../messages/index.mdx#routing).
 
-With `forcedHosts: true`, a target routes to the proxy's forced host for the player's hostname. `target` is the fallback for hostnames the proxy has no forced host for.
+</Setting>
 
-<Tabs items={["Velocity", "BungeeCord"]}>
-  <Tab value="Velocity">
-```toml
-[forced-hosts]
-"survival.example.com" = ["survival"]
-"skyblock.example.com" = ["skyblock"]
-```
-  </Tab>
-  <Tab value="BungeeCord">
-```yaml
-listeners:
-  - forced_hosts:
-      survival.example.com: survival
-      skyblock.example.com: skyblock
-```
-  </Tab>
-</Tabs>
+<Setting
+  name="forcedHosts"
+  takes="`true` or `false`"
+  default="`false` on `defaults.complete`; elsewhere the value of the less specific target"
+  affects="whether the player is sent to the server the proxy forces for the hostname they joined through"
+>
+
+`target` is used for hostnames without a forced host. When Velocity lists several servers for a hostname, the first one is used. See [The player's hostname](../../admins/guides/network/routing/index.mdx#the-players-hostname).
+
+</Setting>
+
+### attempts
+
+How often Identica tries to move the player when the server refuses them. See [When a server turns the player away](../../admins/guides/network/routing/index.mdx#when-a-server-turns-the-player-away).
+
+<Setting
+  name="mode"
+  depth={4}
+  takes='`"NONE"`, `"RETRY_ONCE"`, `"RETRY_LIMITED"`, or `"UNTIL_REACHED"`'
+  affects="how many attempts are made"
+  flag="advanced"
+>
+
+| Mode | Attempts |
+| --- | --- |
+| `NONE` | one |
+| `RETRY_ONCE` | two |
+| `RETRY_LIMITED` | `maxAttempts` |
+| `UNTIL_REACHED` | until the server accepts the player |
+
+</Setting>
+
+<Setting
+  name="maxAttempts"
+  depth={4}
+  takes="an integer"
+  affects="the number of attempts of `RETRY_LIMITED`"
+  flag="advanced"
+>
+
+Other modes ignore it.
+
+</Setting>
+
+<Setting
+  name="retryDelay"
+  depth={4}
+  takes="a duration"
+  default='`"0s"`'
+  affects="the wait before the next attempt"
+  flag="advanced"
+>
+
+</Setting>
+
+<Setting
+  name="consumeOnReached"
+  depth={4}
+  takes="`true` or `false`"
+  affects="whether Identica forgets the route as soon as the player reaches the server"
+  flag="advanced"
+>
+
+With `false`, Identica keeps the route until a later route replaces it.
+
+</Setting>
+
+<Setting
+  name="consumeOnExhausted"
+  depth={4}
+  takes="`true` or `false`"
+  affects="whether Identica forgets the route once its attempts are used up"
+  flag="advanced"
+>
+
+With `false`, Identica keeps the failed route until a later route replaces it.
+
+</Setting>
+
+<Setting
+  name="scenarios"
+  depth={2}
+  takes="a map keyed by `authentication`, `registration` or `migration`, in any case"
+  default="`{}`"
+  affects="the `step` and `complete` targets of one scenario"
+>
+
+Add a scenario only when it should differ from `defaults`.
 
 <Tabs items={["YAML", "JSON"]}>
   <Tab value="YAML">
 ```yaml
-defaults:
-  step:
-    target: "auth"
-  complete:
-    target: "lobby"
-    forcedHosts: true
-```
-  </Tab>
-  <Tab value="JSON">
-```json
-{
-  "defaults": {
-    "step": {
-      "target": "auth"
-    },
-    "complete": {
-      "target": "lobby",
-      "forcedHosts": true
-    }
-  }
-}
-```
-  </Tab>
-</Tabs>
-
-| Player joins through | While a step waits | Once done |
-| --- | --- | --- |
-| `survival.example.com` | `auth` | `survival` |
-| `skyblock.example.com` | `auth` | `skyblock` |
-| `play.example.com` | `auth` | `lobby` |
-
-A blank `target` with `forcedHosts: true` only routes hostnames that have a forced host. Players who joined through another hostname are not moved.
-
-When Velocity lists several servers for a hostname, Identica routes to the first one. A forced host that names a server the proxy does not know is handled like any other missing target.
-
-A scenario target or override that leaves `forcedHosts` out uses the value of the less specific target, so a scenario can opt out of what `defaults` sets:
-
-<Tabs items={["YAML", "JSON"]}>
-  <Tab value="YAML">
-```yaml
-defaults:
-  complete:
-    target: "lobby"
-    forcedHosts: true
 scenarios:
   registration:
+    step:
+      target: "register"
     complete:
       target: "tutorial"
-      forcedHosts: false
 ```
   </Tab>
   <Tab value="JSON">
 ```json
 {
-  "defaults": {
-    "complete": {
-      "target": "lobby",
-      "forcedHosts": true
-    }
-  },
   "scenarios": {
     "registration": {
-      "complete": {
-        "target": "tutorial",
-        "forcedHosts": false
-      }
-    }
-  }
-}
-```
-  </Tab>
-</Tabs>
-
-`forcedHosts` also works on `step` targets. Players are then sent to the forced host's server while they are still logging in, so leave it off there unless that server is meant for unauthenticated players.
-
-## scenarios
-
-- Takes: a map keyed by scenario id
-- Supported scenario ids: `authentication`, `registration`, `migration`
-- Affects: per-scenario step and completion targets
-
-Generated routing config leaves this map empty.
-Add scenario entries only when a scenario should route differently from `defaults`.
-Scenario ids are matched case-insensitively by the routing planner.
-
-<Tabs items={["YAML", "JSON"]}>
-  <Tab value="YAML">
-```yaml
-scenarios:
-  authentication:
-    step:
-      target: "auth"
-    complete:
-      target: "survival"
-```
-  </Tab>
-  <Tab value="JSON">
-```json
-{
-  "scenarios": {
-    "authentication": {
       "step": {
-        "target": "auth"
+        "target": "register"
       },
       "complete": {
-        "target": "survival"
+        "target": "tutorial"
       }
     }
   }
@@ -200,17 +193,28 @@ scenarios:
   </Tab>
 </Tabs>
 
-### overrides.stages
+</Setting>
 
-<Badge type="warning">Advanced</Badge>
+<Setting
+  name="overrides.stages"
+  takes="a map keyed by stage id, such as `provider`"
+  affects="the `step` target while the player waits in that stage of the scenario"
+  flag="advanced"
+>
 
-- Takes: a map keyed by stage id
-- Affects: route selection for matching stages inside a scenario
+</Setting>
 
-Use this when one stage should route somewhere different from the scenario-wide `step` target.
+<Setting
+  name="overrides.steps"
+  takes="a map keyed by step name, such as `enrollment`"
+  affects="the `step` target while the player waits at that step"
+  flag="advanced"
+>
 
-<Tabs items={["YAML", "JSON"]}>
-  <Tab value="YAML">
+A step override wins over a stage override.
+
+</Setting>
+
 ```yaml
 scenarios:
   registration:
@@ -218,119 +222,7 @@ scenarios:
       stages:
         provider:
           target: "register-fallback"
-```
-  </Tab>
-  <Tab value="JSON">
-```json
-{
-  "scenarios": {
-    "registration": {
-      "overrides": {
-        "stages": {
-          "provider": {
-            "target": "register-fallback"
-          }
-        }
-      }
-    }
-  }
-}
-```
-  </Tab>
-</Tabs>
-
-### overrides.steps
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a map keyed by step name
-- Affects: route selection for a specific waiting step
-
-Step overrides win over stage overrides when both match.
-
-<Tabs items={["YAML", "JSON"]}>
-  <Tab value="YAML">
-```yaml
-scenarios:
-  authentication:
-    overrides:
       steps:
         enrollment:
-          target: "manual-choice"
+          target: "choose-provider"
 ```
-  </Tab>
-  <Tab value="JSON">
-```json
-{
-  "scenarios": {
-    "authentication": {
-      "overrides": {
-        "steps": {
-          "enrollment": {
-            "target": "manual-choice"
-          }
-        }
-      }
-    }
-  }
-}
-```
-  </Tab>
-</Tabs>
-
-## attempts
-
-Each `step` or `complete` target can define an `attempts` policy.
-
-### mode
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: `"NONE"`, `"RETRY_ONCE"`, `"RETRY_LIMITED"`, or `"UNTIL_REACHED"`
-- Affects: how many routing attempts are allowed for one routing intent
-
-Behavior in current source:
-
-- `NONE`: allow one attempt total
-- `RETRY_ONCE`: allow the initial attempt plus one retry
-- `RETRY_LIMITED`: allow attempts until `maxAttempts` is reached
-- `UNTIL_REACHED`: never exhaust by attempt count
-
-When the target server refuses a player, for example because of its whitelist, Identica retries quietly while the policy allows another attempt. A refusal of the last attempt is left to the proxy, which handles it like any other refused connection: the player stays on their current server and sees the server's reason, unless another plugin, such as a hub or balancer plugin, sends them elsewhere through `KickedFromServerEvent` on Velocity or `ServerKickEvent` on BungeeCord. BungeeCord already does this for every refused attempt. `UNTIL_REACHED` has no last attempt, so a player it routes keeps waiting for the target to accept them.
-
-### maxAttempts
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: an integer
-- Affects: the limit used by `RETRY_LIMITED`
-
-For `NONE`, `RETRY_ONCE`, and `UNTIL_REACHED`, this value is effectively ignored by the current `allowsAttempt` logic.
-
-### retryDelay
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a duration
-- Current defaults: `0s` in the runtime defaults, but generated examples may choose a non-zero value
-- Affects: how long Identica waits before retrying a routed intent
-
-### consumeOnReached
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: `true` or `false`
-- Affects: whether the routing intent is removed immediately after the target server is reached
-
-If `true`, the intent is cleared as soon as the player is confirmed on the target server.
-If `false`, the reached intent remains stored until something else replaces or clears it.
-
-### consumeOnExhausted
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: `true` or `false`
-- Affects: whether the routing intent is removed when retries are exhausted
-
-If `true`, an exhausted route is cleared immediately.
-If `false`, the exhausted intent stays in the store with status `EXHAUSTED`.

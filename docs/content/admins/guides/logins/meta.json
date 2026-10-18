@@ -1,0 +1,9 @@
+{
+  "title": "Logins",
+  "pages": [
+    "index",
+    "provider-selection",
+    "journey-modes",
+    "sessions"
+  ]
+}

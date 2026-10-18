@@ -1,0 +1,50 @@
+---
+title: Premium detection
+description: How Premium decides who owns a premium account, and how to spare offline players a failed login.
+---
+
+A player Premium treats as the owner of their username's premium account is asked for a premium login: in a `SEAMLESS` journey right when they connect, in an `INTERACTIVE` journey when they choose Premium, which is then only offered to them. Every other player continues with the next provider, such as Credential.
+
+Usernames already linked to an account follow that account: a username linked to Premium is always asked for a premium login, a username linked to another provider never is. Detection decides for the rest.
+
+## Methods
+
+`detection.methods` in `providers/Premium/settings.yml` lists the methods Premium tries, from top to bottom. A method either decides, or leaves the player to the next method. A player no method decides for is treated as not premium.
+
+```yaml
+detection:
+  methods:
+    - CLIENT_PROFILE
+    - LOOKUP
+```
+
+- **`LOOKUP`** treats every username that has a premium profile at Mojang as premium. It always decides, so methods listed after it are never tried; Premium warns on startup when that happens.
+- **`CLIENT_PROFILE`** <Badge type="warning">Experimental</Badge> compares the profile id the client sends when it connects with the premium profile of its username. The official launcher sends the id of the account it is logged in to, while offline launchers send a different one. A match means premium, a different id means not premium. Clients older than 1.19.1 send no id and are left to the next method.
+
+| `methods` | Client 1.19.1 or newer | Older client |
+|---|---|---|
+| `["LOOKUP"]` (default) | premium username: asked for a premium login | the same |
+| `["CLIENT_PROFILE", "LOOKUP"]` | asked for a premium login only when it sends the premium profile | premium username: asked for a premium login |
+| `["CLIENT_PROFILE"]` | asked for a premium login only when it sends the premium profile | treated as not premium |
+
+## Offline players with a premium name
+
+With only `LOOKUP`, an offline player who uses a premium username is asked for a premium login on their first join. Their client cannot complete it and is disconnected with an invalid-session message; their next join from the same address within [`attemptTtl`](../../../../../configuration/providers/index.mdx#attemptttl) continues with the next provider, unless the username has been linked to Premium since.
+
+With `CLIENT_PROFILE` first, that player continues with the next provider on their first join, and an `INTERACTIVE` journey does not offer them Premium.
+
+`CLIENT_PROFILE` also protects usernames linked to Premium: a client that sends another profile id than the linked one is refused with `verification.ownedUsername` from Premium's `messages.yml`, unless the username now belongs to the profile that client sent.
+
+The client sends its profile id itself, so `CLIENT_PROFILE` only decides whether to ask for a premium login. The premium login itself is still verified with Mojang.
+
+On BungeeCord, Identica reads the profile id from BungeeCord's login request. On a BungeeCord build that does not keep it, every client is treated like a client older than 1.19.1.
+
+## Names that moved to another account
+
+Lookups are cached for `lookup.cacheTtl`, five minutes by default. A username that moved to another premium account within that time can be compared against the old profile. `recheckOnMismatch: true` looks a mismatching username up again before treating the player as not premium, at the cost of one more request for every offline player who uses a premium username.
+
+## When Mojang cannot be reached
+
+A lookup that fails or takes longer than `lookup.timeout`, three seconds by default, treats the username as having no premium profile, and the answer is not cached. Players with a premium name then continue with the next provider until Mojang answers again; accounts already linked to Premium still need their premium login.
+
+See [Settings](../settings/index.mdx#detection) for every setting.

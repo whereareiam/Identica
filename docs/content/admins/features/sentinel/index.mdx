@@ -1,0 +1,53 @@
+---
+title: Sentinel
+description: Lock out connections that keep failing or abusing the login.
+---
+
+Sentinels watch for repeated attempts and lock out the connection behind them for a while. Each sentinel counts its own kind of attempt:
+
+| Sentinel | Counts | Default |
+| --- | --- | --- |
+| contested connection | connections from one address refused because another address is logging in under their username | on: 5 refusals lock the address out for 1 minute |
+| resume spam | attempts to continue or push a waiting login | off |
+| Credential brute force | wrong passwords | on: 5 wrong passwords lock the player out for 5 minutes |
+
+The contested-connection sentinel counts per address, whatever username each connection uses, so it stops someone trying names that are being logged in. See [Two connections with one username](../../guides/logins/index.mdx#two-connections-with-one-username).
+
+Credential's brute-force protection belongs to the Credential provider and is set in its settings; see [Brute-force protection](../../providers/official/credential/brute-force/index.mdx).
+
+## Turning sentinels on and off
+
+Each sentinel has its own `enabled` switch in `features/sentinel/settings`:
+
+```yaml
+sentinels:
+  resumeSpam:
+    enabled: true
+    maxAttempts: 10
+    lockout:
+      enabled: true
+      duration: "30s"
+  contestedConnection:
+    enabled: true
+    maxAttempts: 5
+```
+
+The checks that run before Identica knows the player's provider, such as the contested-connection sentinel, follow only these settings. Checks that run once a provider is known, such as Credential's brute-force protection, also follow the provider's switch:
+
+```yaml
+providers:
+  - id: "credential"
+    features:
+      sentinel:
+        enabled: false
+```
+
+## Warnings and messages
+
+A sentinel can warn before it locks out: with `warning.enabled` and `warning.thresholdPercentage: 70`, a player with `maxAttempts: 10` is warned from the eighth attempt.
+
+The lockout messages are in `features/sentinel/messages`; `{seconds}` is the time left. An emptied message silences the text, but the lockout still applies.
+
+With [replication](../../guides/network/several-proxies/index.mdx), counters and lockouts are shared by every proxy of the network.
+
+See [Sentinel settings](../../../configuration/features/sentinel/index.mdx) for every setting.

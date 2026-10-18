@@ -32,7 +32,7 @@ Configuration pages describe each setting with the same labels:
 | English | Russian |
 | --- | --- |
 | Takes: | Принимает: (then the accusative: «строку», «положительную длительность») |
-| Current default: | По умолчанию: |
+| Default: | По умолчанию: |
 | Affects: | Влияет на: |
 | a positive duration | положительная длительность |
 | `true` or `false` | `true` или `false` |
@@ -45,6 +45,7 @@ Setting flags are badges; translate their text, keep `type`:
 | Warning | Осторожно |
 | Danger | Опасно |
 | Reserved | Зарезервировано |
+| Experimental | Экспериментально |
 
 ## Terms
 
@@ -146,16 +147,25 @@ Setting flags are badges; translate their text, keep `type`:
 | --- | --- |
 | Docs | Документация |
 | Getting Started | Начало работы |
-| Extensions | Расширения |
+| Guides | Руководства |
 | Reference | Справочник |
+| Help | Помощь |
 | Overview | Обзор |
 | Installation | Установка |
-| Normal Installation | Обычная установка |
-| Advanced Installation | Расширенная установка |
+| First configuration | Первоначальная настройка |
+| Logins | Вход |
+| Accounts | Аккаунты |
+| Network | Сеть |
+| Upgrading and migrating | Обновление и переход |
+| Troubleshooting | Решение проблем |
 | Providers | Провайдеры |
 | Addons | Аддоны |
 | Configuration | Конфигурация |
-| Developer | Разработчикам |
+| Developers | Разработчикам |
+| Extending | Расширение |
+| Contributing | Участие в разработке |
+| Live tests | Живые тесты |
+| Architecture | Архитектура |
 | Support | Поддержка |
 | FAQ | Вопросы и ответы |
 | Official | Официальные |
@@ -165,4 +175,3 @@ Setting flags are badges; translate their text, keep `type`:
 | Restriction | Ограничения |
 | Verification | Подтверждение |
 | Identity | Идентичность |
-| Advanced (developer topics) | Продвинутые темы |

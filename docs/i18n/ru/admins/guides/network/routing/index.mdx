@@ -1,0 +1,126 @@
+---
+title: Маршрутизация игроков
+description: Отправляйте игроков на нужный сервер во время входа и после его завершения.
+sourceHash: 0d4d1db27c58a4cfcacb979d08e427c91a1a886e
+---
+
+Identica перемещает игрока между серверами дважды: на сервер `step`, пока ждёт от него действия, например ввода пароля, и на сервер `complete`, когда он вошёл. Оба задаются в `routing.yml`, и оба называют серверы из конфигурации вашего прокси.
+
+## Один маршрут для всех [#one-route-for-everyone]
+
+`defaults` действует для всех сценариев:
+
+```yaml
+defaults:
+  step:
+    target: "auth"
+  complete:
+    target: "lobby"
+```
+
+Можно использовать один и тот же сервер для `step` и `complete`, но отдельный сервер `step` держит игроков, которые ещё не вошли, подальше от остальной сети.
+
+Пустая цель `step` оставляет ожидающего игрока там, где он находится. Пустая цель `complete` оставляет там же игрока, завершившего вход; игрок, завершивший его во время подключения к сети, попадает на первый сервер прокси и получает сообщения о завершении там.
+
+## Маршрут для отдельного сценария [#a-route-per-scenario]
+
+Добавляйте сценарий в `scenarios`, только если он должен отличаться от `defaults`. Сценарии — `authentication`, `registration` и `migration`:
+
+```yaml
+defaults:
+  step:
+    target: "auth"
+  complete:
+    target: "lobby"
+scenarios:
+  registration:
+    step:
+      target: "register"
+    complete:
+      target: "tutorial"
+```
+
+Новые игроки регистрируются на `register` и начинают игру на `tutorial`; все остальные входят на `auth` и попадают на `lobby`.
+
+## Маршрут для одного этапа или шага [#a-route-for-one-stage-or-step]
+
+Внутри сценария можно отправить один этап или один шаг на другой сервер, не меняя весь сценарий. Переопределение шага важнее переопределения этапа:
+
+```yaml
+scenarios:
+  registration:
+    overrides:
+      steps:
+        enrollment:
+          target: "choose-provider"
+```
+
+## Хостнейм игрока [#the-players-hostname]
+
+Сети, в которых игроки выбирают режим игры хостнеймом, например `survival.example.com`, хранят эти хостнеймы в forced hosts прокси. При `forcedHosts: true` у цели Identica отправляет игрока на сервер, который прокси закрепил за хостнеймом, через который он зашёл. `target` используется для хостнеймов без forced host:
+
+```yaml
+defaults:
+  step:
+    target: "auth"
+  complete:
+    target: "lobby"
+    forcedHosts: true
+```
+
+<Tabs items={["Velocity", "BungeeCord"]}>
+  <Tab value="Velocity">
+```toml
+[forced-hosts]
+"survival.example.com" = ["survival"]
+"skyblock.example.com" = ["skyblock"]
+```
+  </Tab>
+  <Tab value="BungeeCord">
+```yaml
+listeners:
+  - forced_hosts:
+      survival.example.com: survival
+      skyblock.example.com: skyblock
+```
+  </Tab>
+</Tabs>
+
+| Игрок зашёл через | Пока шаг ожидает | После завершения |
+| --- | --- | --- |
+| `survival.example.com` | `auth` | `survival` |
+| `skyblock.example.com` | `auth` | `skyblock` |
+| `play.example.com` | `auth` | `lobby` |
+
+- Если в Velocity для хостнейма указано несколько серверов, Identica отправляет игрока на первый из них.
+- Пустой `target` при `forcedHosts: true` перенаправляет только по хостнеймам, у которых есть forced host; остальные игроки остаются на месте.
+- Сценарий, в котором `forcedHosts` не задан, берёт значение из `defaults`, поэтому сценарий может отказаться от него через `forcedHosts: false`.
+- `forcedHosts` работает и для целей `step`. Тогда игроков отправляют на сервер forced host ещё во время входа, поэтому не включайте его там, если этот сервер не предназначен для игроков, которые ещё не вошли.
+
+Собственного списка хостнеймов у Identica нет. Хостнеймы, которые выбирают провайдера, — отдельная настройка; см. [Хостнеймы](../../logins/provider-selection/index.mdx#hostnames).
+
+## Когда сервер не пускает игрока [#when-a-server-turns-the-player-away]
+
+Каждая цель может повторять попытку, если сервер отказывает игроку, например из-за белого списка:
+
+```yaml
+defaults:
+  step:
+    target: "auth"
+    attempts:
+      mode: RETRY_LIMITED
+      maxAttempts: 3
+      retryDelay: "1s"
+```
+
+Identica молча повторяет попытку, пока политика это разрешает. Отказ на последней попытке Identica оставляет прокси, и тот обрабатывает его как любое другое неудачное подключение: игрок остаётся на текущем сервере и видит причину отказа, если только другой плагин, например плагин хаба или балансировщик, не отправит его на другой сервер. У `UNTIL_REACHED` последней попытки нет, и игрок ждёт, пока сервер его не пустит.
+
+Если цель указывает на сервер, которого прокси не знает, игрок отключается с сообщением `routing.missingServer` из `messages.yml` или с собственным сообщением `missingServer` сценария, если оно у него есть.
+
+## Несколько серверов за одной целью [#several-servers-behind-one-target]
+
+Identica отправляет игрока ровно на тот сервер, который назван в цели. Чтобы распределять игроков между несколькими серверами, используйте плагин-балансировщик на прокси: он может перехватить запрос на `auth` и отправить игрока на `auth-2` по своим правилам.
+
+Если ваш хостинг ограничивает число серверов, хорошей целью `step` станет лёгкий лимбо-сервер, например [PicoLimbo](https://picolimbo.quozul.dev/about/introduction.html).
+
+Все настройки маршрутизации описаны на странице [`routing.yml`](../../../../configuration/routing/index.mdx).

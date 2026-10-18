@@ -1,0 +1,24 @@
+{
+  "title": "Server admins",
+  "description": "Install, configure and run Identica",
+  "icon": "Server",
+  "root": true,
+  "pages": [
+    "---Getting Started---",
+    "index",
+    "installation",
+    "first-configuration",
+    "---Guides---",
+    "...guides",
+    "---Features---",
+    "...features",
+    "---Providers---",
+    "...providers",
+    "---Addons---",
+    "...addons",
+    "---Help---",
+    "troubleshooting",
+    "faq",
+    "support"
+  ]
+}

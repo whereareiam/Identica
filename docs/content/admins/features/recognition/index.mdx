@@ -1,0 +1,51 @@
+---
+title: Recognition
+description: Let a player who just logged in reconnect without logging in again.
+---
+
+Recognition remembers a player who logged in. When the same player reconnects within a set time, from the same address, with the same username and through the same hostname, Identica recognises them and skips the login.
+
+It is convenient for players who reconnect often, such as after a server switch fails or their game crashes. It also lowers protection: anyone who can appear as that player, for example from the same shared address, gets in without a password. Turn it on only when you understand who can share addresses on your network.
+
+## Turning it on
+
+Recognition is off by default. Turn it on for every provider in `features/recognition/settings`:
+
+```yaml
+enabled: true
+validity: "12h"
+```
+
+or for one provider in `providers/providers.yml`:
+
+```yaml
+providers:
+  - id: "credential"
+    features:
+      recognition:
+        enabled: true
+```
+
+A recognised player can reconnect without logging in for `validity` after their last login, 12 hours by default.
+
+## What has to match
+
+By default, a reconnecting player has to match on all three signals:
+
+- `USERNAME`: the same username,
+- `IP`: the same address,
+- `VIRTUAL_HOST`: the same hostname they joined through.
+
+`defaultSignals` changes the set for every provider, and `signals` in a provider's entry for that provider. Fewer signals make recognition easier to get and easier to abuse.
+
+## Addresses that are never trusted
+
+Behind a misconfigured proxy, every player can appear to come from `127.0.0.1` or a private address. Recognition is never granted from the addresses in `eligibility.untrustedIps.entries`, which by default lists loopback and private networks. A provider that should still recognise players from them sets `allowOnUntrustedIps: true`.
+
+If recognition never works, check that Identica sees the players' real addresses.
+
+## With join restriction
+
+Recognition adds the `recognized` signal to [join restriction](../restriction/join/index.mdx): a provider whose joins are restricted can still let recognised players in by listing `recognized` in its `allow` list.
+
+See [Recognition settings](../../../configuration/features/recognition/index.mdx) for every setting.

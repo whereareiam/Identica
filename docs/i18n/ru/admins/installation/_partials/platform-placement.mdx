@@ -1,0 +1,43 @@
+---
+sourceHash: 689aa73986c2a8647aefb5822af0540732912e8c
+---
+
+Identica поставляется в двух вариантах; используйте один из них:
+
+- `Identica-BUNDLE-<version>.jar` работает на любом поддерживаемом прокси.
+- `Identica-PLATFORMS-<version>.zip` содержит отдельный jar-файл для каждого прокси: `Identica-VELOCITY-<version>.jar` и `Identica-BUNGEECORD-<version>.jar`.
+
+Jar-файл Identica кладётся в папку `plugins/` прокси. Jar-файлы провайдеров кладутся в папку `providers/` внутри папки данных Identica — создайте её сами до первого запуска. Никогда не кладите jar-файл провайдера прямо в `plugins/`.
+
+<ContentTabs items={["Velocity", "BungeeCord"]}>
+  <ContentTab value="Velocity">
+    <Files>
+      <Folder name="plugins" defaultOpen>
+        <File name="Identica-BUNDLE-<version>.jar" />
+        <Folder name="identica" defaultOpen>
+          <Folder name="providers" defaultOpen>
+            <File name="Identica-Credential-<version>.jar" />
+            <File name="Identica-Premium-<version>.jar" />
+          </Folder>
+        </Folder>
+      </Folder>
+    </Files>
+
+    Если вместо универсального jar-файла вы используете jar-файл для своего прокси, на месте `Identica-BUNDLE-<version>.jar` будет `Identica-VELOCITY-<version>.jar`.
+  </ContentTab>
+  <ContentTab value="BungeeCord">
+    <Files>
+      <Folder name="plugins" defaultOpen>
+        <File name="Identica-BUNDLE-<version>.jar" />
+        <Folder name="Identica" defaultOpen>
+          <Folder name="providers" defaultOpen>
+            <File name="Identica-Credential-<version>.jar" />
+            <File name="Identica-Premium-<version>.jar" />
+          </Folder>
+        </Folder>
+      </Folder>
+    </Files>
+
+    Если вместо универсального jar-файла вы используете jar-файл для своего прокси, на месте `Identica-BUNDLE-<version>.jar` будет `Identica-BUNGEECORD-<version>.jar`. Waterfall использует jar-файл для BungeeCord.
+  </ContentTab>
+</ContentTabs>

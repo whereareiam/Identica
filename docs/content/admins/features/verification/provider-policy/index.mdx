@@ -1,0 +1,52 @@
+---
+title: Per-provider policy
+description: Offer, require or leave out verification for each provider, and choose its methods.
+---
+
+Whether a provider's players are asked for verification, and with which methods, is a policy. The shared policy is `defaults` in `features/verification/settings`:
+
+```yaml
+defaults:
+  enabled: true
+  required: false
+  unavailableSelectionPolicy: KEEP_LOCKED
+  methods:
+    - id: totp
+      enabled: true
+      priority: 100
+```
+
+- `enabled`: whether the provider's players can use verification at all.
+- `required`: whether the provider's players must use verification. With `false`, it is optional.
+- `methods`: the methods the provider offers, in the order of `priority`. An explicit `methods: []` offers none.
+- `unavailableSelectionPolicy`: what happens to a player's chosen method when the provider no longer offers it. The login is refused while verification is required and goes on without it while verification is optional. `KEEP_LOCKED` keeps the player's choice, so the method is asked for again once it is offered; `CLEAR_SELECTION` forgets it.
+
+## Different policies per provider
+
+A provider's entry in `providers/providers.yml` overrides only what it names; the rest comes from `defaults`:
+
+```yaml
+providers:
+  - id: "credential"
+    features:
+      verification:
+        required: true
+  - id: "premium"
+    features:
+      verification:
+        enabled: false
+```
+
+Here every Credential player has to use verification, and Premium players are never asked. Premium accounts are already protected by Mojang's login, so many networks require verification only for password providers.
+
+<Callout type="warn" title="Required means refused without it">
+  With `required: true`, a player of that provider who has not set up a method is refused when they log in, with the `scenario.authentication.verification.required` message of the provider's `messages.yml`. Players set verification up while they are logged in, so tell them to set it up before you require it.
+</Callout>
+
+A method entry can also set `required` or `unavailableSelectionPolicy` for that method alone.
+
+## Protected actions
+
+Actions such as turning a method off ask for verification according to the policy of the provider the player is logged in through. Moving to another provider does not get around it.
+
+See [Verification settings](../../../../configuration/features/verification/index.mdx#per-provider) for every field.

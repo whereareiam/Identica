@@ -1,0 +1,44 @@
+---
+title: Sessions
+description: One session per account, what happens when an account logs in twice, and how sessions end.
+---
+
+A session exists while a player is logged in. An account has one session, which belongs to the connection that opened it. Staff list and end sessions with `/identica admin session`; see [Managing accounts](../../accounts/managing-accounts/index.mdx#sessions).
+
+## Logging in from a second place
+
+A login from the same connection continues its session. When the account logs in from another connection while it has a session, for example through a second proxy of the network, `concurrencyPolicy` in `settings.yml` decides:
+
+| Policy | The earlier connection | The new login |
+| --- | --- | --- |
+| `REPLACE_EXISTING` (default) | is disconnected with `engine.concurrentLoginKick`, on whichever proxy holds it | keeps playing |
+| `REJECT_NEW` | keeps playing | is refused with `engine.concurrentLoginRefused` |
+
+```yaml
+sessions:
+  concurrencyPolicy: "REPLACE_EXISTING"
+```
+
+A provider can use a different policy than the rest of the network with `session.concurrencyPolicy` in its entry of `providers/providers.yml`.
+
+The policy covers connections that have already logged in. A connection that is still logging in when another connection of the account finishes is always disconnected; see [Two connections with one username](../index.mdx#two-connections-with-one-username).
+
+## Two logins at the same moment
+
+When two logins of one account finish at the same moment, on one proxy or on two that share Redis, only the one that is saved first counts. The other is disconnected with `engine.concurrentChangeKick`, which asks the player to reconnect, and leaves no session behind. When that player reconnects, the policy decides as for any later login.
+
+## How a session ends
+
+- A player who leaves closes only the session of their own connection. A connection whose session was replaced no longer holds one, so its leaving does not end the session that replaced it.
+- Staff can end a session with `/identica admin session end`.
+- When a proxy stops or crashes without closing its sessions, other proxies of the network still see those sessions for [`replication.heartbeatTimeout`](../../../../configuration/replication/index.mdx#heartbeattimeout), 30 seconds by default. Until then, `REJECT_NEW` still refuses a new login of those accounts. The proxy that holds a connection treats its session as gone as soon as that connection is no longer online.
+
+## Messages
+
+| Message in `messages.yml` | Shown to |
+| --- | --- |
+| `engine.concurrentLoginKick` | the earlier connection that `REPLACE_EXISTING` disconnects, and a connection still logging in when the account logs in elsewhere |
+| `engine.concurrentLoginRefused` | the new login that `REJECT_NEW` refuses |
+| `engine.concurrentChangeKick` | a connection whose login was saved elsewhere first |
+
+Emptying a message changes only the text. The connection is still disconnected or refused; a login refused under `REJECT_NEW` then shows the scenario's general failure message.

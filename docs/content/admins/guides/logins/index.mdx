@@ -1,0 +1,49 @@
+---
+title: How logins work
+description: What happens between a player joining the proxy and reaching their server.
+---
+
+Every player who joins goes through the same few stages. Knowing them makes the rest of the configuration easier to follow.
+
+## From join to server
+
+1. **The player connects.** Identica looks at the connection: the username, the address, the hostname the client joined through, and what each provider can tell about the player, such as whether the username belongs to a premium account.
+2. **A provider is picked.** Identica chooses which provider handles the player. See [How a provider is picked](./provider-selection/index.mdx).
+3. **A scenario runs.** Which scenario depends on the player:
+   - **authentication** for a player who has an account,
+   - **registration** for a player who does not,
+   - **migration** for a player who asked to move their account to another provider.
+4. **The player is asked, if needed.** A scenario may wait for the player, for example for a password, a provider choice or an authenticator code. While it waits, the player is on the `step` server of [routing](../network/routing/index.mdx).
+5. **A session opens.** Once the scenario completes, the account has a [session](./sessions/index.mdx) for as long as the player is online.
+6. **The player is routed.** Identica sends the player to the `complete` server.
+
+Whether Identica asks the player or continues on its own depends on the scenario's [journey mode](./journey-modes/index.mdx).
+
+## Leaving during a login
+
+A login that waits for the player is saved for the scenario's `pipelineTtl`, five minutes by default, set in [`engine.yml`](../../../configuration/engine/index.mdx#pipelinettl).
+
+- With `allowResume: true`, the default, a player who leaves and joins again within that time continues where they stopped. A player who typed the first password of a registration is asked for its confirmation, not for the first password again.
+- With `allowResume: false`, such a player starts over.
+- A reconnect the login asks for itself, such as the rejoin after choosing Premium, always continues the login.
+
+A saved login belongs to the connection that made it: the username together with the address the player connects from. The hostname the client joined through does not count.
+
+## Two connections with one username
+
+Two clients can try to log in with the same username at the same moment, for example a player and someone who knows their name. Identica keeps them apart:
+
+- A player who returns with the same username from the same address continues their own login, on any proxy of the network.
+- A client that uses the username from another address starts a login of its own. It never sees, continues or changes the other connection's progress, so it is asked for the password even when the owner already typed it.
+- While one connection is logging in under a username, a second connection with that username from another address is refused with the `engine.usernameHeld` message. The username is free again once that login ends, the player leaves, or `pipelineTtl` passes. If the proxy of that login stops or crashes, the username is free after [`replication.heartbeatTimeout`](../../../configuration/replication/index.mdx#heartbeattimeout).
+- When both connections arrive at the same moment on two proxies, only one of them takes the username. The other is disconnected with `engine.usernameHeld` as soon as its login waits for the player.
+- A connection whose identity a provider proves, such as a verified premium login, is not refused. It wins, and the connection that held the username is disconnected. Only such proof counts, never the hostname, the username or the address.
+- When a connection finishes logging in to an account, every other connection that is still logging in to that account or under its username, on any proxy, is disconnected with `engine.concurrentLoginKick`. Connections that are already logged in follow the [session policy](./sessions/index.mdx).
+
+On one proxy, the proxy itself already refuses a second player with a username that is online.
+
+An address that keeps being refused this way is locked out for a while by the [sentinel](../../features/sentinel/index.mdx).
+
+## When a login fails
+
+A player whose login cannot continue is disconnected with a message that says why, such as a wrong password, a username another account holds, or a server that does not exist. Every message can be changed; see [Messages](../../../configuration/messages/index.mdx). [Troubleshooting](../../troubleshooting/index.mdx) lists the common causes.

@@ -1,24 +1,21 @@
 ---
-title: Messages
-description: Shared formatting guidance for Identica messages configuration.
+title: messages.yml
+description: How messages are written, and the settings of messages.yml that apply to many messages.
 ---
 
-This page documents only the shared message-formatting areas that affect many messages at once.
-It does not try to explain every individual message field in the full messages configuration.
+`messages.yml` holds what Identica says to players and staff. Every message is written in the file with its default text; this page covers how they are written and the settings that shape many messages at once.
 
-Feature-owned messages live in each feature's directory. Username synchronization failures and username conflict messages are configured in [identity/username/messages](../identity/username/index.mdx#messages).
+Features and providers keep their messages in their own `messages.yml`, such as `features/verification/messages.yml` or `providers/Credential/messages.yml`. Username messages are in [`identity/username/messages.yml`](../identity/username/index.mdx#messagesyml).
 
 ## Formatting
 
-Identica messages can use MiniMessage formatting.
-If you want to use colors, decorations, click actions, hover actions, or other text formatting features, see the MiniMessage format reference here:
+Messages are written in [MiniMessage](https://docs.papermc.io/adventure/minimessage/format/), which covers colors, decorations, and click and hover actions:
 
-- [MiniMessage format reference](https://docs.papermc.io/adventure/minimessage/format/)
+```yaml
+prefix: "<green>Identica</green> <dark_gray>| "
+```
 
-Identica also provides internal placeholders in some messages.
-Those placeholders always use curly-brace format such as `{prefix}`, `{username}`, or `{provider}`.
-
-The exact available placeholders depend on the specific message field and the code path that renders it.
+Placeholders are written in curly braces, such as `{prefix}`, `{username}` or `{provider}`. Which placeholders a message has depends on the message; the default text uses them.
 
 ## Emptying a message
 
@@ -28,138 +25,175 @@ Recovery codes are the exception, because they are shown once and cannot be read
 
 ## engine
 
-The `engine` section holds messages of the login flow itself. Two of them belong to `settings.sessions.concurrencyPolicy`, which decides what happens when an account that is online logs in from another connection:
+Messages of the login itself. See [Sessions](../../admins/guides/logins/sessions/index.mdx) and [Two connections with one username](../../admins/guides/logins/index.mdx#two-connections-with-one-username) for when they are shown.
 
-#### concurrentLoginKick
+<Setting
+  name="concurrentLoginKick"
+  takes="a list of lines"
+  affects="the reason shown to the earlier connection when `REPLACE_EXISTING` disconnects it, and to a connection that was still logging in when another connection logged in to the account"
+>
 
-- Takes: a list of lines
-- Affects: the reason shown to the earlier connection when `REPLACE_EXISTING` disconnects it, and to a connection that was still logging in when another connection logged in to the account
+</Setting>
 
-#### concurrentLoginRefused
-
-- Takes: a list of lines
-- Current default: a notice ending in `This account is already logged in.` and `Log out from the other location first.`
-- Affects: the reason shown to the new login when `REJECT_NEW` refuses it because the account is already online
+<Setting
+  name="concurrentLoginRefused"
+  takes="a list of lines"
+  default="a notice ending in `This account is already logged in.` and `Log out from the other location first.`"
+  affects="the reason shown to the new login when `REJECT_NEW` refuses it because the account is already online"
+>
 
 Emptying either message changes only the text. The earlier connection is still disconnected, and the new login is still refused, then with the scenario's general failure message.
 
-#### usernameHeld
+</Setting>
 
-- Takes: a list of lines
-- Current default: a notice reading `This name is being logged in from another location.` and `Try again shortly.`
-- Affects: the reason shown to a connection that is refused, or disconnected once its login waits, because another connection, from another address, is logging in under the same username on another proxy of the network
+<Setting
+  name="usernameHeld"
+  takes="a list of lines"
+  default="a notice reading `This name is being logged in from another location.` and `Try again shortly.`"
+  affects="the reason shown to a connection that is refused, or disconnected once its login waits, because another connection, from another address, is logging in under the same username on another proxy of the network"
+>
 
-See [Logins in progress](../engine/index.mdx#logins-in-progress) for when Identica refuses such a connection. Emptying the message changes only the text; the connection is still refused.
+Emptying the message changes only the text; the connection is still refused.
 
-#### concurrentChangeKick
+</Setting>
 
-- Takes: a list of lines
-- Current default: a notice reading `Reconnect to try again.`
-- Affects: the reason shown to a connection that is disconnected because its login changed elsewhere while Identica was writing it, typically because the same player continued on another proxy of the network at the same moment
+<Setting
+  name="concurrentChangeKick"
+  takes="a list of lines"
+  default="a notice reading `Reconnect to try again.`"
+  affects="the reason shown to a connection that is disconnected because its login changed elsewhere while Identica was writing it, typically because the same player continued on another proxy of the network at the same moment"
+>
 
-Identica writes a player's login progress and new sessions only over what it read. When another proxy wrote first, the connection that came second is disconnected with this message instead of overwriting the other proxy's work. See [Concurrent writes](../replication/index.mdx#concurrent-writes). Emptying the message changes only the text; the connection is still disconnected.
+See [A player on two proxies at once](../../admins/guides/network/several-proxies/index.mdx#a-player-on-two-proxies-at-once). Emptying the message changes only the text; the connection is still disconnected.
+
+</Setting>
 
 ## routing
 
 Identica disconnects a player when the server it routes them to does not exist on the proxy. The reason comes from the scenario the player is in, and from the shared message when that scenario has none.
 
-#### routing.missingServer
+<Setting
+  name="routing.missingServer"
+  takes="a list of lines"
+  default="a notice reading `No target server available for routing` and `Please contact a server administrator.`"
+  affects="the reason shown when a routing target server is missing and the player's scenario has no message of its own, or the route belongs to no scenario"
+>
 
-- Takes: a list of lines
-- Current default: a notice reading `No target server available for routing` and `Please contact a server administrator.`
-- Affects: the reason shown when a routing target server is missing and the player's scenario has no message of its own, or the route belongs to no scenario
+</Setting>
 
-#### scenarios.authentication.routing.missingServer, scenarios.registration.routing.missingServer, scenarios.migration.routing.missingServer
-
-- Takes: a list of lines
-- Current default: `[]`
-- Affects: the reason shown to a player in that scenario when a routing target server is missing
+<Setting
+  name="scenarios.authentication.routing.missingServer, scenarios.registration.routing.missingServer, scenarios.migration.routing.missingServer"
+  takes="a list of lines"
+  default="`[]`"
+  affects="the reason shown to a player in that scenario when a routing target server is missing"
+>
 
 An empty scenario message shows `routing.missingServer` instead. To disconnect without a reason, empty both.
 
-## prefix
+</Setting>
 
-- Takes: a string
-- Current default: `"<green>Identica</green> <dark_gray>| "`
-- Affects: the global message prefix supplied to the serializer engine
+<Setting
+  name="prefix"
+  depth={2}
+  takes="a string"
+  default='`"<green>Identica</green> <dark_gray>| "`'
+  affects="the text of `{prefix}`, which most messages start with"
+>
 
-This prefix is available to messages through `{prefix}` and is also used as the serializer prefix supplier.
+Change it to rebrand Identica's messages without editing each of them.
 
-Changing this lets you rebrand or restyle the general look of Identica messages without editing every message line one by one.
+</Setting>
 
 ## format
 
-The `format` section controls shared formatting helpers used by message placeholders.
-
 ### temporal
 
-The `temporal` subsection controls how shared date and date-time placeholders are formatted when messages render timestamps.
+How dates and times in messages are written, as [Java date patterns](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/time/format/DateTimeFormatter.html#patterns).
 
-#### date
+<Setting
+  name="date"
+  depth={4}
+  takes="a date-time pattern string"
+  default='`"dd.MM.yyyy"`'
+  affects="dates without a time"
+>
 
-- Takes: a date-time pattern string
-- Current default: `"dd.MM.yyyy"`
-- Affects: the formatter pattern used for date-only placeholders
+A blank pattern uses each message's own default.
 
-If this is blank, runtime code falls back to its built-in formatter for the specific message path.
+</Setting>
 
-#### dateTime
+<Setting
+  name="dateTime"
+  depth={4}
+  takes="a date-time pattern string"
+  default='`"dd.MM.yyyy HH:mm:ss"`'
+  affects="dates with a time"
+>
 
-- Takes: a date-time pattern string
-- Current default: `"dd.MM.yyyy HH:mm:ss"`
-- Affects: the formatter pattern used for date-time placeholders
+A blank pattern uses each message's own default.
 
-If this is blank, runtime code falls back to its built-in formatter for the specific message path.
+</Setting>
 
 ## commands.pagination
 
-The `commands.pagination` section controls the shared pagination renderer used by command outputs that span multiple pages.
+How lists that span several pages, such as `/identica help`, show their page navigation.
 
-These settings affect the formatting of page navigation, not which data is paginated.
+<Setting
+  name="showPaginationIfOnePage"
+  takes="`true` or `false`"
+  default="`false`"
+  affects="whether pagination controls are shown when there is only one page"
+>
 
-#### showPaginationIfOnePage
+</Setting>
 
-- Takes: `true` or `false`
-- Current default: `false`
-- Affects: whether pagination controls are shown when there is only one page
+<Setting
+  name="format"
+  takes="a string"
+  default='`"\n {previous}<white>Pagination</white> <gray>[{current}/{max}]</gray>{next} \n"`'
+  affects="the navigation line"
+>
 
-#### format
+Placeholders: `{previous}` and `{next}` for the controls below, `{current}` for the page and `{max}` for the number of pages.
 
-- Takes: a string
-- Current default: `"\n {previous}<white>Pagination</white> <gray>[{current}/{max}]</gray>{next} \n"`
-- Affects: the overall pagination line format
+</Setting>
 
-The pagination renderer can supply placeholders such as:
+<Setting
+  name="showPreviousEvenIfFirst"
+  takes="`true` or `false`"
+  default="`false`"
+  affects="whether the previous-page control is still shown on the first page"
+>
 
-- `{previous}`
-- `{next}`
-- `{current}`
-- `{max}`
+</Setting>
 
-#### showPreviousEvenIfFirst
+<Setting
+  name="previousTagFormat"
+  takes="a string"
+  default='`"<red><click:run_command:/identica help {previousPage}>«</red> "`'
+  affects="the control to the previous page"
+>
 
-- Takes: `true` or `false`
-- Current default: `false`
-- Affects: whether the previous-page control is still shown on the first page
+`{previousPage}` is the number of that page.
 
-#### previousTagFormat
+</Setting>
 
-- Takes: a string
-- Current default: `"<red><click:run_command:/identica help {previousPage}>«</red> "`
-- Affects: the rendered previous-page control
+<Setting
+  name="showNextEvenIfLast"
+  takes="`true` or `false`"
+  default="`false`"
+  affects="whether the next-page control is still shown on the last page"
+>
 
-The pagination renderer can supply `{previousPage}` here.
+</Setting>
 
-#### showNextEvenIfLast
+<Setting
+  name="nextTagFormat"
+  takes="a string"
+  default='`" <green><click:run_command:/identica help {nextPage}>»</green>"`'
+  affects="the control to the next page"
+>
 
-- Takes: `true` or `false`
-- Current default: `false`
-- Affects: whether the next-page control is still shown on the last page
+`{nextPage}` is the number of that page.
 
-#### nextTagFormat
-
-- Takes: a string
-- Current default: `" <green><click:run_command:/identica help {nextPage}>»</green>"`
-- Affects: the rendered next-page control
-
-The pagination renderer can supply `{nextPage}` here.
+</Setting>

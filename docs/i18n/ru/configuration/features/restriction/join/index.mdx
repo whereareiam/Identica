@@ -1,62 +1,99 @@
 ---
-title: Ограничение входа
-description: Конфигурация необязательной функции ограничения входа.
-sourceHash: f3b76c927a797c5a254da7fa96e0597e6be7e3f6
+title: features/restriction/join/
+description: Все настройки features/restriction/join/ и настройки для отдельных провайдеров.
+sourceHash: 58998234a035d2109e3f2f990edf62c4c7364782
 ---
 
-Ограничение входа построено на встроенном каркасе ограничений. Оба компонента встроены в Identica; администраторы настраивают их поведение глобально и для каждого провайдера.
-Функция определяет, может ли провайдер временно ограничивать новые входы с помощью административных команд ограничения.
+`features/restriction/join/` содержит файлы ограничения входа: `settings.yml`, `commands.yml` и `messages.yml`. Как им пользуется администрация, описано в разделе [Ограничение входа](../../../../admins/features/restriction/join/index.mdx).
 
-Пока провайдер ограничен, игрок, которого он обслуживал бы и у которого нет ни одного из разрешённых признаков, получает отказ с сообщением `denied`. Если Identica уже знает провайдера, когда игрок заходит, прокси отклоняет подключение во время входа, до любого запроса, одинаково на Velocity и BungeeCord. Игрок, чей провайдер выбирается только позже в ходе прохождения, получает отказ, когда завершается его регистрация или аутентификация. После снятия ограничения игрок, получивший отказ, проходит при следующей попытке. Ограничение снимается само через [`toggleTtl`](../index.mdx#togglettl), а без Redis его снимает и перезапуск прокси.
-
-Переопределения ограничения входа для провайдера задаются в `providers[].features.restriction.join`.
-
-Общие документы с командами и сообщениями находятся в `features/restriction/join/commands` и `features/restriction/join/messages`.
-
-## Настройки [#settings]
-
-Общие настройки политики находятся в `features/restriction/join/settings`.
-
-### resumeBypass.authentication
-
-- Принимает: `true` или `false`
-- По умолчанию: `false`
-- Влияет на: может ли уже начатый процесс аутентификации продолжиться, несмотря на действующее ограничение входа для провайдера
-
-### resumeBypass.registration
-
-- Принимает: `true` или `false`
-- По умолчанию: `false`
-- Влияет на: может ли уже начатый процесс регистрации продолжиться, несмотря на действующее ограничение входа для провайдера
-
-Эти политики касаются только продолжаемых процессов. Они не пропускают новые попытки через действующее ограничение и не включают поддержку продолжения в движке. Возобновление должен разрешать соответствующий сценарий движка через `allowResume`.
+## settings.yml
 
 ```yaml
+enabled: false
+allow: []
 resumeBypass:
   authentication: false
   registration: false
 ```
 
-## Переопределения для провайдеров [#provider-overrides]
+<Setting
+  name="enabled"
+  takes="`true` или `false`"
+  default="`false`"
+  affects="можно ли ограничивать вход через провайдеры — для каждого провайдера, который не задаёт собственное значение"
+  flag="advanced"
+>
 
-### features.restriction.join.enabled
+</Setting>
 
-<Badge type="warning">Для опытных</Badge>
+<Setting
+  name="allow"
+  takes="список сигналов: `linked`, `recognized`"
+  default="`[]`"
+  affects="какие игроки всё равно проходят, пока провайдер ограничен, — для каждого провайдера, который не задаёт собственный список"
+  flag="advanced"
+>
 
-- Принимает: `true` или `false`
-- По умолчанию: `false`
-- Влияет на: предоставляет ли этот провайдер типизированную среду выполнения ограничения входа
+`linked` пропускает игроков, у которых есть аккаунт у этого провайдера, `recognized` — игроков, которых узнаёт [распознавание](../../../../admins/features/recognition/index.mdx). Указание `recognized` не включает распознавание.
 
-### features.restriction.join.allow
+</Setting>
 
-<Badge type="warning">Для опытных</Badge>
+<Setting
+  name="resumeBypass.authentication"
+  takes="`true` или `false`"
+  default="`false`"
+  affects="может ли завершиться вход, который уже ожидал, когда ограничение началось"
+>
 
-- Принимает: список идентификаторов сигналов
-- По умолчанию: не задано, если не настроено явно
-- Влияет на: какие из добавленных сигналов входа могут пропускать игроков через провайдера, пока действует ограничение входа
+</Setting>
 
-Встроенный сигнал `linked` пропускает привязанные аккаунты. Сигнал `recognized` добавляется, когда выбрана и функция `recognition`; распознавание может работать без ограничения входа. Указание `recognized` в этом списке не включает распознавание.
+<Setting
+  name="resumeBypass.registration"
+  takes="`true` или `false`"
+  default="`false`"
+  affects="может ли завершиться регистрация, которая уже ожидала, когда ограничение началось"
+>
 
-## Общие значения по умолчанию [#shared-defaults]
+Ни одна из этих настроек не пропускает новые попытки. Сценарий также должен разрешать продолжение через [`allowResume`](../../../engine/index.mdx#allowresume).
 
-По умолчанию `features/restriction/join/settings.enabled` равно `false`, а `allow` — пустой список. Поля провайдера переопределяют эти значения; пропущенное поддерево провайдера их наследует. Внешняя функция ограничений тоже должна быть включена. Политику продолжаемых процессов по-прежнему задают `resumeBypass.authentication` и `resumeBypass.registration`.
+</Setting>
+
+## Для отдельного провайдера [#per-provider]
+
+В `features.restriction.join` записи провайдера в `providers/providers.yml`. Если поле не задано, оно берётся из общих настроек, а [`features.restriction.enabled`](../index.mdx#featuresrestrictionenabled) провайдера не должно быть `false`.
+
+```yaml
+providers:
+  - id: "credential"
+    features:
+      restriction:
+        join:
+          enabled: true
+          allow:
+            - linked
+            - recognized
+```
+
+<Setting
+  name="features.restriction.join.enabled"
+  takes="`true` или `false`"
+  default="не задано"
+  affects="может ли администрация ограничивать вход через этого провайдера"
+  flag="advanced"
+>
+
+</Setting>
+
+<Setting
+  name="features.restriction.join.allow"
+  takes="список сигналов: `linked`, `recognized`"
+  default="не задано"
+  affects="какие игроки этого провайдера всё равно проходят, пока он ограничен"
+  flag="advanced"
+>
+
+</Setting>
+
+## commands.yml и messages.yml [#commandsyml-and-messagesyml]
+
+У команд `/identica admin provider restriction join enable|disable|status` те же поля, что и в [`commands.yml`](../../../commands/index.mdx#commands). Сообщение `denied` видит игрок, которому отказали.

@@ -1,0 +1,35 @@
+---
+title: Overview
+description: Ask players for a second factor, such as a code from an authenticator app, after they log in.
+---
+
+Verification adds a second step after the provider has identified the player. A player logs in with their password, for example, and is then asked for the code their authenticator app shows. Only after the code is accepted does the login complete.
+
+## What players do
+
+Players set verification up themselves, with commands that work once they are logged in:
+
+| Command | Does |
+| --- | --- |
+| `/2fa` | shows the verification commands |
+| `/2fa status` | shows which methods are set up |
+| `/2fa enroll totp` | starts setting up an authenticator app |
+| `/2fa enroll confirm <code>` | finishes the setup with the first code |
+| `/2fa enroll cancel` | cancels the setup |
+| `/2fa confirm <code>` | answers the verification prompt during a login |
+| `/2fa use <provider> <method>` | chooses which method a provider asks for |
+| `/2fa disable <method>` | turns a method off |
+
+Turning a method off is a protected action: the player confirms it with a code as well. Staff reset a player who lost access with `/identica admin 2fa reset`; see [Managing accounts](../../guides/accounts/managing-accounts/index.mdx#two-factor-verification).
+
+The built-in method is an [authenticator app](./authenticator-apps/index.mdx), with recovery codes for players who lose it. Addons can add other methods.
+
+## Optional or required
+
+By default, verification is offered to every provider's players but not required: a player who set it up is asked for it, everyone else logs in as before. A provider can require it, so its players cannot log in without it, or not offer it at all; see [Per-provider policy](./provider-policy/index.mdx).
+
+## Codes are used once
+
+Each authenticator code is accepted once per account, whether it confirms a login or a protected action; the code that confirmed the setup counts as used too. Once a code is accepted, codes of its time window and of earlier windows are refused, through every proxy that shares the database, and the player types the next code. A refused code gets the same answer as a wrong one. Recovery codes are single-use as well.
+
+See [Verification settings](../../../configuration/features/verification/index.mdx) for every setting.

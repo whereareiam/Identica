@@ -1,60 +1,66 @@
 ---
 title: Overview
-description: Conceptual guide to Identica configuration areas and responsibilities.
+description: Every configuration file of Identica, how they are written and reloaded, and how values are spelled.
 ---
 
-This section explains Identica configuration as a set of concepts, not as one specific file syntax.
-That is intentional: Identica can choose its config representation at runtime, so the important thing is understanding what each config area means first.
+This section describes every setting, file by file. Each page's place mirrors its file in the data directory, `plugins/identica/` on Velocity and `plugins/Identica/` on BungeeCord. To learn what to change for a task, start with the [guides](../admins/guides/logins/index.mdx) instead.
 
-## Format-agnostic by design
+## Files
 
-Identica does not have to be documented as "the YAML plugin" or "the JSON plugin."
-The runtime selects a configuration format from a marker file in the data directory, with `type=YAML` as the default behavior in the current codebase.
-Some explanations include examples where that helps, while others stay descriptive when the setting type is simple enough without one.
+| File | Page |
+| --- | --- |
+| `settings.yml` | [Settings](./settings/index.mdx) |
+| `engine.yml` | [Engine](./engine/index.mdx) |
+| `routing.yml` | [Routing](./routing/index.mdx) |
+| `commands.yml` | [Commands](./commands/index.mdx) |
+| `messages.yml` | [Messages](./messages/index.mdx) |
+| `persistence.yml` | [Persistence](./persistence/index.mdx) |
+| `replication.yml` | [Replication](./replication/index.mdx) |
+| `providers/providers.yml` | [Providers](./providers/index.mdx) |
+| `identity/username/` | [Username](./identity/username/index.mdx) |
+| `features/recognition/` | [Recognition](./features/recognition/index.mdx) |
+| `features/restriction/` | [Restriction](./features/restriction/index.mdx) |
+| `features/restriction/join/` | [Join restriction](./features/restriction/join/index.mdx) |
+| `features/sentinel/` | [Sentinel](./features/sentinel/index.mdx) |
+| `features/verification/` | [Verification](./features/verification/index.mdx) |
+| `providers/Credential/` | [Credential settings](../admins/providers/official/credential/settings/index.mdx) |
+| `providers/Premium/` | [Premium settings](../admins/providers/official/premium/settings/index.mdx) |
 
-Because of that, this documentation describes:
+A provider or addon from elsewhere documents its own files.
 
-- what each configuration area controls
-- how the pieces relate to each other
-- when you should edit one config area instead of another
+## YAML or JSON
 
-<Callout title="Setting flags" type="warn">
-  Some settings are marked with flags such as <Badge type="warning">Advanced</Badge>, <Badge type="warning">Warning</Badge>, <Badge type="error">Danger</Badge>, or <Badge type="info">Reserved</Badge>.
-  These flags show that a setting is intentionally configurable, but should be changed with more care than ordinary options. Unmarked settings are normal day-to-day configuration.
-</Callout>
+The examples use YAML, Identica's default. An empty file in the data directory chooses the format: `type=YAML` or `type=JSON`. Identica creates `type=YAML` on its first start; rename it before you change any setting, because Identica does not convert files that already exist.
+
+## Setting flags
+
+Some settings carry a flag:
+
+- <Badge type="warning">Advanced</Badge>: the default suits almost every network. Change it only for a reason you can name.
+- <Badge type="warning">Warning</Badge>: a change affects security or what players experience; read the setting's description first.
+- <Badge type="error">Danger</Badge>: a change can affect existing accounts and is hard to undo.
+- <Badge type="warning">Experimental</Badge>: works, but may still change in a later release.
+- <Badge type="info">Reserved</Badge>: read, but without effect yet. Leave it as it is.
+
+Unflagged settings are ordinary configuration.
 
 ## What Identica writes back
 
-On every start and reload Identica completes each document with the settings it lacks and writes it back. Your values are kept; comments are not preserved.
+On every start and reload, Identica completes each file with the settings it lacks and writes it back. Your values are kept; comments are not.
 
 A list is taken as you wrote it, including an empty one: `[]` means "nothing", not "use the default". Remove the key to get the default list back.
 
+`settings.yml` and the `settings` file of each feature start with `_version`, which Identica uses to [upgrade](../admins/guides/upgrading/index.mdx) them. Do not edit or remove it.
+
 ## Reloading
 
-`/identica admin reload` reads every document of the running proxy again: the core documents, those of features and identity guarantees, and those of every loaded provider. Documents a provider owns are read before the sections other parts add to them, as on startup. Messages and settings that are read when they are used, such as the prompts players see or a provider's attempt limits, apply to the next players without a restart. The database connection is opened at startup, so a change to the persistence document takes effect on the next start.
+`/identica admin reload` reads every file of the running proxy again: Identica's own, those of its features, and those of every loaded provider. Messages and settings that are read when they are used, such as the prompts players see or a provider's attempt limits, apply to the next players without a restart. The database connection is opened at startup, so a change to `persistence.yml` takes effect on the next start.
 
-A document that cannot be read keeps the values it had, and the other documents are still reloaded. The command then answers with `commands.reload.error` from the messages document, whose `{error}` names each file that failed; it answers with `commands.reload.success` only when every document was reloaded. Identica does not rewrite a file it could not read, so you can fix it and reload again.
+A file that cannot be read keeps the values it had, and the other files are still reloaded. The command then answers with `commands.reload.error` from `messages.yml`, whose `{error}` names each file that failed; it answers with `commands.reload.success` only when every file was reloaded. Identica does not rewrite a file it could not read, so you can fix it and reload again.
 
-## Configuration version
+## Value formats
 
-The settings document starts with `_version`, and so does the `settings` document of each feature under `features/`, which counts the upgrades of that feature's documents. Identica uses them to upgrade the data directory when a new release changes the layout of a document, and it refuses to start on a directory written by a newer release. Do not edit or remove them, and keep them when you copy your configuration to another server.
-
-Identica upgrades the data directories of Identica 2.2.1 and of the 3.0.0 development builds on their first start with this version. Every setting, message and command you changed moves to the place this version reads it from, and what has no place any more is removed. The documents of a provider, below `providers/` next to its jar, are not upgraded: a setting there whose name or place changed falls back to its default.
-
-Before an upgrade changes a file, the file is copied to `.strata/backup/` in the data directory. Identica never reads these copies, so the `.strata` folder can be deleted at any time.
-
-## Feature selection and settings
-
-Feature settings live under `features/<id>/`, with join restriction nested under `features/restriction/join/`. Provider-specific overrides belong to `providers[].features` and inherit shared defaults. All features are compiled into Identica. See [Features](./features/index.mdx) for configuration.
-
-## Common value formats
-
-Across configuration areas, values commonly appear in a few recurring forms:
-
-- durations such as `"30s"`, `"10m"`, `"2h"`, `"1d12h"`, or ISO-8601 values such as `"PT10M"`
-- bare numbers for durations such as `10`, which the current duration adapter treats as minutes
-- enum values written as uppercase strings such as `"RANDOM"` or `"REPLACE_EXISTING"`
-- booleans such as `true` and `false`
-- maps keyed by provider id, scenario id, stage id, step name, or fully qualified event class name
-
-For clarity, quoted duration strings are the safest style to document and maintain.
+- **Durations**: `"30s"`, `"10m"`, `"2h"`, `"1d12h"`, or ISO-8601 such as `"PT10M"`. A bare number such as `10` means minutes. Quoted strings with a unit are the clearest.
+- **Choices**: upper case strings, such as `"RANDOM"` or `"REPLACE_EXISTING"`.
+- **Switches**: `true` or `false`.
+- **Messages**: [MiniMessage](https://docs.papermc.io/adventure/minimessage/format/) text; see [Messages](./messages/index.mdx#formatting).

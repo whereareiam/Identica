@@ -1,0 +1,44 @@
+---
+title: Installation
+description: Download Identica and its providers, put the jars in place, and start the proxy once.
+---
+
+Identica runs on a Velocity, BungeeCord or Waterfall proxy. This page installs it with the two official providers, [Credential](../providers/official/credential/index.md) and [Premium](../providers/official/premium/index.md), on one proxy. When it is done, continue with [First configuration](../first-configuration/index.mdx).
+
+To run Identica on several proxies that share their players, install it on each proxy as described here, then follow [Running several proxies](../guides/network/several-proxies/index.mdx).
+
+## Before you start
+
+- a Velocity, BungeeCord or Waterfall proxy running on Java 21 or newer
+- at least one backend server for players who are logging in, and the servers they play on afterwards
+- internet access from the proxy on the first start, when Identica downloads its libraries
+
+All features of Identica, such as two-factor verification, are part of the plugin. Nothing else needs to be installed for them; they are turned on in the configuration.
+
+## Install Identica
+
+### Download Identica and its providers [step]
+
+<Include src="./_partials/download-artifacts.mdx" />
+
+### Put the jars in place [step]
+
+<Include src="./_partials/platform-placement.mdx" />
+
+### Start the proxy once [step]
+
+Start the proxy so Identica can create its configuration files. You finish the setup afterwards, so the first start only needs to complete.
+
+<Include src="./_partials/startup-warning.mdx" />
+
+Once the startup has finished, Identica prints its banner in the console.
+
+<Include src="./_partials/startup-failure.mdx" />
+
+<Include src="./_partials/platform-first-boot.mdx" />
+
+Stop the proxy before you edit the files.
+
+### Configure the basics [step]
+
+Identica's defaults name example servers and hostnames that your network does not have. [First configuration](../first-configuration/index.mdx) walks through what to change before players join.

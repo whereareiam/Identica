@@ -1,0 +1,48 @@
+---
+title: Database
+description: Choose where accounts are stored, connect to a database server, and keep it safe across upgrades.
+---
+
+Identica stores accounts, their provider links, passwords, usernames, UUID reservations and verification methods in a database. `persistence.yml` chooses it.
+
+## Choosing a database
+
+| `type` | Stored in | Use it for |
+| --- | --- | --- |
+| `SQLITE` (default) | a file in the data directory | one proxy |
+| `H2` | a file in the data directory | one proxy |
+| `MYSQL` | a MySQL 8.0.19 or newer, or MariaDB, server | one or [several proxies](../several-proxies/index.mdx) |
+| `POSTGRES` | a PostgreSQL server | one or several proxies |
+
+Identica uses SQLite when `persistence.yml` does not exist yet or does not set `type`. Values are case-sensitive; any other value stops the startup with an error that names the accepted values.
+
+## Connecting to a server
+
+```yaml
+type: "MYSQL"
+host: "db.internal"
+port: 3306
+database: "identica"
+username: "identica"
+credential: "secret"
+```
+
+Create the database and a user that may create and change tables in it; Identica creates its tables itself.
+
+After changing `type`, start the proxy once so Identica writes the fields of the new type, then fill them in. The first start with a new type downloads that database's driver, which needs internet access.
+
+The database is opened on startup, so changes to `persistence.yml` take effect on the next start, not on `/identica admin reload`.
+
+If the database cannot be reached, or a MySQL server is older than 8.0.19, the startup fails before any table is created or changed. Like any failed startup, this refuses every player until the cause is fixed and the proxy restarted.
+
+## Tables and upgrades
+
+Identica creates its tables on the first start and upgrades them on later starts, after an update of Identica, a feature or a provider. It remembers how far each set of tables has come in the `strata_history` table; leave that table as it is.
+
+Before you start a new release for the first time, stop every proxy that uses the database and back the database up. See [Upgrading Identica](../../upgrading/index.mdx).
+
+## Moving to another database
+
+Identica does not copy accounts from one database type to another. Changing `type` on a network with players starts with an empty database; copy the tables with a tool for your databases first if you need to keep them.
+
+See [`persistence.yml`](../../../../configuration/persistence/index.mdx) for every database setting, including the connection pool.

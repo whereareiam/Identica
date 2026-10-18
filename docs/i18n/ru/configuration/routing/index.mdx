@@ -1,32 +1,38 @@
 ---
-title: Маршрутизация
-description: Подробное описание каждого поля конфигурации маршрутизации Identica.
-sourceHash: 161d28ad7fb8375a94cb59d0132d5c90922cc2b1
+title: routing.yml
+description: Все настройки routing.yml.
+sourceHash: a76880dd5ea2e0c91d745566071e889f913aab3a
 ---
 
-Конфигурация маршрутизации определяет, куда отправлять игроков, пока сценарий находится в ожидании, и куда они должны попасть после его завершения.
+`routing.yml` задаёт серверы, на которые отправляются игроки, пока вход ждёт их (`step`), и после того, как они вошли (`complete`). Руководство [Маршрутизация игроков](../../admins/guides/network/routing/index.mdx) объясняет их на примерах.
+
+У каждой цели одинаковые поля: `target`, `forcedHosts` и `attempts`.
 
 ## defaults
 
-`defaults` задаёт резервные цели, которые используются, если не применяется переопределение для конкретного сценария.
+Цели для каждого сценария, который не задаёт собственных.
 
-### step
+<Setting
+  name="step"
+  takes="цель"
+  default='`"auth"`'
+  affects="то, куда игрок попадает, пока вход ждёт от него ответа, например пароля"
+>
 
-- Принимает: имя цели и политику попыток
-- Цель по умолчанию: `"auth"`
-- Влияет на: резервный маршрут, который используется, когда шаг завершается в состоянии ожидания и переопределение для сценария не применяется
+Если цель пуста и цели сценария тоже нет, игрок остаётся там, где находится.
 
-Если эта цель пуста и цель сценария тоже не определилась, Identica не перенаправляет игрока, а очищает текущее намерение маршрутизации с причиной `NO_TARGET`.
+</Setting>
 
-### complete
+<Setting
+  name="complete"
+  takes="цель"
+  default='`"survival"`'
+  affects="то, куда игрок попадает после завершения входа"
+>
 
-- Принимает: имя цели и политику попыток
-- Цель по умолчанию: `"survival"`
-- Влияет на: резервный маршрут, который используется, когда сценарий завершается и цель завершения для этого сценария не задана
+Если цель пуста и цели сценария тоже нет, игрок остаётся там, где находится. Игрок, завершивший вход ещё во время подключения, получает сообщения о завершении на первом сервере, на который попадёт.
 
-Обычно именно здесь указывают, куда вернуть игроков в основную сеть после аутентификации, регистрации или миграции.
-
-Если эта цель пуста и цель сценария тоже не определилась, игрок никуда не перемещается. Игрок, завершивший сценарий уже на сервере, получает сообщения о завершении там же; игрок, завершивший его во время входа, получает их после подключения к первому серверу.
+</Setting>
 
 <Tabs items={["YAML", "JSON"]}>
   <Tab value="YAML">
@@ -37,6 +43,7 @@ defaults:
   complete:
     target: "survival"
     forcedHosts: false
+scenarios: {}
 ```
   </Tab>
   <Tab value="JSON">
@@ -50,149 +57,135 @@ defaults:
       "target": "survival",
       "forcedHosts": false
     }
-  }
+  },
+  "scenarios": {}
 }
 ```
   </Tab>
 </Tabs>
 
-## forcedHosts
+## Поля цели [#target-fields]
 
-- Принимает: `true` или `false`
-- По умолчанию: `false` в `defaults.complete`
-- Влияет на: отправляет ли цель игроков на сервер, который прокси закрепляет за хостнеймом, через который они зашли
+<Setting
+  name="target"
+  takes='имя сервера из конфигурации прокси или `""`'
+  affects="то, на какой сервер отправляется игрок"
+>
 
-Forced hosts настраиваются в конфигурации самого прокси: `[forced-hosts]` в `velocity.toml` или `forced_hosts` у listener в `config.yml` BungeeCord. Собственного списка хостнеймов у Identica нет.
+Сервер, которого прокси не знает, отключает игрока с сообщением [`routing.missingServer`](../messages/index.mdx#routing).
 
-При `forcedHosts: true` цель ведёт на сервер, который прокси закрепил за хостнеймом игрока (forced host). `target` служит запасным вариантом для хостнеймов, у которых в прокси нет forced host.
+</Setting>
 
-<Tabs items={["Velocity", "BungeeCord"]}>
-  <Tab value="Velocity">
-```toml
-[forced-hosts]
-"survival.example.com" = ["survival"]
-"skyblock.example.com" = ["skyblock"]
-```
-  </Tab>
-  <Tab value="BungeeCord">
-```yaml
-listeners:
-  - forced_hosts:
-      survival.example.com: survival
-      skyblock.example.com: skyblock
-```
-  </Tab>
-</Tabs>
+<Setting
+  name="forcedHosts"
+  takes="`true` или `false`"
+  default="`false` в `defaults.complete`; в остальных местах — значение менее конкретной цели"
+  affects="то, отправляется ли игрок на сервер, который прокси закрепляет за хостнеймом, через который он зашёл"
+>
+
+`target` используется для хостнеймов без закреплённого сервера (forced host). Если в Velocity для хостнейма указано несколько серверов, используется первый. См. [Хостнейм игрока](../../admins/guides/network/routing/index.mdx#the-players-hostname).
+
+</Setting>
+
+### attempts
+
+Сколько раз Identica пытается переместить игрока, если сервер его не пускает. См. [Когда сервер не пускает игрока](../../admins/guides/network/routing/index.mdx#when-a-server-turns-the-player-away).
+
+<Setting
+  name="mode"
+  depth={4}
+  takes='`"NONE"`, `"RETRY_ONCE"`, `"RETRY_LIMITED"` или `"UNTIL_REACHED"`'
+  affects="то, сколько делается попыток"
+  flag="advanced"
+>
+
+| Режим | Попытки |
+| --- | --- |
+| `NONE` | одна |
+| `RETRY_ONCE` | две |
+| `RETRY_LIMITED` | `maxAttempts` |
+| `UNTIL_REACHED` | пока сервер не пустит игрока |
+
+</Setting>
+
+<Setting
+  name="maxAttempts"
+  depth={4}
+  takes="целое число"
+  affects="число попыток в режиме `RETRY_LIMITED`"
+  flag="advanced"
+>
+
+Другие режимы его не учитывают.
+
+</Setting>
+
+<Setting
+  name="retryDelay"
+  depth={4}
+  takes="длительность"
+  default='`"0s"`'
+  affects="паузу перед следующей попыткой"
+  flag="advanced"
+>
+
+</Setting>
+
+<Setting
+  name="consumeOnReached"
+  depth={4}
+  takes="`true` или `false`"
+  affects="то, забывает ли Identica маршрут, как только игрок попал на сервер"
+  flag="advanced"
+>
+
+При `false` Identica хранит маршрут, пока его не заменит следующий.
+
+</Setting>
+
+<Setting
+  name="consumeOnExhausted"
+  depth={4}
+  takes="`true` или `false`"
+  affects="то, забывает ли Identica маршрут, когда его попытки исчерпаны"
+  flag="advanced"
+>
+
+При `false` Identica хранит неудавшийся маршрут, пока его не заменит следующий.
+
+</Setting>
+
+<Setting
+  name="scenarios"
+  depth={2}
+  takes="словарь с ключами `authentication`, `registration` или `migration` в любом регистре"
+  default="`{}`"
+  affects="цели `step` и `complete` одного сценария"
+>
+
+Добавляйте сценарий, только если он должен отличаться от `defaults`.
 
 <Tabs items={["YAML", "JSON"]}>
   <Tab value="YAML">
 ```yaml
-defaults:
-  step:
-    target: "auth"
-  complete:
-    target: "lobby"
-    forcedHosts: true
-```
-  </Tab>
-  <Tab value="JSON">
-```json
-{
-  "defaults": {
-    "step": {
-      "target": "auth"
-    },
-    "complete": {
-      "target": "lobby",
-      "forcedHosts": true
-    }
-  }
-}
-```
-  </Tab>
-</Tabs>
-
-| Игрок зашёл через | Пока шаг ожидает | После завершения |
-| --- | --- | --- |
-| `survival.example.com` | `auth` | `survival` |
-| `skyblock.example.com` | `auth` | `skyblock` |
-| `play.example.com` | `auth` | `lobby` |
-
-Пустой `target` при `forcedHosts: true` перенаправляет только по хостнеймам, у которых есть forced host. Игроки, зашедшие через другой хостнейм, никуда не перемещаются.
-
-Если в Velocity для хостнейма указано несколько серверов, Identica отправляет игрока на первый из них. Forced host, указывающий на сервер, которого прокси не знает, обрабатывается так же, как любая другая отсутствующая цель.
-
-Если цель сценария или переопределение не задаёт `forcedHosts`, берётся значение менее конкретной цели — поэтому сценарий может отказаться от того, что задано в `defaults`:
-
-<Tabs items={["YAML", "JSON"]}>
-  <Tab value="YAML">
-```yaml
-defaults:
-  complete:
-    target: "lobby"
-    forcedHosts: true
 scenarios:
   registration:
+    step:
+      target: "register"
     complete:
       target: "tutorial"
-      forcedHosts: false
 ```
   </Tab>
   <Tab value="JSON">
 ```json
 {
-  "defaults": {
-    "complete": {
-      "target": "lobby",
-      "forcedHosts": true
-    }
-  },
   "scenarios": {
     "registration": {
-      "complete": {
-        "target": "tutorial",
-        "forcedHosts": false
-      }
-    }
-  }
-}
-```
-  </Tab>
-</Tabs>
-
-`forcedHosts` работает и для целей `step`. Тогда игроков отправляют на сервер forced host ещё во время входа, поэтому не включайте его там, если этот сервер не предназначен для неаутентифицированных игроков.
-
-## scenarios
-
-- Принимает: карту с идентификаторами сценариев в качестве ключей
-- Поддерживаемые идентификаторы сценариев: `authentication`, `registration`, `migration`
-- Влияет на: цели шагов и завершения для каждого сценария
-
-В сгенерированной конфигурации маршрутизации эта карта пуста.
-Добавляйте записи сценариев, только если сценарий должен маршрутизироваться иначе, чем задано в `defaults`.
-Планировщик маршрутизации сопоставляет идентификаторы сценариев без учёта регистра.
-
-<Tabs items={["YAML", "JSON"]}>
-  <Tab value="YAML">
-```yaml
-scenarios:
-  authentication:
-    step:
-      target: "auth"
-    complete:
-      target: "survival"
-```
-  </Tab>
-  <Tab value="JSON">
-```json
-{
-  "scenarios": {
-    "authentication": {
       "step": {
-        "target": "auth"
+        "target": "register"
       },
       "complete": {
-        "target": "survival"
+        "target": "tutorial"
       }
     }
   }
@@ -201,17 +194,28 @@ scenarios:
   </Tab>
 </Tabs>
 
-### overrides.stages
+</Setting>
 
-<Badge type="warning">Для опытных</Badge>
+<Setting
+  name="overrides.stages"
+  takes="словарь, ключами которого служат идентификаторы этапов, например `provider`"
+  affects="цель `step`, пока игрок ждёт на этом этапе сценария"
+  flag="advanced"
+>
 
-- Принимает: карту с идентификаторами этапов в качестве ключей
-- Влияет на: выбор маршрута для подходящих этапов внутри сценария
+</Setting>
 
-Используйте этот параметр, если какой-то этап должен вести не туда, куда ведёт общая для сценария цель `step`.
+<Setting
+  name="overrides.steps"
+  takes="словарь, ключами которого служат имена шагов, например `enrollment`"
+  affects="цель `step`, пока игрок ждёт на этом шаге"
+  flag="advanced"
+>
 
-<Tabs items={["YAML", "JSON"]}>
-  <Tab value="YAML">
+Переопределение шага важнее переопределения этапа.
+
+</Setting>
+
 ```yaml
 scenarios:
   registration:
@@ -219,119 +223,7 @@ scenarios:
       stages:
         provider:
           target: "register-fallback"
-```
-  </Tab>
-  <Tab value="JSON">
-```json
-{
-  "scenarios": {
-    "registration": {
-      "overrides": {
-        "stages": {
-          "provider": {
-            "target": "register-fallback"
-          }
-        }
-      }
-    }
-  }
-}
-```
-  </Tab>
-</Tabs>
-
-### overrides.steps
-
-<Badge type="warning">Для опытных</Badge>
-
-- Принимает: карту с именами шагов в качестве ключей
-- Влияет на: выбор маршрута для конкретного ожидающего шага
-
-Если подходят и переопределение шага, и переопределение этапа, приоритет у переопределения шага.
-
-<Tabs items={["YAML", "JSON"]}>
-  <Tab value="YAML">
-```yaml
-scenarios:
-  authentication:
-    overrides:
       steps:
         enrollment:
-          target: "manual-choice"
+          target: "choose-provider"
 ```
-  </Tab>
-  <Tab value="JSON">
-```json
-{
-  "scenarios": {
-    "authentication": {
-      "overrides": {
-        "steps": {
-          "enrollment": {
-            "target": "manual-choice"
-          }
-        }
-      }
-    }
-  }
-}
-```
-  </Tab>
-</Tabs>
-
-## attempts
-
-Для каждой цели `step` или `complete` можно задать политику попыток `attempts`.
-
-### mode
-
-<Badge type="warning">Для опытных</Badge>
-
-- Принимает: `"NONE"`, `"RETRY_ONCE"`, `"RETRY_LIMITED"` или `"UNTIL_REACHED"`
-- Влияет на: сколько попыток маршрутизации разрешено для одного намерения маршрутизации
-
-Поведение в текущем исходном коде:
-
-- `NONE`: всего одна попытка
-- `RETRY_ONCE`: первая попытка и ещё один повтор
-- `RETRY_LIMITED`: попытки, пока не будет достигнуто `maxAttempts`
-- `UNTIL_REACHED`: число попыток никогда не исчерпывается
-
-Если целевой сервер не пускает игрока, например из-за белого списка, Identica молча повторяет попытку, пока политика это разрешает. Отказ на последней попытке Identica оставляет прокси, и тот обрабатывает его как любое другое неудачное подключение: игрок остаётся на текущем сервере и видит причину отказа, если только другой плагин, например плагин хаба или балансировщик, не отправит его на другой сервер через `KickedFromServerEvent` на Velocity или `ServerKickEvent` на BungeeCord. BungeeCord и так поступает так при каждом отказе. У `UNTIL_REACHED` последней попытки нет, поэтому игрок продолжает ждать, пока целевой сервер его не пустит.
-
-### maxAttempts
-
-<Badge type="warning">Для опытных</Badge>
-
-- Принимает: целое число
-- Влияет на: лимит, который использует `RETRY_LIMITED`
-
-Для `NONE`, `RETRY_ONCE` и `UNTIL_REACHED` текущая логика `allowsAttempt` фактически игнорирует это значение.
-
-### retryDelay
-
-<Badge type="warning">Для опытных</Badge>
-
-- Принимает: длительность
-- По умолчанию: `0s` во встроенных значениях по умолчанию, но в сгенерированных примерах может стоять ненулевое значение
-- Влияет на: сколько Identica ждёт перед повторной попыткой маршрутизации
-
-### consumeOnReached
-
-<Badge type="warning">Для опытных</Badge>
-
-- Принимает: `true` или `false`
-- Влияет на: удаляется ли намерение маршрутизации сразу после того, как игрок попал на целевой сервер
-
-Если указано `true`, намерение очищается, как только подтверждено, что игрок находится на целевом сервере.
-Если указано `false`, достигнутое намерение остаётся в хранилище, пока что-то другое его не заменит или не очистит.
-
-### consumeOnExhausted
-
-<Badge type="warning">Для опытных</Badge>
-
-- Принимает: `true` или `false`
-- Влияет на: удаляется ли намерение маршрутизации, когда попытки исчерпаны
-
-Если указано `true`, исчерпанный маршрут сразу очищается.
-Если указано `false`, исчерпанное намерение остаётся в хранилище со статусом `EXHAUSTED`.

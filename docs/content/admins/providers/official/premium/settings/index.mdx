@@ -1,0 +1,124 @@
+---
+title: Settings
+description: Every setting of providers/Premium/settings.yml.
+---
+
+`providers/Premium/settings.yml` holds Premium's settings. [Premium detection](../detection/index.mdx) explains how the detection settings work together.
+
+```yaml
+detection:
+  methods:
+    - LOOKUP
+  recheckOnMismatch: false
+  lookup:
+    profileEndpoint: "https://api.mojang.com/users/profiles/minecraft/%s"
+    timeout: "3s"
+    cacheTtl: "5m"
+profileSnapshotTtl: "10m"
+replication:
+  cache:
+    profile: "premium-profile"
+    profileSnapshot: "premium-profile-snapshot"
+```
+
+## detection
+
+<Setting
+  name="methods"
+  takes="a list of `CLIENT_PROFILE` and `LOOKUP`"
+  default='`["LOOKUP"]`'
+  affects="how a player with a username not linked to any account is recognised as premium"
+>
+
+Premium tries the methods from top to bottom. See [Methods](../detection/index.mdx#methods).
+
+</Setting>
+
+<Setting
+  name="recheckOnMismatch"
+  takes="`true` or `false`"
+  default="`false`"
+  affects="whether `CLIENT_PROFILE` looks a username up again, without the cache, when the client's profile id differs from the cached profile"
+>
+
+</Setting>
+
+### lookup
+
+How Premium looks up the premium profile of a username. Both detection methods and the provider choice of an `INTERACTIVE` journey use it.
+
+<Setting
+  name="profileEndpoint"
+  depth={4}
+  takes="a URL with `%s` or `{username}` where the username goes"
+  default='`"https://api.mojang.com/users/profiles/minecraft/%s"`'
+  affects="where premium profiles are looked up"
+  flag="advanced"
+>
+
+The endpoint answers with the profile as JSON with its id in an `id` field, or with `204` or `404` when the username has no profile. A blank value treats every username as having no premium profile.
+
+</Setting>
+
+<Setting
+  name="timeout"
+  depth={4}
+  takes="a duration"
+  default='`"3s"`'
+  affects="how long a lookup may take"
+  flag="advanced"
+>
+
+A lookup that fails or times out treats the username as having no premium profile, and its answer is not cached. Zero or a negative value waits without limit.
+
+</Setting>
+
+<Setting
+  name="cacheTtl"
+  depth={4}
+  takes="a duration"
+  default='`"5m"`'
+  affects="how long lookup answers are kept"
+>
+
+Zero or a negative value looks every username up again.
+
+</Setting>
+
+<Setting
+  name="profileSnapshotTtl"
+  depth={2}
+  takes="a duration"
+  default='`"10m"`'
+  affects="how long Premium remembers the premium profile it saw for a username"
+>
+
+Zero or a negative value remembers nothing.
+
+</Setting>
+
+## replication.cache
+
+<Badge type="warning">Advanced</Badge>
+
+The names under which Premium shares its lookups between proxies through [replication](../../../../guides/network/several-proxies/index.mdx). Every proxy of a network uses the same names.
+
+<Setting
+  name="profile"
+  takes="a non-blank string"
+  default='`"premium-profile"`'
+  affects="the name of the shared lookup answers"
+>
+
+</Setting>
+
+<Setting
+  name="profileSnapshot"
+  takes="a non-blank string"
+  default='`"premium-profile-snapshot"`'
+  affects="the name of the shared profile snapshots"
+>
+
+A blank value stops Premium from loading.
+
+</Setting>

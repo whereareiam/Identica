@@ -1,0 +1,73 @@
+---
+title: Managing accounts
+description: The staff commands for accounts, sessions, usernames and reservations.
+---
+
+Staff manage accounts with subcommands of `/identica`, which also answers to `/auth`. Every command below can be renamed, given another permission or turned off in [`commands.yml`](../../../../configuration/commands/index.mdx); the names and permissions shown are the defaults. `<target>` is a player's username or unique id.
+
+## Accounts
+
+| Command | Permission | Does |
+| --- | --- | --- |
+| `/identica admin clear <target>` | `identica.admin.clear` | removes the account but reserves its UUID for its username, so the player keeps their UUID when they register again |
+| `/identica admin delete <target>` | `identica.admin.delete` | removes the account and its UUID |
+
+Both ask for confirmation: `/identica admin clear confirm` or `/identica admin clear cancel`, and the same for `delete`. A confirmation is valid for `behavior.clear.confirmTtl` of `commands.yml`, 60 seconds by default; a later one changes nothing. A player who is online when their account is removed is disconnected.
+
+## Reservations
+
+| Command | Permission | Does |
+| --- | --- | --- |
+| `/identica admin reservation set <username> <uuid>` | `identica.admin.reservation` | reserves a UUID for the next account registered under the username |
+| `/identica admin reservation info <username>` | `identica.admin.reservation` | shows the UUID reserved for the username |
+| `/identica admin reservation delete <username>` | `identica.admin.reservation` | removes the reservation |
+
+A reservation expires after `identity.reservationTtl` of `settings.yml`. See [Unique ids](../unique-ids/index.mdx#giving-one-player-a-chosen-uuid).
+
+## Usernames
+
+| Command | Permission | Does |
+| --- | --- | --- |
+| `/identica admin username rename <target> <username>` | `identica.admin.username` | renames an account by hand; Identica never changes a name set this way |
+| `/identica admin username duplicates` | `identica.admin.username` | lists usernames that several accounts share |
+
+See [Usernames and conflicts](../usernames/index.mdx).
+
+## Sessions
+
+| Command | Permission | Does |
+| --- | --- | --- |
+| `/identica admin session list [page]` | `identica.admin.sessions` | lists the sessions of the network |
+| `/identica admin session info <target>` | `identica.admin.sessions.info` | shows a session: its provider, address and when it opened |
+| `/identica admin session end <target>` | `identica.admin.sessions.end` | ends a session and disconnects its player |
+
+The page size is `behavior.sessions.listPageSize` of `commands.yml`. See [Sessions](../../logins/sessions/index.mdx).
+
+## Providers of an account
+
+| Command | Permission | Does |
+| --- | --- | --- |
+| `/identica migration list <target>` | `identica.admin.migration.list` | lists the providers the account is linked to |
+| `/identica migration start <target> <provider>` | `identica.admin.migration.start` | starts moving the account to a provider |
+| `/identica migration cancel <target>` | `identica.admin.migration.cancel` | cancels a pending move |
+| `/identica migration primary <target> <provider>` | `identica.admin.migration.primary` | makes a linked provider the account's primary one |
+| `/identica migration drop <target> <provider>` | `identica.admin.migration.drop` | removes a provider link from the account |
+
+Players move their own accounts with the provider's command, such as `/premium` or `/credential`; see [Moving between providers](../moving-between-providers/index.mdx).
+
+## Two-factor verification
+
+`/identica admin 2fa reset <target> [provider]`, with `identica.admin.2fa.reset`, resets a player's verification, for all providers or one, for example when they lost their authenticator app and their recovery codes. See [Verification](../../../features/verification/index.mdx).
+
+## Credential accounts
+
+| Command | Permission | Does |
+| --- | --- | --- |
+| `/identica credential register <username> <password>` | `identica.admin` | registers a Credential account for a player who has not joined yet |
+| `/identica credential setpassword <username> <password>` | `identica.admin` | sets a new password for a Credential account |
+
+See [Credential](../../../providers/official/credential/index.md#console-commands).
+
+## Reloading
+
+`/identica admin reload`, with `identica.admin`, reads every configuration file again. See [Reloading](../../../../configuration/index.mdx#reloading).

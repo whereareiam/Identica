@@ -1,0 +1,26 @@
+---
+title: Features
+description: How built-in features are composed, started, configured and upgraded.
+---
+
+Every feature is compiled into the plugin. Its source modules under `identica-feature/` separate ownership and API boundaries; they are not separate plugins. What providers declare about features is described in [Provider guarantees and features](../../../developers/extending/guarantees-and-features/index.mdx).
+
+## Implementation ownership
+
+`identica-feature` composes the built-in implementations explicitly through `BuiltinFeatures`. There is no feature directory scanner, separate feature installation, or build-time feature selector. Feature module jars are build dependencies compiled into the final plugin.
+
+`IdenticaFeature` owns shared modules, initialization, shutdown, and optional provider-local contributions. Its internal dependency declarations determine wiring order. `configurationPath()` identifies the provider settings subtree, and `enabledByDefault(context)` reads the feature-owned shared default. Global services are initialized once; providers contribute only their integrations.
+
+Keep listeners, commands, pipeline extensions, models, persistence and configuration with the subsystem that owns them. Register lifecycle resources during initialization and remove them during shutdown, including partial initialization failures. Mandatory subsystems use `RuntimeLifecycle` and name the `StartupPhase` they start in; they do not appear in the feature registry. Identica starts the phases in order and stops them in reverse, and building a lifecycle does no I/O: documents, the database and other stores are read once it starts.
+
+## Username ownership
+
+Username handling is core behavior, not a feature, and is never listed in `supportedFeatures()`. Its contracts are in `identica-api`: `UsernameAssigner` in `me.whereareiam.identica.identity.username`, the models in `me.whereareiam.identica.model.identity.username`, its closed types in `me.whereareiam.identica.type.identity.username`, `UsernameChangedEvent` in `me.whereareiam.identica.event.identity`, and the persistence services in `me.whereareiam.identica.persistence.username`. The rule matching and the username documents are in `identica-common`, the username phases are in `identica-engine`, and the username tables are in `identica-adapter-database/database-common`. See [Usernames and conflicts](../../../admins/guides/accounts/usernames/index.mdx).
+
+## Configuration upgrades
+
+A feature upgrades its own documents with a Strata migration stream of its own, `identica/feature/<id>/config`: a `ConfiguraTarget` on the data directory that keeps its version in the feature's `settings`, and its numbered migrations. Its module adds the stream to the set of `MigrationStream<ConfigContext>`, for example with a `@ProvidesIntoSet` method, and Identica runs the core's stream and then every feature's in one Strata run before any document is read. A value a feature takes over from a core document, such as `connection.sentinels` of 2.2.1's settings, is moved and removed by the feature's migration; the core leaves those sections alone. Write the moves so that they only fill empty places and do nothing when the value is gone: a migration finds what to do by the sections that are there.
+
+## Validation
+
+Test guarantee behavior without feature flags, support separately from enablement, explicit false values, inherited global values, and different settings on different providers. Test lifecycle cleanup and verify that shared provider configuration retains unrelated feature settings.

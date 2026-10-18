@@ -1,0 +1,34 @@
+---
+title: Coming from another plugin
+description: Bring the accounts of another authentication plugin into Identica, with their UUIDs.
+---
+
+Identica ships no importer for other authentication plugins. Accounts can be brought over with console commands, which a script can run for every account of the old plugin.
+
+If you would rather not write such a script, ask in [Discord](https://discord.arcadeya.com): we may be able to provide one that you review and run against your own data.
+
+## Registering accounts from the console
+
+`/identica credential register <username> <password>` creates a Credential account for a player who has not joined Identica yet. The player then logs in with that password.
+
+The account gets the UUID reserved for its username, or else the one [`uniqueIdMode`](../../accounts/unique-ids/index.mdx) assigns. To keep the UUID a player had with the old plugin, reserve it right before registering the account:
+
+```
+identica admin reservation set Steve 5627dd98-e6be-3c21-b8a8-e92344183641
+identica credential register Steve <password>
+```
+
+The reservation must be used within `identity.reservationTtl` of `settings.yml`, 15 minutes by default. The account keeps the UUID from then on, whatever `uniqueIdMode` is set to.
+
+The command only creates accounts:
+
+- when an account holds the username already, in any case and through any provider, nothing is registered and the command names that account with `commands.admin.accountExists` of Credential's `messages.yml`;
+- when the reserved UUID belongs to another account already, it answers with `commands.admin.reservationTaken` and registers nothing either.
+
+## Passwords
+
+The command takes a password, not a hash, and hashes it with Credential's current [hashing settings](../../../providers/official/credential/passwords/index.mdx#hashing). When the old plugin only kept hashes, give players a temporary password and ask them to change it with `/changepassword`. `/identica credential setpassword <username> <password>` sets a new password later.
+
+## Premium players
+
+Premium accounts need no import: a player who owns a premium account joins through Premium and gets an account on their first join. When the old plugin gave premium players their premium UUIDs and your backends store data under them, use `uniqueIdMode: PREMIUM`, or reserve each player's UUID shortly before they join.

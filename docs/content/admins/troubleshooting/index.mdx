@@ -1,0 +1,78 @@
+---
+title: Troubleshooting
+description: Common problems, what causes them, and what to check.
+---
+
+Start with the proxy console: Identica names what went wrong there. For more detail, set `level: 3` in `settings.yml` to add debug logging, and `/identica admin reload`.
+
+## Startup
+
+<Accordions type="multiple">
+  <Accordion title="The first start seems stuck">
+    On its first start, and on the first start with another database type, Identica downloads its libraries, which can take a while without any new console output. The proxy needs internet access and must be able to reach Cloudflare-protected sites.
+  </Accordion>
+  <Accordion title="Every player is refused as if the authentication servers were down">
+    Identica's startup failed. Until it starts, Identica refuses every connection with the game's own message for unavailable authentication servers, so nobody reaches a backend without logging in. The console names the cause. Common ones:
+
+    - a configuration file that cannot be read, or a value Identica does not accept, such as an unknown `type` in `persistence.yml` or an unknown `concurrencyPolicy`
+    - a database that cannot be reached, or a MySQL server older than 8.0.19; see [Database](../guides/network/database/index.mdx)
+    - Redis that cannot be reached while replication is on; see [Running several proxies](../guides/network/several-proxies/index.mdx)
+    - a library download that failed
+    - a data directory written by a newer release of Identica
+
+    Fix the cause and restart the proxy.
+  </Accordion>
+  <Accordion title="A setting in a provider's file went back to its default after an update">
+    Identica upgrades its own files and those of its features, but not the files of a provider below `providers/`. A provider setting whose name or place changed falls back to its default; the release notes name such changes. See [Upgrading Identica](../guides/upgrading/index.mdx).
+  </Accordion>
+  <Accordion title="My comments in the configuration files disappeared">
+    Identica completes every file with the settings it lacks and writes it back on every start and reload. Your values are kept; comments are not.
+  </Accordion>
+</Accordions>
+
+## Joining
+
+<Accordions type="multiple">
+  <Accordion title="New players are disconnected with an invalid-session message on their first join">
+    The player uses a username that belongs to a premium account but joins from an offline client, and the registration scenario is `SEAMLESS`, so Premium asks for a premium login the client cannot complete. Their next join continues with Credential. Set the registration scenario to `INTERACTIVE`, or add Premium's `CLIENT_PROFILE` detection. See [Journey modes](../guides/logins/journey-modes/index.mdx).
+  </Accordion>
+  <Accordion title='Players are disconnected with "No target server available for routing"'>
+    A routing target names a server that does not exist in the proxy's configuration. Check `routing.yml`, including the scenario entries; the generated targets `auth` and `survival` are examples. See [Routing players](../guides/network/routing/index.mdx).
+  </Accordion>
+  <Accordion title="Players stay where they are after logging in">
+    Either the `complete` target is blank, or the target server refused the player, for example because of its whitelist, and the attempts ran out. The player then sees the server's reason. See [When a server turns the player away](../guides/network/routing/index.mdx#when-a-server-turns-the-player-away).
+  </Accordion>
+  <Accordion title="Players are told the name is being logged in from another location">
+    Another connection, from another address, is logging in with the same username. The name is free again once that login ends, the player leaves, or the scenario's `pipelineTtl` passes. After a proxy crash it is free after `heartbeatTimeout`. See [Two connections with one username](../guides/logins/index.mdx#two-connections-with-one-username).
+  </Accordion>
+  <Accordion title="Players are told the account is already logged in">
+    `concurrencyPolicy` is `REJECT_NEW`, and the account has a session through another connection. After a proxy crash, that session lasts until `heartbeatTimeout` passes. `/identica admin session end <player>` ends it at once. See [Sessions](../guides/logins/sessions/index.mdx).
+  </Accordion>
+  <Accordion title="Players are disconnected and asked to reconnect">
+    The same player reached two proxies at the same moment, and the other proxy saved first. Reconnecting continues from what it saved. See [A player on two proxies at once](../guides/network/several-proxies/index.mdx#a-player-on-two-proxies-at-once).
+  </Accordion>
+  <Accordion title="A player is refused because their name is taken">
+    Another account holds the username, and the conflict rules refuse the joining player. See [Usernames and conflicts](../guides/accounts/usernames/index.mdx).
+  </Accordion>
+  <Accordion title="Recognition never recognises anyone">
+    Identica may see loopback or private addresses instead of the players' real ones, which recognition does not trust by default. Make the proxy receive the real client addresses, for example with the PROXY protocol behind a load balancer. See [Recognition](../features/recognition/index.mdx).
+  </Accordion>
+</Accordions>
+
+## Commands and configuration
+
+<Accordions type="multiple">
+  <Accordion title="A reload reports an error">
+    The answer names each file that could not be read. Those files keep their previous values, the others are reloaded, and the broken file is not rewritten, so fix it and reload again. Changes to `persistence.yml` need a restart.
+  </Accordion>
+  <Accordion title="A command does not exist">
+    The command may be turned off, or it has no alias, in its `commands.yml`. An enabled command without an alias is not registered, and the console warns about it on startup. See [Commands](../../configuration/commands/index.mdx).
+  </Accordion>
+  <Accordion title="Passwords with special characters are rejected on Velocity">
+    With `useBrigadier: true` in `commands.yml`, Velocity parses command input more strictly and rejects some symbols before Identica sees them. Keep it `false`.
+  </Accordion>
+</Accordions>
+
+## Still stuck
+
+Ask in [Discord](https://discord.arcadeya.com) or open an issue on [GitHub](https://github.com/whereareiam/Identica/issues) with the console output. See [Support](../support/index.mdx).

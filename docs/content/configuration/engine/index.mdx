@@ -1,32 +1,95 @@
 ---
-title: Engine
-description: Field-by-field explanation of Identica's pipeline and journey engine configuration area.
+title: engine.yml
+description: Every setting of engine.yml.
 ---
 
-The engine configuration controls pipeline state timing, journey style, resume behavior, and scenario-specific concurrency.
+`engine.yml` sets how each scenario runs: whether it asks the player or continues on its own, and how long a login that waits for the player is kept. [How logins work](../../admins/guides/logins/index.mdx) and [Journey modes](../../admins/guides/logins/journey-modes/index.mdx) explain them.
 
 ## behavior
 
-`behavior` controls engine-wide TTLs used outside any one scenario.
+Timers that apply to every scenario. The defaults suit every network; they only need to be longer than the slowest join.
 
-### bridgeTtl
+<Setting
+  name="bridgeTtl"
+  takes="a positive duration"
+  default='`"10m"`'
+  affects="how long Identica keeps what it found out about a connecting player until their login starts, and a finished login until the player reaches their server"
+  flag="advanced"
+>
 
-<Badge type="warning">Advanced</Badge>
+</Setting>
 
-- Takes: a positive duration
-- Current default: `"10m"`
-- Affects: temporary prepare-state and completion-pending bridge entries
+<Setting
+  name="handshakeInstructionTtl"
+  takes="a positive duration"
+  default='`"10m"`'
+  affects="how long a provider's decision to ask a connecting player for its own login, such as Premium's premium login, stays valid"
+  flag="advanced"
+>
 
-This TTL is used by the prepare-state store and completion pending store.
-It should be long enough to survive the handoff between connection preparation and the later scenario/completion stages.
+</Setting>
 
-### handshakeInstructionTtl
+## scenarios
 
-<Badge type="warning">Advanced</Badge>
+`authentication`, `registration` and `migration` each have these settings. `registration` has `autoSelectSingleProvider` as well.
 
-- Takes: a positive duration
-- Current default: `"10m"`
-- Affects: how long premium-provider handshake instructions stay valid
+<Setting
+  name="pipelineTtl"
+  takes="a positive duration"
+  default='`"5m"`'
+  affects="how long a login that waits for the player is kept"
+  flag="advanced"
+>
+
+It is also how long a pending move to another provider waits for the player's next join, and how long a username stays held for a connection that is logging in. See [Leaving during a login](../../admins/guides/logins/index.mdx#leaving-during-a-login).
+
+</Setting>
+
+<Setting
+  name="allowResume"
+  takes="`true` or `false`"
+  default="`true`"
+  affects="whether a player who leaves while logging in or registering continues where they stopped when they join again within `pipelineTtl`"
+  flag="warning"
+>
+
+With `false`, such a player starts over. A reconnect the login asks for itself, such as the rejoin after choosing Premium, always continues. Whether a resumed login may pass an active join restriction is set in [join restriction settings](../features/restriction/join/index.mdx#resumebypassauthentication).
+
+</Setting>
+
+<Setting
+  name="journeyMode"
+  takes='`"SEAMLESS"` or `"INTERACTIVE"`'
+  default='`"SEAMLESS"` for `authentication` and `registration`, `"INTERACTIVE"` for `migration`'
+  affects="whether Identica asks the player, such as to choose a provider, or continues on its own as far as it can"
+>
+
+See [Journey modes](../../admins/guides/logins/journey-modes/index.mdx#modes).
+
+</Setting>
+
+<Setting
+  name="journeyPolicy"
+  takes='`"PREFER"` or `"STRICT"`'
+  default='`"PREFER"`'
+  affects="whether Identica may fall back to the other journey mode when the configured one cannot complete the login"
+  flag="advanced"
+>
+
+With `SEAMLESS` and `STRICT`, a login that needs the player's input disconnects them with `engine.journey.step.interactionRequired`. See [Policies](../../admins/guides/logins/journey-modes/index.mdx#policies).
+
+</Setting>
+
+<Setting
+  name="autoSelectSingleProvider"
+  takes="`true` or `false`"
+  default="`false`"
+  affects="whether an `INTERACTIVE` registration with exactly one provider to choose from picks it without asking"
+>
+
+Only in `registration`.
+
+</Setting>
 
 <Tabs items={["YAML", "JSON"]}>
   <Tab value="YAML">
@@ -34,152 +97,6 @@ It should be long enough to survive the handoff between connection preparation a
 behavior:
   bridgeTtl: "10m"
   handshakeInstructionTtl: "10m"
-```
-  </Tab>
-  <Tab value="JSON">
-```json
-{
-  "behavior": {
-    "bridgeTtl": "10m",
-    "handshakeInstructionTtl": "10m"
-  }
-}
-```
-  </Tab>
-</Tabs>
-
-## scenarios
-
-`scenarios` controls how authentication, registration, and migration pipelines behave.
-
-### Shared scenario fields
-
-The three scenario sections share most fields:
-
-- `pipelineTtl`: how long a waiting pipeline can be resumed
-- `allowResume`: whether a player who leaves during a login continues it when they come back
-- `journeyMode`: whether the preferred flow style is `SEAMLESS` or `INTERACTIVE`
-- `journeyPolicy`: whether that mode is only preferred or strictly required
-
-#### pipelineTtl
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a positive duration
-- Current default: `"5m"`
-- Affects: how long a waiting scenario pipeline can be resumed
-
-When a flow is pending, this TTL becomes the expiry time for its saved pipeline state.
-
-#### allowResume
-
-<Badge type="warning">Warning</Badge>
-
-- Takes: `true` or `false`
-- Current default: `true`
-- Affects: whether a player who leaves while logging in or registering continues where they stopped when they join again
-
-A login that waits for the player, for a password or an authenticator code, is always saved for up to `pipelineTtl`, and the connection that started it always continues it. With `true`, a player who leaves and joins again within that time continues as well, for example with the password confirmation instead of the first password. With `false`, such a player starts over.
-
-A reconnect the login itself asks for, such as the rejoin after choosing Premium in `INTERACTIVE` mode, always continues the login, whatever this setting says.
-
-Whether a resumed authentication or registration flow may bypass an active join restriction is controlled by [join restriction settings](../features/restriction/join/index.mdx#settings).
-
-A saved state belongs to the connection that made it: the username together with the address the player connects from. See [Logins in progress](#logins-in-progress).
-
-#### journeyMode
-
-- Takes: `"SEAMLESS"` or `"INTERACTIVE"`
-- Current default: `"SEAMLESS"`
-- Affects: the preferred authentication journey style
-
-<Tabs items={["SEAMLESS", "INTERACTIVE"]}>
-    <Tab value="SEAMLESS">
-        `SEAMLESS` means the authentication flow is expected to continue without player interaction.
-
-        Use case: a provider can identify the player automatically and continue the flow without asking them to choose a provider, type a credential, or confirm a verification step manually.
-
-        This is best when your authentication path is intentionally automatic and you already know the provider order and available steps produce the behavior you want.
-
-        Concrete example: with the premium provider enabled, a player who joins from an offline account while using a premium username may hit the higher-priority `premium` provider first.
-        In `SEAMLESS`, the premium handshake precheck can ask for a premium login before the player ever sees an enrollment or choice step.
-        From the player's perspective, that can look like an invalid-session-style kick on the first join, which may make them think the server is premium-only.
-        Premium's experimental `CLIENT_PROFILE` [detection method](../../providers/official/premium/configuration/settings/index.mdx#methods) avoids this for clients on 1.19.1 or newer by comparing the profile the client sends with the premium profile of its username first.
-    </Tab>
-    <Tab value="INTERACTIVE">
-        `INTERACTIVE` means the authentication flow may prompt the player, wait for input, or otherwise require explicit interaction.
-
-        Use case: the player may need to enter a credential, choose between providers, confirm a verification code, or respond to another prompt before authentication can continue.
-
-        For most setups, `INTERACTIVE` is the easier and safer choice because the player can clearly see what Identica expects from them.
-
-        In practice, the premium handshake precheck is skipped for a username without an account when the registration scenario's journey mode is `INTERACTIVE`.
-        That reduces the chance of the player being pushed into a silent premium-first path before they understand what the server expects.
-    </Tab>
-</Tabs>
-
-#### journeyPolicy
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: `"PREFER"` or `"STRICT"`
-- Current default: `"PREFER"`
-- Affects: whether Identica may fall back to another journey mode when the preferred one is not viable
-
-Behavior in current source:
-
-- `PREFER`: try the configured mode first, then try the other mode if needed
-- `STRICT`: use only the configured mode
-
-For most setups, `PREFER` is the better default.
-If you set `STRICT`, a flow that could have worked in the other mode may fail or end up with no useful steps instead of falling back.
-
-With `SEAMLESS` and `STRICT`, Identica never prompts. When a step needs player input, such as a provider choice or a password, the player is disconnected with the `engine.journey.step.interactionRequired` message instead of receiving the prompt.
-A provider that always needs input, such as `credential` without session recognition, therefore cannot register or authenticate anyone in that configuration.
-
-### Logins in progress
-
-A login in progress, such as a typed password waiting for the authenticator code or a new password waiting for its confirmation, belongs to the connection that made it: the username together with the address the player connects from. The hostname the client connected through does not count.
-
-- A player who returns with the same username from the same address continues where she left, within `pipelineTtl`, on any proxy that shares the state through Redis.
-- A client that uses the username from another address starts a login of its own. It never sees, continues or changes the progress of the other connection, so it is asked for the password even when the owner already typed it.
-- While a connection logs in under a username, a proxy of the network refuses another connection with that username from another address with `engine.usernameHeld`. The username is free again once that login ends, the player leaves, or `pipelineTtl` passes; when the proxy of that login stops or crashes, it is free after [`replication.heartbeatTimeout`](../replication/index.mdx#heartbeattimeout). On one proxy the proxy itself refuses a second player with a username that is already connected.
-- When two connections with one username arrive from different addresses at the same moment on two proxies, both find the username free, but only one takes it: the hold is written only while nothing else holds the username. The other connection is disconnected with `engine.usernameHeld` as soon as its login waits for the player, as if it had arrived second.
-- A connection whose login a provider proves, for example with a verified online login, is not refused: it wins, and the connection that held the username is disconnected. Only such proof counts, never the hostname, the username or the address.
-- An account logs in through one connection. When a connection finishes logging in, every other connection that is still logging in to the account or under its username, on any proxy, is disconnected with `engine.concurrentLoginKick`. Connections that are already logged in follow `settings.sessions.concurrencyPolicy`.
-
-The [sentinel feature](../features/sentinel/settings/index.mdx) locks out an address that keeps being refused this way.
-
-### authentication
-
-The `authentication` scenario controls login-time identity resolution and session opening.
-
-The generated defaults prefer `SEAMLESS` for authentication.
-If you want a more explicit player-facing first join experience, switching to `INTERACTIVE` can be safer.
-
-### registration
-
-The `registration` scenario controls new-account creation and provider enrollment.
-
-#### autoSelectSingleProvider
-
-- Takes: `true` or `false`
-- Current default: `false`
-- Affects: the interactive registration enrollment step when exactly one eligible provider is available
-
-If `true`, Identica auto-selects that single provider and completes the enrollment step immediately.
-If `false`, the player still receives the normal provider-selection prompt.
-
-### migration
-
-The `migration` scenario controls account migration and relinking flows.
-
-Migration does not add extra fields beyond the shared scenario fields.
-Its generated defaults differ mainly in journey style: migration prefers `INTERACTIVE` by default because visible confirmation is usually safer than a silent automatic transition.
-
-<Tabs items={["YAML", "JSON"]}>
-  <Tab value="YAML">
-```yaml
 scenarios:
   authentication:
     pipelineTtl: "5m"
@@ -202,6 +119,10 @@ scenarios:
   <Tab value="JSON">
 ```json
 {
+  "behavior": {
+    "bridgeTtl": "10m",
+    "handshakeInstructionTtl": "10m"
+  },
   "scenarios": {
     "authentication": {
       "pipelineTtl": "5m",

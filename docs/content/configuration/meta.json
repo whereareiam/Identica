@@ -1,17 +1,23 @@
 {
-  "title": "Configuration",
+  "title": "Configuration reference",
+  "description": "Every setting, file by file",
+  "icon": "SlidersHorizontal",
+  "root": true,
   "pages": [
     "index",
+    "---Core---",
     "settings",
-    "providers",
-    "features",
-    "identity",
     "engine",
     "routing",
     "commands",
     "messages",
+    "---Storage and network---",
     "persistence",
     "replication",
-    "statistics"
+    "---Providers and identity---",
+    "providers",
+    "...identity",
+    "---Features---",
+    "...features"
   ]
 }

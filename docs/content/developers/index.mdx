@@ -1,0 +1,20 @@
+---
+title: Overview
+description: What you can build on Identica, and where to start.
+---
+
+These pages are for developers who build on Identica from their own code. To change Identica itself, see [Contributing](../contributing/building/index.mdx).
+
+| You want to | Build | Start with |
+| --- | --- | --- |
+| react to logins, read accounts and sessions, or hold back chat until players have logged in | an addon: a plugin of its own on the proxy | [Writing an addon](./extending/addons/index.mdx) |
+| add a way to log in, such as a website account | a provider: a jar Identica loads from its `providers/` directory | [Writing a provider](./extending/providers/index.mdx) |
+| store your own data next to Identica's accounts | tables in Identica's database | [Database schemas](./extending/database-schemas/index.mdx) |
+
+Every case starts with the API dependency; see [Getting started](./api/index.mdx).
+
+The repository's `examples/addon` and `examples/provider` are a complete addon and a complete provider. Identica's live tests run both on a real proxy, so they follow the current API.
+
+## Compatibility
+
+The API is published with every release. Types, methods and events of `me.whereareiam.identica:api` and the other `-api` artifacts keep working within a major version; a release that breaks them is a major release and says so in its notes under "For developers".

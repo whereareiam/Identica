@@ -1,0 +1,95 @@
+---
+title: First configuration
+description: Change the defaults that every network has to change before players join.
+---
+
+The files Identica writes on its first start work as they are, but they name example servers and hostnames. Go through these steps with the proxy stopped, then start it and join.
+
+The examples use YAML. Each setting is described in full in [Configuration](../../configuration/index.mdx).
+
+## Configure Identica
+
+### Choose and order the providers [step]
+
+Open `providers/providers.yml`. Each entry configures one installed provider:
+
+```yaml
+providers:
+  - id: "credential"
+    displayName: "Credential"
+    enabled: true
+    priority: 50
+    entrypoints: []
+
+  - id: "premium"
+    displayName: "Premium"
+    enabled: true
+    priority: 100
+    entrypoints: []
+```
+
+- `enabled` turns a provider on or off. Turn off a provider your network should not offer.
+- `priority` decides between providers that have an equally good reason to handle a player; the higher value wins. Premium before Credential is what most networks want: a player who owns a premium account logs in with it.
+- `entrypoints` lists hostnames that pick a provider, such as `premium.example.com`. The generated entries are examples: replace them with your own hostnames, or empty the lists when your players all join through one address.
+
+[How a provider is picked](../guides/logins/provider-selection/index.mdx) explains the order in full.
+
+### Choose how players log in [step]
+
+Open `engine.yml`. Each scenario has a `journeyMode`:
+
+- `INTERACTIVE`: Identica may ask the player, for example to choose a provider or type a password.
+- `SEAMLESS`: Identica continues on its own as far as it can and asks only when it has to.
+
+For registration, `INTERACTIVE` is the easier start. With `SEAMLESS`, a new player who joins from an offline client with a premium username is asked for a premium login first, which their client cannot complete, so they are disconnected with an invalid-session message on their first join. In `INTERACTIVE`, the same player chooses the provider instead. Premium's [`CLIENT_PROFILE` detection](../providers/official/premium/detection/index.mdx) avoids the disconnect for clients on 1.19.1 or newer in either mode.
+
+```yaml
+scenarios:
+  registration:
+    journeyMode: "INTERACTIVE"
+    journeyPolicy: "PREFER"
+```
+
+With only one provider enabled, `autoSelectSingleProvider: true` in the registration scenario skips the provider choice. [Journey modes](../guides/logins/journey-modes/index.mdx) covers both modes and `journeyPolicy`.
+
+### Point routing at your servers [step]
+
+Open `routing.yml`. Identica sends a player to the `step` target while it waits for them, such as for a password, and to the `complete` target once they are logged in. The defaults, `auth` and `survival`, are examples. Use the names of servers in your proxy's configuration:
+
+```yaml
+defaults:
+  step:
+    target: "auth"
+  complete:
+    target: "lobby"
+```
+
+A separate server for players who are logging in keeps them away from the rest of the network until they are done. If your host limits how many servers you run, a lightweight limbo server such as [PicoLimbo](https://picolimbo.quozul.dev/about/introduction.html) can serve as the `step` target without a full server.
+
+To send players to the server their hostname belongs to, or to route registration differently from login, see [Routing players](../guides/network/routing/index.mdx).
+
+### Keep players inside the login [step]
+
+<Callout type="error" title="Block commands and chat until players have logged in">
+  Identica decides who a player is. It does not stop a player who has not logged in yet from typing commands, such as switching servers, or from seeing chat. Use a plugin that holds those back until the player has logged in.
+</Callout>
+
+[Identica-CommandBlocker](https://modrinth.com/plugin/identica-commandblocker) and [Identica-ChatBlocker](https://modrinth.com/plugin/identica-chatblocker) do this and let Identica's own commands through. See [Community addons](../addons/community/index.md).
+
+Movement and block breaking on the `step` server are the backend's matter; a limbo server avoids them, because it has no world to change.
+
+### Review the rest [step]
+
+A few defaults are worth a look before players arrive:
+
+- Credential's [password rules](../providers/official/credential/passwords/index.mdx) require upper and lower case letters, a digit and a symbol.
+- Accounts are stored in SQLite inside the data directory. To use MySQL, MariaDB or PostgreSQL, see [Database](../guides/network/database/index.mdx).
+- Identica sends anonymous [usage statistics](../guides/statistics/index.mdx); that page also says how to turn them off.
+
+### Start the proxy and join [step]
+
+Start the proxy and join. A new player is asked to register; after registering they are sent to the `complete` target.
+
+After later changes, `/identica admin reload` reads the files again without a restart. See [Reloading](../../configuration/index.mdx#reloading) for what needs a restart.
+
+If something does not work as expected, see [Troubleshooting](../troubleshooting/index.mdx), or ask for help as described in [Support](../support/index.mdx).

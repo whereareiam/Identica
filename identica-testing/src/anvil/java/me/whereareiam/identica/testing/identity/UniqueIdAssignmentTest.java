@@ -34,13 +34,13 @@ class UniqueIdAssignmentTest {
 	@Identica(providers = Provider.CREDENTIAL)
 	void assignsARandomUuidThatTheAccountKeeps(ScenarioContext anvil) {
 		Journey alice = loggedIn(Accounts.credential(anvil, "Alice", PASSWORD));
-		UUID assigned = alice.identity().getObserved().getUniqueId();
+		UUID assigned = alice.profile().getUniqueId();
 
 		assertNotEquals(offline("Alice"), assigned, "RANDOM must not assign the offline UUID");
 		assertEquals(8, assigned.version(), "RANDOM assigns an Identica UUID");
 
 		loggedIn(alice.leave());
-		assertEquals(assigned, alice.identity().getObserved().getUniqueId());
+		assertEquals(assigned, alice.profile().getUniqueId());
 	}
 
 	@Test
@@ -48,33 +48,33 @@ class UniqueIdAssignmentTest {
 	void assignsTheOfflineUuidInOfflineMode(ScenarioContext anvil) {
 		Journey alice = registered(Journey.offline(anvil, "Alice").join());
 
-		assertEquals(offline("Alice"), alice.identity().getObserved().getUniqueId());
+		assertEquals(offline("Alice"), alice.profile().getUniqueId());
 	}
 
 	@Test
 	@Identica(providers = Provider.CREDENTIAL)
 	void keepsTheUuidOfAClearedAccountForItsNextRegistration(ScenarioContext anvil) {
 		Journey alice = loggedIn(Accounts.credential(anvil, "Alice", PASSWORD));
-		UUID assigned = alice.identity().getObserved().getUniqueId();
+		UUID assigned = alice.profile().getUniqueId();
 
 		Administrator.at(anvil, PROXY).clears("Alice");
 		alice.kickedWith(m -> m.identica().getCommands().getAdmin().getClear().getDisconnect());
 
 		registered(alice.rejoin());
-		assertEquals(assigned, alice.identity().getObserved().getUniqueId());
+		assertEquals(assigned, alice.profile().getUniqueId());
 	}
 
 	@Test
 	@Identica(providers = Provider.CREDENTIAL)
 	void assignsANewUuidAfterTheAccountIsDeleted(ScenarioContext anvil) {
 		Journey alice = loggedIn(Accounts.credential(anvil, "Alice", PASSWORD));
-		UUID deleted = alice.identity().getObserved().getUniqueId();
+		UUID deleted = alice.profile().getUniqueId();
 
 		Administrator.at(anvil, PROXY).deletes("Alice");
 		alice.kickedWith(m -> m.identica().getCommands().getAdmin().getDelete().getDisconnect());
 
 		registered(alice.rejoin());
-		assertNotEquals(deleted, alice.identity().getObserved().getUniqueId(), "a deleted account's UUID must not come back");
+		assertNotEquals(deleted, alice.profile().getUniqueId(), "a deleted account's UUID must not come back");
 	}
 
 	private static Journey loggedIn(Journey player) {

@@ -30,11 +30,11 @@ class PremiumAccountJoinTest {
 		Journey player = Journey.premium(anvil, account).join()
 				.on(LOBBY)
 				.sees(m -> m.premium().getCompletion().getRegistration().getBody());
-		UUID registered = player.identity().getObserved().getUniqueId();
-		assertEquals(account.getUsername(), player.identity().getObserved().getUsername());
+		UUID registered = player.profile().getUniqueId();
+		assertEquals(account.getUsername(), player.profile().getUsername());
 
 		player.leave().rejoin().on(LOBBY);
-		assertEquals(registered, player.identity().getObserved().getUniqueId());
+		assertEquals(registered, player.profile().getUniqueId());
 	}
 
 	@Test

@@ -51,7 +51,7 @@ Journey elsewhere = Journey.of(anvil, Client.offline("Alice").from("127.0.0.2"))
 Journey routed = Journey.of(anvil, Client.offline("Bob").through(Provider.CREDENTIAL.getEntrypoint()));
 ```
 
-Each `Journey` step checks both sides: what the player's client receives, and what the proxy reports on its own console for connections, server changes, and disconnect reasons. A message expectation only considers messages received since the previous one, so a prompt repeated after a reconnect is not satisfied by its earlier occurrence.
+Each `Journey` step checks both sides: what the player's client shows, and what the proxy reports on its own console for connections, server changes, and disconnect reasons. A message expectation follows the player's chat as a vanilla client keeps it, so a message that reaches the client before it joined a server's world, such as while it still configures, never counts as seen. It only considers messages shown since the previous expectation, so a prompt repeated after a reconnect is not satisfied by its earlier occurrence.
 
 A join the proxy may refuse starts with `attempt()`, or `attemptAgain()` for a player who connected before, instead of `join()`. The refusal that follows names its moment: `refusedWith(...)` before the proxy knows who is joining, `refusedAtLoginWith(...)` while the player is still logging in, before any backend or prompt, and `kickedWith(...)` for a disconnect at any point.
 

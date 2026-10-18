@@ -151,6 +151,16 @@ public final class Journey {
 	}
 
 	/**
+	 * Connects and expects a checkpoint to hold the player on the loading screen: the proxy accepts the connection,
+	 * while the client enters no server's world.
+	 */
+	public Journey joinsHeld() {
+		attempt();
+		routes.joined(player, TIMEOUT);
+		return isHeld();
+	}
+
+	/**
 	 * Reconnects without expecting an outcome, for joins the proxy may refuse.
 	 */
 	public Journey attemptAgain() {
@@ -198,6 +208,42 @@ public final class Journey {
 		reported(reports.connected(playedAs, backend), playedAs + " has connected to " + backend);
 		this.backend = backend;
 		named = true;
+		return this;
+	}
+
+	/**
+	 * Expects the proxy to hold the player on the loading screen, as a checkpoint does: the proxy knows the player,
+	 * and for a while their client enters no server's world and no backend has the player in its world. On
+	 * BungeeCord, a backend configures the held client meanwhile.
+	 */
+	public Journey isHeld() {
+		return staysHeld(SETTLE);
+	}
+
+	/**
+	 * Expects the proxy to keep holding the player on the loading screen for as long as given, such as past the
+	 * proxy's read timeout, which closes a connection whose client sends nothing.
+	 *
+	 * @see #isHeld()
+	 */
+	public Journey staysHeld(Duration duration) {
+		Instant deadline = Instant.now().plus(duration);
+		do {
+			assertTrue(proxyPlayers.profile(player).isPresent(), name + " must be on the proxy");
+			assertFalse(session.state().connected(), name + " must be held on the loading screen");
+			sleep(Duration.ofMillis(100));
+		} while (Instant.now().isBefore(deadline));
+		for (String backend : backends.keySet())
+			assertTrue(players(backend).profile(player).isEmpty(), backend + " must not have " + name + " in its world");
+		return this;
+	}
+
+	/**
+	 * Expects that the player never joined a backend since the journey began, after giving the proxy time to send
+	 * them there, however briefly they would have stayed.
+	 */
+	public Journey neverJoins(String backend) {
+		arrival(backend).neverJoined(player, SETTLE);
 		return this;
 	}
 

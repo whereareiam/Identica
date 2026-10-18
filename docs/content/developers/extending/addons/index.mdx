@@ -5,7 +5,7 @@ description: Hold back chat or commands until a player has authenticated, read I
 
 An addon is a separate plugin on the same proxy that builds on Identica, such as a plugin that blocks chat or commands until a player has logged in. This page covers what such an addon usually needs. Set up the dependency first, as described in [Getting started](../../api/index.mdx).
 
-The repository's `examples/addon` is a complete Velocity addon built this way: it holds back chat and commands until a player has authenticated and reads the allowed commands again after a reload. Its live tests run it on a real proxy, so it follows the current API.
+The repository's `examples/addon` is a complete Velocity addon built this way: it holds back chat and commands until a player has authenticated, reads the allowed commands again after a reload, and holds players who join through a `hold.` or `ask.` hostname at [checkpoints](../checkpoints/index.mdx), which the same jar also registers on BungeeCord. Its live tests run it on a real proxy, so it follows the current API.
 
 ## Start once Identica is running
 

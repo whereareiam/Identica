@@ -36,7 +36,7 @@ When changing behavior:
 - `identica-integration/*`
   External integrations, such as usage statistics and error reports sent to bStats and FastStats through Statistica.
 - `examples/*`
-  The example addon (a separate Velocity plugin on the public API) and the example provider (a provider jar) that the developer documentation walks through. Not shipped; `identica-testing` runs both on a real proxy, so keep them working when the API changes.
+  The example addon (a separate Velocity plugin on the public API, whose checkpoints the same jar also registers on BungeeCord) and the example provider (a provider jar) that the developer documentation walks through. Not shipped; `identica-testing` runs both on a real proxy, so keep them working when the API changes.
 - `identica-testing`
   Live player journeys against the packaged plugin on a real proxy, run through Anvil. Not part of the shipped plugin.
 - `build-logic/`

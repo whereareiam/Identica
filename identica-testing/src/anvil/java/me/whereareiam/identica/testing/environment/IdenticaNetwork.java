@@ -46,6 +46,17 @@ public final class IdenticaNetwork {
 	 * this one. Anvil writes a BungeeCord proxy's listener itself, without forced hosts.
 	 */
 	public static final String LOBBY_HOST = "lobby.identica.test";
+	/**
+	 * Hostname whose players the example addon holds at a checkpoint on the loading screen, before they enter any
+	 * server, where the console answers their steps; the network needs {@code @Identica(addon = true)}.
+	 */
+	public static final String HOLD_HOST = "hold.identica.test";
+
+	/**
+	 * Hostname whose players the example addon holds at a checkpoint on the step's server, in its world, where the
+	 * console answers their steps; the network needs {@code @Identica(addon = true)}.
+	 */
+	public static final String ASK_HOST = "ask.identica.test";
 
 	/**
 	 * Builds a network of proxies that share the {@code auth} and {@code lobby} servers, each of which also runs

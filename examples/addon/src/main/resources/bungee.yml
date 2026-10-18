@@ -1,0 +1,5 @@
+name: IdenticaExampleAddon
+main: me.whereareiam.identica.example.addon.bungeecord.BungeeCordExampleAddon
+version: 1.0.0
+description: Example addon built on Identica's API
+depends: [Identica]

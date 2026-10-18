@@ -47,7 +47,7 @@ A BungeeCord network differs from a Velocity one where BungeeCord or Anvil leave
 
 - BungeeCord verifies premium logins against Mojang's own session server, which Anvil cannot replace with the network's stand-in, so no premium player joins it. The Premium provider still asks the stand-in which usernames are premium, so an offline player with a premium username is asked for a premium login first, as on Velocity.
 - Anvil writes the proxy's listener itself, without forced hosts, so `LOBBY_HOST` is forced nowhere.
-- The example addon is a Velocity plugin; `addon = true` fails on another platform.
+- On BungeeCord, `addon = true` runs only the example addon's checkpoints; it holds back no chat and commands there.
 - BungeeCord names a player on its console only once the player reaches a backend, so the journey checks a login it refuses, such as one a join restriction refuses, on the client alone.
 
 The journeys on BungeeCord are in the `platform` package and suite.

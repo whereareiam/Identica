@@ -441,6 +441,38 @@ public final class Administrator {
 		return this;
 	}
 
+	/**
+	 * Answers the waiting step of a player the example addon's checkpoints hold, through the provider's own command,
+	 * from the console, and waits until a checkpoint ran it. A checkpoint on the step's server holds the player a
+	 * moment after they entered its world, so the console asks again while no checkpoint holds the player yet.
+	 *
+	 * @param username the held player
+	 * @param command the command to run as the player, without its slash
+	 */
+	public Administrator answersFor(String username, String command) {
+		String answered = "Example checkpoint answered for " + username + ": true";
+		String notHeld = "Example checkpoint holds no " + username;
+		Instant deadline = Instant.now().plus(TIMEOUT);
+		while (true) {
+			ConsoleLines output = ConsoleLines.from(console);
+			sinceCommand = output;
+			console.sendCommand("examplehold " + username + " " + command);
+			while (true) {
+				String lines = String.join("\n", output.lines());
+				if (lines.contains(answered)) return this;
+				if (lines.contains(notHeld)) break;
+				if (Instant.now().isAfter(deadline))
+					fail("The example checkpoint did not answer for " + username + "; console: " + output.lines());
+
+				pause(100);
+			}
+			if (Instant.now().isAfter(deadline))
+				fail("No example checkpoint held " + username + "; console: " + output.lines());
+
+			pause(250);
+		}
+	}
+
 	private JoinRestrictionMessages.Commands joinRestriction() {
 		return configured.joinRestriction().getCommands();
 	}

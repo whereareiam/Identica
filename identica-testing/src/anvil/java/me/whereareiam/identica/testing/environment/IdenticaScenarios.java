@@ -20,9 +20,6 @@ import java.util.stream.Collectors;
 public final class IdenticaScenarios implements AnvilScenarioFactory<Identica> {
 	@Override
 	public @NotNull AnvilScenario create(@NotNull Identica identica, @NotNull ScenarioResources resources) {
-		if (identica.addon() && identica.platform() != Platform.VELOCITY)
-			throw new IllegalArgumentException("The example addon is a Velocity plugin");
-
 		Set<Provider> enabled = EnumSet.noneOf(Provider.class);
 		enabled.addAll(Arrays.asList(identica.providers()));
 

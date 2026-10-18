@@ -55,6 +55,22 @@ Each `Journey` step checks both sides: what the player's client shows, and what 
 
 A join the proxy may refuse starts with `attempt()`, or `attemptAgain()` for a player who connected before, instead of `join()`. The refusal that follows names its moment: `refusedWith(...)` before the proxy knows who is joining, `refusedAtLoginWith(...)` while the player is still logging in, before any backend or prompt, and `kickedWith(...)` for a disconnect at any point.
 
+A player a checkpoint holds on the loading screen logs in but enters no server's world until the journey has finished. `joinsHeld()` joins such a player and expects the proxy to hold them, `isHeld()` checks again that their client entered no world, `staysHeld(duration)` keeps checking for longer, such as past the proxy's read timeout, and `neverJoins(backend)` checks that the player never reaches that backend. The example addon's checkpoints hold players who announce `IdenticaNetwork.HOLD_HOST` on the loading screen and players who announce `IdenticaNetwork.ASK_HOST` on the step's server, and `Administrator.answersFor(username, command)` answers for them from the console:
+
+```java
+@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL, addon = true)
+void holdsAPlayerUntilTheyHaveRegistered(ScenarioContext anvil) {
+	Journey alice = Journey.of(anvil, Client.offline("Alice").through(HOLD_HOST)).joinsHeld();
+	Administrator console = Administrator.at(anvil, PROXY);
+
+	console.answersFor("Alice", "pass Secret-123");
+	alice.isHeld();
+	console.answersFor("Alice", "passconfirm Secret-123");
+
+	alice.on(LOBBY).neverJoins(AUTH);
+}
+```
+
 Use `Accounts` for players who already have an account.
 
 A player whose username Identica changes, such as an account a username conflict renamed, joins under another name than its client's. `.named(username)` tells the journey the name the proxy reports the player under from the next connection on, and `.playsAs(username)` expects the backend to see the player under it. `ProxyConfiguration.usernameConflicts()` changes the username conflict rules of a test network:
@@ -131,7 +147,7 @@ alice.waits(LOCKOUT)
 
 ## The examples
 
-Every test proxy installs the example provider from `examples/provider` next to the official ones, disabled unless the test enables it with `providers = Provider.EXAMPLE`. `@Identica(addon = true)` also installs the example addon from `examples/addon`, a separate Velocity plugin that holds back chat and commands until a player has authenticated. The tests under `example` keep both working against the current API.
+Every test proxy installs the example provider from `examples/provider` next to the official ones, disabled unless the test enables it with `providers = Provider.EXAMPLE`. `@Identica(addon = true)` also installs the example addon from `examples/addon`, a separate plugin that holds back chat and commands on Velocity until a player has authenticated, and holds players who join through `IdenticaNetwork.HOLD_HOST` or `IdenticaNetwork.ASK_HOST` at its checkpoints on Velocity and BungeeCord. The tests under `example` keep both working against the current API.
 
 Text that belongs to no configuration file, such as an addon's own message or a chat line, is matched as plain text. `.chat(message)` sends a chat message, `.seesText(text)` waits for a message containing the text, and `.doesNotSeeText(text)` expects none to arrive. `Administrator.seesOnConsole(texts...)` expects a console line containing every text since the administrator's previous command, such as what an addon logs when it reacts to a reload:
 

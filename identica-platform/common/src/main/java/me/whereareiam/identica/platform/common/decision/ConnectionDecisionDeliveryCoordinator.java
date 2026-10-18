@@ -14,7 +14,6 @@ import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.PipelineStateReference;
 import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.service.DeliveryService;
-import me.whereareiam.identica.type.messaging.DeliveryCheckpoint;
 import me.whereareiam.identica.type.messaging.DeliverySemantics;
 import me.whereareiam.identica.type.messaging.DeliverySource;
 import org.jetbrains.annotations.NotNull;
@@ -29,18 +28,14 @@ public class ConnectionDecisionDeliveryCoordinator {
 	private final @NotNull PipelineStateStore pipelineStateStore;
 
 	/**
-	 * Queues the prompt of a waiting decision for the connection, marked with the journey position it belongs to.
+	 * Queues the prompt of a waiting decision for the connection, marked with the journey position it belongs to. The
+	 * prompt is delivered once the player's client joins a server's world.
 	 *
 	 * @param connection connection the decision is for
 	 * @param decision decision of the connection's pipeline
-	 * @param checkpoint when the prompt is delivered
 	 * @return {@code true} when the prompt was queued
 	 */
-	public boolean queueWaitDecision(
-			@NotNull ConnectionIdentity connection,
-			@Nullable ConnectionDecision decision,
-			@NotNull DeliveryCheckpoint checkpoint
-	) {
+	public boolean queueWaitDecision(@NotNull ConnectionIdentity connection, @Nullable ConnectionDecision decision) {
 		if (decision == null || decision.getStatus() != ConnectionDecision.Status.WAIT) return false;
 
 		String message = decision.getMessage();
@@ -62,7 +57,6 @@ public class ConnectionDecisionDeliveryCoordinator {
 				.payload(DeliveryPayload.builder()
 						.chatMessage(message)
 						.build())
-				.checkpoint(checkpoint)
 				.semantics(DeliverySemantics.ONCE)
 				.marker(DeliveryMarker.builder()
 						.pipelineType(state != null ? state.getPipelineType() : null)

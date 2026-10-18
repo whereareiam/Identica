@@ -34,7 +34,6 @@ import me.whereareiam.identica.provider.migration.MigrationPrecheckResult;
 import me.whereareiam.identica.provider.migration.ProviderMigrationPrecheck;
 import me.whereareiam.identica.service.DeliveryService;
 import me.whereareiam.identica.service.MigrationService;
-import me.whereareiam.identica.type.messaging.DeliveryCheckpoint;
 import me.whereareiam.identica.type.messaging.DeliverySemantics;
 import me.whereareiam.identica.type.messaging.DeliverySource;
 import me.whereareiam.identica.type.migration.MigrationCancelScope;
@@ -495,7 +494,6 @@ public class DefaultMigrationService implements MigrationService {
 				.payload(DeliveryPayload.builder()
 						.chatMessage(resolveMigrationCancelledMessage())
 						.build())
-				.checkpoint(DeliveryCheckpoint.PLATFORM_READY_INITIAL)
 				.semantics(DeliverySemantics.ONCE)
 				.createdAt(System.currentTimeMillis())
 				.updatedAt(System.currentTimeMillis())

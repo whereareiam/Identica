@@ -23,7 +23,6 @@ import me.whereareiam.identica.platform.common.stage.login.PreparedRefusal;
 import me.whereareiam.identica.platform.common.stage.profile.ProfileRewriteProcessor;
 import me.whereareiam.identica.platform.velocity.adapter.profile.VelocityProfileRewriteAdapter;
 import me.whereareiam.identica.replication.ReplicationAdapter;
-import me.whereareiam.identica.service.PlatformDeliveryAdapter;
 import me.whereareiam.keystone.model.SerializerContent;
 import me.whereareiam.keystone.model.SerializerOptions;
 import me.whereareiam.keystone.serializer.SerializerEngine;
@@ -108,8 +107,7 @@ class VelocityProfileThenLoginTest {
 				refusal,
 				new ConnectionDecisionApplier(
 						VelocityProfileThenLoginTest::messages,
-						mock(ConnectionDecisionDeliveryCoordinator.class),
-						mock(PlatformDeliveryAdapter.class)
+						mock(ConnectionDecisionDeliveryCoordinator.class)
 				)
 		));
 		when(connectionCoordinator.process(any())).thenReturn(CompletableFuture.completedFuture(ConnectionDecision.allow()));

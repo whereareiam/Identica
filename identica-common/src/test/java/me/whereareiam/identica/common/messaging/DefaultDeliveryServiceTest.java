@@ -7,7 +7,6 @@ import me.whereareiam.identica.model.delivery.DeliveryRequest;
 import me.whereareiam.identica.model.delivery.DeliveryTarget;
 import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.service.DeliveryStore;
-import me.whereareiam.identica.type.messaging.DeliveryCheckpoint;
 import me.whereareiam.identica.type.messaging.DeliverySemantics;
 import me.whereareiam.identica.type.messaging.DeliverySource;
 import net.kyori.adventure.audience.Audience;
@@ -48,7 +47,6 @@ class DefaultDeliveryServiceTest {
 								.accountUniqueId(identity.getAccountUniqueId())
 								.build())
 						.build())
-				.checkpoint(DeliveryCheckpoint.PLATFORM_READY_INITIAL)
 				.semantics(DeliverySemantics.ONCE)
 				.requiredServer("limbo")
 				.createdAt(System.currentTimeMillis())
@@ -59,14 +57,12 @@ class DefaultDeliveryServiceTest {
 		when(deliveryStore.findByAccountUniqueId(identity.getAccountUniqueId())).thenReturn(List.of());
 
 		List<DeliveryRequest> wrongServer = service.dispatch(DeliveryDispatchContext.builder()
-				.checkpoint(DeliveryCheckpoint.PLATFORM_READY_INITIAL)
 				.identity(identity)
-				.currentServer("hub")
+				.server("hub")
 				.build());
 		List<DeliveryRequest> rightServer = service.dispatch(DeliveryDispatchContext.builder()
-				.checkpoint(DeliveryCheckpoint.PLATFORM_READY_INITIAL)
 				.identity(identity)
-				.currentServer("limbo")
+				.server("limbo")
 				.build());
 
 		assertEquals(0, wrongServer.size());

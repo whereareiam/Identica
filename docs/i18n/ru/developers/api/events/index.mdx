@@ -1,7 +1,7 @@
 ---
 title: События
 description: Как слушать события Identica, реагировать на них и учитывать их особенности.
-sourceHash: 51568629a00481b4a0ec915081545196003e2ac4
+sourceHash: 56792f136f75d6d7a31dca17cbbf89dcf1990284
 ---
 
 У Identica собственная система событий для плагинов-аддонов, интеграций и внутренних компонентов.
@@ -61,6 +61,28 @@ Identica запускается по фазам, и каждая начинае�
 - `IdenticaBootstrappedEvent` вызывается, когда функции запущены, до загрузки провайдеров.
 - `IdenticaReadyEvent` вызывается в конце запуска. Провайдеры загружены вместе со своими командами и документами, Identica обрабатывает подключения игроков, а действия, переданные в `IdenticaAPI.whenReady(...)`, уже выполнены.
 - `IdenticaShutdownEvent` вызывается, когда Identica останавливается. На `EventOrder.LOW` Identica останавливает фазы в обратном порядке, поэтому слушатель с `EventOrder.LOWEST` ещё работает при открытых провайдерах и базе данных, а более поздние слушатели — уже после их закрытия.
+
+## Сообщения игроку при входе [#messages-to-a-joining-player]
+
+Клиент игрока показывает чат, заголовки и диалоги, только когда он уже в мире сервера. Пока клиент ещё проходит конфигурацию или переходит на другой сервер, он отбрасывает сообщения чата и закрывает диалоги. `ServerJoinedEvent` (в `me.whereareiam.identica.event.connection`) вызывается именно в этот момент: при первом входе и снова после каждого перехода на другой сервер, с `Identity` игрока и именем сервера. Из этого события Identica доставляет свои отложенные сообщения, например первый запрос и сообщение о завершении.
+
+Показывайте свои сообщения или диалоги входящему игроку из этого события, а не из события входа или подключения платформы:
+
+```java
+import me.whereareiam.identica.event.EventListener;
+import me.whereareiam.identica.event.base.IdenticEvent;
+import me.whereareiam.identica.event.connection.ServerJoinedEvent;
+import net.kyori.adventure.text.Component;
+
+public final class WelcomeListener implements EventListener {
+    @IdenticEvent
+    public void onServerJoined(ServerJoinedEvent event) {
+        event.getIdentity().sendMessage(Component.text("Welcome to " + event.getServer()));
+    }
+}
+```
+
+На BungeeCord событие вызывается из планировщика Identica сразу после входа, потому что у BungeeCord нет события, которое срабатывает, когда клиент уже в мире.
 
 ## Основные категории событий [#common-event-categories]
 

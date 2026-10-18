@@ -4,6 +4,7 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.listener.DynamicListener;
+import me.whereareiam.identica.platform.bungeecord.join.BungeeCordJoinReporter;
 import me.whereareiam.identica.routing.RoutingCoordinator;
 import net.md_5.bungee.api.event.ServerConnectedEvent;
 
@@ -11,12 +12,14 @@ import net.md_5.bungee.api.event.ServerConnectedEvent;
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class ServerConnectedListener implements DynamicListener<ServerConnectedEvent> {
 	private final RoutingCoordinator routingCoordinator;
+	private final BungeeCordJoinReporter joinReporter;
 
 	@Override
 	public void onEvent(ServerConnectedEvent event) {
 		String currentServer = event.getServer() != null ? event.getServer().getInfo().getName() : null;
 		if (currentServer == null) return;
 
+		joinReporter.joining(event.getPlayer(), currentServer);
 		routingCoordinator.markReached(event.getPlayer().getUniqueId(), currentServer);
 	}
 }

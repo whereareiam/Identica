@@ -19,7 +19,6 @@ import me.whereareiam.identica.platform.velocity.adapter.auth.VelocityResumeDeci
 import me.whereareiam.identica.platform.velocity.adapter.routing.VelocityForcedHostAdapter;
 import me.whereareiam.identica.platform.velocity.api.handshake.VelocityHandshakeContext;
 import me.whereareiam.identica.platform.velocity.adapter.profile.VelocityProfileRewriteAdapter;
-import me.whereareiam.identica.platform.velocity.delivery.VelocityDeliveryCoordinator;
 import me.whereareiam.identica.platform.velocity.listener.VelocityListenerRegistrar;
 import me.whereareiam.identica.platform.velocity.listener.routing.VelocityRoutingIntentListener;
 import me.whereareiam.identica.platform.velocity.logging.VelocityLoggingHelper;
@@ -64,11 +63,6 @@ public class VelocityConfiguration extends PlatformConfiguration<VelocityHandsha
 
 		bind(StatisticsPlatform.class).to(VelocityStatisticsPlatform.class);
 		install(new StatisticsConfiguration());
-	}
-
-	@Override
-	protected @NotNull Class<VelocityDeliveryCoordinator> delivery() {
-		return VelocityDeliveryCoordinator.class;
 	}
 
 	@Override

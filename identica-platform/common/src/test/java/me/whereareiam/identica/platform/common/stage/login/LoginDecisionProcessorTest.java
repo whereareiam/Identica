@@ -10,7 +10,6 @@ import me.whereareiam.identica.model.auth.request.ConnectionRequest;
 import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.model.provider.selection.ProviderSelection;
-import me.whereareiam.identica.service.PlatformDeliveryAdapter;
 import me.whereareiam.identica.platform.common.stage.TextSerializerEngine;
 import me.whereareiam.identica.platform.common.stage.PrepareDenialMessages;
 import me.whereareiam.identica.platform.common.stage.InMemoryPrepareStateStore;
@@ -61,8 +60,7 @@ class LoginDecisionProcessorTest {
 			new PreparedRefusal(store, PrepareDenialMessages::messages),
 			new ConnectionDecisionApplier(
 					PrepareDenialMessages::messages,
-					mock(ConnectionDecisionDeliveryCoordinator.class),
-					mock(PlatformDeliveryAdapter.class)
+					mock(ConnectionDecisionDeliveryCoordinator.class)
 			)
 	);
 

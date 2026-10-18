@@ -2,17 +2,23 @@ package me.whereareiam.identica.model.delivery;
 
 import lombok.*;
 import me.whereareiam.identica.identity.actor.Identity;
-import me.whereareiam.identica.type.messaging.DeliveryCheckpoint;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
+/**
+ * The moment pending deliveries are dispatched for: a player's client joined a server's world.
+ */
 @Getter
 @ToString
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
 public class DeliveryDispatchContext {
-	private @NotNull DeliveryCheckpoint checkpoint;
+	/**
+	 * Identity whose client joined the server's world.
+	 */
 	private @NotNull Identity identity;
-	private @Nullable String currentServer;
+	/**
+	 * Name of the server the client joined.
+	 */
+	private @NotNull String server;
 }

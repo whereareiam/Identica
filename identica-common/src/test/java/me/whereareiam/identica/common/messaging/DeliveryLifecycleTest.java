@@ -1,10 +1,11 @@
 package me.whereareiam.identica.common.messaging;
 
 import me.whereareiam.identica.event.EventManager;
+import me.whereareiam.identica.event.connection.ServerJoinedEvent;
 import me.whereareiam.identica.type.ScenarioResolution;
 import me.whereareiam.identica.event.scenario.authentication.AuthenticationResolvedEvent;
-import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
+import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.delivery.DeliveryRequest;
 import me.whereareiam.identica.service.DeliveryService;
@@ -23,9 +24,8 @@ class DeliveryLifecycleTest {
 	@Test
 	void scenarioResolvedAcknowledgesInitialPromptDeliveries() {
 		DeliveryService deliveryService = mock(DeliveryService.class);
-		IdentityService identityService = mock(IdentityService.class);
 		EventManager eventManager = mock(EventManager.class);
-		DeliveryLifecycle lifecycle = new DeliveryLifecycle(deliveryService, identityService, eventManager);
+		DeliveryLifecycle lifecycle = new DeliveryLifecycle(deliveryService, eventManager);
 		UUID connectionUniqueId = UUID.randomUUID();
 		UUID promptId = UUID.randomUUID();
 		UUID ignoredId = UUID.randomUUID();
@@ -52,5 +52,18 @@ class DeliveryLifecycleTest {
 
 		verify(deliveryService).acknowledge(promptId, "scenario-resolved");
 		verify(deliveryService, never()).acknowledge(eq(ignoredId), anyString());
+	}
+
+	@DisplayName("Joining a server dispatches the deliveries waiting for it")
+	@Test
+	void serverJoinedDispatchesDeliveries() {
+		DeliveryService deliveryService = mock(DeliveryService.class);
+		DeliveryLifecycle lifecycle = new DeliveryLifecycle(deliveryService, mock(EventManager.class));
+		Identity identity = mock(Identity.class);
+
+		lifecycle.onServerJoined(new ServerJoinedEvent(identity, "auth"));
+
+		verify(deliveryService).dispatch(argThat(context ->
+				context.getIdentity() == identity && "auth".equals(context.getServer())));
 	}
 }

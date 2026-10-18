@@ -31,7 +31,6 @@ import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.service.DeliveryService;
 import me.whereareiam.identica.service.Scheduler;
 import me.whereareiam.identica.type.ScenarioResolution;
-import me.whereareiam.identica.type.messaging.DeliveryCheckpoint;
 import me.whereareiam.identica.type.messaging.DeliverySemantics;
 import me.whereareiam.identica.type.messaging.DeliverySource;
 import me.whereareiam.identica.type.pipeline.PipelineType;
@@ -147,7 +146,6 @@ public class PendingPipelineKickCoordinator implements EventListener, RuntimeLif
 				.payload(DeliveryPayload.builder()
 						.chatMessage(String.join("\n", messagesProvider.get().getScenarios().getMigration().getCancelled()))
 						.build())
-				.checkpoint(DeliveryCheckpoint.PLATFORM_READY_INITIAL)
 				.semantics(DeliverySemantics.ONCE)
 				.createdAt(System.currentTimeMillis())
 				.updatedAt(System.currentTimeMillis())

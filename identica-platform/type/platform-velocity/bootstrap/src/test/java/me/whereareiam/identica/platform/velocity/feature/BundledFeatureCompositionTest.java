@@ -25,6 +25,7 @@ import me.whereareiam.identica.common.config.IdenticaModule;
 import me.whereareiam.identica.common.feature.FeatureRuntime;
 import me.whereareiam.identica.common.registry.ReloadableRegistry;
 import me.whereareiam.identica.conflict.ConflictService;
+import me.whereareiam.identica.identity.address.AccountAddressService;
 import me.whereareiam.identica.persistence.AccountPersistenceService;
 import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.persistence.provider.ProviderProfilePersistenceService;
@@ -281,6 +282,7 @@ class BundledFeatureCompositionTest {
 			bind(IdentityService.class).toInstance(mock(IdentityService.class));
 			bind(ConflictService.class).toInstance(mock(ConflictService.class));
 			bind(AccountPersistenceService.class).toInstance(mock(AccountPersistenceService.class));
+			bind(AccountAddressService.class).toInstance(mock(AccountAddressService.class));
 			bind(ProviderLinkPersistenceService.class).toInstance(mock(ProviderLinkPersistenceService.class));
 			bind(ProviderProfilePersistenceService.class).toInstance(mock(ProviderProfilePersistenceService.class));
 			bind(PipelineStateStore.class).toInstance(mock(PipelineStateStore.class));

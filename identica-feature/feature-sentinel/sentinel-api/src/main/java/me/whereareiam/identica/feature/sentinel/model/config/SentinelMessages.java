@@ -17,6 +17,7 @@ import java.util.List;
 public class SentinelMessages implements MessageDocument {
 	private @NotNull ResumeSpam resumeSpam;
 	private @NotNull ContestedConnection contestedConnection;
+	private @NotNull AccountsPerAddress accountsPerAddress;
 
 	/**
 	 * Messages used by the built-in resume-spam sentinel.
@@ -37,6 +38,20 @@ public class SentinelMessages implements MessageDocument {
 	public static class ContestedConnection {
 		/**
 		 * Reason shown while the address is locked out; {@code {seconds}} is the time left.
+		 */
+		private @NotNull List<String> denied;
+	}
+
+	/**
+	 * Messages of the limit on accounts registered from one address.
+	 */
+	@Getter
+	@Setter
+	@ToString
+	public static class AccountsPerAddress {
+		/**
+		 * The reason a registration is refused; {@code {maxAccounts}} is the limit and {@code {seconds}} how long
+		 * until a registration counts no more, which is {@code 0} without a window.
 		 */
 		private @NotNull List<String> denied;
 	}

@@ -1,7 +1,7 @@
 ---
 title: features/sentinel/
 description: Все настройки features/sentinel/ и настройка для отдельных провайдеров.
-sourceHash: 79a2295f8db1480623b85577a482500142e33da5
+sourceHash: d5d411573314b68836b56291bfbdc50963eb3504
 ---
 
 `features/sentinel/` содержит файлы Sentinel: `settings.yml` и `messages.yml`. Что считает каждый sentinel, описано в разделе [Sentinel](../../../admins/features/sentinel/index.mdx). Защита от перебора паролей провайдера Credential настраивается в [настройках Credential](../../../admins/providers/official/credential/settings/index.mdx#authenticationbruteforce).
@@ -120,6 +120,48 @@ sourceHash: 79a2295f8db1480623b85577a482500142e33da5
 </Setting>
 
 <Setting
+  name="sentinels.accountsPerAddress.enabled"
+  takes="`true` или `false`"
+  default="`false`"
+  affects="ограничиваются ли регистрации с одного адреса"
+>
+
+Когда адрес достиг `maxAccounts`, его следующая регистрация отклоняется ещё до того, как у игрока спросят пароль. Игроки с уже существующими аккаунтами входят как обычно. Ограничение считает адреса, которые Identica хранит по [`identity/addresses.yml`](../../identity/addresses/index.mdx); этот же файл решает, какие адреса считаются одним. См. [Ограничение аккаунтов на адрес](../../../admins/features/sentinel/index.mdx#limiting-accounts-per-address).
+
+</Setting>
+
+<Setting
+  name="sentinels.accountsPerAddress.maxAccounts"
+  takes="целое число больше `0`"
+  default="`3`"
+  affects="сколько аккаунтов можно зарегистрировать с одного адреса"
+>
+
+</Setting>
+
+<Setting
+  name="sentinels.accountsPerAddress.window"
+  takes="длительность или `0m`"
+  default='`"0m"`'
+  affects="за какой срок учитываются регистрации"
+>
+
+`0m` учитывает каждый аккаунт, адрес регистрации которого ещё хранится. С окном, например `"30d"`, регистрация перестаёт учитываться через 30 дней после того, как произошла.
+
+</Setting>
+
+<Setting
+  name="sentinels.accountsPerAddress.allowlist"
+  takes="список адресов и диапазонов, например `203.0.113.7` или `10.0.0.0/8`"
+  default="`[]`"
+  affects="какие адреса никогда не ограничиваются"
+>
+
+Используйте его для адресов, которые делят много настоящих игроков, например для школы. Их регистрации всё равно хранятся — в отличие от адресов, которые игнорирует `identity/addresses.yml`. Запись, которая не является адресом или диапазоном, пропускается с предупреждением.
+
+</Setting>
+
+<Setting
   name="replication.state"
   takes="строку"
   default='`"identica:sentinels"`'
@@ -166,6 +208,17 @@ sourceHash: 79a2295f8db1480623b85577a482500142e33da5
 
 </Setting>
 
+<Setting
+  name="accountsPerAddress.denied"
+  takes="список строк"
+  default="уведомление со строкой `Too many accounts were registered from your address.` и лимитом"
+  affects="причину, которую видит игрок, чью регистрацию отклонило ограничение аккаунтов"
+>
+
+`{maxAccounts}` заменяется на `sentinels.accountsPerAddress.maxAccounts`. `{seconds}` заменяется временем, через которое самая старая учитываемая регистрация выйдет из `window`, и `0`, если окна нет. Пустой список отключает сообщение, но регистрация всё равно отклоняется.
+
+</Setting>
+
 ## Пример [#example]
 
 `features/sentinel/settings.yml`:
@@ -189,6 +242,11 @@ sentinels:
     lockout:
       enabled: true
       duration: "1m"
+  accountsPerAddress:
+    enabled: false
+    maxAccounts: 3
+    window: "0m"
+    allowlist: []
 replication:
   state: "identica:sentinels"
 ```
@@ -216,6 +274,12 @@ replication:
         "enabled": true,
         "duration": "1m"
       }
+    },
+    "accountsPerAddress": {
+      "enabled": false,
+      "maxAccounts": 3,
+      "window": "0m",
+      "allowlist": []
     }
   },
   "replication": {

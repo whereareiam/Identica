@@ -32,6 +32,17 @@ public class SentinelMessagesDefaults implements DefaultsProvider<SentinelMessag
 				"<dark_gray>discord.arcadeya.com"
 		));
 		messages.setContestedConnection(contestedConnection);
+
+		SentinelMessages.AccountsPerAddress accountsPerAddress = new SentinelMessages.AccountsPerAddress();
+		accountsPerAddress.setDenied(List.of(
+				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
+				"",
+				"<white>Too many accounts were registered from your address.</white>",
+				"<white>One address may register at most <green>{maxAccounts}</green> accounts.</white>",
+				"",
+				"<dark_gray>discord.arcadeya.com"
+		));
+		messages.setAccountsPerAddress(accountsPerAddress);
 		return messages;
 	}
 }

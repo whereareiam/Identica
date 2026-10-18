@@ -12,9 +12,12 @@ import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.feature.IdenticaFeature;
 import me.whereareiam.identica.feature.sentinel.config.provider.SentinelMessagesProvider;
 import me.whereareiam.identica.feature.sentinel.config.provider.SentinelSettingsProvider;
+import me.whereareiam.identica.feature.sentinel.pipeline.SentinelPipelineExtension;
+import me.whereareiam.identica.feature.sentinel.type.AccountsPerAddressSentinelQuota;
 import me.whereareiam.identica.feature.sentinel.type.ContestedConnectionSentinelDefinition;
 import me.whereareiam.identica.feature.sentinel.type.ResumeSpamSentinelDefinition;
 import me.whereareiam.identica.feature.FeatureContext;
+import me.whereareiam.identica.pipeline.extension.PipelineExtensionRegistry;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayDeque;
@@ -54,6 +57,15 @@ public final class SentinelFeatureBootstrap implements IdenticaFeature {
 		shutdownActions.push(() -> List.copyOf(registry.values()).forEach(registry::unregister));
 		registry.register(injector.getInstance(ResumeSpamSentinelDefinition.class));
 		registry.register(injector.getInstance(ContestedConnectionSentinelDefinition.class));
+		Registry<SentinelQuota> quotas = injector.getInstance(Key.get(new TypeLiteral<Registry<SentinelQuota>>() {}));
+		shutdownActions.push(() -> List.copyOf(quotas.values()).forEach(quotas::unregister));
+		AccountsPerAddressSentinelQuota accountsPerAddress = injector.getInstance(AccountsPerAddressSentinelQuota.class);
+		quotas.register(accountsPerAddress);
+		accountsPerAddress.warnIfUncounted();
+		PipelineExtensionRegistry pipelines = injector.getInstance(PipelineExtensionRegistry.class);
+		SentinelPipelineExtension extension = injector.getInstance(SentinelPipelineExtension.class);
+		shutdownActions.push(() -> pipelines.unregister(extension.id()));
+		pipelines.register(extension);
 		EventManager events = injector.getInstance(EventManager.class);
 		register(events, injector.getInstance(ConnectionAttemptSentinelLifecycle.class));
 		register(events, injector.getInstance(ContestedLoginSentinelLifecycle.class));

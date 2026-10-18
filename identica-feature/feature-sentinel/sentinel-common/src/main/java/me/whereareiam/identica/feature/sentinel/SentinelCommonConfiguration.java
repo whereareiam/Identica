@@ -14,6 +14,8 @@ import me.whereareiam.identica.feature.sentinel.config.provider.SentinelMessages
 import me.whereareiam.identica.feature.sentinel.config.provider.SentinelSettingsProvider;
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelMessages;
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelSettings;
+import me.whereareiam.identica.feature.sentinel.pipeline.SentinelPipelineExtension;
+import me.whereareiam.identica.feature.sentinel.type.AccountsPerAddressSentinelQuota;
 import me.whereareiam.identica.feature.sentinel.type.ContestedConnectionSentinelDefinition;
 import me.whereareiam.identica.feature.sentinel.type.ResumeSpamSentinelDefinition;
 import me.whereareiam.strata.MigrationStream;
@@ -26,14 +28,15 @@ public class SentinelCommonConfiguration extends AbstractModule {
 	protected void configure() {
 		bind(SentinelMessages.class).toProvider(SentinelMessagesProvider.class);
 		bind(SentinelSettings.class).toProvider(SentinelSettingsProvider.class);
-		bind(new TypeLiteral<Registry<SentinelDefinition>>() {})
-				.to(SentinelRegistry.class)
-				.in(com.google.inject.Singleton.class);
+		bind(new TypeLiteral<Registry<SentinelDefinition>>() {}).toInstance(new SentinelRegistry<>());
+		bind(new TypeLiteral<Registry<SentinelQuota>>() {}).toInstance(new SentinelRegistry<>());
 		bind(SentinelService.class).to(DefaultSentinelService.class).in(com.google.inject.Singleton.class);
 		bind(ConnectionAttemptSentinelLifecycle.class).in(com.google.inject.Singleton.class);
 		bind(ResumeSpamSentinelDefinition.class).in(com.google.inject.Singleton.class);
 		bind(ContestedConnectionSentinelDefinition.class).in(com.google.inject.Singleton.class);
 		bind(ContestedLoginSentinelLifecycle.class).in(com.google.inject.Singleton.class);
+		bind(AccountsPerAddressSentinelQuota.class).in(com.google.inject.Singleton.class);
+		bind(SentinelPipelineExtension.class).in(com.google.inject.Singleton.class);
 	}
 
 	/**

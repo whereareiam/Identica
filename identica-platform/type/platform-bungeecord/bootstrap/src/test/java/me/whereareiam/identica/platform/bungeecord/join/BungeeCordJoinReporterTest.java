@@ -5,6 +5,7 @@ import me.whereareiam.identica.event.connection.ServerJoinedEvent;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.model.scheduler.RunnableTask;
 import me.whereareiam.identica.platform.bungeecord.actor.BungeeCordCommandPlayer;
+import me.whereareiam.identica.platform.common.checkpoint.LoadingScreenReplies;
 import me.whereareiam.identica.service.Scheduler;
 import me.whereareiam.identica.util.EventUtil;
 import net.kyori.adventure.audience.Audience;
@@ -148,6 +149,6 @@ class BungeeCordJoinReporterTest {
 		when(player.getUniqueId()).thenReturn(uniqueId);
 		when(player.getName()).thenReturn("Alice");
 		when(player.getSocketAddress()).thenReturn(new InetSocketAddress("127.0.0.1", 41294));
-		return new BungeeCordCommandPlayer(player, mock(Audience.class));
+		return new BungeeCordCommandPlayer(player, mock(Audience.class), mock(LoadingScreenReplies.class));
 	}
 }

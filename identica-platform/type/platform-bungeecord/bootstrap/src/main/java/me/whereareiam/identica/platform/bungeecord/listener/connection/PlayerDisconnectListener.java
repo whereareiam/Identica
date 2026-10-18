@@ -3,6 +3,8 @@ package me.whereareiam.identica.platform.bungeecord.listener.connection;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.identica.platform.bungeecord.checkpoint.ConfigurationHoldListener;
+import me.whereareiam.identica.platform.bungeecord.listener.routing.BungeeCordRoutingIntentListener;
 import me.whereareiam.identica.feature.verification.VerificationService;
 import me.whereareiam.identica.identity.IdentityAttachment;
 import me.whereareiam.identica.identity.IdentityService;
@@ -26,6 +28,8 @@ public class PlayerDisconnectListener implements DynamicListener<PlayerDisconnec
 	private final PrepareStateStore prepareStateStore;
 	private final BungeeCordJoinReporter joinReporter;
 	private final VerificationService verificationService;
+	private final ConfigurationHoldListener configurationHold;
+	private final BungeeCordRoutingIntentListener routingIntentListener;
 
 	@Override
 	public void onEvent(PlayerDisconnectEvent event) {
@@ -43,5 +47,7 @@ public class PlayerDisconnectListener implements DynamicListener<PlayerDisconnec
 		prepareStateStore.clear(player.getUniqueId());
 		joinReporter.clear(player.getUniqueId());
 		verificationService.cancelPendingEnrollment(player.getUniqueId());
+		configurationHold.left(player.getUniqueId());
+		routingIntentListener.left(player.getUniqueId());
 	}
 }

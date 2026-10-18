@@ -14,6 +14,7 @@ import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.pipeline.prepare.PrepareStateStore;
 import me.whereareiam.identica.platform.common.adapter.PlatformResumeDecisionAdapter;
+import me.whereareiam.identica.platform.common.checkpoint.LoadingScreenReplies;
 import me.whereareiam.identica.platform.bungeecord.actor.BungeeCordCommandPlayer;
 import me.whereareiam.identica.platform.bungeecord.util.BaseComponentMapper;
 import net.kyori.adventure.platform.bungeecord.BungeeAudiences;
@@ -21,10 +22,13 @@ import net.kyori.adventure.text.Component;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.event.ServerSwitchEvent;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
@@ -34,13 +38,44 @@ public class BungeeCordResumeDecisionAdapter implements PlatformResumeDecisionAd
 	private final @NotNull PrepareStateStore prepareStateStore;
 	private final @NotNull ConnectionDecisionApplier decisionApplier;
 	private final @NotNull BungeeAudiences audiences;
+	private final @NotNull LoadingScreenReplies replies;
+	private final Map<UUID, ConnectionDecision> resumedOnConnect = new ConcurrentHashMap<>();
 
+	/**
+	 * Resumes the journey of a player whom BungeeCord connected to their first server. BungeeCord does so before the
+	 * client leaves its login, so the journey resumes while the client is still on the loading screen, also for a
+	 * player a checkpoint then holds in that server's configuration.
+	 */
 	public void resume(@NotNull ServerSwitchEvent event) {
 		ProxiedPlayer player = event.getPlayer();
 		if (event.getFrom() != null) return;
 
+		ConnectionDecision decision = resume(player, player.getServer() != null ? player.getServer().getInfo().getName() : null);
+		if (decision != null) resumedOnConnect.put(player.getUniqueId(), decision);
+	}
+
+	/**
+	 * Returns the journey's decision when BungeeCord connected the player to their first server, which a hold on the
+	 * loading screen continues from.
+	 *
+	 * @param player the held player
+	 * @return the journey's decision, or {@code null} when the journey had none
+	 */
+	public @Nullable ConnectionDecision resumedOnConnect(@NotNull ProxiedPlayer player) {
+		return resumedOnConnect.get(player.getUniqueId());
+	}
+
+	/**
+	 * Forgets a player who left.
+	 *
+	 * @param connectionUniqueId the player's connection
+	 */
+	public void forget(@NotNull UUID connectionUniqueId) {
+		resumedOnConnect.remove(connectionUniqueId);
+	}
+
+	private @Nullable ConnectionDecision resume(@NotNull ProxiedPlayer player, @Nullable String intendedServer) {
 		String ip = resolveIp(player);
-		String intendedServer = player.getServer() != null ? player.getServer().getInfo().getName() : null;
 		ConnectionIdentity identity = new ConnectionIdentity(player.getName(), ip);
 		identity.setConnectionUniqueId(player.getUniqueId());
 		identity.setObservedUniqueId(player.getUniqueId());
@@ -90,11 +125,12 @@ public class BungeeCordResumeDecisionAdapter implements PlatformResumeDecisionAd
 				player,
 				audiences.player(player),
 				identity.getUsername(),
-				identity.getOrigin()
+				identity.getOrigin(),
+				replies
 		);
 		liveIdentity.setConnectionUsername(identity.getConnectionUsername());
 		if (decision == null || decision.getStatus() == ConnectionDecision.Status.NO_PENDING)
-			return;
+			return decision;
 
 		decisionApplier.applyOrQueueWait(
 				decision,
@@ -105,10 +141,11 @@ public class BungeeCordResumeDecisionAdapter implements PlatformResumeDecisionAd
 
 		ConnectionDecision.Status status = decision.getStatus();
 		if (status == ConnectionDecision.Status.DENY || status == ConnectionDecision.Status.REQUIRE_RECONNECT)
-			return;
+			return decision;
 
 		if (status == ConnectionDecision.Status.ALLOW || status == ConnectionDecision.Status.WAIT)
 			identityService.attach(player.getUniqueId(), accountUniqueId, liveIdentity);
+		return decision;
 	}
 
 	private PrepareDecision resolvePrepared(@NotNull ProxiedPlayer player, @NotNull ConnectionIdentity identity) {

@@ -13,6 +13,7 @@ import net.kyori.adventure.platform.bungeecord.BungeeAudiences;
 import net.kyori.adventure.text.Component;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.event.PostLoginEvent;
+import me.whereareiam.identica.platform.common.checkpoint.LoadingScreenReplies;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -25,6 +26,7 @@ import java.util.UUID;
 public class BungeeCordLoginDecisionAdapter implements PlatformLoginDecisionAdapter<PostLoginEvent> {
 	private final @NotNull LoginDecisionProcessor processor;
 	private final @NotNull BungeeAudiences audiences;
+	private final @NotNull LoadingScreenReplies replies;
 
 	@Override
 	public void process(@NotNull PostLoginEvent event) {
@@ -73,7 +75,8 @@ public class BungeeCordLoginDecisionAdapter implements PlatformLoginDecisionAdap
 						player,
 						audiences.player(player),
 						username,
-						origin
+						origin,
+						replies
 				);
 			}
 		};

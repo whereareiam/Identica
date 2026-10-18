@@ -7,6 +7,9 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import org.jetbrains.annotations.NotNull;
+import java.util.Map;
+import me.whereareiam.identica.Serializer;
+import me.whereareiam.identica.platform.common.checkpoint.LoadingScreenReplies;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
@@ -17,12 +20,14 @@ import java.util.UUID;
 public class BungeeCordCommandPlayer extends Identity {
 	private final ProxiedPlayer player;
 	private final Audience audience;
+	private final LoadingScreenReplies replies;
 
 	public BungeeCordCommandPlayer(
 			@NotNull ProxiedPlayer player,
-			@NotNull Audience audience
+			@NotNull Audience audience,
+			@NotNull LoadingScreenReplies replies
 	) {
-		this(player.getUniqueId(), null, player, audience, player.getName(), null);
+		this(player.getUniqueId(), null, player, audience, player.getName(), null, replies);
 	}
 
 	public BungeeCordCommandPlayer(
@@ -31,15 +36,29 @@ public class BungeeCordCommandPlayer extends Identity {
 			@NotNull ProxiedPlayer player,
 			@NotNull Audience audience,
 			@NotNull String username,
-			@Nullable Origin origin
+			@Nullable Origin origin,
+			@NotNull LoadingScreenReplies replies
 	) {
 		super(connectionUniqueId, accountUniqueId, username, resolveIp(player), origin);
 		this.player = player;
 		this.audience = audience;
+		this.replies = replies;
 	}
 
 	public ProxiedPlayer getSource() {
 		return player;
+	}
+
+	/**
+	 * Sends a message text, or while BungeeCord holds the player on the loading screen, defers it until the player's
+	 * client joined a server's world.
+	 */
+	@Override
+	public void send(@NotNull String message, @NotNull Map<String, String> placeholders) {
+		if (message.isBlank()) return;
+		if (replies.defer(getConnectionUniqueId(), Serializer.render(message, placeholders))) return;
+
+		super.send(message, placeholders);
 	}
 
 	@Override

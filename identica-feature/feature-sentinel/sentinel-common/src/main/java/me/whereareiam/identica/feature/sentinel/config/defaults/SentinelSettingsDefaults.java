@@ -7,6 +7,7 @@ import me.whereareiam.identica.feature.sentinel.model.SentinelPolicy;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
+import java.util.ArrayList;
 
 @Singleton
 public class SentinelSettingsDefaults implements DefaultsProvider<SentinelSettings> {
@@ -35,6 +36,7 @@ public class SentinelSettingsDefaults implements DefaultsProvider<SentinelSettin
 
 		sentinels.setResumeSpam(resumeSpam);
 		sentinels.setContestedConnection(defaultContestedConnection());
+		sentinels.setAccountsPerAddress(defaultAccountsPerAddress());
 		return sentinels;
 	}
 
@@ -53,6 +55,18 @@ public class SentinelSettingsDefaults implements DefaultsProvider<SentinelSettin
 		warning.setThresholdPercentage(0);
 		contestedConnection.setWarning(warning);
 		return contestedConnection;
+	}
+
+	/**
+	 * Off, so players who share an address keep registering after an upgrade until an admin turns it on.
+	 */
+	private SentinelSettings.AccountsPerAddress defaultAccountsPerAddress() {
+		SentinelSettings.AccountsPerAddress accountsPerAddress = new SentinelSettings.AccountsPerAddress();
+		accountsPerAddress.setEnabled(false);
+		accountsPerAddress.setMaxAccounts(3);
+		accountsPerAddress.setWindow(Duration.ZERO);
+		accountsPerAddress.setAllowlist(new ArrayList<>());
+		return accountsPerAddress;
 	}
 
 	private SentinelSettings.Replication defaultReplication() {

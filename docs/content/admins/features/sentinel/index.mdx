@@ -1,6 +1,6 @@
 ---
 title: Sentinel
-description: Lock out connections that keep failing or abusing the login.
+description: Lock out connections that keep failing or abusing the login, and limit accounts per address.
 ---
 
 Sentinels watch for repeated attempts and lock out the connection behind them for a while. Each sentinel counts its own kind of attempt:
@@ -14,6 +14,8 @@ Sentinels watch for repeated attempts and lock out the connection behind them fo
 The contested-connection sentinel counts per address, whatever username each connection uses, so it stops someone trying names that are being logged in. See [Two connections with one username](../../guides/logins/index.mdx#two-connections-with-one-username).
 
 Credential's brute-force protection belongs to the Credential provider and is set in its settings; see [Brute-force protection](../../providers/official/credential/brute-force/index.mdx).
+
+The sentinel can also [limit how many accounts are registered from one address](#limiting-accounts-per-address). That limit is off by default.
 
 ## Turning sentinels on and off
 
@@ -42,12 +44,37 @@ providers:
         enabled: false
 ```
 
+## Limiting accounts per address
+
+With `accountsPerAddress` turned on, an address may register at most `maxAccounts` accounts. The next player who tries to register from it is disconnected with a message before they are asked for a password. Players who already have an account log in as usual.
+
+```yaml
+sentinels:
+  accountsPerAddress:
+    enabled: true
+    maxAccounts: 3
+    window: "0m"
+    allowlist:
+      - "203.0.113.0/24"
+```
+
+- **Counted accounts**: the accounts that still exist and whose registration address Identica still keeps. Deleting an account frees its slot. Accounts registered before Identica kept addresses, or created by an admin from the console, are not counted.
+- **`window`**: with `"30d"`, only registrations of the last 30 days count, and the message tells the player when a slot frees up. `0m` counts every account.
+- **`allowlist`**: addresses that are never limited, for places where many real players share one address, such as a school.
+- **One address**: [Account addresses](../../guides/accounts/addresses/index.mdx) explains which addresses Identica keeps and when two count as one. A whole IPv6 `/64` counts as one address by default, because a player can switch addresses inside it at will.
+
+The limit runs once the player's provider is known, so it follows each provider's switch shown above. Turning the sentinel off for Premium, for example, lets premium players register from any address.
+
+<Callout type="warn" title="Behind a front proxy">
+  If players reach the proxy through a service such as TCPShield without forwarding their address, every player seems to come from the service's address, and the limit refuses everyone after a few registrations. Set up address forwarding first, or list the service's addresses under `ignored` in `identity/addresses.yml`.
+</Callout>
+
 ## Warnings and messages
 
 A sentinel can warn before it locks out: with `warning.enabled` and `warning.thresholdPercentage: 70`, a player with `maxAttempts: 10` is warned from the eighth attempt.
 
-The lockout messages are in `features/sentinel/messages`; `{seconds}` is the time left. An emptied message silences the text, but the lockout still applies.
+The lockout messages are in `features/sentinel/messages`; `{seconds}` is the time left. An emptied message silences the text, but the lockout still applies. The message of the account limit also knows `{maxAccounts}`.
 
-With [replication](../../guides/network/several-proxies/index.mdx), counters and lockouts are shared by every proxy of the network.
+With [replication](../../guides/network/several-proxies/index.mdx), counters and lockouts are shared by every proxy of the network. The account limit counts in the database, so proxies that share a database share it too.
 
 See [Sentinel settings](../../../configuration/features/sentinel/index.mdx) for every setting.

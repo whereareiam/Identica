@@ -13,6 +13,8 @@ import me.whereareiam.identica.feature.sentinel.model.SentinelContext;
 import me.whereareiam.identica.feature.sentinel.model.SentinelDecision;
 import me.whereareiam.identica.feature.sentinel.type.SentinelKey;
 import me.whereareiam.identica.feature.sentinel.model.SentinelPolicy;
+import me.whereareiam.identica.feature.sentinel.model.SentinelQuotaPolicy;
+import me.whereareiam.identica.feature.sentinel.model.SentinelQuotaUsage;
 import me.whereareiam.identica.replication.ReplicationSystem;
 import me.whereareiam.identica.replication.cache.ReplicatedCache;
 import me.whereareiam.identica.feature.sentinel.SentinelDefinition;
@@ -30,17 +32,20 @@ public class DefaultSentinelService implements SentinelService {
 	private static final String KEY_PREFIX = "rate:";
 
 	private final Registry<SentinelDefinition> registry;
+	private final Registry<SentinelQuota> quotas;
 	private final me.whereareiam.identica.feature.FeatureRegistry features;
 	private final Supplier<ReplicatedCache<SentinelEntry>> cache;
 
 	@Inject
 	public DefaultSentinelService(
 			Registry<SentinelDefinition> registry,
+			Registry<SentinelQuota> quotas,
 			me.whereareiam.identica.feature.FeatureRegistry features,
 			ReplicationSystem replicationSystem,
 			Provider<SentinelSettings> settingsProvider
 	) {
 		this.registry = registry;
+		this.quotas = quotas;
 		this.features = features;
 		this.cache = Suppliers.memoize(() -> replicationSystem.cache(resolveNamespace(settingsProvider))
 				.replicated(ReplicationType.identity(SentinelEntry.class)));
@@ -77,10 +82,18 @@ public class DefaultSentinelService implements SentinelService {
 					continue;
 				}
 				if (decision.isDeny() == best.isDeny()
-						&& definition.priority() > best.getDefinition().priority()) {
+						&& definition.priority() > best.priority()) {
 					best = decision;
 				}
 			}
+		}
+
+		for (SentinelQuota quota : quotas.values()) {
+			if (!supports(quota.scopes(), scope) || !applies(quota.providerId(), ctx)) continue;
+
+			SentinelDecision decision = checkQuota(quota, ctx);
+			if (decision == null) continue;
+			if (best == null || !best.isDeny() || decision.priority() > best.priority()) best = decision;
 		}
 
 		return Optional.ofNullable(best);
@@ -129,8 +142,29 @@ public class DefaultSentinelService implements SentinelService {
 	}
 
 	private boolean applies(SentinelDefinition definition, SentinelContext context) {
-		String provider = definition.providerId();
+		return applies(definition.providerId(), context);
+	}
+
+	private boolean applies(String provider, SentinelContext context) {
 		return provider == null || provider.equalsIgnoreCase(context.getProviderId());
+	}
+
+	/**
+	 * Refuses the connection once its usage reached the quota's limit, saying how long until the usage drops below
+	 * it by itself.
+	 */
+	private SentinelDecision checkQuota(SentinelQuota quota, SentinelContext ctx) {
+		SentinelQuotaPolicy policy = quota.policy(ctx);
+		if (policy == null || !policy.isActive()) return null;
+
+		SentinelQuotaUsage usage = quota.usage(ctx, policy);
+		if (usage.getUsed() < policy.getLimit()) return null;
+
+		long remainingMs = usage.getFreesAt() - System.currentTimeMillis();
+		long remainingSeconds = usage.getFreesAt() > 0 ? Math.max(0L, (remainingMs + 999) / 1000) : 0L;
+		String message = policy.getMessageSupplier() != null ? policy.getMessageSupplier().apply(ctx, usage) : null;
+
+		return SentinelDecision.exceeded(quota, remainingSeconds, message == null ? "" : message);
 	}
 
 	private SentinelDecision checkAttempt(
@@ -271,7 +305,10 @@ public class DefaultSentinelService implements SentinelService {
 	}
 
 	private boolean supports(SentinelDefinition definition, SentinelScope scope) {
-		SentinelScope[] scopes = definition.scopes();
+		return supports(definition.scopes(), scope);
+	}
+
+	private boolean supports(SentinelScope[] scopes, SentinelScope scope) {
 		if (scopes == null) return false;
 		for (SentinelScope candidate : scopes) {
 			if (candidate == scope) return true;

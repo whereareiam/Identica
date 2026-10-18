@@ -1,0 +1,91 @@
+# Identica-Dialogs' description page, rendered by Pictura: pictura render <this folder>
+name: Identica-Dialogs
+accent: "#FF961F"
+images: https://github.com/whereareiam/Identica/blob/dev/.github/assets/addon/dialogs/render/{file}?raw=true
+
+views:
+  - header:
+      logo: {text: IDENTICA, small: DIALOGS, creeper: 7, color: "#FF7A00", small_border: 0, width: 620}
+      pitch: >-
+        Identica's prompts as <accent>Minecraft dialogs</>: whenever a provider waits for a player,
+        they get a window with fields and buttons instead of typing commands into chat.
+      badge: badge-light
+      badge_font: minecraft-ten
+      badge_width: 104
+      badge_gap: 39
+      platforms: [Velocity, BungeeCord]
+      versions: "Dialogs from 1.21.6, chat below"
+      versions_badge: button-green-rim
+      versions_gap: 25
+
+  - board:
+      title: Dependencies & Information
+      cards:
+        - {title: Identica, text: "An addon for Identica. Install it on the proxy next to Identica, from the same release."}
+        - {title: Velocity, text: "Needs PacketEvents 2.14 or newer, because Velocity cannot show dialogs itself."}
+        - {title: BungeeCord, text: "Works with BungeeCord and Waterfall builds that support Minecraft 1.21.6 or newer."}
+        - {title: Good to know, tone: warning, text: "Players on Minecraft 1.21.5 or older keep Identica's chat prompts."}
+
+  - feature:
+      title: Prompts players can click
+      icon: key
+      blocks:
+        - text: >-
+            When a provider waits for the player, such as for a password or a code, the player gets a <accent>dialog</>
+            with fields and buttons. A button runs the same command the player would type, so the provider handles the
+            answer as before.
+        - image: asset/screenshot/login.png
+          alt: A dialog in Minecraft asking for a password, with a Log in button and Use chat instead.
+        - points:
+            - {label: Ready to use, text: "shipped dialogs cover both official providers, from login and registration to two-factor codes."}
+            - {label: Answers inside, text: "a wrong answer shows the dialog again with Identica's message."}
+            - {label: Chat stays, text: "<accent>Use chat instead</> closes the dialog until the player reconnects."}
+
+  - feature:
+      title: Your rules, your dialogs
+      icon: gear
+      text: Decide in <accent>rules.yml</> which waiting step shows which dialog, and write the dialogs yourself.
+      points:
+        - {label: Conditions, text: "match by step, provider, scenario, host or target server."}
+        - {label: One file per dialog, text: "MiniMessage text, text fields, toggles, options and sliders."}
+        - {label: Keep chat, text: "a rule with dialog none leaves a step in chat."}
+
+  - config:
+      title: Rules
+      file: rules.yml
+      code: |
+        rules:
+          - when:
+              step: password-authentication-password
+            dialog: login
+          - when:
+              step: password-registration
+              host: event.example.net
+            dialog: event-register
+          - when:
+              step: password-authentication-verification
+            dialog: none
+
+  - steps:
+      title: Getting started
+      steps:
+        - {title: Install, text: "Put Identica-Dialogs next to Identica; on Velocity add PacketEvents."}
+        - {title: Start, text: "Start the proxy once; the addon writes its rules and dialogs."}
+        - {title: Adjust, text: "Edit the files, then run /identica admin reload."}
+
+  - list:
+      title: Works with
+      rows:
+        - {name: identica, icon: shield, title: Identica, tag: Required, link: "https://modrinth.com/plugin/identica",
+           text: "The identity plugin whose prompts the addon shows, from any provider."}
+        - {name: credential, icon: key, title: Credential Provider, tag: Free, link: "https://modrinth.com/plugin/identica-credential-provider",
+           text: "Dialogs for login, registration, migration and two-factor codes come with the addon."}
+        - {name: premium, icon: diamond, title: Premium Provider, tag: Free, link: "https://modrinth.com/plugin/identica-premium-provider",
+           text: "Dialogs for its two-factor codes come with the addon."}
+
+  - support:
+      style: panel
+      player: whereareiam
+      link: https://discord.arcadeya.com/
+      text: Stuck? The team and the community answer fast.
+      button: Join Discord

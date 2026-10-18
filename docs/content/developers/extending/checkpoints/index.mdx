@@ -1,0 +1,103 @@
+---
+title: Checkpoints
+description: Hold a player on the loading screen or on the step's server while Identica waits for them, and ask them there.
+---
+
+When a step of a journey waits for the player, for example for a password, Identica normally sends the player to the step's server, where the provider asks in chat and the player answers with the provider's commands. A checkpoint lets an addon take over that wait: Identica holds the player where the checkpoint asks, and the checkpoint shows the player what the step asks for and answers through the provider's commands. Providers stay unchanged.
+
+The dialogs addon uses one to ask players on the loading screen, before they enter any server.
+
+## Where a player can be held
+
+A checkpoint lists the placements it can work with, most wanted first. Identica holds a player at the first placement the proxy can hold for them.
+
+| Placement | Where the player waits | Where it is available |
+| --- | --- | --- |
+| `LOADING_SCREEN` | On the loading screen, before the player enters any server's world. Once the journey has finished, the player enters the server the journey completes on. | Velocity, for clients from Minecraft 1.20.5 on. BungeeCord, for clients from Minecraft 1.20.2 on. |
+| `STEP_SERVER` | On the step's server, in its world. Routing sends the player there as without a checkpoint. | Every proxy and client |
+
+On the loading screen the client is in its configuration phase, where it shows no chat, so the checkpoint has to show the prompts itself, for example as dialogs. Replies that Identica's commands send to the player there, such as the answer to a wrong password, wait until the player has entered their first server and show up there.
+
+The proxies hold the loading screen differently:
+
+- **Velocity** holds the player on the proxy, before it chooses their first server. No server sees the player until the journey has finished. Velocity closes a connection whose client sends nothing for 30 seconds, so Identica asks the held client for a cookie every 10 seconds; clients before 1.20.5 have no cookies and wait at the checkpoint's next placement instead.
+- **BungeeCord** connects every player to a server before their client leaves its login, so it holds the player in the configuration of that first server, the one BungeeCord would send them to without Identica. That server sees a connecting player, who does not enter its world, and keeps the client connected meanwhile. BungeeCord can switch a player only from a server's world, so when the journey completes on another server, the player enters the first server and is switched from there.
+
+A checkpoint that asks for both, `LOADING_SCREEN` first and `STEP_SERVER` after it, works on every proxy and client: players whose proxy cannot hold them on the loading screen wait on the step's server.
+
+## Register a checkpoint
+
+Implement `Checkpoint` and register it through `identica.getCheckpoints()` once Identica is ready. Identica asks the most recently registered checkpoints first.
+
+```java
+import me.whereareiam.identica.IdenticaAPI;
+import me.whereareiam.identica.checkpoint.Checkpoint;
+import me.whereareiam.identica.checkpoint.CheckpointStop;
+import me.whereareiam.identica.model.checkpoint.CheckpointRequest;
+import me.whereareiam.identica.type.checkpoint.CheckpointPlacement;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+public final class LoadingScreenCheckpoint implements Checkpoint {
+    private final Map<UUID, CheckpointStop> stops = new ConcurrentHashMap<>();
+
+    @Override
+    public @NotNull String id() {
+        return "loading-screen";
+    }
+
+    @Override
+    public @NotNull List<CheckpointPlacement> placements() {
+        return List.of(CheckpointPlacement.LOADING_SCREEN, CheckpointPlacement.STEP_SERVER);
+    }
+
+    @Override
+    public boolean accepts(@NotNull CheckpointRequest request) {
+        return canShowPrompts(request.getConnectionUniqueId());
+    }
+
+    @Override
+    public void arrived(@NotNull CheckpointStop stop) {
+        stops.put(stop.getConnectionUniqueId(), stop);
+        stop.released().whenComplete((ignored, error) -> stops.remove(stop.getConnectionUniqueId(), stop));
+        stop.getWaiting().ifPresent(waiting -> ask(stop, waiting));
+    }
+
+    private boolean canShowPrompts(UUID connectionUniqueId) {
+        return true; // for example: the client's version can show dialogs
+    }
+
+    private void ask(CheckpointStop stop, CheckpointRequest waiting) {
+        // show the player what waiting.getStep() asks for, such as a password dialog
+    }
+}
+```
+
+```java
+IdenticaAPI.whenReady(identica -> identica.getCheckpoints().register(checkpoint));
+```
+
+Unregister the checkpoint when your plugin disables. Players it already holds stay held until their journeys finish.
+
+The repository's example addon registers two console checkpoints: players who join through a `hold.` hostname wait on the loading screen where the proxy can hold them there, and players who join through an `ask.` hostname wait on the step's server. The console answers for them with `/examplehold <player> <command>`. The checkpoints use only Identica's API, so the same jar registers them on Velocity and on BungeeCord.
+
+## What happens to a held player
+
+1. A step waits for the player, at login or later. Identica asks the checkpoints whether one takes the connection: `accepts` receives the connection, the journey's context and scenario, the stage, the step and its result. The first step that waits is often one that only waits for the player to be online, so decide by the connection, such as its scenario, provider or hostname, rather than by the step. Once a checkpoint holds a connection, it keeps it for every later step of the journey.
+2. Identica holds the player and calls `arrived` with a `CheckpointStop`. `getPlacement()` tells where the player waits.
+   - On the loading screen, Identica continues the journey right after `arrived` returns: steps that waited for the player to be online run, and the next step that waits for input asks for it.
+   - On the step's server, the player is already in its world and the journey already waits for input; the provider has asked in chat too.
+3. Show the player what the step asks for. `getWaiting()` returns the step that waits right now. Later prompts arrive through Identica's `StepFinishedEvent`: a result with the status `WAITING` and a wait reason other than `ONLINE` is a prompt, and its message holds Identica's answer to a wrong attempt, such as an invalid password.
+4. Answer through the provider's own command with `answer(...)`, for example `stop.answer("login " + password)`. The command runs as the player, so the provider takes the answer exactly as if the player had typed it.
+5. For a step you cannot ask about, call `handOver()`: the hold ends, the player goes to the step's server, is asked there in chat as without a checkpoint, and waits there for the rest of the journey.
+6. The hold ends when the journey has finished: the player goes on to the server the journey completes on. `released()` completes then, and also when the player leaves. A journey that expires, is denied or fails disconnects the player instead; the journey's `pipelineTtl` limits how long a player can be held.
+
+## When something goes wrong
+
+- **The player is sent to the step's server and asked in chat.** No checkpoint accepted the step, or the proxy can hold none of its placements for this player. Check that the checkpoint is registered before players join, that `accepts` returns `true`, and the client versions in the placement table.
+- **The player waits on the loading screen with nothing shown.** The checkpoint did not show the prompt. Check that it shows `getWaiting()` in `arrived`, that it listens to `StepFinishedEvent`, and that it hands over the steps it cannot show.
+- **The answer has no effect.** `answer` runs a command as the player; check the command name and its arguments, and the provider's answer in the next `StepFinishedEvent`.

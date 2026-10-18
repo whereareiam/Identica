@@ -4,6 +4,7 @@
     "addons",
     "providers",
     "guarantees-and-features",
+    "checkpoints",
     "database-schemas"
   ]
 }

@@ -6,6 +6,7 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.ConsoleCommandSource;
 import com.velocitypowered.api.proxy.Player;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.identica.platform.common.checkpoint.LoadingScreenReplies;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.platform.velocity.actor.VelocityCommandConsole;
@@ -18,6 +19,7 @@ import org.incendo.cloud.SenderMapper;
 @RequiredArgsConstructor(onConstructor = @__(@Inject))
 public class CommandSourceMapper implements SenderMapper<CommandSource, Actor> {
 	private final IdentityService identityService;
+	private final LoadingScreenReplies replies;
 
 	@Override
 	public @NonNull Actor map(@NonNull CommandSource source) {
@@ -28,7 +30,7 @@ public class CommandSourceMapper implements SenderMapper<CommandSource, Actor> {
 			Identity identity = identityService.findByConnectionUniqueId(player.getUniqueId()).orElse(null);
 			if (identity != null) return identity;
 
-			VelocityCommandPlayer created = new VelocityCommandPlayer(player);
+			VelocityCommandPlayer created = new VelocityCommandPlayer(player, replies);
 			identityService.attach(player.getUniqueId(), null, created);
 			return created;
 		}

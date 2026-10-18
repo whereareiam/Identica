@@ -5,6 +5,7 @@ import com.google.inject.Singleton;
 import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.base.IdenticEvent;
+import me.whereareiam.identica.event.connection.ServerJoinedEvent;
 import me.whereareiam.identica.event.routing.RoutingTargetMissingEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentRetryEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentStartedEvent;
@@ -24,11 +25,23 @@ import net.md_5.bungee.api.config.ServerInfo;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * Connects players to the server their routing intent names. BungeeCord switches a player only once their client has
+ * entered a server's world: a switch while the client still configures its first server, such as a player a
+ * checkpoint holds on the loading screen, leaves the next server waiting for a login that never comes. Such an
+ * intent waits until the player has entered the first server's world.
+ */
 @Singleton
 public class BungeeCordRoutingIntentListener implements EventListener {
 	private final ProxyServer proxyServer;
 	private final RoutingAttemptService routingAttemptService;
 	private final EventManager eventManager;
+	private final Set<UUID> inWorld = ConcurrentHashMap.newKeySet();
+	private final Set<UUID> waiting = ConcurrentHashMap.newKeySet();
 
 	@Inject
 	public BungeeCordRoutingIntentListener(
@@ -57,6 +70,37 @@ public class BungeeCordRoutingIntentListener implements EventListener {
 		apply(event.getIntent(), "retry", RoutingAttemptTrigger.SCHEDULED_RETRY);
 	}
 
+	/**
+	 * Applies the intent that waited for the player's client to enter its first server's world.
+	 */
+	@IdenticEvent
+	public void onServerJoined(@NotNull ServerJoinedEvent event) {
+		UUID connectionUniqueId = event.getIdentity().getConnectionUniqueId();
+		if (!waiting.remove(connectionUniqueId)) return;
+
+		routingAttemptService.current(connectionUniqueId).ifPresent(intent -> apply(intent, "joined"));
+	}
+
+	/**
+	 * Records that BungeeCord hands a player a server's join, from {@code ServerConnectedEvent}: from now on the
+	 * player can be switched.
+	 *
+	 * @param connectionUniqueId the player's connection
+	 */
+	public void entersWorld(@NotNull UUID connectionUniqueId) {
+		inWorld.add(connectionUniqueId);
+	}
+
+	/**
+	 * Forgets a player who left.
+	 *
+	 * @param connectionUniqueId the player's connection
+	 */
+	public void left(@NotNull UUID connectionUniqueId) {
+		inWorld.remove(connectionUniqueId);
+		waiting.remove(connectionUniqueId);
+	}
+
 	private void apply(@NotNull RoutingIntent intent, @NotNull String source) {
 		apply(intent, source, RoutingAttemptTrigger.ASYNC_CONNECT);
 	}
@@ -71,6 +115,12 @@ public class BungeeCordRoutingIntentListener implements EventListener {
 
 		String currentServer = player.getServer() != null ? player.getServer().getInfo().getName() : null;
 		if (currentServer == null) return;
+		if (!inWorld.contains(player.getUniqueId())) {
+			waiting.add(player.getUniqueId());
+			Logger.debug("Bungee routing intent %s waits until the client entered a world player=%s current=%s target=%s",
+					source, player.getUniqueId(), currentServer, intent.getEndpoint().getServer());
+			return;
+		}
 
 		RoutingAttemptDecision decision = routingAttemptService.decide(new RoutingAttemptRequest(
 				player.getUniqueId(),

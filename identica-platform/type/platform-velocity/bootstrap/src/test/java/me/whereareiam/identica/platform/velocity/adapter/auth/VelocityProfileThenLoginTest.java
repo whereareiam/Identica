@@ -7,6 +7,8 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.util.GameProfile;
 import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.Serializer;
+import me.whereareiam.identica.platform.common.checkpoint.LoadingScreenReplies;
+import me.whereareiam.identica.platform.velocity.checkpoint.VelocityCheckpointAdapter;
 import me.whereareiam.identica.common.prepare.DefaultPrepareStateStore;
 import me.whereareiam.identica.common.replication.DefaultReplicationSystem;
 import me.whereareiam.identica.identity.IdentityService;
@@ -109,7 +111,7 @@ class VelocityProfileThenLoginTest {
 						VelocityProfileThenLoginTest::messages,
 						mock(ConnectionDecisionDeliveryCoordinator.class)
 				)
-		));
+		), mock(LoadingScreenReplies.class), mock(VelocityCheckpointAdapter.class));
 		when(connectionCoordinator.process(any())).thenReturn(CompletableFuture.completedFuture(ConnectionDecision.allow()));
 	}
 

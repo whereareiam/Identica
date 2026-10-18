@@ -7,6 +7,7 @@ import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
 import me.whereareiam.identica.pipeline.prepare.PrepareStateStore;
 import me.whereareiam.identica.platform.bungeecord.adapter.MiniMessageSerializerEngine;
+import me.whereareiam.identica.platform.common.checkpoint.LoadingScreenReplies;
 import me.whereareiam.identica.platform.common.decision.ConnectionDecisionApplier;
 import me.whereareiam.identica.platform.common.stage.login.LoginDecisionProcessor;
 import me.whereareiam.identica.platform.common.stage.login.PreparedRefusal;
@@ -52,7 +53,7 @@ class BungeeCordLoginDecisionAdapterTest {
 				store,
 				new PreparedRefusal(store, Messages::new),
 				mock(ConnectionDecisionApplier.class)
-		), audiences);
+		), audiences, mock(LoadingScreenReplies.class));
 		ProxiedPlayer player = mock(ProxiedPlayer.class);
 		when(player.getUniqueId()).thenReturn(uniqueId);
 		when(player.getName()).thenReturn("Bob");

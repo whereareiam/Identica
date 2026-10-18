@@ -30,17 +30,6 @@ dependencies {
 
     compileOnly(libs.bungeecord)
 
-    // BungeeCord has no Adventure, so Identica brings the version it compiles against.
-    attache(libs.adventure)
-    attache(libs.adventure.key)
-    attache(libs.adventure.nbt)
-    attache(libs.adventure.minimessage)
-    attache(libs.adventure.plain)
-    attache(libs.adventure.gson)
-    attache(libs.adventure.legacy)
-    attache(libs.adventure.platform.bungeecord)
-    attache(libs.cloud.bungee)
-
     testRuntimeOnly(libs.strata)
     testRuntimeOnly(libs.strata.adapter.configura)
     testRuntimeOnly(libs.strata.adapter.database)
@@ -48,15 +37,27 @@ dependencies {
     testRuntimeOnly(libs.hikaricp)
 }
 
-// Attache resolves each library's dependencies on its own, so the older Adventure that the platform depends on
-// would load next to the declared one.
+// The bundle jar carries the descriptors of every platform, so each platform loads its own libraries as a group.
 attache {
-    library(libs.adventure.platform.bungeecord) {
-        excludeTransitive("net.kyori", "adventure-api")
-        excludeTransitive("net.kyori", "adventure-key")
-        excludeTransitive("net.kyori", "adventure-nbt")
-        excludeTransitive("net.kyori", "adventure-text-serializer-gson")
-        excludeTransitive("net.kyori", "adventure-text-serializer-legacy")
+    group("bungeecord") {
+        // BungeeCord has no Adventure, so Identica brings the version it compiles against.
+        library(libs.adventure)
+        library(libs.adventure.key)
+        library(libs.adventure.nbt)
+        library(libs.adventure.minimessage)
+        library(libs.adventure.plain)
+        library(libs.adventure.gson)
+        library(libs.adventure.legacy)
+        // Attache resolves each library's dependencies on its own, so the older Adventure that the platform
+        // depends on would load next to the declared one.
+        library(libs.adventure.platform.bungeecord) {
+            excludeTransitive("net.kyori", "adventure-api")
+            excludeTransitive("net.kyori", "adventure-key")
+            excludeTransitive("net.kyori", "adventure-nbt")
+            excludeTransitive("net.kyori", "adventure-text-serializer-gson")
+            excludeTransitive("net.kyori", "adventure-text-serializer-legacy")
+        }
+        library(libs.cloud.bungee)
     }
 }
 

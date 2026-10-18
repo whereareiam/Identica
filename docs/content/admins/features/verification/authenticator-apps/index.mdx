@@ -1,0 +1,43 @@
+---
+title: Authenticator apps
+description: How players set up an authenticator app, what they see in it, and their recovery codes.
+---
+
+The built-in verification method, `totp`, works with any authenticator app that reads the standard codes, such as Google Authenticator, Aegis or a password manager.
+
+## Setting it up
+
+1. The player types `/2fa enroll totp`. Identica shows a secret and a link the app can import.
+2. The player adds the account to their app and types `/2fa enroll confirm <code>` with the code the app shows.
+3. Identica shows the player's recovery codes once. They should store them somewhere safe.
+
+A setup that is not confirmed within `enrollmentTtl`, 10 minutes by default, is dropped. When the player confirms, the new method is chosen for the provider they are logged in through, unless `autoSelectCurrentProvider` is `false`.
+
+## What the app shows
+
+The entry in the app is named by `issuer` and `labelFormat` in `features/verification/settings`:
+
+```yaml
+totp:
+  displayName: "Authenticator App"
+  issuer: "My Network"
+  labelFormat: "{player}@{providerId}"
+```
+
+`{player}` is the player's username and `{providerId}` the provider they set it up through. `displayName` is the method's name in Identica's own messages.
+
+## Codes and clocks
+
+Codes have `digits` digits and change every `period`, 6 digits and 30 seconds by default, as most apps expect. Change them only if every app your players use supports the new values; a change does not carry over to apps that are already set up.
+
+A phone whose clock runs a little fast or slow shows the code of a neighbouring window. `allowedPastWindows` and `allowedFutureWindows`, one each by default, accept those codes too. More windows forgive more clock drift, but also accept codes for longer. Whatever the windows, each code is accepted once; a player whose app runs ahead and types a future window's code waits until the window after it for the next code.
+
+## Recovery codes
+
+A player who loses their app logs in with a recovery code instead. By default they get 8 codes of 10 characters, shown in groups of 4. Each code works once.
+
+A player without app or recovery codes needs staff to reset their verification with `/identica admin 2fa reset <player>`.
+
+Recovery codes are shown once and cannot be read again, so Identica sends them even when their message is emptied.
+
+See [Verification settings](../../../../configuration/features/verification/index.mdx#totp) for every setting.

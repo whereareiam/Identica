@@ -1,0 +1,48 @@
+---
+title: Overview
+description: What Identica's features do, and how to turn them on for all providers or one.
+---
+
+Features add optional behavior on top of logging in. All of them are part of Identica; nothing is installed separately.
+
+| Feature | Does | Default |
+| --- | --- | --- |
+| [Verification](./verification/index.mdx) | asks for a second factor, such as an authenticator app code, after the provider | offered, not required |
+| [Recognition](./recognition/index.mdx) | lets a player who just logged in reconnect without logging in again | off |
+| [Sentinel](./sentinel/index.mdx) | locks out connections that keep failing or abusing the login | on |
+| [Restriction](./restriction/index.mdx) | lets staff close a provider to new joins for a while | join restriction off |
+
+## On for everyone, or per provider
+
+Each feature has shared settings under `features/<feature>/` in the data directory, which apply to every provider. A provider can differ through `features` in its entry of `providers/providers.yml`:
+
+```yaml
+providers:
+  - id: "credential"
+    features:
+      recognition:
+        enabled: false
+      verification:
+        enabled: true
+        required: true
+  - id: "premium"
+    features:
+      recognition:
+        enabled: true
+      verification:
+        enabled: false
+```
+
+This turns recognition on for Premium only and requires verification for Credential. Everything a provider leaves out comes from the shared settings.
+
+A provider has to support a feature for it to apply. Both official providers support every feature; a provider that does not support one fails to load when its entry turns that feature on.
+
+| Feature | Shared settings | Per provider |
+| --- | --- | --- |
+| Recognition | `features/recognition/settings` | `features.recognition` |
+| Verification | `features/verification/settings` | `features.verification` |
+| Sentinel | `features/sentinel/settings` | `features.sentinel.enabled` |
+| Restriction | `features/restriction/settings` | `features.restriction.enabled` |
+| Join restriction | `features/restriction/join/settings` | `features.restriction.join` |
+
+[Configuration](../../configuration/features/index.mdx) describes every setting of every feature.

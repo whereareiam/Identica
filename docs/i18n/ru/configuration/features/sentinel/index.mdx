@@ -1,10 +1,227 @@
 ---
-title: Обзор
-description: Обзор конфигурации, которой управляет функция Sentinel в Identica.
-sourceHash: d5f68d0403c43f6f7f2f7327ff8e159200abdd0a
+title: features/sentinel/
+description: Все настройки features/sentinel/ и настройка для отдельных провайдеров.
+sourceHash: 79a2295f8db1480623b85577a482500142e33da5
 ---
 
-Sentinel добавляет защиту, которая отслеживает повторяющиеся или рискованные действия.
-В Identica есть разные типы таких проверок: одни действуют широко, другие — только для конкретного провайдера или процесса провайдера.
+`features/sentinel/` содержит файлы Sentinel: `settings.yml` и `messages.yml`. Что считает каждый sentinel, описано в разделе [Sentinel](../../../admins/features/sentinel/index.mdx). Защита от перебора паролей провайдера Credential настраивается в [настройках Credential](../../../admins/providers/official/credential/settings/index.mdx#authenticationbruteforce).
 
-Sentinel встроен в Identica. Его общая настройка `enabled` задаёт значение по умолчанию для проверок, принадлежащих провайдерам; провайдеры могут переопределить `features.sentinel.enabled`. Глобальные проверки подключений используют общие настройки, потому что выполняются до того, как провайдер становится известен. Подробнее — в разделе [Настройки](./settings/index.mdx).
+## settings.yml
+
+<Setting
+  name="enabled"
+  takes="`true` или `false`"
+  default="`true`"
+  affects="применяются ли проверки, которые выполняются, когда провайдер уже известен, — для каждого провайдера, который не задаёт собственное значение"
+>
+
+Проверки, которые выполняются до того, как провайдер известен, например sentinel занятых ников, подчиняются только собственному `enabled`.
+
+</Setting>
+
+<Setting
+  name="sentinels.resumeSpam.enabled"
+  takes="`true` или `false`"
+  default="`false`"
+  affects="блокируются ли подключения, которые снова и снова пытаются продолжить или подтолкнуть ожидающий вход"
+  flag="advanced"
+>
+
+</Setting>
+
+<Setting
+  name="sentinels.resumeSpam.maxAttempts"
+  takes="целое число больше `0`"
+  default="`10`"
+  affects="сколько попыток разрешено до блокировки"
+  flag="advanced"
+>
+
+</Setting>
+
+<Setting
+  name="sentinels.resumeSpam.lockout.enabled"
+  takes="`true` или `false`"
+  default="`true`"
+  affects="блокируется ли игрок, когда достигает `maxAttempts`"
+  flag="advanced"
+>
+
+</Setting>
+
+<Setting
+  name="sentinels.resumeSpam.lockout.duration"
+  takes="положительную длительность"
+  default='`"30s"`'
+  affects="сколько длится блокировка"
+  flag="advanced"
+>
+
+</Setting>
+
+<Setting
+  name="sentinels.resumeSpam.warning.enabled"
+  takes="`true` или `false`"
+  default="`false`"
+  affects="предупреждается ли игрок перед блокировкой"
+  flag="advanced"
+>
+
+</Setting>
+
+<Setting
+  name="sentinels.resumeSpam.warning.thresholdPercentage"
+  takes="целое число процентов от `0` до `100`"
+  default="`0`"
+  affects="с какой доли `maxAttempts` показывается предупреждение"
+  flag="advanced"
+>
+
+Значения за пределами диапазона от `0` до `100` приводятся к ближайшей границе. Например, при `maxAttempts: 10` и `thresholdPercentage: 70` предупреждения начинаются с попытки `8`.
+
+</Setting>
+
+<Setting
+  name="sentinels.contestedConnection.enabled"
+  takes="`true` или `false`"
+  default="`true`"
+  affects="блокирует ли sentinel занятых ников адрес, который снова и снова пытается войти под занятыми никами"
+>
+
+Он считает подключения адреса, отклонённые потому, что под их ником уже входит подключение с другого адреса, какой бы ник ни использовало каждое подключение. Когда адрес достигает `maxAttempts`, все подключения с него отклоняются на время блокировки. См. [Два подключения с одним ником](../../../admins/guides/logins/index.mdx#two-connections-with-one-username).
+
+</Setting>
+
+<Setting
+  name="sentinels.contestedConnection.maxAttempts"
+  takes="целое число больше `0`"
+  default="`5`"
+  affects="сколько отклонённых подключений может быть у адреса, прежде чем его заблокируют"
+>
+
+</Setting>
+
+<Setting
+  name="sentinels.contestedConnection.lockout.enabled"
+  takes="`true` или `false`"
+  default="`true`"
+  affects="блокирует ли sentinel адрес, когда тот достигает `maxAttempts`"
+>
+
+</Setting>
+
+<Setting
+  name="sentinels.contestedConnection.lockout.duration"
+  takes="положительную длительность"
+  default='`"1m"`'
+  affects="как долго адрес остаётся заблокированным"
+>
+
+</Setting>
+
+<Setting
+  name="replication.state"
+  takes="строку"
+  default='`"identica:sentinels"`'
+  affects="имя, под которым прокси делятся счётчиками и блокировками"
+  flag="advanced"
+>
+
+</Setting>
+
+## Для отдельного провайдера [#per-provider]
+
+<Setting
+  name="features.sentinel.enabled"
+  takes="`true` или `false`"
+  default="не задано"
+  affects="применяются ли к этому провайдеру проверки, которые выполняются, когда провайдер уже известен, — в том числе защита от перебора паролей провайдера Credential"
+>
+
+Если значение не задано, применяется общее `enabled`.
+
+</Setting>
+
+## messages.yml
+
+<Setting
+  name="resumeSpam.denied"
+  takes="список строк"
+  affects="сообщение, которое показывается, пока действует блокировка за спам продолжениями"
+>
+
+Плейсхолдер `{seconds}` заменяется оставшимся временем блокировки.
+Пустой список отключает сообщение, но блокировка по-прежнему отклоняет попытки.
+
+</Setting>
+
+<Setting
+  name="contestedConnection.denied"
+  takes="список строк"
+  default="уведомление со строкой `Too many attempts to log in under names in use.` и оставшимся временем"
+  affects="причину, которую видит подключение с адреса, заблокированного sentinel занятых ников"
+>
+
+Плейсхолдер `{seconds}` заменяется оставшимся временем блокировки. Пустой список отключает сообщение, но блокировка по-прежнему отклоняет попытки.
+
+</Setting>
+
+## Пример [#example]
+
+`features/sentinel/settings.yml`:
+
+<Tabs items={["YAML", "JSON"]}>
+  <Tab value="YAML">
+```yaml
+sentinels:
+  resumeSpam:
+    enabled: true
+    maxAttempts: 10
+    lockout:
+      enabled: true
+      duration: "30s"
+    warning:
+      enabled: true
+      thresholdPercentage: 70
+  contestedConnection:
+    enabled: true
+    maxAttempts: 5
+    lockout:
+      enabled: true
+      duration: "1m"
+replication:
+  state: "identica:sentinels"
+```
+  </Tab>
+  <Tab value="JSON">
+```json
+{
+  "sentinels": {
+    "resumeSpam": {
+      "enabled": true,
+      "maxAttempts": 10,
+      "lockout": {
+        "enabled": true,
+        "duration": "30s"
+      },
+      "warning": {
+        "enabled": true,
+        "thresholdPercentage": 70
+      }
+    },
+    "contestedConnection": {
+      "enabled": true,
+      "maxAttempts": 5,
+      "lockout": {
+        "enabled": true,
+        "duration": "1m"
+      }
+    }
+  },
+  "replication": {
+    "state": "identica:sentinels"
+  }
+}
+```
+  </Tab>
+</Tabs>

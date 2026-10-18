@@ -1,0 +1,51 @@
+---
+sourceHash: 51f72596ffafe332201980e34b14300f2fa1ffdd
+---
+
+<ContentTabs items={["Релизы на GitHub", "Сборки для разработки на GitHub", "Релизы на Modrinth"]}>
+  <ContentTab value="Релизы на GitHub">
+    Используйте [релизы на GitHub](https://github.com/whereareiam/Identica/releases), если вам нужны стабильные опубликованные версии.
+
+    Как скачать:
+
+    1. Откройте [страницу релизов](https://github.com/whereareiam/Identica/releases).
+    2. Откройте нужную версию релиза.
+    3. Раскройте список файлов релиза (assets), если он свёрнут.
+    4. Выберите вариант установки:
+
+    - скачайте `Identica-BUNDLE-<version>.jar`, если вам нужен один jar-файл для любого поддерживаемого прокси
+    - скачайте `Identica-PLATFORMS-<version>.zip`, если вместо этого вам нужен отдельный jar-файл для каждого прокси
+    - дополнительно скачайте `Identica-Credential-<version>.jar`
+    - дополнительно скачайте `Identica-Premium-<version>.jar`
+  </ContentTab>
+  <ContentTab value="Сборки для разработки на GitHub">
+    Используйте [сборки для разработки](https://github.com/whereareiam/Identica/actions/workflows/development.yml), если вам нужна сборка ветки `dev`, более новая, чем последний релиз. Такие сборки запускает мейнтейнер, поэтому сборка есть не для каждого коммита.
+
+    Как скачать:
+
+    1. Откройте [страницу workflow сборок для разработки](https://github.com/whereareiam/Identica/actions/workflows/development.yml).
+    2. Откройте самый свежий успешный запуск для ветки `dev`.
+    3. Прокрутите страницу этого запуска до раздела artifacts.
+    4. Скачайте файл сборки с именем `identica-plugins-dev-<commit>`.
+    5. Распакуйте скачанный архив.
+    6. Выберите вариант установки из распакованных файлов:
+
+    - используйте `Identica-BUNDLE-dev-<commit>.jar`, если вам нужен один jar-файл для любого поддерживаемого прокси
+    - распакуйте `Identica-PLATFORMS-dev-<commit>.zip`, если вместо этого вам нужен отдельный jar-файл для каждого прокси
+    - используйте `Identica-Credential-dev-<commit>.jar`
+    - используйте `Identica-Premium-dev-<commit>.jar`
+  </ContentTab>
+  <ContentTab value="Релизы на Modrinth">
+    Используйте Modrinth, если хотите скачивать релизы со страниц проектов:
+
+    - [Identica](https://modrinth.com/plugin/identica)
+    - [Identica Premium Provider](https://modrinth.com/plugin/identica-premium-provider)
+    - [Identica Credential Provider](https://modrinth.com/plugin/identica-credential-provider)
+
+    Как скачать:
+
+    1. Откройте страницу каждого проекта.
+    2. Откройте список версий или файлов для нужной версии.
+    3. Прежде чем продолжить, скачайте соответствующие друг другу релизные версии всех трёх файлов сборки.
+  </ContentTab>
+</ContentTabs>

@@ -1,54 +1,22 @@
 ---
-title: Features
-description: Configure built-in behavior globally and independently for each supporting provider.
+title: Feature files
+description: The files of Identica's features, and how per-provider settings inherit from them.
 ---
 
-All features are compiled into Identica. Providers declare which features they support, and operators decide where those features are used.
+Each feature keeps its files under `features/<feature>/`: `settings.yml`, and `messages.yml` and `commands.yml` when it has messages or commands. Join restriction is nested under `features/restriction/join/`. [Features](../../admins/features/index.mdx) explains what each feature does.
 
-## Global defaults and provider overrides
+## Per-provider settings
 
-Shared settings live under `features/`. Overrides live in `providers/providers` under each provider's `features` object. Omitted fields inherit the shared defaults. Explicit `enabled: true` or `enabled: false` changes behavior for that provider only.
+A provider's entry in [`providers/providers.yml`](../providers/index.mdx#features) can set its own value for a feature under `features`. What it leaves out comes from the feature's shared settings:
 
-For example:
+| Feature | Shared settings | Per provider | Inherits |
+| --- | --- | --- | --- |
+| Recognition | `features/recognition/settings` | `features.recognition` | `enabled`, and `defaultSignals` for `signals` |
+| Restriction | `features/restriction/settings` | `features.restriction.enabled` | `enabled` |
+| Join restriction | `features/restriction/join/settings` | `features.restriction.join` | `enabled`, `allow` |
+| Sentinel | `features/sentinel/settings` | `features.sentinel.enabled` | `enabled` |
+| Verification | `features/verification/settings` | `features.verification` | everything under `defaults` |
 
-```yaml
-providers:
-  - id: credential
-    features:
-      recognition:
-        enabled: false
-      verification:
-        enabled: true
-        required: true
-  - id: premium
-    features:
-      recognition:
-        enabled: true
-      verification:
-        enabled: false
-```
+`enabled: false` for a provider turns the feature off for that provider only, and `enabled: true` turns it on even when the shared value is `false`. A provider's `features.restriction.enabled: false` turns off join restriction for it too.
 
-This enables recognition only for Premium and requires verification for Credential. The feature implementation remains available for both. A provider must declare support before an explicit enable override can be used.
-
-| Feature | Shared settings | Provider override |
-| --- | --- | --- |
-| Recognition | `features/recognition/settings` | `features.recognition` |
-| Verification | `features/verification/settings` | `features.verification` |
-| Sentinel | `features/sentinel/settings` | `features.sentinel.enabled` once a provider is known |
-| Restrictions | `features/restriction/settings` | `features.restriction.enabled` |
-| Join restriction | `features/restriction/join/settings` | `features.restriction.join` |
-
-Recognition and sentinel inherit the shared `enabled` value. Verification inherits its shared `defaults` policy, including `enabled`, `required`, and methods. Join restriction inherits `enabled` and `allow` from its shared settings. An enclosing restriction switch of false disables join restriction too.
-
-Sentinel also owns global connection checks that run before a provider is known. Those checks use shared settings. Once a provider is selected, Sentinel honors that provider's enable switch. Credential's brute-force rule only applies to Credential attempts and retains its detailed policy in Credential's settings.
-
-## Provider guarantees
-
-Owned usernames are a provider guarantee, not a toggleable feature. Premium declares `OWNED_USERNAME`; Identica follows its verified username unless an administrator set the name by hand or the username conflict rules say otherwise. There is no `features.username.enabled` switch. See [Username](../identity/username/index.mdx).
-
-## Feature references
-
-- [Recognition](./recognition/index.mdx)
-- [Restrictions](./restriction/index.mdx)
-- [Sentinel](./sentinel/index.mdx)
-- [Verification](./verification/index.mdx)
+A provider has to support a feature. Turning on a feature for a provider that does not support it stops that provider from loading. Both official providers support every feature.

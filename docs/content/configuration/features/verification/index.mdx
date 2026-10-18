@@ -1,20 +1,250 @@
 ---
-title: Overview
-description: Overview of configuration owned by Identica's verification feature.
+title: features/verification/
+description: Every setting of features/verification/ and its per-provider settings.
 ---
 
-Verification adds a second step that can be required after a provider already identifies the player.
-In practice, this means a player first authenticates with a provider and then confirms an additional verification method before the flow can continue.
-Verification methods can come from built-in functionality or from installed addons.
+`features/verification/` holds verification's `settings.yml`, `commands.yml` and `messages.yml`. [Verification](../../../admins/features/verification/index.mdx) explains how players use it.
 
-## Verification in practice
+## settings.yml
 
-A player joins through the `credential` provider and enters their password successfully.
-Instead of finishing login immediately, Identica asks for a code from the built-in default TOTP verification method.
-The player enters the current code from their authenticator app, verification succeeds, and only then does the login flow complete.
+<Setting
+  name="challengeTtl"
+  takes="a positive duration"
+  default='`"2m"`'
+  affects="how long a player has to answer a verification prompt"
+>
 
-Each authenticator code is accepted once per account, whether it confirms a login or a protected action such as disabling the method; the code that confirmed the enrollment counts as used too. Once a code is accepted, codes of its time window and of earlier windows are refused, through every proxy that shares the database, and the player types the next code. A refused code gets the same answer as a wrong one. Recovery codes are single-use as well.
+Too short, and slow players lose their prompt; too long, and an unanswered prompt stays open longer than needed.
 
-If verification is optional instead of required, the same provider can still work without forcing that second step for every player or every situation.
+</Setting>
 
-Verification is compiled into Identica. Shared defaults live under `features/verification/`; providers override them in `providers[].features.verification`. See [Settings](./settings/index.mdx).
+<Setting
+  name="enrollmentTtl"
+  takes="a positive duration"
+  default='`"10m"`'
+  affects="how long a player has to confirm the setup of a method"
+>
+
+</Setting>
+
+<Setting
+  name="autoSelectCurrentProvider"
+  takes="`true` or `false`"
+  default="`true`"
+  affects="whether a method the player just set up is chosen for the provider they are logged in through"
+  flag="advanced"
+>
+
+With `false`, players choose it themselves with `/2fa use`.
+
+</Setting>
+
+### totp
+
+The built-in authenticator app method. See [Authenticator apps](../../../admins/features/verification/authenticator-apps/index.mdx).
+
+<Setting
+  name="displayName"
+  depth={4}
+  takes="a string"
+  default='`"Authenticator App"`'
+  affects="the method's name in messages"
+>
+
+A blank name shows `totp`.
+
+</Setting>
+
+<Setting
+  name="issuer"
+  depth={4}
+  takes="a string"
+  default='`"Identica"`'
+  affects="the service name authenticator apps show for the account"
+>
+
+</Setting>
+
+<Setting
+  name="labelFormat"
+  depth={4}
+  takes="a string"
+  default='`"{player}@{providerId}"`'
+  affects="the account name authenticator apps show"
+>
+
+`{player}` is the player's username and `{providerId}` the provider they set it up through.
+
+</Setting>
+
+<Setting
+  name="digits"
+  depth={4}
+  takes="an integer"
+  default="`6`"
+  affects="how many digits a code has"
+  flag="advanced"
+>
+
+Apps that are already set up keep their digits, so a change locks out players until they set the app up again.
+
+</Setting>
+
+<Setting
+  name="period"
+  depth={4}
+  takes="a positive duration"
+  default='`"30s"`'
+  affects="how often codes change"
+  flag="advanced"
+>
+
+Like `digits`, a change does not reach apps that are already set up.
+
+</Setting>
+
+<Setting
+  name="allowedPastWindows"
+  depth={4}
+  takes="an integer"
+  default="`1`"
+  affects="how many earlier codes are still accepted, for phones whose clock runs slow and for slow typing"
+  flag="advanced"
+>
+
+More windows forgive more, but also accept codes for longer.
+
+</Setting>
+
+<Setting
+  name="allowedFutureWindows"
+  depth={4}
+  takes="an integer"
+  default="`1`"
+  affects="how many later codes are already accepted, for phones whose clock runs fast"
+  flag="advanced"
+>
+
+Whatever the windows, each code is accepted once: once a code is accepted, codes of its window and of earlier windows are refused for that account. A player whose app runs ahead and who types a future window's code therefore waits until the window after it before the next code is accepted.
+
+</Setting>
+
+### recoveryCodes
+
+Codes a player uses instead of the app when they lose it, shown once when the app is set up.
+
+<Setting
+  name="enabled"
+  depth={4}
+  takes="`true` or `false`"
+  default="`true`"
+  affects="whether players get recovery codes"
+>
+
+</Setting>
+
+<Setting
+  name="amount"
+  depth={4}
+  takes="an integer"
+  default="`8`"
+  affects="how many recovery codes a player gets"
+  flag="advanced"
+>
+
+</Setting>
+
+<Setting
+  name="length"
+  depth={4}
+  takes="an integer"
+  default="`10`"
+  affects="how many characters a recovery code has"
+  flag="advanced"
+>
+
+</Setting>
+
+<Setting
+  name="groupSize"
+  depth={4}
+  takes="an integer"
+  default="`4`"
+  affects="after how many characters a recovery code is split for reading"
+  flag="advanced"
+>
+
+</Setting>
+
+### defaults
+
+The policy of every provider that does not set its own. See [Per-provider policy](../../../admins/features/verification/provider-policy/index.mdx).
+
+```yaml
+defaults:
+  enabled: true
+  required: false
+  unavailableSelectionPolicy: KEEP_LOCKED
+  methods:
+    - id: totp
+      enabled: true
+      priority: 100
+```
+
+The fields are those of the per-provider settings below.
+
+## Per provider
+
+Under `features.verification` of a provider's entry in `providers/providers.yml`. Each field the provider leaves out comes from `defaults`.
+
+<Setting
+  name="features.verification.enabled"
+  takes="`true` or `false`"
+  default="inherits `defaults.enabled` (`true`)"
+  affects="whether this provider's players can use verification"
+>
+
+</Setting>
+
+<Setting
+  name="features.verification.required"
+  takes="`true` or `false`"
+  default="inherits `defaults.required` (`false`)"
+  affects="whether this provider's players must use verification"
+>
+
+A player without a method is then refused at login.
+
+</Setting>
+
+<Setting
+  name="features.verification.unavailableSelectionPolicy"
+  takes='`"CLEAR_SELECTION"` or `"KEEP_LOCKED"`'
+  default="inherits `defaults.unavailableSelectionPolicy` (`KEEP_LOCKED`)"
+  affects="whether a player's chosen method is kept when the provider no longer offers it"
+>
+
+`KEEP_LOCKED` keeps it, `CLEAR_SELECTION` forgets it. Either way, the login is refused while verification is required.
+
+</Setting>
+
+<Setting
+  name="features.verification.methods"
+  takes="a list of methods"
+  default="inherits `defaults.methods`"
+  affects="which methods this provider offers, and in which order"
+>
+
+An explicit `methods: []` offers none. Each method has:
+
+- `id`: the verification method id, such as `totp`
+- `enabled`: whether that method can be used
+- `priority`: ordering when more than one method is available
+- `required`: this method's own `required`, instead of the provider's
+- `unavailableSelectionPolicy`: this method's own policy, instead of the provider's
+
+</Setting>
+
+## commands.yml and messages.yml
+
+The player commands, such as `/2fa enroll`, and `/identica admin 2fa reset` have the same fields as those in [`commands.yml`](../../commands/index.mdx#commands). Recovery codes are shown even when their message is emptied, because they cannot be shown again.

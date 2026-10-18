@@ -1,0 +1,146 @@
+---
+title: Начало работы
+description: Как подключить API Identica как зависимость в другом плагине и получить его во время работы.
+sourceHash: eb8349feafd38385d0c31a56ae8e09e7ff2ddcfd
+---
+
+API Identica позволяет другому плагину на том же прокси читать аккаунты и сессии, реагировать на события и строить свою логику поверх Identica. На этой странице описано, как подключить зависимость и получить API во время работы, а на странице [Сервисы](./services/index.mdx) — что с ним можно делать.
+
+## Координаты [#coordinates]
+
+Опубликованный артефакт API имеет такие координаты:
+
+- Группа: `me.whereareiam.identica`
+- Артефакт: `api`
+
+Для плагинов-аддонов обычно подходит `compileOnly` или аналогичная зависимость с областью provided.
+Во время работы API предоставляет сама Identica.
+
+## Репозитории [#repositories]
+
+Identica публикует артефакты релизов и сборок для разработки в [публичный репозиторий Maven](https://registry.whereareiam.me/maven/packages).
+
+API публикуется только там. Файлы релизов и сборок для разработки содержат jar-файлы плагина и провайдеров, которые устанавливают на серверы, но не API.
+
+## Подключение зависимости [#adding-the-dependency]
+
+<Tabs items={["Gradle Kotlin DSL", "Gradle Groovy DSL", "Maven"]}>
+  <Tab value="Gradle Kotlin DSL">
+```kotlin
+repositories {
+    maven("https://registry.whereareiam.me/maven/packages")
+}
+
+dependencies {
+    compileOnly("me.whereareiam.identica:api:1.0.0")
+}
+```
+  </Tab>
+  <Tab value="Gradle Groovy DSL">
+```groovy
+repositories {
+    maven { url = uri("https://registry.whereareiam.me/maven/packages") }
+}
+
+dependencies {
+    compileOnly "me.whereareiam.identica:api:1.0.0"
+}
+```
+  </Tab>
+  <Tab value="Maven">
+```xml
+<repositories>
+  <repository>
+    <id>identica-release</id>
+    <url>https://registry.whereareiam.me/maven/packages</url>
+  </repository>
+</repositories>
+
+<dependencies>
+  <dependency>
+    <groupId>me.whereareiam.identica</groupId>
+    <artifactId>api</artifactId>
+    <version>1.0.0</version>
+    <scope>provided</scope>
+  </dependency>
+</dependencies>
+```
+  </Tab>
+</Tabs>
+
+Для сборок для разработки укажите версию для разработки — репозиторий тот же.
+
+## Версии [#versions]
+
+Identica публикует API в двух видах версий:
+
+- релизные версии, например `1.0.0`;
+- версии для разработки, например `dev-91e1b65`.
+
+На практике:
+
+- релизные версии публикуются из релизов, отмеченных тегом;
+- версии для разработки публикуются из ветки `dev`;
+- версии для разработки имеют формат `dev-<short-commit-sha>`.
+
+Если вы пишете обычный плагин-аддон, выбирайте релизные версии.
+Версии для разработки используйте, только если вы сознательно опираетесь на ещё не выпущенные изменения API.
+
+## Javadoc [#javadocs]
+
+Скачайте соответствующий артефакт `javadoc` из репозитория Maven или позвольте IDE подтянуть его вместе с зависимостью API.
+
+## Получение API [#getting-the-api]
+
+Точка входа в API — `me.whereareiam.identica.IdenticaAPI`. Её статические методы возвращают API запущенного экземпляра Identica, через который доступны все сервисы, нужные аддону. Identica регистрирует его при запуске и удаляет при остановке.
+
+- `IdenticaAPI.get()` возвращает API и выбрасывает исключение, если Identica не запущена. Используйте его, когда ваш аддон загружается после Identica.
+- `IdenticaAPI.whenReady(identica -> ...)` выполняет ваш код, когда Identica готова к работе: провайдеры загружены, их команды и документы на месте. Если Identica уже готова, код выполнится сразу, иначе — как только она будет готова. Используйте этот метод, чтобы запускать аддон независимо от того, когда он загружается.
+- `IdenticaAPI.find()` возвращает `Optional<IdenticaAPI>` и никогда не выбрасывает исключений.
+
+Передавайте `IdenticaAPI` в классы своего аддона, а не вызывайте `IdenticaAPI.get()` повсюду. Тогда эти классы зависят от интерфейса, который можно подменить моком в тестах.
+
+Как ваш плагин дожидается Identica, зависит от прокси.
+
+<ContentTabs items={["Velocity"]}>
+  <ContentTab value="Velocity">
+    Плагины Velocity могут объявлять зависимости от других плагинов прямо в `@Plugin`.
+    Это влияет на порядок загрузки плагинов.
+    Если ваш аддон действительно зависит от Identica, объявите её обязательной зависимостью, чтобы Velocity загружал Identica раньше вашего аддона.
+    Если интеграция необязательна, объявите зависимость как необязательную и проверяйте наличие плагина `identica`, прежде чем аддон обратится к любому классу Identica: без плагина этих классов нет.
+
+```java
+import com.google.inject.Inject;
+import com.velocitypowered.api.plugin.Dependency;
+import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
+import com.velocitypowered.api.plugin.Plugin;
+import me.whereareiam.identica.IdenticaAPI;
+
+@Plugin(
+    id = "example-identica-addon",
+    name = "ExampleIdenticaAddon",
+    version = "1.0.0",
+    dependencies = {
+        @Dependency(id = "identica")
+    }
+)
+public final class ExampleIdenticaAddon {
+    @Inject
+    public ExampleIdenticaAddon() {
+    }
+
+    @Subscribe
+    public void onProxyInitialization(ProxyInitializeEvent event) {
+        IdenticaAPI.whenReady(identica -> new ExampleAddon(identica).inspectProviders());
+    }
+}
+```
+  </ContentTab>
+</ContentTabs>
+
+## Дальнейшие шаги [#next-steps]
+
+- [Сервисы](./services/index.mdx): аккаунты, сессии, провайдеры и сервисы функций
+- [События](./events/index.mdx): реакция на входы, сессии и изменения аккаунтов
+- [Написание аддона](../extending/addons/index.mdx): как не пропускать чат или команды, пока игрок не вошёл

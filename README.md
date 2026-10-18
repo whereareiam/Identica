@@ -4,7 +4,7 @@
 
 [![Release](https://img.shields.io/github/v/release/whereareiam/Identica?label=release&style=for-the-badge)](https://github.com/whereareiam/Identica/releases) [![Downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Ffaststats.dev%2Fapi%2Fshields%2Fidentica%3Fmetric%3Ddownloads%26label%3Ddownloads&style=for-the-badge)](https://modrinth.com/plugin/identica) [![Servers](https://img.shields.io/endpoint?url=https%3A%2F%2Ffaststats.dev%2Fapi%2Fshields%2Fidentica%3Fmetric%3Dservers%26label%3Dservers&style=for-the-badge)](https://faststats.dev/project/identica) [![Discord](https://img.shields.io/discord/856839365938118698?label=discord&style=for-the-badge)](https://discord.arcadeya.com/)
 
-**[Documentation](docs/content/index.md)** · [Download on Modrinth](https://modrinth.com/plugin/identica) · [Statistics](https://faststats.dev/project/identica) · [Discord](https://discord.arcadeya.com/)
+**[Documentation](docs/content/admins/index.md)** · [Download on Modrinth](https://modrinth.com/plugin/identica) · [Statistics](https://faststats.dev/project/identica) · [Discord](https://discord.arcadeya.com/)
 
 # Why Identica
 
@@ -22,4 +22,4 @@
   </picture>
 </a>
 
-Identica sends anonymous usage statistics to FastStats and bStats; see [what is sent and how to turn it off](docs/content/configuration/statistics/index.mdx).
+Identica sends anonymous usage statistics to FastStats and bStats; see [what is sent and how to turn it off](docs/content/admins/guides/statistics/index.mdx).

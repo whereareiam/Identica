@@ -1,0 +1,53 @@
+---
+title: Unique ids
+description: Choose how accounts get their UUIDs, and give one player a UUID of your choice.
+---
+
+Every account has a UUID that backend servers and other plugins see as the player's unique id. Identica assigns it when the account is created, and the account keeps it from then on, also when its username or provider changes.
+
+## Choosing a mode
+
+`identity.uniqueIdMode` in `settings.yml` decides how new accounts get their UUID.
+
+<Callout type="error" title="Choose before players register">
+  Changing the mode does not change the UUIDs of existing accounts. Backend plugins store data under the UUID, so accounts created under different modes do not line up with what those plugins expect.
+</Callout>
+
+<Tabs items={["RANDOM", "OFFLINE", "PREMIUM"]}>
+  <Tab value="RANDOM">
+    A new random UUID that belongs to Identica. It has nothing to do with the username or the provider.
+
+    This is the default and the recommended mode. Username changes and moves between providers never touch the UUID, so a player keeps their data on every backend.
+  </Tab>
+  <Tab value="OFFLINE">
+    The UUID an offline-mode server gives the username: `Steve` gets the UUID of `OfflinePlayer:Steve`.
+
+    Use it when backend data already exists under offline UUIDs, for example after running the network in offline mode. The UUID is fixed when the account is created, so a player renamed later keeps the UUID of their first name.
+  </Tab>
+  <Tab value="PREMIUM">
+    The premium UUID of the player's Mojang account: the UUID the provider verified, or else the premium UUID the client presented when it is not just the offline UUID of its username.
+
+    Use it when backend data already exists under premium UUIDs. An account for which no premium UUID is known cannot be created, so this mode only fits a network where every player logs in through Premium.
+  </Tab>
+</Tabs>
+
+| | `RANDOM` | `OFFLINE` | `PREMIUM` |
+| --- | --- | --- | --- |
+| Recommended | Yes | No | No |
+| Matches existing offline-mode data | No | Yes | No |
+| Matches existing premium data | No | No | Yes |
+| Works for every provider | Yes | Yes | Only providers that know a premium UUID |
+
+## Giving one player a chosen UUID
+
+To give one player a particular UUID, such as their offline-mode UUID on a `RANDOM` network, reserve it for their username and let them register again:
+
+1. `/identica admin delete <username>`, then `/identica admin delete confirm`, removes the current account. A deleted account's UUID is not kept.
+2. `/identica admin reservation set <username> <uuid>` reserves the UUID. Usernames are compared without regard to case.
+3. The player joins and registers within `identity.reservationTtl`, 15 minutes by default. The new account gets the reserved UUID, and the reservation is used up.
+
+`/identica admin reservation info <username>` shows the UUID reserved for a username, and `/identica admin reservation delete <username>` removes the reservation. In `RANDOM` and `OFFLINE` modes a reservation takes the place of the UUID the mode would assign; `PREMIUM` always assigns the premium UUID.
+
+`/identica admin clear <username>` removes an account but reserves its UUID for its username, so the player keeps their UUID when they register again.
+
+Accounts registered from the console with `/identica credential register` get the UUID reserved for their username as well, which is how accounts from another authentication plugin keep their UUIDs; see [Coming from another plugin](../../upgrading/from-another-plugin/index.mdx).

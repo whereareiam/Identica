@@ -1,0 +1,39 @@
+Identica comes in two forms; use one of them:
+
+- `Identica-BUNDLE-<version>.jar` runs on every supported proxy.
+- `Identica-PLATFORMS-<version>.zip` holds one jar per proxy: `Identica-VELOCITY-<version>.jar` and `Identica-BUNGEECORD-<version>.jar`.
+
+The Identica jar goes into the proxy's `plugins/` directory. The provider jars go into the `providers/` directory inside Identica's data directory, which you create yourself before the first start. Never put a provider jar directly into `plugins/`.
+
+<ContentTabs items={["Velocity", "BungeeCord"]}>
+  <ContentTab value="Velocity">
+    <Files>
+      <Folder name="plugins" defaultOpen>
+        <File name="Identica-BUNDLE-<version>.jar" />
+        <Folder name="identica" defaultOpen>
+          <Folder name="providers" defaultOpen>
+            <File name="Identica-Credential-<version>.jar" />
+            <File name="Identica-Premium-<version>.jar" />
+          </Folder>
+        </Folder>
+      </Folder>
+    </Files>
+
+    With the jar for your proxy instead of the bundle, `Identica-VELOCITY-<version>.jar` takes the place of `Identica-BUNDLE-<version>.jar`.
+  </ContentTab>
+  <ContentTab value="BungeeCord">
+    <Files>
+      <Folder name="plugins" defaultOpen>
+        <File name="Identica-BUNDLE-<version>.jar" />
+        <Folder name="Identica" defaultOpen>
+          <Folder name="providers" defaultOpen>
+            <File name="Identica-Credential-<version>.jar" />
+            <File name="Identica-Premium-<version>.jar" />
+          </Folder>
+        </Folder>
+      </Folder>
+    </Files>
+
+    With the jar for your proxy instead of the bundle, `Identica-BUNGEECORD-<version>.jar` takes the place of `Identica-BUNDLE-<version>.jar`. Waterfall uses the BungeeCord jar.
+  </ContentTab>
+</ContentTabs>

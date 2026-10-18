@@ -3,7 +3,7 @@
   "pages": [
     "index",
     "recognition",
-    "restriction",
+    "...restriction",
     "sentinel",
     "verification"
   ]

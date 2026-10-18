@@ -1,58 +1,69 @@
 ---
-title: Persistence
-description: Field-by-field explanation of Identica's persistence configuration area.
+title: persistence.yml
+description: Every setting of persistence.yml.
 ---
 
-The persistence configuration selects which database backend Identica uses and how the connection pool is configured.
+`persistence.yml` chooses the database that stores accounts and sets up the connection to it. [Database](../../admins/guides/network/database/index.mdx) explains the choice, upgrades and sharing a database between proxies.
 
-Identica uses SQLite when the file does not exist yet or does not set `type`.
+The database is opened on startup: changes take effect on the next start. A database that cannot be reached stops the startup.
 
-Identica creates its tables on the first start and upgrades them on later starts, after an update of Identica, a feature or a provider. It remembers how far each set of tables has come in the `strata_history` table; leave that table as it is. Proxies that share a database upgrade it once: the first proxy to start does it while the others wait.
+<Setting
+  name="type"
+  depth={2}
+  takes='`"SQLITE"`, `"H2"`, `"MYSQL"`, or `"POSTGRES"`'
+  default='`"SQLITE"`'
+  affects="which database stores the accounts"
+>
 
-Identica upgrades a database that Identica 2.2.1 or a later release wrote. Stop every proxy that uses the database and back it up before the first start of a new release. A database of a release older than 2.2.1 is not upgraded: the Credential provider refuses to load on it and says so in the console. Start Identica 2.2.1 on it once, then the new release.
-
-## type
-
-- Takes: `"SQLITE"`, `"H2"`, `"MYSQL"`, or `"POSTGRES"`
-- Current default: `"SQLITE"`
-- Values are case-sensitive. Any other value stops the startup with an error that names `type`, the value and the accepted values, and the file is left as it is. Since a failed startup refuses every connection, Identica never runs on a database the file did not ask for.
-- Affects: which persistence backend class and JDBC URL strategy are used
+Values are case-sensitive. Identica uses SQLite when the file does not set `type`. Any other value stops the startup with an error that names the accepted values, and the file is left as it is, so Identica never runs on a database the file did not ask for.
 
 `"MYSQL"` works with MySQL 8.0.19 or newer and with MariaDB.
 
-## Backend-specific fields
+</Setting>
 
-Different persistence types expose different fields.
-Those backend-specific fields are normally generated after you switch `type` and restart the plugin.
-If you only change `type` without letting the plugin boot again, the file structure may still reflect the old backend layout until Identica regenerates it.
+## Fields of each type
+
+Each type has fields of its own. After changing `type`, start the proxy once so Identica writes the new type's fields, then fill them in.
 
 <ContentTabs items={["SQLite", "H2", "MySQL", "PostgreSQL"]}>
   <ContentTab value="SQLite">
-    #### file
+    <Setting
+      name="file"
+      depth={4}
+      takes="a file name or relative path"
+      default='`"identica.db"`'
+      affects="the SQLite file, relative to the data directory"
+    >
 
-    - Takes: a file name or relative path
-    - Current default: `"identica.db"`
-    - Affects: the SQLite database file used under the plugin data directory
+    A blank value uses `identica.db`.
 
-    If this is blank, the runtime falls back to `identica.db`.
+    </Setting>
   </ContentTab>
   <ContentTab value="H2">
-    #### file
-
-    - Takes: a file name, relative path, or direct H2 target
-    - Current default: `"identica"`
-    - Affects: the H2 database target
+    <Setting
+      name="file"
+      depth={4}
+      takes="a file name, relative path, or direct H2 target"
+      default='`"identica"`'
+      affects="the H2 database"
+    >
 
     If the value starts with `mem:`, `tcp:`, `ssl:`, or `file:`, Identica treats it as a direct H2 target and passes it to H2 unchanged; H2 refuses a `file:` path relative to the working directory, so such a path must be absolute or start with `./` or `~/`.
     Otherwise it is treated as a file path relative to the plugin data directory, and Identica gives H2 its absolute path.
 
-    #### options
+    </Setting>
 
-    - Takes: a string
-    - Current default: `""`
-    - Affects: the H2 JDBC options appended to the connection URL
+    <Setting
+      name="options"
+      depth={4}
+      takes="a string"
+      default='`""`'
+      affects="H2 connection options, such as `MODE=MySQL`"
+    >
 
-    If options are present, Identica appends them to the base H2 URL, automatically inserting `;` when needed.
+    Identica appends them to the connection, separated by `;`.
+
+    </Setting>
   </ContentTab>
   <ContentTab value="MySQL">
     This type serves both MySQL and MariaDB servers.
@@ -60,125 +71,169 @@ If you only change `type` without letting the plugin boot again, the file struct
     - MySQL must be 8.0.19 or newer. On an older MySQL server, Identica stops its startup before it creates or changes any table, with an error that names the version it found and the version it needs. Like any failed startup, this refuses every connection until the server is upgraded and the proxy restarted.
     - Identica sets no minimum MariaDB version.
 
-    #### host
+    <Setting
+      name="host"
+      depth={4}
+      takes="a string"
+      default='`"localhost"`'
+      affects="the database server host"
+    >
 
-    - Takes: a string
-    - Current default: `"localhost"`
-    - Affects: the database server host
+    </Setting>
 
-    #### port
+    <Setting
+      name="port"
+      depth={4}
+      takes="an integer"
+      default="`3306`"
+      affects="the database server port"
+    >
 
-    - Takes: an integer
-    - Current default: `3306`
-    - Affects: the database server port
+    </Setting>
 
-    #### database
+    <Setting
+      name="database"
+      depth={4}
+      takes="a string"
+      default='`"identica"`'
+      affects="the name of the database"
+    >
 
-    - Takes: a string
-    - Current default: `"identica"`
-    - Affects: the database name used in the JDBC URL
+    </Setting>
 
-    #### username
+    <Setting
+      name="username"
+      depth={4}
+      takes="a string"
+      default='`"identica"`'
+      affects="the user Identica connects as"
+    >
 
-    - Takes: a string
-    - Current default: `"identica"`
-    - Affects: the username used for the external database connection
+    </Setting>
 
-    #### credential
+    <Setting
+      name="credential"
+      depth={4}
+      takes="a string"
+      default='`""`'
+      affects="the password of that user"
+    >
 
-    - Takes: a string
-    - Current default: `""`
-    - Affects: the credential used for the external database connection
+    </Setting>
   </ContentTab>
   <ContentTab value="PostgreSQL">
-    #### host
+    <Setting
+      name="host"
+      depth={4}
+      takes="a string"
+      default='`"localhost"`'
+      affects="the database server host"
+    >
 
-    - Takes: a string
-    - Current default: `"localhost"`
-    - Affects: the database server host
+    </Setting>
 
-    #### port
+    <Setting
+      name="port"
+      depth={4}
+      takes="an integer"
+      default="`5432`"
+      affects="the database server port"
+    >
 
-    - Takes: an integer
-    - Current default: `5432`
-    - Affects: the database server port
+    </Setting>
 
-    #### database
+    <Setting
+      name="database"
+      depth={4}
+      takes="a string"
+      default='`"identica"`'
+      affects="the name of the database"
+    >
 
-    - Takes: a string
-    - Current default: `"identica"`
-    - Affects: the database name used in the JDBC URL
+    </Setting>
 
-    #### username
+    <Setting
+      name="username"
+      depth={4}
+      takes="a string"
+      default='`"identica"`'
+      affects="the user Identica connects as"
+    >
 
-    - Takes: a string
-    - Current default: `"identica"`
-    - Affects: the username used for the external database connection
+    </Setting>
 
-    #### credential
+    <Setting
+      name="credential"
+      depth={4}
+      takes="a string"
+      default='`""`'
+      affects="the password of that user"
+    >
 
-    - Takes: a string
-    - Current default: `""`
-    - Affects: the credential used for the external database connection
+    </Setting>
   </ContentTab>
 </ContentTabs>
 
 ## hikari
 
-The `hikari` section controls the HikariCP connection pool used by the database layer.
+The connection pool, [HikariCP](https://github.com/brettwooldridge/HikariCP#gear-configuration-knobs-baby). The defaults suit almost every network; change them for a reason such as a connection limit of your database server.
 
-For most setups, the defaults are a good starting point.
-You usually only change these values when you have a clear reason related to database load, connection limits, or infrastructure tuning.
+<Setting
+  name="poolName"
+  takes="a string"
+  default='`"Identica"`'
+  affects="the pool's name in logs"
+  flag="advanced"
+>
 
-#### poolName
+</Setting>
 
-<Badge type="warning">Advanced</Badge>
+<Setting
+  name="maximumPoolSize"
+  takes="an integer"
+  default="`10`"
+  affects="the most connections Identica keeps open"
+  flag="advanced"
+>
 
-- Takes: a string
-- Current default: `"Identica"`
-- Affects: the Hikari pool name shown in diagnostics and logs
+</Setting>
 
-#### maximumPoolSize
+<Setting
+  name="minimumIdle"
+  takes="an integer"
+  default="`2`"
+  affects="how many unused connections are kept ready"
+  flag="advanced"
+>
 
-<Badge type="warning">Advanced</Badge>
+</Setting>
 
-- Takes: an integer
-- Current default: `10`
-- Affects: the maximum number of pooled database connections
+<Setting
+  name="connectionTimeout"
+  takes="a number of milliseconds"
+  default="`30000`"
+  affects="how long Identica waits for a free connection before giving up"
+  flag="advanced"
+>
 
-#### minimumIdle
+</Setting>
 
-<Badge type="warning">Advanced</Badge>
+<Setting
+  name="idleTimeout"
+  takes="a number of milliseconds"
+  default="`600000`"
+  affects="how long an unused connection stays open"
+  flag="advanced"
+>
 
-- Takes: an integer
-- Current default: `2`
-- Affects: the minimum number of idle pooled connections Hikari tries to keep ready
+</Setting>
 
-#### connectionTimeout
+<Setting
+  name="maxLifetime"
+  takes="a number of milliseconds"
+  default="`1800000`"
+  affects="how long a connection is used before it is replaced"
+  flag="advanced"
+>
 
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a number of milliseconds
-- Current default: `30000`
-- Affects: how long Hikari waits for a connection before timing out
-
-#### idleTimeout
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a number of milliseconds
-- Current default: `600000`
-- Affects: how long idle pooled connections may stay unused before Hikari retires them
-
-#### maxLifetime
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a number of milliseconds
-- Current default: `1800000`
-- Affects: the maximum lifetime of a pooled connection before Hikari replaces it
-
-## Connection behavior
-
-If the database connection cannot be established, Identica does not fail fast during Hikari initialization.
-Instead, it logs the connection problem and database-backed features remain unavailable until the connection can be established.
+</Setting>

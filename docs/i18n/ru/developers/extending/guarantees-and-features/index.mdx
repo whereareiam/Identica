@@ -1,0 +1,80 @@
+---
+title: Гарантии и функции провайдеров
+description: Гарантии идентичности, поддерживаемые интеграции и политики функций, которыми управляет администратор.
+sourceHash: b820d8415c64f67356124076fbb56ce29f908b87
+---
+
+Провайдер сообщает Identica о себе две вещи: что он гарантирует о своих идентичностях и с какими функциями работает. Затем администратор выбирает для каждого провайдера, какие функции используются.
+
+## Гарантии провайдеров [#provider-guarantees]
+
+`IdenticaProvider.guarantees()` возвращает `Set<ProviderGuarantee>`. Гарантия выражает то, что реализация гарантирует о своих идентичностях. Это не переключатель для администратора, и правила конфликтов ников сопоставляются именно с гарантиями.
+
+`ProviderGuarantee.OWNED_USERNAME` означает, что провайдер владеет никами своих игроков: двое его игроков не могут одновременно владеть одним ником, и он проверяет, что игрок владеет ником, с которым заходит. Identica следует этому нику для аккаунта, чьей основной привязкой является провайдер, если только администратор не назначил ник вручную. Провайдер Premium объявляет эту гарантию, провайдер Credential — нет. Конфигурация провайдера не может выдать гарантию.
+
+Ники — это поведение ядра, а не функция, и они никогда не указываются в `supportedFeatures()`. Что при этом видит администратор, описано на странице [Ники и конфликты](../../../admins/guides/accounts/usernames/index.mdx).
+
+### Исходы конфликтов [#conflict-outcomes]
+
+Конфликты двух аккаунтов за то, что может быть только у одного из них, проходят через `ConflictService` в `me.whereareiam.identica.conflict`. Каждый вид конфликта, например `UsernameConflict.KIND`, хранит свои правила в собственном документе; сервис находит самое конкретное подходящее правило и исход, который оно называет. Исходы регистрируются по id вместе с настройками, поэтому аддон или провайдер может добавить свой — через `ConflictService.register` или вернув его из `IdenticaProvider.conflictOutcomes()`, тогда он зарегистрирован, пока провайдер включён. Исход решает только, что остаётся у каждой стороны; ни один не пускает игрока в чужой аккаунт.
+
+```java
+public final class LongestPlaytimeOutcome implements ConflictOutcome<UsernameConflict, UsernameConflictDecision, LongestPlaytime> {
+    @Override
+    public ConflictKind<UsernameConflict, UsernameConflictDecision> kind() {
+        return UsernameConflict.KIND;
+    }
+
+    @Override
+    public String id() {
+        return "longest-playtime";
+    }
+
+    @Override
+    public Class<LongestPlaytime> settingsType() {
+        return LongestPlaytime.class;
+    }
+
+    @Override
+    public LongestPlaytime defaults() {
+        return new LongestPlaytime();
+    }
+
+    @Override
+    public UsernameConflictDecision decide(UsernameConflict conflict, LongestPlaytime settings) {
+        return playtime.longer(conflict.getSituation())
+                ? UsernameConflictDecision.renameHolder(settings.getHolderRename())
+                : UsernameConflictDecision.renameArriving(settings.getRename());
+    }
+}
+```
+
+У исхода есть id в нижнем регистре через дефис, типизированная модель настроек и её значения по умолчанию. После регистрации Identica записывает значения по умолчанию в `outcomes.longest-playtime`; администратор меняет их там, в `providers.<провайдер>.longest-playtime` или в отдельном правиле, а правило называет исход как `outcome: longest-playtime`. `actsOn()` указывает, настройки провайдера какой стороны применяются.
+
+## Поддерживаемые функции [#supported-features]
+
+`IdenticaProvider.supportedFeatures()` возвращает идентификаторы функций, с которыми интегрируется провайдер. Поддержку объявляет разработчик провайдера, а включение выбирает администратор. Объявление поддержки не активирует функцию и не переопределяет конфигурацию.
+
+```java
+@Override
+public Set<ProviderGuarantee> guarantees() {
+    return Set.of(ProviderGuarantee.OWNED_USERNAME);
+}
+
+@Override
+public Set<String> supportedFeatures() {
+    return Set.of("recognition", "verification", "restriction", "restriction-join");
+}
+```
+
+Провайдеры предоставляют конструктор без аргументов, чтобы загрузчик мог проверить их объявления до внедрения зависимостей. Объявления не должны полагаться на внедряемые сервисы. Объявление неизвестной функции не даёт провайдеру загрузиться. Явное включение известной функции, которую провайдер не поддерживает, тоже приводит к ошибке загрузки провайдера.
+
+## Проверка, включена ли функция [#checking-whether-a-feature-is-on]
+
+Администратор настраивает каждую функцию глобально и для отдельных провайдеров, как описано на странице [Функции](../../../admins/features/index.mdx#on-for-everyone-or-per-provider).
+
+`FeatureRegistry.isEnabled(providerId, featureId)` учитывает и объявленную поддержку, и действующую политику включения. `isAvailable(featureId)` описывает только то, скомпилирована ли функция, и не проверяет, включил ли её администратор. Интеграции провайдеров должны использовать первый метод, когда решают, выполнять ли необязательное поведение.
+
+Глобальная политика верификации для провайдеров задаётся в `defaults` в `features/verification/settings`. Распознавание и Sentinel используют значение `enabled` в своих настройках. У ограничения есть собственное значение `enabled` по умолчанию; ограничение входа добавляет `enabled` и `allow` в `features/restriction/join/settings`. Отключение охватывающего переключателя `features.restriction.enabled` отключает для этого провайдера и ограничение входа.
+
+Защищённые действия проверяют верификацию для провайдера текущей сессии. Настройки целевого провайдера не должны позволять обойти политику верификации исходной сессии.

@@ -1,214 +1,259 @@
 ---
-title: Commands
-description: Field-by-field explanation of Identica's commands configuration area.
+title: commands.yml
+description: Every setting of commands.yml.
 ---
 
-## Behavior
+`commands.yml` holds Identica's own commands: their aliases, permissions, descriptions and syntax, and a few settings that apply to all of them. Features and providers keep their commands in their own `commands.yml` with the same structure, such as `providers/Credential/commands.yml` or `features/verification/commands.yml`. [Managing accounts](../../admins/guides/accounts/managing-accounts/index.mdx) lists the staff commands.
 
-The `behavior` section controls command-wide behavior that is not tied to one specific command definition.
+## behavior
+
+Settings that apply to all commands.
 
 ### help
 
-#### sortAlphabetically
+<Setting
+  name="sortAlphabetically"
+  depth={4}
+  takes="`true` or `false`"
+  default="`true`"
+  affects="whether `/identica help` lists commands alphabetically"
+>
 
-- Takes: `true` or `false`
-- Current default: `true`
-- Affects: whether the help command sorts entries alphabetically before rendering them
+With `false`, help lists them in the order they were registered.
 
-When this is `false`, help output keeps the natural command registration order instead of forcing alphabetical order.
+</Setting>
 
 ### suggestions
 
-#### playerLimit
+<Setting
+  name="playerLimit"
+  depth={4}
+  takes="an integer"
+  default="`25`"
+  affects="how many player names a command suggests while staff type it"
+>
 
-- Takes: an integer
-- Current default: `25`
-- Affects: the maximum number of cross-player suggestions returned by command suggestion providers
+`0` or lower suggests no names.
 
-If this is `0` or lower, those suggestions are effectively disabled.
+</Setting>
 
 ### clear
 
-#### confirmTtl
-
-- Takes: a duration
-- Current default: `"60s"`
-- Affects: how long a pending admin clear or delete confirmation stays valid
+<Setting
+  name="confirmTtl"
+  depth={4}
+  takes="a duration"
+  default='`"60s"`'
+  affects="how long a pending admin clear or delete confirmation stays valid"
+>
 
 This is the time window between requesting an account clear or deletion (`/identica admin clear` or `/identica admin delete`) and confirming it. A later confirmation is refused and nothing is changed.
 
+</Setting>
+
 ### sessions
 
-#### listPageSize
+<Setting
+  name="listPageSize"
+  depth={4}
+  takes="an integer"
+  default="`7`"
+  affects="how many sessions `/identica admin session list` shows per page"
+>
 
-- Takes: an integer
-- Current default: `7`
-- Affects: how many entries are shown per page in admin session listings
+</Setting>
 
 ### migration
 
-#### confirmTtl
+<Setting
+  name="confirmTtl"
+  depth={4}
+  takes="a duration"
+  default='`"60s"`'
+  affects="how long a player has to confirm a move to another provider, such as with `/premium confirm`"
+>
 
-- Takes: a duration
-- Current default: `"60s"`
-- Affects: how long a pending migration confirmation stays valid
+</Setting>
 
-### useBrigadier
-
-<Badge type="warning">Warning</Badge>
-
-- Takes: `true` or `false`
-- Current default: `false`
-- Affects: how Identica registers commands on platforms that support multiple registration modes
+<Setting
+  name="useBrigadier"
+  takes="`true` or `false`"
+  default="`false`"
+  affects="how Velocity parses the commands players type"
+  flag="warning"
+>
 
 <ContentTabs items={["Velocity"]}>
   <ContentTab value="Velocity">
-    In Velocity, this toggles the command manager registration mode between raw registration and Brigadier registration.
+    With `false`, Velocity passes what the player typed to Identica as it is. Passwords may contain any symbol, and Identica answers wrong input with its own messages.
 
-    `RAW` is usually the safer default for Identica.
+    With `true`, Velocity parses commands with Brigadier, which accepts fewer symbols in arguments and rejects some input before Identica sees it, without Identica's messages. Passwords with such symbols then cannot be typed.
 
-    With `RAW`, command input is passed through more permissively.
-    That is especially useful for things like passwords, because the input can contain a wider range of characters and is less constrained by Brigadier parsing rules.
-
-    With `BRIGADIER`, input handling is stricter.
-    Normal symbols still work, but only a more limited set of special symbols is accepted cleanly through Brigadier parsing.
-    That can become a problem if your credential rules or expected command input rely on broader special-character support.
-
-    Another practical difference is error handling.
-    In `RAW`, Identica can surface its custom invalid-input and syntax-help style messages more cleanly.
-    In `BRIGADIER`, those custom exception and invalid-command messages are less reliable because Brigadier can reject the input earlier in the parsing chain.
+    Keep `false` unless you have a reason to use Brigadier.
   </ContentTab>
 </ContentTabs>
 
+</Setting>
+
 ## commands
 
-The `commands` map contains the actual command definitions keyed by internal definition id.
+Every command, keyed by its id, such as `admin-reload`.
 
 <Callout title="Command keys" type="warn">
-  For built-in commands, edit the values inside each command definition, but do not casually rename the map keys themselves.
-  The built-in command executors look up definitions by those internal ids.
+  Change the values inside a command, but keep its key: Identica finds each of its commands by its key, and a renamed key leaves the command without its settings.
 </Callout>
 
-Each entry in `commands` uses the same definition structure.
+Every command has the same fields.
 
-### Command definition fields
+### Command fields
 
-#### enabled
+<Setting
+  name="enabled"
+  depth={4}
+  takes="`true` or `false`"
+  affects="whether the command exists"
+>
 
-- Takes: `true` or `false`
-- Affects: whether the command definition is registered at all
+</Setting>
 
-When this is `false`, Identica skips registration for that command definition.
+<Setting
+  name="aliases"
+  depth={4}
+  takes="a list of alias strings"
+  affects="the names the command answers to"
+>
 
-#### aliases
+An alias is a word such as `help` or a phrase such as `admin session list`; subcommands of `/identica` use phrases. An enabled command without any alias is not registered, and the console warns about it on startup.
 
-- Takes: a list of alias strings
-- Affects: which command labels and subcommand phrases are registered
+</Setting>
 
-Aliases can be single words such as `help` or command phrases such as `admin session list`.
-An enabled command without any alias is not registered; Identica logs a warning that names it and starts the other commands as usual.
+<Setting
+  name="permission"
+  depth={4}
+  takes="a string"
+  affects="the permission a player needs to use the command"
+>
 
-#### permission
+An empty string lets everyone use it.
 
-- Takes: a string
-- Affects: the permission required to use that command definition
+</Setting>
 
-An empty string means no extra permission check is configured for that definition.
+<Setting
+  name="description"
+  depth={4}
+  takes="a string"
+  affects="the command's description in `/identica help`"
+>
 
-#### description
+</Setting>
 
-- Takes: a string
-- Affects: help and metadata output for that command
+<Setting
+  name="usage"
+  depth={4}
+  takes="a string"
+  affects="the syntax shown in help and in error messages, and which arguments the command takes"
+  flag="advanced"
+>
 
-#### usage
+`usage` is both what players read and what the command accepts: Identica takes from it which arguments are required and which are optional.
 
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a string
-- Affects: the rendered usage syntax shown in help and command-related output, and the required/optional argument layout applied during command registration
-
-`usage` is partly documentation and partly structure.
-Identica reads it to determine which command arguments should be treated as required or optional in the final registered command.
-
-This can be useful when you want help output and command syntax to better match the command style you expect players or staff to use.
-For example, you might want usage text to stay aligned with customized aliases, a preferred command flow, or clearer optional-vs-required argument presentation.
-
-The usage syntax behaves like this:
+The syntax:
 
 - `<name>` means a required argument
 - `[name]` means an optional argument
-- `<name...>` or `[name...]` means a greedy argument token in the usage string
-- `{...}` placeholders are ignored by the argument parser and are only used for rendered syntax text
+- `<name...>` or `[name...]` means an argument that takes the rest of the line
+- `{...}` placeholders are only shown, never parsed
 
 Built-in usages commonly use placeholders such as:
 
 - `{alias}` for the currently used alias
 - `{command}` for the root command path
 
-Important rules:
+Rules:
 
-- The argument names inside `<...>` and `[...]` must match real parsed command argument names from the executor
-- `usage` does not define aliases by itself; aliases still come from the `aliases` field
-- If a usage token refers to an argument name that does not exist in the parsed command, registration fails
-- Because `usage` affects structure as well as display, changing it carelessly can make the command definition inconsistent with the actual executor arguments
-- An optional argument that the executor implements can be left out of `usage`; the registered command then no longer accepts it, and help and the invalid-syntax message no longer show it
-- Settings never rewrite `usage`: when a setting makes an optional argument unnecessary, such as Credential's `changePassword.requireRepeat`, the argument stays in the syntax until you remove it from `usage`
+- Keep the argument names of the default `usage`. A name the command does not have stops the command from registering, and the console says so.
+- Aliases come only from `aliases`, never from `usage`.
+- An optional argument can be left out of `usage`; the command then no longer accepts it, and help and the invalid-syntax message no longer show it.
+- Settings never change `usage`: when a setting makes an optional argument unnecessary, such as Credential's `changePassword.requireRepeat`, the argument stays in the syntax until you remove it.
 
-Providers and features keep their command definitions in their own `commands.yml`, such as `providers/Credential/commands.yml` or `features/verification/commands.yml`, with the same definition structure as this file.
-
-Example:
+Examples:
 
 - `"{command} {alias} <target> [provider]"` means:
-  - the root command path and chosen alias are rendered into the syntax text
+  - shows the root command and the alias the player used
   - `target` is required
   - `provider` is optional
 
 - `"{alias}"` means:
-  - no command arguments are defined through `usage`
-  - only the alias placeholder is rendered
+  - the command takes no arguments
+  - only the alias is shown
 
-#### cooldown
+</Setting>
 
-- Takes: a cooldown object
-- Affects: per-command cooldown behavior through the command adapter
+<Setting
+  name="cooldown"
+  depth={4}
+  takes="`enabled`, `duration` and `group`"
+  affects="nothing yet"
+  flag="reserved"
+>
 
-##### enabled
+Identica reads these fields but does not apply command cooldowns yet. Leave them as they are.
 
-- Takes: `true` or `false`
-- Affects: whether the cooldown is active
+</Setting>
 
-##### duration
+<Setting
+  name="enabled"
+  depth={5}
+  takes="`true` or `false`"
+  default="`false`"
+>
 
-- Takes: an integer
-- Affects: the cooldown duration used by the command system
+</Setting>
 
-##### group
+<Setting
+  name="duration"
+  depth={5}
+  takes="an integer"
+  default="`0`"
+>
 
-- Takes: a string
-- Current default: `"default"`
-- Affects: which cooldown group the command belongs to
+</Setting>
 
-Commands in the same group can share cooldown behavior depending on the command framework rules.
+<Setting
+  name="group"
+  depth={5}
+  takes="a string"
+  default='`"default"`'
+>
 
-#### arguments
+</Setting>
 
-- Takes: a map of argument name to description
-- Affects: custom argument descriptions used in help and syntax formatting
+<Setting
+  name="arguments"
+  depth={4}
+  takes="a map of argument name to description"
+  affects="how each argument is described in help"
+>
 
-This does not define parsing logic by itself.
-It documents arguments that are already implemented by the command executor.
+It only describes arguments; which arguments exist comes from `usage`.
 
-#### hide
+</Setting>
 
-- Takes: `true` or `false`
-- Current default: `false`
-- Affects: whether the command is hidden from help output
+<Setting
+  name="hide"
+  depth={4}
+  takes="`true` or `false`"
+  default="`false`"
+  affects="whether `/identica help` leaves the command out"
+>
 
-This is used for internal or flow-supporting command definitions that should exist without being listed in normal help output.
+A hidden command still works.
+
+</Setting>
 
 ## Built-in command groups
 
-The current defaults generate built-in definitions in these groups:
+The default `commands.yml` holds these commands:
 
 - Core: `main`, `help`, `enroll`, `availability-username`
 - Admin: `admin`, `admin-reload`, `admin-clear`, `admin-clear-confirm`, `admin-clear-cancel`, `admin-delete`, `admin-delete-confirm`, `admin-delete-cancel`, `admin-reservation-set`, `admin-reservation-info`, `admin-reservation-delete`, `admin-session`, `admin-session-list`, `admin-session-info`, `admin-session-end`, `admin-username-duplicates`, `admin-verification-reset`

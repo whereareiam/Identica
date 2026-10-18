@@ -1,0 +1,11 @@
+{
+  "title": "Developers",
+  "pages": [
+    "index",
+    "api",
+    "extending"
+  ],
+  "description": "Build addons and providers on Identica",
+  "icon": "Code",
+  "root": true
+}

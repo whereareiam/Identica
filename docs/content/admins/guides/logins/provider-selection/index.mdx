@@ -1,0 +1,47 @@
+---
+title: How a provider is picked
+description: The reasons that decide which provider handles a joining player, and how hostnames take part.
+---
+
+Every join collects reasons for providers to handle it, and the strongest reason wins. Identica picks the provider once, while the player connects, and keeps it for the whole login.
+
+## The order of reasons
+
+From strongest to weakest:
+
+1. **A pending migration.** The player confirmed a move to another provider, so the new provider is set up. See [Moving between providers](../../accounts/moving-between-providers/index.mdx).
+2. **An account of a verified login.** The provider proved that the client owns its identity, such as Premium after an online login, and that identity already belongs to an account. An existing account keeps its provider, so a hostname never moves an account.
+3. **The hostname.** The player joined through one of the provider's [hostnames](#hostnames). Joining through a hostname is a deliberate choice.
+4. **A verified login without an account.** The provider proved the client's identity, but no account uses it yet. The player registers with that provider unless a hostname picked another one.
+5. **The player's choice.** The player chose the provider when asked. The choice is kept when the player reconnects before the registration ends.
+6. **A matching name.** An account with the player's username uses the provider. The name alone proves nothing about the client.
+7. **Discovery.** The provider recognises the username, without proof.
+
+Reasons of the same strength go to the provider with the higher `priority` in `providers/providers.yml`. Only providers the login may use can win: a hostname whose provider the scenario does not offer is ignored, and a provider that fails for the player is left out for the rest of the login.
+
+## In practice
+
+- A new player who joins through a provider's hostname registers with that provider. In an `INTERACTIVE` registration, the provider choice is skipped when the hostname's provider is offered.
+- A player whose verified login already has an account keeps that account's provider, whatever hostname they use. A Premium account stays on Premium through the Credential hostname.
+- A new player's hostname beats a verified login without an account. A premium owner who joins through the Credential hostname of a `SEAMLESS` network, and is asked for the premium login because the name is premium, still registers with Credential, and later joins ask for the Credential password. Through the Premium hostname, the same player registers with Premium.
+- When a Credential account holds the name `Steve`, the real premium owner of `Steve` who joins through the Premium hostname is asked for the premium login and reaches their own Premium account, or registers one. Without that login, only the matching name speaks for a provider, so the player is asked for the Credential password. What happens to the name is decided by the [username rules](../../accounts/usernames/index.mdx).
+
+## Hostnames
+
+A provider's `entrypoints` list the hostnames that pick it:
+
+```yaml
+providers:
+  - id: "premium"
+    entrypoints:
+      - "premium.example.com"
+  - id: "credential"
+    entrypoints:
+      - "credential.example.com"
+```
+
+An entry without a port matches the hostname on any port; `host:port` matches only that port. When several providers list the same hostname, the one with the higher `priority` takes it.
+
+A hostname only picks a provider. It never routes the player to a server, which is what the proxy's forced hosts and routing's [`forcedHosts`](../../network/routing/index.mdx#the-players-hostname) do. It never lifts a provider's own protection of a name either: Premium still demands its login for a premium name or a Premium account, whatever hostname the player used.
+
+See [`providers/providers.yml`](../../../../configuration/providers/index.mdx) for every provider setting.

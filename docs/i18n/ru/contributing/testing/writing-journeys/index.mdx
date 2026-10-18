@@ -1,0 +1,150 @@
+---
+title: Написание прохождений
+description: Как объявить тестовую сеть, описать игрока и проверить, что сообщают игрок и прокси.
+sourceHash: b66c6a56d438ab167346f46601a58725136f2fa1
+---
+
+## Написание теста [#write-a-test]
+
+Тест объявляет свою сеть через `@Identica` и описывает игрока с помощью `Journey`:
+
+```java
+@Test
+@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+void registersWithCredential(ScenarioContext anvil) {
+	Journey.offline(anvil, "Alice").join()
+			.on(AUTH)
+			.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
+			.enroll(Provider.CREDENTIAL)
+			.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
+			.register("Secret-123")
+			.on(LOBBY)
+			.sees(m -> m.credential().getCompletion().getRegistration().getBody());
+}
+```
+
+`@Identica` задаёт режим и политику прохождения, включённые провайдеры, точки входа провайдеров, `autoSelectSingleProvider` и цели маршрутизации. Сеть состоит из одного прокси — Velocity, если тест не указывает [другую платформу](../networks/index.mdx#other-proxies), — сервера `auth` для шагов аутентификации и регистрации и сервера `lobby`, куда попадают игроки, завершившие прохождение. Игроки входят на `lobby`; `step` и `complete` задают серверы, на которые игроков направляют, пока шаг ожидает, и после завершения, — по умолчанию `auth` и `lobby`, если тест их не меняет; пустая цель оставляет игроков там, где они находятся:
+
+```java
+@Test
+@Identica(providers = Provider.CREDENTIAL, step = "", complete = "")
+void registersOnTheLobbyWithoutAnyRouting(ScenarioContext anvil) {
+	Journey.offline(anvil, "Alice").join()
+			.on(LOBBY)
+			.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
+			.register("Secret-123")
+			.sees(m -> m.credential().getCompletion().getRegistration().getBody())
+			.remainsOn(LOBBY);
+}
+```
+
+`IdenticaNetwork.CLOSED` — сервер с белым списком, в котором никого нет, поэтому он не пускает ни одного игрока. Он появляется в сети только тогда, когда тест направляет туда игроков, например `@Identica(complete = IdenticaNetwork.CLOSED)`, — для сценариев, в которых сервер отказывает игрокам.
+
+`database` выбирает, где прокси хранит аккаунты: `Database.SQLITE` (по умолчанию), `Database.H2` — файл H2 в каталоге данных Identica, или сервер в контейнере, который останавливается вместе с сетью: `Database.MARIADB`, к которому Identica подключается через свой бэкенд MySQL, `Database.MYSQL` или `Database.POSTGRESQL`. Тесту на сервере базы данных нужен Docker, а без него тест пропускается.
+
+Каждый тестовый прокси на Velocity принудительно сопоставляет хост `IdenticaNetwork.LOBBY_HOST` с `lobby`; каждое прохождение, в котором хост не указан, входит через хост без принудительного сопоставления.
+
+`Journey.of(anvil, client)` создаёт игрока по описанию `Client`: `Client.offline(username)` или `Client.premium(account)`, затем `.through(host)` для хоста, который объявляет клиент, например `LOBBY_HOST` или точки входа провайдера, `.from(address)` для loopback-адреса, с которого он подключается, например `127.0.0.2`, и `.at(proxy)` для прокси кластера. Без `.from(...)` каждый игрок подключается с `127.0.0.1`, поэтому двум клиентам, которые должны выглядеть как разные машины, нужно указать разные адреса. Клиентам с одним ником нужны разные адреса или прокси:
+
+```java
+Journey home = Journey.of(anvil, Client.offline("Alice"));
+Journey elsewhere = Journey.of(anvil, Client.offline("Alice").from("127.0.0.2"));
+Journey routed = Journey.of(anvil, Client.offline("Bob").through(Provider.CREDENTIAL.getEntrypoint()));
+```
+
+Каждый шаг `Journey` проверяет обе стороны: что получает клиент игрока и что прокси сообщает в своей консоли о подключениях, смене серверов и причинах отключения. Ожидание сообщения учитывает только сообщения, полученные после предыдущего ожидания, поэтому запрос, повторённый после переподключения, не засчитывается за счёт своего более раннего появления.
+
+Вход, который прокси может отклонить, начинается с `attempt()`, или с `attemptAgain()` для игрока, который уже подключался раньше, вместо `join()`. Следующий за ним отказ называет свой момент: `refusedWith(...)` — до того, как прокси узнаёт, кто заходит, `refusedAtLoginWith(...)` — пока игрок ещё входит, до любого бэкенд-сервера и запроса, и `kickedWith(...)` — отключение в любой момент.
+
+Для игроков, у которых уже есть аккаунт, используйте `Accounts`.
+
+Игрок, чей ник меняет Identica, например аккаунт, переименованный в конфликте ников, заходит под другим ником, чем в его клиенте. `.named(username)` сообщает прохождению ник, под которым прокси называет игрока начиная со следующего подключения, а `.playsAs(username)` ожидает, что бэкенд-сервер видит игрока под этим ником. `ProxyConfiguration.usernameConflicts()` меняет правила конфликтов ников тестовой сети:
+
+```java
+holder.named("Steve_credential").rejoin()
+		.on(AUTH)
+		.login(PASSWORD)
+		.on(LOBBY)
+		.playsAs("Steve_credential");
+```
+
+Серверы `auth` и `lobby` помнят предыдущие тесты: позиция и инвентарь игрока на них не принадлежат ни одному тесту. Проверяйте то, что сообщают прокси и клиент игрока, и не полагайтесь на состояние мира бэкенд-сервера.
+
+Ожидание сообщения указывает сообщение через собственные модели конфигурации Identica: `m.identica()` — это `Messages`, `m.username()` — `UsernameMessages`, `m.credential()` — `CredentialMessages`, `m.premium()` — `PremiumMessages`, `m.sentinel()` — `SentinelMessages`, `m.verification()` — `VerificationMessages`, `m.joinRestriction()` — `JoinRestrictionMessages`, а `m.example()` — `ExampleMessages` провайдера-примера. Модели читаются из файлов, сгенерированных работающим прокси, поэтому ожидание следует настроенному тексту, а переименованное или удалённое сообщение приводит к тому, что тесты перестают компилироваться. Теги форматирования игнорируются, а плейсхолдеры совпадают с любым текстом. Добавьте в цепочку `.with(...)` и `.without(...)` после `.sees(...)`, чтобы проверить, что ещё содержит то же сообщение. Не копируйте текст сообщений в тест.
+
+То, что выдаёт сообщение, например секрет или список кодов, игрок считывает через `.reads(placeholder)` после `.sees(...)`, которое это сообщение нашло. `Authenticator` заменяет приложение-аутентификатор и вычисляет коды для секрета, считанного игроком:
+
+```java
+Authenticator app = Authenticator.of(alice.command("2fa enroll totp")
+		.sees(m -> m.verification().getMethods().getTotp().getPending())
+		.reads("secret"));
+alice.command("2fa enroll confirm " + app.code());
+```
+
+Identica принимает каждый код один раз, включая код подтверждения, поэтому тест, который вводит второй код, берёт `app.nextCode()`: он ждёт, пока приложение покажет код, следующий за последним возвращённым. `app.usedCode()` — последний возвращённый код, чтобы намеренно ввести его снова; `app.codeAhead()` — код приложения, часы которого спешат на одно окно; `app.wrongCode()` — код, который Identica не принимает ни в одном окне. Приложение меняет коды каждые пять секунд, так что ожидание короткое; задайте сети тот же период через `configure = Authenticator.ShortPeriod.class` — он также расширяет окно расхождения в прошлое, чтобы повторно введённый код отклонялся только потому, что уже использован.
+
+## Лицензионные аккаунты [#premium-accounts]
+
+Ни одному тесту не нужен настоящий аккаунт Minecraft. Каждая сеть запускает собственную локальную замену Mojang: провайдер Premium спрашивает у неё, принадлежит ли ник лицензионному аккаунту, а прокси обращается к ней для проверки лицензионного входа вместо сессионного сервера Mojang.
+
+Тест получает эту замену как параметр и регистрирует существующие лицензионные аккаунты:
+
+```java
+@Test
+@Identica(mode = JourneyMode.SEAMLESS)
+void joins(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+	SessionIdentity account = yggdrasil.register("Steve");
+	Journey.premium(anvil, account).join().on(LOBBY);
+}
+```
+
+Один лишь вызов `yggdrasil.register("Alice")` делает `Alice` ником лицензионного аккаунта, под которым игрок с пиратским (офлайн) аккаунтом всё ещё может попытаться войти, а `yggdrasil.available(false)` имитирует недоступность сервисов Mojang. Замена принадлежит сети теста: она запускается без аккаунтов и останавливается вместе с сетью.
+
+## Изменение конфигурации [#change-the-configuration]
+
+`@Identica` покрывает обычные различия между сетями. Для всего остального тест указывает классы, которые изменяют файлы конфигурации прокси через собственные модели Identica. Файл, который тест не задаёт, генерирует плагин — как при новой установке:
+
+```java
+@Test
+@Identica(configure = NoDisconnectMessages.class)
+void endingASessionDisconnectsThePlayer(ScenarioContext anvil) {
+}
+
+private static final class NoDisconnectMessages implements Consumer<ProxyConfiguration> {
+	@Override
+	public void accept(ProxyConfiguration proxy) {
+		proxy.messages().getCommands().getAdmin().getSessions().getEnd().setDisconnect(List.of());
+	}
+}
+```
+
+`proxy.engine()`, `proxy.routing()`, `proxy.commands()`, `proxy.settings()`, `proxy.providers()`, `proxy.messages()`, `proxy.credential()` (настройки провайдера Credential), `proxy.sentinel()`, `proxy.recognition()`, `proxy.verification()` и `proxy.joinRestriction()` (общие настройки этих функций) возвращают модели, которые изменяет тест. `proxy.put(path, model)` добавляет ещё один файл, `proxy.omit(path)` исключает файл, `proxy.corrupt(path, content)` записывает файл, который Identica не сможет прочитать, `proxy.seed(path, file)` кладёт файл, например базу данных, оставленную более ранней версией, до первого запуска прокси, а `ProxyConfiguration.generated(anvil, path, type)` читает файл в том виде, в каком его оставил работающий прокси. Пока сеть работает, `ProxyConfiguration.editGenerated(anvil, path, type, change)` изменяет файл через его модель, а `ProxyConfiguration.corruptGenerated(anvil, path, content)` заменяет его содержимым, которое Identica не сможет прочитать; после этого `Administrator.at(anvil, PROXY).reloads()` и `.failsToReload()` перезагружают конфигурацию и ожидают соответствующий настроенный ответ.
+
+Прохождение, проверяющее блокировку или срок действия, задаёт короткую длительность и пропускает её с помощью `.waits(duration)`; ожидание никогда не используется, чтобы дать прокси время отреагировать, потому что каждый другой шаг и так этого дожидается:
+
+```java
+alice.waits(LOCKOUT)
+		.rejoin()
+		.on(AUTH)
+		.login("Secret-123")
+		.on(LOBBY);
+```
+
+## Примеры [#the-examples]
+
+Каждый тестовый прокси устанавливает провайдер-пример из `examples/provider` рядом с официальными провайдерами; он отключён, если тест не включит его через `providers = Provider.EXAMPLE`. `@Identica(addon = true)` дополнительно устанавливает аддон-пример из `examples/addon` — отдельный плагин Velocity, который блокирует чат и команды, пока игрок не пройдёт аутентификацию. Тесты в `example` следят за тем, чтобы оба примера работали с текущим API.
+
+Текст, который не относится ни к одному файлу конфигурации, например собственное сообщение аддона или строка чата, сравнивается как обычный текст. `.chat(message)` отправляет сообщение в чат, `.seesText(text)` ждёт сообщение, содержащее этот текст, а `.doesNotSeeText(text)` ожидает, что такое сообщение не придёт. `Administrator.seesOnConsole(texts...)` ожидает строку консоли, содержащую все указанные тексты, после предыдущей команды администратора — например то, что аддон пишет в лог, реагируя на перезагрузку:
+
+```java
+@Test
+@Identica(providers = Provider.EXAMPLE, addon = true)
+void holdsBackChat(ScenarioContext anvil) {
+	Journey.offline(anvil, "Alice").join()
+			.on(AUTH)
+			.sees(m -> m.example().getPrompt())
+			.chat("hello")
+			.doesNotSeeText("hello")
+			.seesText("Log in before you chat.");
+}
+```

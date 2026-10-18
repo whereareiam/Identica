@@ -1,13 +1,19 @@
 ---
-title: Settings
-description: Field-by-field explanation of Identica's core settings configuration area.
+title: settings.yml
+description: Every setting of settings.yml.
 ---
 
-## Level
+`settings.yml` holds the logging level, how accounts get their UUIDs, the session policy, and the proxy listeners.
 
-`level` controls how much Identica writes to the logger.
+<Setting
+  name="level"
+  depth={2}
+  takes="an integer from `0` to `4`"
+  default="`2`"
+  affects="how much Identica writes to the console"
+>
 
-| Value | Effect                     |
+| Value | Writes |
 |-------|----------------------------|
 | `0`   | errors only                |
 | `1`   | warnings and errors        |
@@ -15,161 +21,57 @@ description: Field-by-field explanation of Identica's core settings configuratio
 | `3`   | adds debug logging         |
 | `4`   | adds trace logging         |
 
-<Tabs items={["YAML", "JSON"]}>
-  <Tab value="YAML">
-```yaml
-level: 3
-```
-  </Tab>
-  <Tab value="JSON">
-```json
-{
-  "level": 3
-}
-```
-  </Tab>
-</Tabs>
+Use `2` for normal operation and `3` or `4` while you look into a problem.
 
-Use `2` for normal operation and `3` or `4` when you are actively debugging routing, pipeline, or provider behavior.
+</Setting>
 
 ## identity
 
-`identity` controls account UUID assignment and reservation timing.
+<Setting
+  name="uniqueIdMode"
+  takes='`"RANDOM"`, `"OFFLINE"`, or `"PREMIUM"`'
+  default='`"RANDOM"`'
+  affects="how new accounts get their UUID"
+  flag="danger"
+>
 
-### uniqueIdMode
+`RANDOM` gives each account a new random UUID, `OFFLINE` the offline-mode UUID of its username, `PREMIUM` its premium UUID. Existing accounts keep their UUID. See [Unique ids](../../admins/guides/accounts/unique-ids/index.mdx) before changing it.
 
-<Badge type="error">Danger</Badge>
+</Setting>
 
-- Takes: `"RANDOM"`, `"OFFLINE"`, or `"PREMIUM"`
-- Current default: `"RANDOM"`
-- Affects: how Identica assigns UUIDs to newly discovered accounts
+<Setting
+  name="reservationTtl"
+  takes="a positive duration"
+  default='`"15m"`'
+  affects="how long a reserved UUID waits for an account to be registered under its username"
+  flag="advanced"
+>
 
-<Tabs items={["RANDOM", "OFFLINE", "PREMIUM"]}>
-  <Tab value="RANDOM">
-    Creates a fresh Identica-owned random UUID for the account.
-    It is not derived from the Minecraft username and does not try to reuse offline-mode or premium/provider UUID conventions.
+A reservation made with `/identica admin reservation set`, with `/identica admin clear`, or while a registration is in progress expires after this time if nobody registers under the username. Too short, and a slow registration loses its reserved UUID; too long, and abandoned reservations stay around longer.
 
-    `RANDOM` is the recommended mode.
-    It is the most stable option in Identica because it generates an Identica-owned UUID that does not depend on Minecraft's offline-UUID or online-UUID conventions.
-    That makes provider changes and username changes easier to handle inside Identica without losing account continuity.
-  </Tab>
-  <Tab value="OFFLINE">
-    Derives the UUID from the offline-mode username using the standard `OfflinePlayer:<username>` namespace.
-    In practice, this means the UUID basis is always the offline username, not provider metadata.
-
-    Example: if the player is seen as `Steve`, Identica generates the same UUID that an offline-mode server would generate for `OfflinePlayer:Steve`.
-    If that player later changes their username, the offline UUID basis changes with the new username.
-  </Tab>
-  <Tab value="PREMIUM">
-    Tries to reuse the provider subject UUID first.
-    If that is not usable, Identica falls back to an observed premium UUID when one exists and it is not just the offline-mode UUID for the current username.
-
-    In practice, the resolution order is:
-
-    1. use the provider subject if it is already a valid UUID
-    2. otherwise use the observed UUID from the platform profile request if it looks like a real premium UUID
-    3. otherwise fail to resolve a UUID in this mode
-  </Tab>
-</Tabs>
-
-| Property | `RANDOM` | `OFFLINE` | `PREMIUM` |
-| --- | --- | --- | --- |
-| Recommended default | Yes | No | No |
-| Generates an Identica-owned UUID | Yes | No | No |
-| Derived from username | No | Yes | No |
-| Uses provider or premium UUID data | No | No | Yes |
-| Stable across username changes inside Identica | Yes | No | Depends on provider |
-| Good for offline-UUID compatibility | No | Yes | No |
-| Easy to migrate to plugins that expect standard Minecraft UUID conventions | No | Yes | Depends on target plugin and provider behavior |
-| May fail when no suitable premium UUID exists | No | No | Yes |
-
-`RANDOM` is usually the best choice for long-term stability inside Identica.
-`OFFLINE` mainly exists for compatibility scenarios.
-`PREMIUM` is the strictest mode and mostly exists for setups that explicitly need premium/provider UUID continuity.
-
-#### Choosing the UUID of one account
-
-`uniqueIdMode` decides the UUID of an account when it is created, and the account keeps that UUID.
-To give one player a different UUID, such as their offline-mode UUID on a `RANDOM` network, reserve it for their username and let them register again:
-
-1. `/identica admin delete <username>` and `/identica admin delete confirm` remove the current account. Deleting an account does not keep its UUID: without a reservation, the next registration gets a new one from `uniqueIdMode`.
-2. `/identica admin reservation set <username> <uuid>` reserves the UUID. Usernames are compared without regard to case.
-3. The player joins and registers within [`reservationTtl`](#reservationttl). The new account gets the reserved UUID, and the reservation is used up.
-
-`/identica admin reservation info <username>` shows the UUID reserved for a username, and `/identica admin reservation delete <username>` removes the reservation.
-In `RANDOM` and `OFFLINE` modes a reservation takes the place of the UUID the mode would assign; `PREMIUM` always assigns the premium UUID.
-`/identica admin clear <username>` reserves the account's own UUID for its username, so the player keeps their UUID when they register again.
-An account registered from the console with `/identica credential register` also gets the UUID reserved for its username, which is how accounts moved from another authentication plugin keep their UUIDs; see [Credential](../../providers/official/credential/index.md#registering-accounts-from-the-console).
-
-### reservationTtl
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a positive duration
-- Current default: `"15m"`
-- Affects: how long reserved account identities and username reservations are kept
-
-This matters during registration, account clearing, and for reservations set with `/identica admin reservation set`.
-A reservation of a username expires after this duration if nobody registers under the username in time.
-If the value is too short, a pending registration can lose its reserved identity.
-If it is too long, abandoned reservations stay around longer.
-
-<Tabs items={["YAML", "JSON"]}>
-  <Tab value="YAML">
-```yaml
-identity:
-  reservationTtl: "20m"
-```
-  </Tab>
-  <Tab value="JSON">
-```json
-{
-  "identity": {
-    "reservationTtl": "20m"
-  }
-}
-```
-  </Tab>
-</Tabs>
+</Setting>
 
 ## sessions
 
-`sessions` controls live-session behavior for currently connected players.
+<Setting
+  name="concurrencyPolicy"
+  takes='`"REPLACE_EXISTING"` or `"REJECT_NEW"`'
+  default='`"REPLACE_EXISTING"`'
+  affects="what happens when an account that has a session logs in from another connection"
+  flag="warning"
+>
 
-- live session behavior for currently connected players
+`REPLACE_EXISTING` disconnects the earlier connection; `REJECT_NEW` refuses the new login. Any other value stops the startup with an error that names the accepted values. A provider can use another policy with `session.concurrencyPolicy` in [`providers/providers.yml`](../providers/index.mdx#sessionconcurrencypolicy). See [Sessions](../../admins/guides/logins/sessions/index.mdx).
 
-A session exists while a player is online.
-
-### concurrencyPolicy
-
-<Badge type="warning">Warning</Badge>
-
-- Takes: `"REPLACE_EXISTING"` or `"REJECT_NEW"`
-- Current default: `"REPLACE_EXISTING"`
-- Affects: the default session-opening policy used by `SessionService.open(session)`
-
-An account has one session, which belongs to the connection that opened it.
-A login from that same connection continues its session; the policy decides what happens when the account logs in from another connection while it has a session, for example through a second proxy that shares Redis:
-
-- `REPLACE_EXISTING`: keep the new session and disconnect the connection that held the earlier one with `engine.concurrentLoginKick`, on whichever proxy holds it
-- `REJECT_NEW`: keep the earlier session and refuse the new login with `engine.concurrentLoginRefused`
-
-A player leaving closes only the session of their own connection. A connection whose session was replaced no longer holds one, so its leaving does not end the session that replaced it.
-
-Any other value stops the startup with an error that names the value and the accepted values, and the file is left as it is.
-
-The policy covers connections that already logged in. A connection that is still logging in when another connection of the account finishes is disconnected whatever the policy says; see [Logins in progress](../engine/index.mdx#logins-in-progress).
-
-The policy decides on the session the account had when the login read it. When two logins of one account finish at the same moment, on one proxy or on two that share Redis, only the one that is written first counts. The other is disconnected with `engine.concurrentChangeKick` and leaves no session behind; when the player reconnects, the policy decides on the session the first login opened. See [Concurrent writes](../replication/index.mdx#concurrent-writes).
-
-`REJECT_NEW` does not keep refusing logins for a session nobody holds any more. A session of a proxy that stopped or crashed without closing it disappears after [`replication.heartbeatTimeout`](../replication/index.mdx#heartbeattimeout), and the proxy that holds a connection treats its session as gone as soon as that connection is no longer online.
-
-This is the default policy used when a session opens after authentication, registration, or migration.
-If one provider needs different behavior, set `providers.session.concurrencyPolicy` for that provider in the providers config.
+</Setting>
 
 <Tabs items={["YAML", "JSON"]}>
   <Tab value="YAML">
 ```yaml
+level: 2
+identity:
+  uniqueIdMode: "RANDOM"
+  reservationTtl: "15m"
 sessions:
   concurrencyPolicy: "REPLACE_EXISTING"
 ```
@@ -177,6 +79,11 @@ sessions:
   <Tab value="JSON">
 ```json
 {
+  "level": 2,
+  "identity": {
+    "uniqueIdMode": "RANDOM",
+    "reservationTtl": "15m"
+  },
   "sessions": {
     "concurrencyPolicy": "REPLACE_EXISTING"
   }
@@ -187,20 +94,17 @@ sessions:
 
 ## listeners
 
-Listener settings control whether selected platform listeners are registered and what priority they use.
-Platform-specific listener classes and registration details depend on the platform integration in use.
+Identica follows the proxy's events to handle joining players. `listeners.events` lets you change the priority of one of these listeners, for example to run before or after another plugin that handles the same event, or to leave it out.
 
-### events
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a map keyed by fully qualified event class name
-- Affects: registration and priority for matching listeners
+<Setting
+  name="events"
+  takes="a map keyed by the proxy event's full class name"
+  affects="whether Identica listens to that event, and with which priority"
+  flag="advanced"
+>
 
 <ContentTabs items={["Velocity", "BungeeCord"]}>
   <ContentTab value="Velocity">
-<Tabs items={["YAML", "JSON"]}>
-  <Tab value="YAML">
 ```yaml
 listeners:
   events:
@@ -208,26 +112,8 @@ listeners:
       register: true
       priority: "NORMAL"
 ```
-  </Tab>
-  <Tab value="JSON">
-```json
-{
-  "listeners": {
-    "events": {
-      "com.velocitypowered.api.event.connection.PreLoginEvent": {
-        "register": true,
-        "priority": "NORMAL"
-      }
-    }
-  }
-}
-```
-  </Tab>
-</Tabs>
   </ContentTab>
   <ContentTab value="BungeeCord">
-<Tabs items={["YAML", "JSON"]}>
-  <Tab value="YAML">
 ```yaml
 listeners:
   events:
@@ -235,40 +121,28 @@ listeners:
       register: true
       priority: "NORMAL"
 ```
-  </Tab>
-  <Tab value="JSON">
-```json
-{
-  "listeners": {
-    "events": {
-      "net.md_5.bungee.api.event.PlayerHandshakeEvent": {
-        "register": true,
-        "priority": "NORMAL"
-      }
-    }
-  }
-}
-```
-  </Tab>
-</Tabs>
   </ContentTab>
 </ContentTabs>
 
-#### register
+</Setting>
 
-<Badge type="warning">Warning</Badge>
+<Setting
+  name="register"
+  takes="`true` or `false`"
+  affects="whether Identica listens to the event at all"
+  flag="warning"
+>
 
-- Takes: `true` or `false`
-- Affects: whether that event listener is registered at all
+Turning a listener off breaks the part of the login that depends on it. Only do it when another plugin takes over that event's work.
 
-If you set this to `false`, Identica skips registration for that specific listener.
-That can be useful for advanced integration experiments, but it can also break parts of the login flow.
+</Setting>
 
-#### priority
+<Setting
+  name="priority"
+  takes='`"LOWEST"`, `"LOW"`, `"NORMAL"`, `"HIGH"`, or `"HIGHEST"`'
+  default='`"NORMAL"`'
+  affects="when Identica's listener runs compared to other plugins' listeners of the same event, in the proxy's own priority order"
+  flag="advanced"
+>
 
-<Badge type="warning">Advanced</Badge>
-
-- Takes: `"LOWEST"`, `"LOW"`, `"NORMAL"`, `"HIGH"`, or `"HIGHEST"`
-- Affects: the Identica listener priority used for that listener, which is then mapped onto the current platform's event-priority model
-
-If the event entry exists but no priority is set, the current code falls back to `NORMAL`.
+</Setting>

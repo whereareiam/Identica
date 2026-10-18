@@ -1,0 +1,38 @@
+---
+title: FAQ
+description: Short answers to common questions about Identica.
+---
+
+## General
+
+<Accordions type="single">
+  <Accordion title="Can I migrate data from another authentication plugin?">
+    Identica ships no importer, but accounts can be registered from the console with their UUIDs, which a script can do for every account of the old plugin. See [Coming from another plugin](../guides/upgrading/from-another-plugin/index.mdx).
+
+    If you would rather not write that script, ask in [Discord](https://discord.arcadeya.com): we may be able to provide one that you review and run against your own data.
+  </Accordion>
+</Accordions>
+
+## Logging in
+
+<Accordions type="single">
+  <Accordion title="How do I stop players from moving or breaking blocks while they log in?">
+    Identica is an identity plugin.
+    It does not stop movement or block breaking while a player logs in.
+
+    Send players who are logging in to a server where they cannot do either; see [Routing players](../guides/network/routing/index.mdx).
+    We recommend [PicoLimbo](https://picolimbo.quozul.dev/about/introduction.html), because it can host virtual servers inside your proxy and does not require separate full backend servers.
+  </Accordion>
+
+  <Accordion title="How do I stop players from using commands while they log in?">
+    Block them on your proxy, or use an addon for that purpose; see [Keep players inside the login](../first-configuration/index.mdx).
+
+    [Identica-CommandBlocker](https://modrinth.com/plugin/identica-commandblocker) can automatically block unrelated commands and allow only the ones needed while they log in.
+  </Accordion>
+
+  <Accordion title="How do I stop players from seeing announcements, staff chat, or other messages while they log in?">
+    That should usually be handled outside Identica itself by the rest of your network setup.
+
+    You can configure your other plugins so those messages are only sent to the servers where they belong, or use a community addon such as [Identica-ChatBlocker](https://modrinth.com/plugin/identica-chatblocker).
+  </Accordion>
+</Accordions>

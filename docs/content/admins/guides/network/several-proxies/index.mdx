@@ -1,0 +1,94 @@
+---
+title: Running several proxies
+description: Share accounts, sessions and logins in progress between proxies through one database and Redis.
+---
+
+Several proxies can serve one network with Identica: a player registers through one proxy and logs in through any other, and an account is online through one proxy at a time. Install Identica on every proxy as described in [Installation](../../../installation/index.mdx), then connect them as described here.
+
+## What the proxies share
+
+| Shared through | What | Without it |
+| --- | --- | --- |
+| a database server | accounts, provider links, passwords, usernames, UUID reservations, verification methods | each proxy has accounts of its own |
+| Redis | sessions, logins in progress, username holds, restrictions, sentinel lockouts, recognition | each proxy only knows its own players; this state is lost when the proxy restarts |
+
+Every proxy of the network needs the same database. Redis is what makes a network behave as one: without it, two proxies do not know that an account is already online through the other one.
+
+Redis also helps a single proxy: logins in progress and restrictions survive a restart of the proxy for as long as they are valid.
+
+## Connect the proxies
+
+### Use one database server [step]
+
+SQLite and H2 store their file inside the proxy's data directory, so they cannot be shared. Point every proxy at the same MySQL, MariaDB or PostgreSQL database in `persistence.yml`:
+
+```yaml
+type: "POSTGRES"
+host: "db.internal"
+port: 5432
+database: "identica"
+username: "identica"
+credential: "secret"
+```
+
+See [Database](../database/index.mdx). Proxies that share a database upgrade it once: the first proxy to start does it while the others wait.
+
+### Turn on replication [step]
+
+Open `replication.yml` on every proxy:
+
+```yaml
+enabled: true
+serverId: "proxy-1"
+
+redis:
+  host: "redis.internal"
+  port: 6379
+  credential: ""
+  ssl: false
+  timeout: 5000
+```
+
+- `enabled: true` connects the proxy to Redis on startup.
+- `serverId` names the proxy. Give every proxy its own name and keep it: the generated value is random, and a session records the `serverId` of the proxy that holds its player, so a login through another proxy disconnects exactly that player.
+
+If Redis cannot be reached when the proxy starts, the startup fails and the proxy refuses every player until Redis is back and the proxy restarted. A failed startup never lets players in without logging in.
+
+### Keep the shared names the same [step]
+
+Every proxy of one network must use the same `redis.channels` and `cache` names. The defaults work; change them only to run two separate networks on one Redis, and then before the network goes live. A proxy with other names behaves like a proxy of another network.
+
+The same holds for the replication names in feature and provider settings, such as `replication.state` of the sentinel.
+
+### Keep the proxies alike [step]
+
+- Run the same version of Identica and its providers on every proxy.
+- Install and enable the same providers, with the same ids. An account linked to a provider that another proxy does not have cannot log in there.
+- Use the same `identity/username/conflicts.yml`, feature settings and `settings.yml`, so a player is treated the same on every proxy.
+
+Routing may differ per proxy, for example when each proxy has its own login server.
+
+## When a proxy stops or crashes
+
+A proxy that stops normally closes its sessions and frees the usernames of its players who were logging in. A proxy that crashes cannot, so its records stay in Redis until [`heartbeatTimeout`](../../../../configuration/replication/index.mdx#heartbeattimeout) passes, 30 seconds by default. Until then, the other proxies:
+
+- list the sessions of its players in `/identica admin session list`,
+- refuse a new login of those accounts under `REJECT_NEW`,
+- refuse a player from another address under a username that was being logged in, with `engine.usernameHeld`.
+
+A shorter timeout frees them sooner and costs more Redis commands; the setting describes the cost.
+
+## A player on two proxies at once
+
+The same player can reach two proxies at the same moment, for example by reconnecting while their login on the other proxy is still being saved. Identica saves a login and a session only over what it read, so one proxy never overwrites what another proxy saved meanwhile. The proxy that comes second disconnects its player with `engine.concurrentChangeKick`, which asks them to reconnect; the next join continues from what the other proxy saved.
+
+For this, Identica runs small scripts on Redis. They need no preparation, but a Redis ACL user for Identica must be allowed the `evalsha` and `script` commands.
+
+## Testing it
+
+Join through one proxy, then join with the same account through another:
+
+- with `concurrencyPolicy: REPLACE_EXISTING`, the first connection is disconnected with `engine.concurrentLoginKick`;
+- `/identica admin session list` on either proxy shows the account's session.
+
+See [`replication.yml`](../../../../configuration/replication/index.mdx) for every replication setting.

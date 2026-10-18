@@ -1,0 +1,145 @@
+---
+title: Getting started
+description: Depend on Identica's API from another plugin and get hold of it at runtime.
+---
+
+Identica's API lets another plugin on the same proxy read accounts and sessions, react to events, and build on Identica. This page sets up the dependency and gets the API at runtime; [Services](./services/index.mdx) shows what to do with it.
+
+## Coordinates
+
+The published API artifact uses these coordinates:
+
+- Group: `me.whereareiam.identica`
+- Artifact: `api`
+
+For addon plugins, `compileOnly` or the equivalent provided-scope dependency is usually the right choice.
+Identica itself provides the API at runtime.
+
+## Repositories
+
+Identica publishes release and development artifacts to the [public Maven registry](https://registry.whereareiam.me/maven/packages).
+
+The API is published only there. Release downloads and development build artifacts contain the plugin and provider jars that servers install, not the API.
+
+## Adding the dependency
+
+<Tabs items={["Gradle Kotlin DSL", "Gradle Groovy DSL", "Maven"]}>
+  <Tab value="Gradle Kotlin DSL">
+```kotlin
+repositories {
+    maven("https://registry.whereareiam.me/maven/packages")
+}
+
+dependencies {
+    compileOnly("me.whereareiam.identica:api:1.0.0")
+}
+```
+  </Tab>
+  <Tab value="Gradle Groovy DSL">
+```groovy
+repositories {
+    maven { url = uri("https://registry.whereareiam.me/maven/packages") }
+}
+
+dependencies {
+    compileOnly "me.whereareiam.identica:api:1.0.0"
+}
+```
+  </Tab>
+  <Tab value="Maven">
+```xml
+<repositories>
+  <repository>
+    <id>identica-release</id>
+    <url>https://registry.whereareiam.me/maven/packages</url>
+  </repository>
+</repositories>
+
+<dependencies>
+  <dependency>
+    <groupId>me.whereareiam.identica</groupId>
+    <artifactId>api</artifactId>
+    <version>1.0.0</version>
+    <scope>provided</scope>
+  </dependency>
+</dependencies>
+```
+  </Tab>
+</Tabs>
+
+For development builds, use a development version with the same repository.
+
+## Versions
+
+Identica publishes two kinds of API versions:
+
+- Release versions such as `1.0.0`
+- Development versions such as `dev-91e1b65`
+
+In practice:
+
+- release versions are published from tagged releases
+- development versions are published from the `dev` branch
+- development versions use the format `dev-<short-commit-sha>`
+
+If you are writing a normal addon plugin, prefer release versions.
+Use development versions only when you intentionally depend on unreleased API changes.
+
+## Javadocs
+
+Download the matching `javadoc` artifact from the Maven registry or let your IDE resolve it alongside the API dependency.
+
+## Getting the API
+
+The API entry point is `me.whereareiam.identica.IdenticaAPI`. Its static methods return the API of the running Identica instance, which offers every service an addon uses. Identica registers it during startup and removes it when it shuts down.
+
+- `IdenticaAPI.get()` returns the API and throws when Identica is not running. Use it when your addon is loaded after Identica.
+- `IdenticaAPI.whenReady(identica -> ...)` runs your code once Identica is ready, with its providers loaded and their commands and documents in place: immediately if it already is, otherwise once it gets there. Use it to start your addon whenever it is loaded.
+- `IdenticaAPI.find()` returns an `Optional<IdenticaAPI>` and never throws.
+
+Pass the `IdenticaAPI` on to the classes of your addon instead of calling `IdenticaAPI.get()` everywhere. Those classes then depend on an interface you can mock in tests.
+
+How your plugin waits for Identica depends on the proxy.
+
+<ContentTabs items={["Velocity"]}>
+  <ContentTab value="Velocity">
+    Velocity plugins can declare plugin dependencies directly in `@Plugin`.
+    That affects plugin load order.
+    If your addon really depends on Identica, declare it as a required dependency so Velocity loads Identica before your addon.
+    If your integration is optional, declare it as optional and check that the `identica` plugin is present before your addon touches any Identica class, since those classes are missing without it.
+
+```java
+import com.google.inject.Inject;
+import com.velocitypowered.api.plugin.Dependency;
+import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
+import com.velocitypowered.api.plugin.Plugin;
+import me.whereareiam.identica.IdenticaAPI;
+
+@Plugin(
+    id = "example-identica-addon",
+    name = "ExampleIdenticaAddon",
+    version = "1.0.0",
+    dependencies = {
+        @Dependency(id = "identica")
+    }
+)
+public final class ExampleIdenticaAddon {
+    @Inject
+    public ExampleIdenticaAddon() {
+    }
+
+    @Subscribe
+    public void onProxyInitialization(ProxyInitializeEvent event) {
+        IdenticaAPI.whenReady(identica -> new ExampleAddon(identica).inspectProviders());
+    }
+}
+```
+  </ContentTab>
+</ContentTabs>
+
+## Next steps
+
+- [Services](./services/index.mdx): accounts, sessions, providers, and the services of features
+- [Events](./events/index.mdx): react to logins, sessions and account changes
+- [Writing an addon](../extending/addons/index.mdx): hold back chat or commands until a player has logged in

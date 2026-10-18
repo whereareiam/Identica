@@ -1,0 +1,74 @@
+---
+title: Управление аккаунтами
+description: Команды администратора для аккаунтов, сессий, ников и резервирований.
+sourceHash: c813a10ceb2c573451003c2575c736a3260fa3a6
+---
+
+Администраторы управляют аккаунтами подкомандами `/identica`, которая также отвечает на `/auth`. Любую команду ниже можно переименовать, назначить ей другое право или отключить в [`commands.yml`](../../../../configuration/commands/index.mdx); показаны имена и права по умолчанию. `<target>` — ник игрока или его уникальный идентификатор.
+
+## Аккаунты [#accounts]
+
+| Команда | Право | Что делает |
+| --- | --- | --- |
+| `/identica admin clear <target>` | `identica.admin.clear` | удаляет аккаунт, но резервирует его UUID за его ником, так что при повторной регистрации игрок сохранит свой UUID |
+| `/identica admin delete <target>` | `identica.admin.delete` | удаляет аккаунт вместе с его UUID |
+
+Обе команды требуют подтверждения: `/identica admin clear confirm` или `/identica admin clear cancel`, и так же для `delete`. Подтверждение действует в течение `behavior.clear.confirmTtl` из `commands.yml` — по умолчанию 60 секунд; более позднее ничего не меняет. Игрок, который в сети, когда его аккаунт удаляют, отключается.
+
+## Резервирования [#reservations]
+
+| Команда | Право | Что делает |
+| --- | --- | --- |
+| `/identica admin reservation set <username> <uuid>` | `identica.admin.reservation` | резервирует UUID для следующего аккаунта, зарегистрированного под этим ником |
+| `/identica admin reservation info <username>` | `identica.admin.reservation` | показывает UUID, зарезервированный за ником |
+| `/identica admin reservation delete <username>` | `identica.admin.reservation` | снимает резервирование |
+
+Резервирование истекает через `identity.reservationTtl` из `settings.yml`. См. [Уникальные идентификаторы](../unique-ids/index.mdx#giving-one-player-a-chosen-uuid).
+
+## Ники [#usernames]
+
+| Команда | Право | Что делает |
+| --- | --- | --- |
+| `/identica admin username rename <target> <username>` | `identica.admin.username` | переименовывает аккаунт вручную; ник, назначенный так, Identica никогда не меняет |
+| `/identica admin username duplicates` | `identica.admin.username` | выводит ники, которые делят несколько аккаунтов |
+
+См. [Ники и конфликты](../usernames/index.mdx).
+
+## Сессии [#sessions]
+
+| Команда | Право | Что делает |
+| --- | --- | --- |
+| `/identica admin session list [page]` | `identica.admin.sessions` | выводит сессии сети |
+| `/identica admin session info <target>` | `identica.admin.sessions.info` | показывает сессию: её провайдера, адрес и время открытия |
+| `/identica admin session end <target>` | `identica.admin.sessions.end` | завершает сессию и отключает игрока |
+
+Размер страницы задаёт `behavior.sessions.listPageSize` из `commands.yml`. См. [Сессии](../../logins/sessions/index.mdx).
+
+## Провайдеры аккаунта [#providers-of-an-account]
+
+| Команда | Право | Что делает |
+| --- | --- | --- |
+| `/identica migration list <target>` | `identica.admin.migration.list` | выводит провайдеров, к которым привязан аккаунт |
+| `/identica migration start <target> <provider>` | `identica.admin.migration.start` | начинает перенос аккаунта на провайдер |
+| `/identica migration cancel <target>` | `identica.admin.migration.cancel` | отменяет ожидающий перенос |
+| `/identica migration primary <target> <provider>` | `identica.admin.migration.primary` | делает привязанного провайдера основным для аккаунта |
+| `/identica migration drop <target> <provider>` | `identica.admin.migration.drop` | удаляет привязку провайдера к аккаунту |
+
+Игроки переносят свои аккаунты сами командой провайдера, например `/premium` или `/credential`; см. [Переход между провайдерами](../moving-between-providers/index.mdx).
+
+## Двухфакторная верификация [#two-factor-verification]
+
+`/identica admin 2fa reset <target> [provider]` с правом `identica.admin.2fa.reset` сбрасывает верификацию игрока — для всех провайдеров или для одного, например если он потерял приложение-аутентификатор и коды восстановления. См. [Верификация](../../../features/verification/index.mdx).
+
+## Аккаунты Credential [#credential-accounts]
+
+| Команда | Право | Что делает |
+| --- | --- | --- |
+| `/identica credential register <username> <password>` | `identica.admin` | регистрирует аккаунт Credential для игрока, который ещё не заходил |
+| `/identica credential setpassword <username> <password>` | `identica.admin` | задаёт новый пароль аккаунта Credential |
+
+См. [Credential](../../../providers/official/credential/index.md#console-commands).
+
+## Перезагрузка [#reloading]
+
+`/identica admin reload` с правом `identica.admin` заново читает все файлы конфигурации. См. [Перезагрузка](../../../../configuration/index.mdx#reloading).

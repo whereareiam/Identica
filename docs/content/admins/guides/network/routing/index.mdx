@@ -1,0 +1,125 @@
+---
+title: Routing players
+description: Send players to the right server while they log in and once they are done.
+---
+
+Identica moves a player between servers twice: to a `step` server while it waits for them, such as for a password, and to a `complete` server once they are logged in. Both are set in `routing.yml`, and both name servers from your proxy's configuration.
+
+## One route for everyone
+
+`defaults` applies to every scenario:
+
+```yaml
+defaults:
+  step:
+    target: "auth"
+  complete:
+    target: "lobby"
+```
+
+Using the same server for `step` and `complete` works, but a separate `step` server keeps players who have not logged in away from the rest of the network.
+
+A blank `step` target leaves a waiting player where they are. A blank `complete` target leaves a finished player where they are; a player who finished while joining reaches the proxy's first server and receives the completion messages there.
+
+## A route per scenario
+
+Add a scenario under `scenarios` only when it should differ from `defaults`. The scenarios are `authentication`, `registration` and `migration`:
+
+```yaml
+defaults:
+  step:
+    target: "auth"
+  complete:
+    target: "lobby"
+scenarios:
+  registration:
+    step:
+      target: "register"
+    complete:
+      target: "tutorial"
+```
+
+New players register on `register` and start on `tutorial`; everyone else logs in on `auth` and lands on `lobby`.
+
+## A route for one stage or step
+
+Within a scenario, one stage or one step can go elsewhere without changing the whole scenario. A step override wins over a stage override:
+
+```yaml
+scenarios:
+  registration:
+    overrides:
+      steps:
+        enrollment:
+          target: "choose-provider"
+```
+
+## The player's hostname
+
+Networks that let players join a game mode by hostname, such as `survival.example.com`, keep those hostnames in the proxy's forced hosts. With `forcedHosts: true` on a target, Identica sends the player to the server the proxy forces for the hostname they joined through. `target` is used for hostnames without a forced host:
+
+```yaml
+defaults:
+  step:
+    target: "auth"
+  complete:
+    target: "lobby"
+    forcedHosts: true
+```
+
+<Tabs items={["Velocity", "BungeeCord"]}>
+  <Tab value="Velocity">
+```toml
+[forced-hosts]
+"survival.example.com" = ["survival"]
+"skyblock.example.com" = ["skyblock"]
+```
+  </Tab>
+  <Tab value="BungeeCord">
+```yaml
+listeners:
+  - forced_hosts:
+      survival.example.com: survival
+      skyblock.example.com: skyblock
+```
+  </Tab>
+</Tabs>
+
+| Player joins through | While a step waits | Once done |
+| --- | --- | --- |
+| `survival.example.com` | `auth` | `survival` |
+| `skyblock.example.com` | `auth` | `skyblock` |
+| `play.example.com` | `auth` | `lobby` |
+
+- When Velocity lists several servers for a hostname, Identica uses the first one.
+- A blank `target` with `forcedHosts: true` only routes hostnames that have a forced host; other players stay where they are.
+- A scenario that leaves `forcedHosts` out uses the value of `defaults`, so a scenario can opt out with `forcedHosts: false`.
+- `forcedHosts` works on `step` targets too. Players are then sent to the forced host's server while they are still logging in, so leave it off there unless that server is meant for players who have not logged in.
+
+Identica keeps no hostname list of its own. Hostnames that pick a provider are a separate setting; see [Hostnames](../../logins/provider-selection/index.mdx#hostnames).
+
+## When a server turns the player away
+
+Each target can retry when the server refuses the player, for example because of its whitelist:
+
+```yaml
+defaults:
+  step:
+    target: "auth"
+    attempts:
+      mode: RETRY_LIMITED
+      maxAttempts: 3
+      retryDelay: "1s"
+```
+
+Identica retries quietly while the policy allows another attempt. The refusal of the last attempt is left to the proxy, which handles it like any other refused connection: the player stays on their current server and sees the server's reason, unless another plugin, such as a hub or balancer plugin, sends them elsewhere. With `UNTIL_REACHED`, there is no last attempt, and the player waits until the server accepts them.
+
+A target that names a server the proxy does not know disconnects the player with `routing.missingServer` from `messages.yml`, or the scenario's own `missingServer` message when it has one.
+
+## Several servers behind one target
+
+Identica routes to exactly the server a target names. To spread players over several servers, use a balancer plugin on the proxy: it can take a request for `auth` and send the player to `auth-2` by its own rules.
+
+A lightweight limbo server, such as [PicoLimbo](https://picolimbo.quozul.dev/about/introduction.html), is a good `step` target when your host limits how many servers you run.
+
+See [`routing.yml`](../../../../configuration/routing/index.mdx) for every routing setting.

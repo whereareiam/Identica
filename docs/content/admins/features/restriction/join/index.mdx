@@ -1,0 +1,47 @@
+---
+title: Join restriction
+description: Close a provider to new joins, while players it trusts still get in.
+---
+
+Join restriction lets staff close a provider to new joins for a while, for example during a bot attack on Credential registrations. While a provider is restricted, only players with one of the provider's allowed signals get through; everyone else is refused with the `denied` message.
+
+## Allowing a provider to be restricted
+
+A provider can only be restricted when join restriction is enabled for it. It is off by default. Enable it for one provider in `providers/providers.yml` and choose who still gets in:
+
+```yaml
+providers:
+  - id: "credential"
+    features:
+      restriction:
+        join:
+          enabled: true
+          allow:
+            - linked
+            - recognized
+```
+
+The signals:
+
+- `linked`: the player already has an account with this provider.
+- `recognized`: the player is [recognised](../../recognition/index.mdx). Recognition must be on for the provider; listing the signal does not turn it on.
+
+An empty `allow` list lets nobody through while the provider is restricted. `enabled` and `allow` in `features/restriction/join/settings` are the defaults for every provider.
+
+## Restricting a provider
+
+| Command | Does |
+| --- | --- |
+| `/identica admin provider restriction join enable <provider>` | restricts the provider |
+| `/identica admin provider restriction join disable <provider>` | lifts the restriction |
+| `/identica admin provider restriction join status [provider]` | shows which providers are restricted |
+
+All three need `identica.admin.provider.restriction`. The commands and their messages are in `features/restriction/join/`.
+
+## What a refused player sees
+
+When Identica already knows the player's provider as they join, the proxy refuses the connection during login, before any prompt. A player whose provider is only chosen later is refused when their registration or login completes. Once the restriction is lifted, a refused player gets through on their next attempt.
+
+A player who was already in the middle of a login when the restriction started is refused too when they come back. `resumeBypass.authentication` and `resumeBypass.registration` in `features/restriction/join/settings` let such logins finish; they never let new attempts through, and the scenario must allow resuming with `allowResume`.
+
+See [Join restriction settings](../../../../configuration/features/restriction/join/index.mdx) for every setting.

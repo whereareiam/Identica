@@ -1,9 +1,226 @@
 ---
-title: Overview
-description: Overview of configuration owned by Identica's sentinel feature.
+title: features/sentinel/
+description: Every setting of features/sentinel/ and its per-provider setting.
 ---
 
-Sentinel adds protections that watch for repeated or risky actions.
-Sentinels exist as different types across Identica: some apply more broadly, while others only apply to a specific provider or provider flow.
+`features/sentinel/` holds the sentinel's `settings.yml` and `messages.yml`. [Sentinel](../../../admins/features/sentinel/index.mdx) explains what each sentinel counts. Credential's brute-force protection is set in [Credential's settings](../../../admins/providers/official/credential/settings/index.mdx#authenticationbruteforce).
 
-Sentinel is compiled into Identica. Its shared `enabled` setting supplies the default for provider-owned checks; providers can override `features.sentinel.enabled`. Global connection checks use shared settings because they run before a provider is known. See [Settings](./settings/index.mdx).
+## settings.yml
+
+<Setting
+  name="enabled"
+  takes="`true` or `false`"
+  default="`true`"
+  affects="whether the checks that run once a provider is known apply, for every provider that does not set its own value"
+>
+
+The checks that run before a provider is known, such as the contested-connection sentinel, follow only their own `enabled`.
+
+</Setting>
+
+<Setting
+  name="sentinels.resumeSpam.enabled"
+  takes="`true` or `false`"
+  default="`false`"
+  affects="whether connections that keep trying to continue or push a waiting login are locked out"
+  flag="advanced"
+>
+
+</Setting>
+
+<Setting
+  name="sentinels.resumeSpam.maxAttempts"
+  takes="an integer greater than `0`"
+  default="`10`"
+  affects="how many attempts are allowed before the lockout"
+  flag="advanced"
+>
+
+</Setting>
+
+<Setting
+  name="sentinels.resumeSpam.lockout.enabled"
+  takes="`true` or `false`"
+  default="`true`"
+  affects="whether reaching `maxAttempts` locks the player out"
+  flag="advanced"
+>
+
+</Setting>
+
+<Setting
+  name="sentinels.resumeSpam.lockout.duration"
+  takes="a positive duration"
+  default='`"30s"`'
+  affects="how long the lockout lasts"
+  flag="advanced"
+>
+
+</Setting>
+
+<Setting
+  name="sentinels.resumeSpam.warning.enabled"
+  takes="`true` or `false`"
+  default="`false`"
+  affects="whether the player is warned before the lockout"
+  flag="advanced"
+>
+
+</Setting>
+
+<Setting
+  name="sentinels.resumeSpam.warning.thresholdPercentage"
+  takes="an integer percentage from `0` to `100`"
+  default="`0`"
+  affects="from which share of `maxAttempts` the warning is shown"
+  flag="advanced"
+>
+
+Values outside `0` to `100` are treated as the nearest end. For example, with `maxAttempts: 10` and `thresholdPercentage: 70`, warnings begin on attempt `8`.
+
+</Setting>
+
+<Setting
+  name="sentinels.contestedConnection.enabled"
+  takes="`true` or `false`"
+  default="`true`"
+  affects="whether the contested-connection sentinel locks out an address that keeps contesting usernames"
+>
+
+It counts the connections of an address that are refused because another address is logging in under their username, whatever username each connection uses. Once the address reaches `maxAttempts`, every connection from it is refused for the lockout duration. See [Two connections with one username](../../../admins/guides/logins/index.mdx#two-connections-with-one-username).
+
+</Setting>
+
+<Setting
+  name="sentinels.contestedConnection.maxAttempts"
+  takes="an integer greater than `0`"
+  default="`5`"
+  affects="how many refused connections an address may have before it is locked out"
+>
+
+</Setting>
+
+<Setting
+  name="sentinels.contestedConnection.lockout.enabled"
+  takes="`true` or `false`"
+  default="`true`"
+  affects="whether the sentinel locks the address out once it reaches `maxAttempts`"
+>
+
+</Setting>
+
+<Setting
+  name="sentinels.contestedConnection.lockout.duration"
+  takes="a positive duration"
+  default='`"1m"`'
+  affects="how long the address stays locked out"
+>
+
+</Setting>
+
+<Setting
+  name="replication.state"
+  takes="a string"
+  default='`"identica:sentinels"`'
+  affects="the name under which proxies share counters and lockouts"
+  flag="advanced"
+>
+
+</Setting>
+
+## Per provider
+
+<Setting
+  name="features.sentinel.enabled"
+  takes="`true` or `false`"
+  default="absent"
+  affects="whether the checks that run once a provider is known apply to this provider, among them Credential's brute-force protection"
+>
+
+When absent, the shared `enabled` applies.
+
+</Setting>
+
+## messages.yml
+
+<Setting
+  name="resumeSpam.denied"
+  takes="a list of lines"
+  affects="the message shown while the resume-spam lockout lasts"
+>
+
+The `{seconds}` placeholder is replaced with the remaining lockout duration.
+An empty list silences the message; the lockout still denies.
+
+</Setting>
+
+<Setting
+  name="contestedConnection.denied"
+  takes="a list of lines"
+  default="a notice reading `Too many attempts to log in under names in use.` and the time left"
+  affects="the reason shown to a connection from an address the contested-connection sentinel locked out"
+>
+
+The `{seconds}` placeholder is replaced with the remaining lockout duration. An empty list silences the message; the lockout still denies.
+
+</Setting>
+
+## Example
+
+`features/sentinel/settings.yml`:
+
+<Tabs items={["YAML", "JSON"]}>
+  <Tab value="YAML">
+```yaml
+sentinels:
+  resumeSpam:
+    enabled: true
+    maxAttempts: 10
+    lockout:
+      enabled: true
+      duration: "30s"
+    warning:
+      enabled: true
+      thresholdPercentage: 70
+  contestedConnection:
+    enabled: true
+    maxAttempts: 5
+    lockout:
+      enabled: true
+      duration: "1m"
+replication:
+  state: "identica:sentinels"
+```
+  </Tab>
+  <Tab value="JSON">
+```json
+{
+  "sentinels": {
+    "resumeSpam": {
+      "enabled": true,
+      "maxAttempts": 10,
+      "lockout": {
+        "enabled": true,
+        "duration": "30s"
+      },
+      "warning": {
+        "enabled": true,
+        "thresholdPercentage": 70
+      }
+    },
+    "contestedConnection": {
+      "enabled": true,
+      "maxAttempts": 5,
+      "lockout": {
+        "enabled": true,
+        "duration": "1m"
+      }
+    }
+  },
+  "replication": {
+    "state": "identica:sentinels"
+  }
+}
+```
+  </Tab>
+</Tabs>

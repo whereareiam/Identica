@@ -1,16 +1,9 @@
 {
   "title": "Docs",
   "pages": [
-    "---Getting Started---",
-    "index",
-    "installation",
-    "---Extensions---",
-    "providers",
-    "addons",
-    "---Reference---",
+    "admins",
     "configuration",
-    "developer",
-    "support",
-    "faq"
+    "developers",
+    "contributing"
   ]
 }

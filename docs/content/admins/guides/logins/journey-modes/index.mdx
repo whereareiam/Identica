@@ -1,0 +1,51 @@
+---
+title: Journey modes
+description: Choose whether Identica asks players or continues on its own, and how strictly.
+---
+
+Each scenario in `engine.yml` has a journey mode and a journey policy. Together they decide whether Identica asks the player for things, such as which provider to use, or continues on its own wherever it can.
+
+| Scenario | Default mode | Default policy |
+| --- | --- | --- |
+| authentication | `SEAMLESS` | `PREFER` |
+| registration | `SEAMLESS` | `PREFER` |
+| migration | `INTERACTIVE` | `PREFER` |
+
+## Modes
+
+<Tabs items={["INTERACTIVE", "SEAMLESS"]}>
+  <Tab value="INTERACTIVE">
+    Identica may prompt the player and wait for an answer: choose a provider, type a password, confirm an authenticator code.
+
+    This is the easier choice for most networks, because the player sees what is expected of them. A new player who joins from an offline client with a premium username chooses the provider instead of being asked for a premium login first: the premium check at the handshake is skipped for a username without an account when the registration scenario is `INTERACTIVE`.
+  </Tab>
+  <Tab value="SEAMLESS">
+    Identica continues on its own as far as a provider allows, and only asks when a provider needs input.
+
+    This suits networks whose providers can identify players automatically. Its catch is the first join of an offline player with a premium username: the higher-priority Premium provider asks for a premium login right at the handshake, before the player sees any choice. The client cannot complete it and is disconnected with an invalid-session message, which can look as if the server only accepts premium accounts. The next join from the same address within [`attemptTtl`](../../../../configuration/providers/index.mdx#attemptttl) continues with the next provider.
+
+    Premium's [`CLIENT_PROFILE` detection](../../../providers/official/premium/detection/index.mdx) avoids this for clients on 1.19.1 or newer.
+  </Tab>
+</Tabs>
+
+## Policies
+
+- `PREFER` uses the configured mode first and falls back to the other mode when the configured one cannot complete the login. This is the right choice for most networks.
+- `STRICT` uses only the configured mode.
+
+With `SEAMLESS` and `STRICT`, Identica never prompts. When a login needs the player's input, such as a provider choice or a password, the player is disconnected with the `engine.journey.step.interactionRequired` message instead. A provider that always needs input, such as Credential without [recognition](../../../features/recognition/index.mdx), then cannot register or log in anyone.
+
+## Skipping the provider choice
+
+With only one provider a new player can register with, the provider choice of an `INTERACTIVE` registration has a single option. `autoSelectSingleProvider: true` in the registration scenario picks it without asking:
+
+```yaml
+scenarios:
+  registration:
+    journeyMode: "INTERACTIVE"
+    autoSelectSingleProvider: true
+```
+
+A player who joins through a provider's [hostname](../provider-selection/index.mdx#hostnames) skips the choice as well.
+
+See [`engine.yml`](../../../../configuration/engine/index.mdx) for every scenario setting.

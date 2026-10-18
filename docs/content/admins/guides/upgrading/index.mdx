@@ -1,0 +1,38 @@
+---
+title: Upgrading Identica
+description: Update Identica and its providers, and what happens to your files and database.
+---
+
+A new release upgrades your configuration files and database on its first start. Nothing has to be converted by hand.
+
+## Before you update
+
+1. Read the release notes of every version between yours and the new one. They name what you have to do, such as a setting that moved without being carried over.
+2. Stop every proxy that runs Identica. Proxies that share a database must all run the same release.
+3. Back up the database and the data directory.
+
+## Updating
+
+1. Replace the Identica jar in `plugins/` and the provider jars in Identica's `providers/` directory with the new ones.
+2. Start one proxy and watch its console until Identica prints its banner.
+3. Start the other proxies.
+
+## What the first start changes
+
+**Configuration files.** `settings.yml` starts with `_version`, and so does the `settings` file of each feature. Identica uses them to upgrade the files when a release changes their layout: every setting, message and command you changed moves to the place the new release reads it from, and what has no place any more is removed. Do not edit or remove `_version`, and keep it when you copy your configuration to another server.
+
+Before an upgrade changes a file, the file is copied to `.strata/backup/` in the data directory. Identica never reads these copies, so the `.strata` folder can be deleted at any time.
+
+The files of a provider, below `providers/` next to its jar, are not upgraded: a setting there whose name or place changed falls back to its default. The release notes name such changes.
+
+**Database.** Identica upgrades its tables and records how far they have come in the `strata_history` table. Proxies that share a database upgrade it once: the first proxy to start does it while the others wait.
+
+## Which versions can be upgraded
+
+- Identica 3.0 upgrades the data directories and databases of Identica 2.2.1 and of the 3.0.0 development builds.
+- A database of a release older than 2.2.1 is not upgraded: the Credential provider refuses to load on it and says so in the console. Start Identica 2.2.1 on it once, then the new release.
+- Identica refuses to start on a data directory written by a newer release.
+
+## Going back
+
+Identica does not downgrade files or databases. To go back to an earlier release, restore the backups you made before updating.

@@ -1,134 +1,145 @@
 ---
-title: Recognition
-description: Shared and provider-scoped configuration for the built-in recognition feature.
+title: features/recognition/
+description: Every setting of features/recognition/settings.yml and its per-provider settings.
 ---
 
-The `recognition` feature adds optional reconnect recognition behavior for providers that declare a recognition integration.
-When recognition is enabled and the configured signals still match recent saved state, a reconnecting player can be recognized without going through the full provider flow again.
+`features/recognition/settings.yml` holds recognition's shared settings. [Recognition](../../../admins/features/recognition/index.mdx) explains what it does and its risks.
 
-In simple terms, recognition is a way to skip the normal authentication step for a player that Identica believes it already knows.
-Instead of asking that player to authenticate again, Identica tries to resolve them automatically from recent saved recognition state and the configured signals.
+## settings.yml
 
-This can be convenient, but it can also be misused in the wrong environment or with weak configuration.
-If several players can appear to share the same network identity or signal set, recognition can become easier to exploit than a normal explicit authentication step.
+<Setting
+  name="enabled"
+  takes="`true` or `false`"
+  default="`false`"
+  affects="whether players are recognised, for every provider that does not set its own value"
+  flag="warning"
+>
 
-The built-in recognition feature uses one shared feature file and provider-scoped feature fields.
+Read [Recognition](../../../admins/features/recognition/index.mdx) before turning it on.
 
-## Settings
+</Setting>
 
-Shared recognition settings live under `features/recognition/settings`.
+<Setting
+  name="validity"
+  takes="a positive duration"
+  default='`"12h"`'
+  affects="how long after logging in a player can still be recognised"
+  flag="advanced"
+>
 
-### enabled
+After that, the player logs in as usual.
 
-<Badge type="warning">Warning</Badge>
+</Setting>
 
-- Takes: `true` or `false`
-- Current default: `false`
-- Affects: whether recognition is allowed to run at all
+<Setting
+  name="window"
+  takes="a positive duration"
+  default='`"10m"`'
+  affects="how long Identica remembers that a connection was recognised"
+  flag="advanced"
+>
 
-Recognition behavior is disabled by default. Enable it globally in these settings or override `features.recognition.enabled` for individual supporting providers.
-Enable it only when you understand the trust and network-identity tradeoffs in your environment.
+</Setting>
 
-### validity
+<Setting
+  name="defaultSignals"
+  takes='a list containing any of `"USERNAME"`, `"IP"`, `"VIRTUAL_HOST"`'
+  default='`["USERNAME", "IP", "VIRTUAL_HOST"]`'
+  affects="what a reconnecting player must match, for every provider that does not set its own `signals`"
+  flag="warning"
+>
 
-<Badge type="warning">Advanced</Badge>
+`USERNAME` is the username, `IP` the address, `VIRTUAL_HOST` the hostname the player joined through. With an empty list, and no signals on the provider either, there is nothing to compare by and nobody is recognised.
 
-- Takes: a positive duration
-- Current default: `"12h"`
-- Affects: how long a previously authenticated player can still be recognized on reconnect
+</Setting>
 
-Once this duration expires, the player simply goes through the normal provider flow again.
+<Setting
+  name="eligibility.untrustedIps.enabled"
+  takes="`true` or `false`"
+  default="`true`"
+  affects="whether players from the addresses in `entries` are never recognised"
+  flag="warning"
+>
 
-### window
+</Setting>
 
-<Badge type="warning">Advanced</Badge>
+<Setting
+  name="eligibility.untrustedIps.entries"
+  takes="a list of exact IP literals or IPv4/IPv6 CIDR ranges"
+  default='`["127.0.0.1", "::1", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]`'
+  affects="the addresses players are never recognised from"
+  flag="warning"
+>
 
-- Takes: a positive duration
-- Current default: `"10m"`
-- Affects: how long recognized-connection markers stay cached
+The defaults cover loopback and private addresses, which Identica sees instead of the players' real ones behind a misconfigured proxy.
 
-### defaultSignals
+</Setting>
 
-<Badge type="warning">Warning</Badge>
+<Setting
+  name="replication.snapshotNamespace"
+  takes="a string"
+  default='`"identica:session-recognition:snapshot"`'
+  affects="the name under which proxies share what they remember about logged-in players"
+  flag="advanced"
+>
 
-- Takes: a list containing any of `"USERNAME"`, `"IP"`, `"VIRTUAL_HOST"`
-- Current default: `["USERNAME", "IP", "VIRTUAL_HOST"]`
-- Affects: the signal set used when a provider does not override its own recognition signals
+</Setting>
 
-Recognition compares a returning connection by these signals. With an empty list, and no signals on the provider either, there is nothing to compare by and nobody is recognised.
+<Setting
+  name="replication.recognizedConnectionNamespace"
+  takes="a string"
+  default='`"identica:recognized-connection"`'
+  affects="the name under which proxies share which connections were recognised"
+  flag="advanced"
+>
 
-### eligibility.untrustedIps.enabled
+</Setting>
 
-<Badge type="warning">Warning</Badge>
+## Per provider
 
-- Takes: `true` or `false`
-- Current default: `true`
-- Affects: whether configured client IPs and CIDR ranges make recognition ineligible
+Under `features.recognition` of a provider's entry in `providers/providers.yml`:
 
-### eligibility.untrustedIps.entries
+```yaml
+providers:
+  - id: "credential"
+    features:
+      recognition:
+        enabled: true
+        signals:
+          - USERNAME
+          - IP
+```
 
-<Badge type="warning">Warning</Badge>
+<Setting
+  name="features.recognition.enabled"
+  takes="`true` or `false`"
+  default="absent"
+  affects="whether this provider's players are recognised"
+  flag="warning"
+>
 
-- Takes: a list of exact IP literals or IPv4/IPv6 CIDR ranges
-- Current default: `["127.0.0.1", "::1", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]`
-- Affects: which client IPs make recognition ineligible
+When absent, the shared `enabled` applies.
 
-The generated defaults target the common proxy-misconfiguration case where Identica sees loopback or private addresses instead of the real client IP.
+</Setting>
 
-### replication.snapshotNamespace
+<Setting
+  name="features.recognition.signals"
+  takes='a list containing any of `"USERNAME"`, `"IP"`, `"VIRTUAL_HOST"`'
+  default="absent"
+  affects="what this provider's reconnecting players must match"
+  flag="warning"
+>
 
-<Badge type="warning">Advanced</Badge>
+When absent or empty, `defaultSignals` applies.
 
-- Takes: a string namespace
-- Current default: `"identica:session-recognition:snapshot"`
-- Affects: where recognition snapshots are stored in the replication-backed cache layer
+</Setting>
 
-### replication.recognizedConnectionNamespace
+<Setting
+  name="features.recognition.allowOnUntrustedIps"
+  takes="`true` or `false`"
+  default="`false`"
+  affects="whether this provider's players are recognised from the addresses in `eligibility.untrustedIps.entries` as well"
+  flag="advanced"
+>
 
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a string namespace
-- Current default: `"identica:recognized-connection"`
-- Affects: where recognized-connection markers are stored in the replication-backed cache layer
-
-## Provider Overrides
-
-Provider-specific recognition fields live under `providers[].features.recognition`.
-They apply when the provider declares recognition support through `supportedFeatures()`.
-
-<Include src="../_partials/provider-overrides.mdx" />
-
-### features.recognition.enabled
-
-<Badge type="warning">Warning</Badge>
-
-- Takes: `true` or `false`
-- Current default: absent
-- Affects: whether this provider inherits or overrides the shared `recognition.enabled` value
-
-When this field is absent, the provider uses the shared feature setting.
-
-### features.recognition.signals
-
-<Badge type="warning">Warning</Badge>
-
-- Takes: a list containing any of `"USERNAME"`, `"IP"`, `"VIRTUAL_HOST"`
-- Current default: absent
-- Affects: the signal set used by this provider when it evaluates recognition
-
-When this field is absent or empty, the provider uses `recognition.defaultSignals`.
-
-### features.recognition.allowOnUntrustedIps
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: `true` or `false`
-- Current default: `false`
-- Affects: whether this provider stays recognition-eligible from client IPs blocked by `recognition.eligibility.untrustedIps`
-
-Leave this `false` for the normal safety posture.
-Set it to `true` only when this specific provider should remain recognition-eligible on IPs that are otherwise blocked.
-
-## Join restriction integration
-
-Recognition optionally integrates with `restriction-join` by contributing the `recognized` join signal. Recognition works without join restriction. To use the signal, select `recognition`, `restriction`, and `restriction-join`, and include `recognized` in the provider's [join allow list](../restriction/join/index.mdx#featuresrestrictionjoinallow).
+</Setting>

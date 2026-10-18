@@ -1,0 +1,40 @@
+---
+title: Modules
+description: The modules of the repository, what each one owns, and where to start for a change.
+---
+
+Identica models every way to log in as a provider, not as a mode of the core. A change belongs in the narrowest module that owns the behavior, and extends a provider or a contract before it adds a special case to shared code.
+
+## Module map
+
+| Module | Owns |
+| --- | --- |
+| `identica-api` | the public API: contracts, events, models and extension points. Its persistence contracts are technology-free; it carries no database library. |
+| `identica-common` | shared behavior: configuration and its defaults, provider coordination, routing, configuration upgrades, replication, usernames and their conflicts, and the lifecycle of features |
+| `identica-engine` | the pipelines a player goes through: preparing a connection, the scenarios, and completion; see [Pipeline layout](./pipeline-layout/index.mdx) |
+| `identica-adapter-command` | commands, built on Cloud and Commandant |
+| `identica-adapter-database` | the database: `database-api` with the published contracts, `database-common` with the connection, the core schema and its persistence, and `database` binding them into Identica |
+| `identica-adapter-replication` | Redis replication |
+| `identica-platform` | the proxies: `type/platform-velocity` and `type/platform-bungeecord` with their bootstraps, listeners and adapters; `common` with what every platform provides; `bundle` packaging both into one jar |
+| `identica-provider` | the official providers, Credential and Premium |
+| `identica-feature` | the built-in features: verification, recognition, sentinel, restriction and join restriction; see [Features](./features/index.mdx) |
+| `identica-integration` | external integrations, such as usage statistics and error reports |
+| `examples` | the example addon and provider that the developer pages walk through |
+| `identica-testing` | live player journeys on a real proxy; see [Live tests](../testing/index.mdx) |
+| `build-logic` | the shared Gradle conventions |
+
+## Where to start
+
+- A contract, event or extension point: `identica-api`.
+- A rule that applies to every provider: `identica-common`.
+- What happens in which order while a player logs in: `identica-engine`.
+- Something only one provider does: that provider's module.
+- An optional behavior an operator turns on: the feature's module.
+- Something only one proxy does: its module under `identica-platform/type`.
+- An owner's tables and their upgrades: its `DatabaseSchema`; see [Database schemas](../../developers/extending/database-schemas/index.mdx).
+
+## Libraries
+
+Identica uses its own libraries where they own an area: Attache loads runtime dependencies, Dialectica and Strata declare and upgrade database tables and configuration, Keystone renders messages with Adventure, Configura reads and writes configuration files, and Commandant configures commands. Changes in those areas go through them.
+
+The repository's `AGENTS.md` holds the full working rules: module boundaries, dependencies, pull requests and release notes.

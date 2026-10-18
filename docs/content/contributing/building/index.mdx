@@ -1,0 +1,35 @@
+---
+title: Building Identica
+description: Build the plugin with all built-in features and its provider artifacts.
+---
+
+Run from the repository root. Sources are compiled and tested with a Java 21 installed on the machine, whichever Java starts Gradle:
+
+```shell
+./gradlew check pluginJars
+```
+
+`check` runs the unit tests with `test` and the tests on database and Redis servers with `integrationTest`. `test` needs no Docker; `integrationTest` starts PostgreSQL, MariaDB, MySQL and Redis in containers and skips those tests without Docker. A test that starts a container carries `@Tag("integration")` and runs only in `integrationTest`. A test on the databases of `TestDatabases` carries `@Tag("database")`, which every schema test inherits from `DatabaseSchemaContract`: `test` runs it on H2 and SQLite, and `integrationTest` on the servers as well.
+
+```shell
+./gradlew test
+./gradlew integrationTest
+```
+
+The live tests of `identica-testing` are not part of `check`; see [Live tests](../testing/index.mdx).
+
+`pluginJars` builds the Velocity and BungeeCord bootstrap jars, the platform bundle, and the official provider jars under `build/libs/`.
+
+To get the files a development build or a release ships, under their final names, run:
+
+```shell
+./gradlew assembleDistribution
+```
+
+It writes `Identica-BUNDLE-<version>.jar`, `Identica-BUNGEECORD-<version>.jar`, `Identica-VELOCITY-<version>.jar`, `Identica-PLATFORMS-<version>.zip` with both proxy jars, and the two provider jars to `build/distribution/`. The version comes from the `VERSION` environment variable and defaults to `dev`.
+
+Every plugin build includes all built-in feature implementations and the username identity subsystem. Operators configure feature use globally and per provider; they do not install feature jars or choose which implementations are compiled.
+
+The Gradle submodules remain separate for API boundaries, ownership, and testing. Their intermediate jars are build dependencies, not additional Minecraft plugins or operator-installable features.
+
+See [Features](../architecture/features/index.mdx) for how they are composed, and [Modules](../architecture/index.mdx) for the rest of the repository.

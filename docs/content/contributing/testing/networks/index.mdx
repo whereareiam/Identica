@@ -1,0 +1,54 @@
+---
+title: Networks
+description: Journeys across several proxies and on BungeeCord.
+---
+
+## Several proxies
+
+`@IdenticaCluster` starts two proxies, `proxy-a` and `proxy-b`, that share the `auth` and `lobby` servers and one PostgreSQL database, and that replicate through one Redis unless the test turns replication off. The database and Redis run in containers, so these tests need Docker and are skipped without it.
+
+A journey names the proxy it joins through. Several clients may use one username, each through its own proxy, and `Administrator` runs console commands on a chosen proxy:
+
+```java
+@Test
+@IdenticaCluster
+void disconnectsAPlayerWhoseAccountIsDeletedOnTheOtherProxy(ScenarioContext anvil) {
+	Journey alice = Accounts.credential(anvil, "Alice", "Secret-123", PROXY_B).rejoin()
+			.on(AUTH)
+			.login("Secret-123")
+			.on(LOBBY);
+
+	Administrator.at(anvil, PROXY_A).deletes("Alice");
+
+	alice.kickedWith(m -> m.identica().getCommands().getAdmin().getDelete().getDisconnect());
+}
+```
+
+`@IdenticaCluster(replication = false)` leaves Redis out, for behaviour that must hold when the proxies only share the database. `@IdenticaCluster` takes the same `step` and `complete` routing targets as `@Identica`.
+`@IdenticaCluster(configure = ...)` applies the same configuration changes as `@Identica(configure = ...)` to both proxies; a change meant for one of them checks `proxy.name()`. Two clients with one username cannot be on the same backend, because the backend disconnects the earlier one, so a journey that needs both online keeps them on different servers. `@IdenticaCluster(ownStepServers = true)` gives proxy B a step server of its own, `IdenticaNetwork.AUTH_B`, for a journey in which one account waits at a step through both proxies at once.
+
+## Other proxies
+
+Every network runs on Velocity unless a test names another platform. `@Identica(platform = Platform.BUNGEECORD)` starts the same network on a BungeeCord proxy:
+
+```java
+@Test
+@Identica(platform = Platform.BUNGEECORD, mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL)
+void registersWithTheOnlyProviderInSeamlessMode(ScenarioContext anvil) {
+	Journey.offline(anvil, "Alice").join()
+			.on(AUTH)
+			.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
+			.register("Secret-123")
+			.on(LOBBY);
+}
+```
+
+A BungeeCord network differs from a Velocity one where BungeeCord or Anvil leave no choice:
+
+- BungeeCord verifies premium logins against Mojang's own session server, which Anvil cannot replace with the network's stand-in, so no premium player joins it. The Premium provider still asks the stand-in which usernames are premium, so an offline player with a premium username is asked for a premium login first, as on Velocity.
+- Anvil writes the proxy's listener itself, without forced hosts, so `LOBBY_HOST` is forced nowhere.
+- The example addon is a Velocity plugin; `addon = true` fails on another platform.
+- BungeeCord names a player on its console only once the player reaches a backend, so the journey checks a login it refuses, such as one a join restriction refuses, on the client alone.
+
+The journeys on BungeeCord are in the `platform` package and suite.
+

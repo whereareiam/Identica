@@ -1,0 +1,61 @@
+---
+title: Statistics
+description: What Identica sends to bStats and FastStats, what it never sends, and how to turn it off.
+---
+
+Identica sends anonymous usage statistics to [bStats](https://bstats.org/plugin/velocity/Identica/30854) and [FastStats](https://faststats.dev), and reports its own errors to FastStats.
+They show which setups are in use and which errors happen, so bugs can be fixed without anyone sending logs.
+
+Both services are configured outside Identica, in files they share with every other plugin that uses them.
+Nothing is sent on a proxy's first start with FastStats; it only creates its file then.
+
+## Turn statistics off
+
+| Service | File | Setting |
+| --- | --- | --- |
+| bStats | `plugins/bStats/config.txt` | `enabled=false` |
+| FastStats | `plugins/faststats/config.properties` | `enabled=false` turns off everything, `submitErrors=false` only error reports |
+
+Restart the proxy after changing a file.
+Identica works the same with statistics off.
+
+## What is sent
+
+Every 30 minutes, each service receives:
+
+| Statistic | Values |
+| --- | --- |
+| `providers` | the providers that are enabled: `credential`, `premium`, and `custom` for any other |
+| `features` | the features enabled for at least one provider, such as `verification` |
+| `verification_methods` | the built-in verification methods registered, and `custom` for any other |
+| `persistence_type`, `replication_type` | the database type and whether Redis replication is on |
+| `unique_id_mode`, `session_concurrency` | the values of [`uniqueIdMode`](../../../configuration/settings/index.mdx#uniqueidmode) and [`concurrencyPolicy`](../../../configuration/settings/index.mdx#concurrencypolicy) |
+| `authentications`, `registrations`, `migrations` | how many ended since the last submission, by result: `completed`, `failed`, `denied`, `cancelled`, `expired` |
+| `logins_by_provider` | completed logins since the last submission, by provider: `credential`, `premium`, and `custom` for any other |
+| `sessions_opened` | how many sessions opened since the last submission |
+| `client_versions` | the players online on the proxy, counted by the Minecraft version of their client |
+| `account_count`, `provider_usage` | how many accounts are stored, in total and by provider |
+| `verified_accounts` | how many accounts have a verification method such as TOTP enabled |
+
+The services add what they collect from every plugin, such as the proxy's version, player count, Java version and operating system.
+
+When several proxies share a database, only one of them sends `account_count`, `provider_usage` and `verified_accounts`, so accounts are not counted once per proxy.
+The proxies agree on it through the `identica_statistics_lease` table; when that proxy stops, another one takes over.
+
+## What is never sent
+
+- player names, unique ids, IP addresses, passwords or anything else a player entered
+- server names, host names, addresses or other values from your configuration
+- the id or name of a provider, feature or verification method that is not part of Identica
+
+## Error reports
+
+When Identica logs an error caused by a bug in its own code or in its official providers, FastStats receives the error's type, message and stack trace, and the log message it belongs to.
+Before it leaves the proxy:
+
+- the player names, unique ids and other values of the log message are removed from the error's messages
+- unique ids, e-mail addresses, IP addresses and the values a database puts into its error messages are hidden
+- errors of third-party providers and other plugins are left out
+- a database or Redis that cannot be reached, or refuses its credentials, is left out, because that is a setup problem
+
+At most 100 errors are reported per 30 minutes.

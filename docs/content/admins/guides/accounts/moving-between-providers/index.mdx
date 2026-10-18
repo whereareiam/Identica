@@ -1,0 +1,36 @@
+---
+title: Moving between providers
+description: How a player moves their account to another provider, and why a move never lowers its protection.
+---
+
+A player can move their account from one provider to another, for example from Credential to Premium after buying the game. The account keeps its UUID and its data; only the way the player logs in changes.
+
+## How a player moves
+
+1. While logged in, the player types the new provider's command, such as `/premium` or `/credential`.
+2. They confirm with `/premium confirm` or `/credential confirm`, or cancel with `cancel`.
+3. Identica disconnects the player and keeps the move for the migration scenario's `pipelineTtl` in `engine.yml`, five minutes by default, for joins with the same username from the same address.
+4. The player joins again and sets up the new provider, for example by logging in with their premium account or by choosing a password.
+
+Staff can start, cancel and change moves with `/identica migration`; see [Managing accounts](../managing-accounts/index.mdx#providers-of-an-account).
+
+The account may take its name from the new provider from then on, which can conflict with another account's name; the [username rules](../usernames/index.mdx) settle that.
+
+## A move never lowers protection
+
+A pending move continues only on a join that a provider verified:
+
+- as the identity the account is already linked with, which is the provider being left. Identica then selects the new provider, and the player sets it up in the same session;
+- or as the new provider's own identity, when the new provider verifies its logins itself, as Premium does.
+
+Any other join that reaches Identica with a pending move cancels it, and the player reads `scenarios.migration.cancelled`. A join the provider being left refuses, such as an offline client using the name of a Premium account, changes nothing.
+
+### From Premium to Credential
+
+Premium asks every player who joins with the name of a Premium account to sign in with that premium account, so an offline client cannot take the name, and a pending move does not change that. The owner moves the account with `/credential` and `/credential confirm` while signed in. On the next join they sign in with the premium account once more, and that login lets them choose the password they use from then on.
+
+### Leaving a provider that checks a password
+
+A provider that proves ownership only with a prompt, such as Credential's password, cannot prove it again on the join after the confirmation. An account therefore leaves such a provider only for a provider that verifies its own logins, such as Premium.
+
+Writing a provider that takes part in moves is covered in [Writing a provider](../../../../developers/extending/providers/index.mdx#moving-accounts).

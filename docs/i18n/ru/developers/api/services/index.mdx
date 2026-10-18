@@ -1,0 +1,118 @@
+---
+title: Сервисы
+description: Сервисы API Identica и как найти сервисы функций.
+sourceHash: 8fcce7f2cb9e6a5d01810109a3dbd69e5d6e1554
+---
+
+Все сервисы доступны через `IdenticaAPI`, полученный, как описано на странице [Начало работы](../index.mdx).
+
+## Первый сервис [#a-first-service]
+
+```java
+import me.whereareiam.identica.IdenticaAPI;
+
+public final class ExampleAddon {
+    private final IdenticaAPI identica;
+
+    public ExampleAddon(IdenticaAPI identica) {
+        this.identica = identica;
+    }
+
+    public void inspectProviders() {
+        identica.getProviderManager().getProviders().forEach(provider -> {
+            if (provider != null && provider.getDescriptor() != null) {
+                System.out.println(provider.getDescriptor().getId());
+            }
+        });
+    }
+}
+```
+
+## Поиск других сервисов [#finding-other-services]
+
+Сервисы, для которых в `IdenticaAPI` нет геттера, например API функции, ищутся по типу. `findService` возвращает пустой `Optional`, если у Identica нет сервиса такого типа.
+
+```java
+Optional<FeatureRegistry> features = identica.findService(FeatureRegistry.class);
+```
+
+Здесь `FeatureRegistry` — это `me.whereareiam.identica.feature.FeatureRegistry`.
+
+## Сервисы функций и политика провайдеров [#feature-services-and-provider-policy]
+
+Реализации функций скомпилированы в Identica. Ищите их API по типу и перед запуском необязательных интеграций проверяйте, включена ли функция для провайдера с учётом всех настроек.
+
+```java
+FeatureRegistry features = identica.findService(FeatureRegistry.class).orElseThrow();
+if (features.isEnabled(providerId, "verification")) {
+    identica.findService(VerificationService.class).ifPresent(verification -> {
+        // Resolve verification for this provider.
+    });
+}
+```
+
+`isEnabled` учитывает поддержку, заявленную провайдером, общие значения по умолчанию и переопределения для провайдера. Гарантии провайдера проверяются отдельно, через `ProviderDescriptor.hasGuarantee(ProviderGuarantee.OWNED_USERNAME)`; никакой переключатель функций не даёт и не отменяет гарантию.
+
+Контракты описаны на странице [Гарантии и функции провайдеров](../../extending/guarantees-and-features/index.mdx).
+
+## Полезные сервисы [#common-services-worth-using]
+
+Вот некоторые из самых полезных для плагинов-аддонов сервисов `IdenticaAPI`:
+
+- `getProviderManager()` — список загруженных провайдеров и сведения о них;
+- `getProviderOperations()` — доступность провайдеров и операции с провайдерами во время работы;
+- `getSessionService()` — поиск, получение списка, открытие и закрытие сессий;
+- `getAccountService()` — поиск аккаунтов и операции их жизненного цикла;
+- `getIdentityService()` — идентичности игроков на этом прокси;
+- `getReplicationSystem()` — если вы сознательно интегрируетесь с реплицируемыми кэшами или каналами Identica;
+- `getEventManager()` — регистрация и вызов событий Identica;
+- `getPendingScenarioService()` — нужно ли игроку ещё пройти аутентификацию, регистрацию или миграцию;
+- `getConfigCatalog()` — загруженные документы конфигурации, например все документы сообщений;
+- `getReloadables()` — чтобы ваш код перезагружался по `/identica admin reload`.
+
+Аддоны, которые не пропускают чат или команды, пока игрок не прошёл аутентификацию, описаны на странице [Написание аддона](../../extending/addons/index.mdx).
+
+Если выбрана функция `verification`, найдите через `identica.findService(...)` сервис `VerificationService` — для привязки, проверки, выбора и сброса — или `VerificationRegistry` — для получения доступных методов. Оба типа находятся в `me.whereareiam.identica.feature.verification`.
+
+Шаг проверки провайдера — это `StatefulStep`. `/2fa confirm` передаёт введённый код в ожидающее прохождение как `VerificationCodeAttempt` в состоянии запуска; шаг забирает его из состояния и передаёт через `VerificationResolutionRequest.code(...)`. `resolveVerification` отправляет код, прежде чем разрешить требование. Код, который проверка не приняла, завершается статусом `REJECTED`, а причина находится в `getRejection()`: `INVALID` для неверного кода. При неверном коде шаг продолжает ждать с сообщением команды подтверждения о неверном коде, в остальных случаях — с её сообщением о том, что подтверждать нечего.
+
+## Сессии [#sessions]
+
+```java
+import me.whereareiam.identica.IdenticaAPI;
+import me.whereareiam.identica.identity.session.SessionService;
+
+import java.util.UUID;
+
+public final class ExampleAddon {
+    private final IdenticaAPI identica;
+
+    public ExampleAddon(IdenticaAPI identica) {
+        this.identica = identica;
+    }
+
+    public void printSession(UUID uniqueId) {
+        SessionService sessionService = identica.getSessionService();
+        sessionService.findByUniqueId(uniqueId).thenAccept(optionalSession -> {
+            optionalSession.ifPresent(session ->
+                System.out.println(session.getProviderId() + " -> " + session.getEffectiveUsername())
+            );
+        });
+    }
+}
+```
+
+Сессия принадлежит подключению: `session.getConnection()` возвращает `SessionConnection` с уникальным идентификатором подключения и `replication.serverId` прокси, на котором оно находится. У аккаунта одна сессия, и её держит одно подключение:
+
+- `findByUniqueId(uniqueId)` возвращает сессию аккаунта — этого достаточно, чтобы узнать, в сети ли аккаунт и как он вошёл;
+- `findByConnection(uniqueId, SessionConnection.of(player.getUniqueId()))` возвращает её, только если её держит это подключение; подключение, чью сессию заменили, её больше не держит;
+- `list(page, pageSize)` постранично перебирает идентификаторы сессий, которые затем можно получить через `findBySessionId`.
+
+`SessionService.open(session)` продолжает сохранённую сессию, только если новая сессия указывает то же подключение; любое другое подключение считается одновременным входом, и решение принимает настроенная политика одновременных входов. Политика решает по той сессии, которая была у аккаунта, когда вызов её прочитал: если другой вход этого аккаунта, обычно на другом прокси, тем временем открыл сессию, возвращённый future завершается с `ConcurrentSessionChangeException` и от вызова ничего не остаётся, поэтому, сообщив игроку, откройте сессию заново. `close(uniqueId)` завершает сессию аккаунта. Чтобы завершить её, только если её держит одно подключение, например когда этот игрок выходит, укажите подключение в запросе на закрытие — сессия, которую держит другое подключение, останется нетронутой:
+
+```java
+sessionService.close(SessionCloseRequest.builder()
+        .uniqueId(accountUniqueId)
+        .connection(SessionConnection.of(player.getUniqueId()))
+        .build());
+```

@@ -1,215 +1,166 @@
 ---
-title: Replication
-description: Field-by-field explanation of Identica's replication configuration area.
+title: replication.yml
+description: Every setting of replication.yml.
 ---
 
-The replication configuration controls how Identica shares state across multiple runtimes.
+`replication.yml` connects Identica to Redis, through which proxies share sessions, logins in progress and other live state. [Running several proxies](../../admins/guides/network/several-proxies/index.mdx) explains what is shared and how to set it up.
 
-When replication is disabled, Identica falls back to a no-op replication adapter.
-That means replication-backed reads return empty data, writes are ignored, and publish/subscribe channels do nothing.
+Without replication, each proxy keeps that state in its own memory: other proxies do not see it, and it is lost when the proxy restarts.
 
-## enabled
+<Setting
+  name="enabled"
+  depth={2}
+  takes="`true` or `false`"
+  default="`false`"
+  affects="whether Identica connects to Redis"
+>
 
-- Takes: `true` or `false`
-- Current default: `false`
-- Affects: whether the Redis-backed replication adapter is considered available
+With `true`, Identica connects to Redis on startup. If Redis cannot be reached, the startup fails and the proxy refuses every player until Redis is back and the proxy restarted.
 
-Set this to `true` only when you actually want shared cross-instance state and have a real Redis environment configured.
+</Setting>
 
-## serverId
+<Setting
+  name="serverId"
+  depth={2}
+  takes="a string"
+  default="a random id, written on the first start"
+  affects="the name of this proxy among the proxies of the network"
+  flag="warning"
+>
 
-<Badge type="warning">Warning</Badge>
+Give every proxy its own name and keep it. A session records the `serverId` of the proxy that holds its player, so a login through another proxy disconnects exactly that player, and each proxy tells its own events from those of others by it.
 
-- Takes: a string
-- Current default: a generated random UUID string
-- Affects: how this runtime identifies itself in replicated events and other cross-instance coordination
+</Setting>
 
-Each runtime in the same environment should have its own stable `serverId`.
-Do not leave a random generated value in place across restarts if you want predictable shared-state behavior.
+<Setting
+  name="heartbeatTimeout"
+  depth={2}
+  takes='a duration of at least `"3s"`'
+  default='`"30s"`'
+  affects="how long the records of a proxy that crashed stay visible to the other proxies"
+  flag="advanced"
+>
 
-This value is especially important for replicated events, because Identica uses it to distinguish local-origin events from events coming from another runtime.
-A session also records the `serverId` of the proxy holding the player's connection, so a concurrent login through another proxy disconnects exactly that connection.
+A proxy owns the session of every player connected through it and the hold on the username of every player logging in through it. It renews them every third of this time, every 10 seconds with the default, for as long as it owns them, and removes them as soon as it is done with them. When a proxy stops without removing them, for example when it crashes, its records disappear this long after it stopped. Until then the other proxies still list those sessions, `REJECT_NEW` still refuses those accounts, and a player from another address is still refused under a username that was being logged in.
 
-## heartbeatTimeout
+Each renewal costs Redis three commands, and every tenth renewal of a session two more. For 1000 online players that is about 360 Redis commands per second with the default. A shorter timeout frees a crashed proxy's accounts and usernames sooner and costs proportionally more commands.
 
-<Badge type="warning">Advanced</Badge>
+A value below `"3s"` is refused at startup.
 
-- Takes: a duration of at least `"3s"`
-- Current default: `"30s"`
-- Affects: how long a record this proxy owns stays stored after the proxy last renewed it
-
-A proxy owns two kinds of shared records: the session of every player connected through it, and the hold on the username of every player who is logging in through it. It renews each of them every third of this time, every 10 seconds with the default, for as long as it owns them.
-
-A record ends at once when its proxy is done with it: a session when its player disconnects, a username hold when the login ends, the player leaves or the scenario's [`pipelineTtl`](../engine/index.mdx#pipelinettl) passes. This setting only matters when a proxy stops without ending its records, for example when it crashes. Its records then disappear this long after it stopped. Until then other proxies still see them: they list the sessions in `/identica admin session list`, `REJECT_NEW` still refuses a new login of those accounts, and a player from another address is still refused with `engine.usernameHeld` under a username that was being logged in.
-
-With Redis replication a renewal is one read and one small write per record, which are three Redis commands, and every tenth renewal of a session also renews its two index entries. For 1000 online players that is about 360 Redis commands per second. A shorter timeout frees the accounts and usernames of a crashed proxy sooner and costs proportionally more commands; a longer one costs fewer.
-
-A value below `"3s"` is refused at startup. This is not an offline remember-me duration.
+</Setting>
 
 ## redis
 
-The `redis` section controls how Identica connects to Redis and which channels are used for publish/subscribe replication.
+<Setting
+  name="host"
+  takes="a string"
+  default='`"localhost"`'
+  affects="the Redis server's address"
+>
 
-### host
+</Setting>
 
-- Takes: a string
-- Current default: `"localhost"`
-- Affects: the Redis host used by the Redis replication adapter
+<Setting
+  name="port"
+  takes="an integer"
+  default="`6379`"
+  affects="the Redis server's port"
+>
 
-### port
+</Setting>
 
-- Takes: an integer
-- Current default: `6379`
-- Affects: the Redis port used by the Redis replication adapter
+<Setting
+  name="credential"
+  takes="a string"
+  default='`""`'
+  affects="the Redis password"
+>
 
-### credential
+A blank value connects without a password. A Redis ACL user for Identica must be allowed the `evalsha` and `script` commands; see [A player on two proxies at once](../../admins/guides/network/several-proxies/index.mdx#a-player-on-two-proxies-at-once).
 
-- Takes: a string
-- Current default: `""`
-- Affects: the Redis credential used during connection
+</Setting>
 
-If this is blank, Identica connects without a Redis credential.
+<Setting
+  name="ssl"
+  takes="`true` or `false`"
+  default="`false`"
+  affects="whether the connection to Redis uses TLS"
+>
 
-### ssl
+</Setting>
 
-- Takes: `true` or `false`
-- Current default: `false`
-- Affects: whether the Redis connection uses SSL/TLS
+<Setting
+  name="timeout"
+  takes="a number of milliseconds"
+  default="`0`"
+  affects="how long a connection to Redis or an answer from it may take"
+>
 
-### timeout
+`0` waits without limit.
 
-- Takes: an integer
-- Current default: `0`
-- Affects: the Redis client timeout passed into the Jedis pool
+</Setting>
 
 ### channels
 
-The `channels` section defines the Redis pub/sub channel names used by replication.
-
-All runtimes that should share the same replication environment must agree on these channel names.
-Most setups should keep the defaults unless there is a naming collision or a deliberate environment-separation reason to change them.
-
-#### accountUpdates
-
 <Badge type="warning">Advanced</Badge>
 
-- Takes: a string
-- Current default: `"identica:accounts"`
-- Affects: the channel used for account-related replicated events
+The Redis channels through which proxies tell each other about changes. Every proxy of a network uses the same names; change them only to run several networks on one Redis.
 
-#### sessions
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a string
-- Current default: `"identica:sessions"`
-- Affects: the channel used for session-related replication
-
-#### conflicts
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a string
-- Current default: `"identica:conflicts"`
-- Affects: the channel used for conflict-related replication
-
-#### events
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a string
-- Current default: `"identica:events"`
-- Affects: the generic replicated-events channel
-
-When `events` is set, Identica prefers it for generic replicated events.
-If it is blank, the current event bridge falls back to `sessions`.
+| Channel | Default | Carries |
+| --- | --- | --- |
+| `accountUpdates` | `"identica:accounts"` | changes to accounts |
+| `sessions` | `"identica:sessions"` | changes to sessions |
+| `conflicts` | `"identica:conflicts"` | username conflicts |
+| `events` | `"identica:events"` | events other proxies react to, such as an account deleted on one proxy; when blank, `sessions` is used |
 
 ## cache
 
-The `cache` section defines the shared namespace names used by replicated caches.
-
-All runtimes that should share the same logical Identica environment must agree on these namespace values.
-Most setups should keep the defaults unless there is a namespace collision or you intentionally want to isolate multiple environments inside the same Redis instance.
-
-#### reservations
-
 <Badge type="warning">Advanced</Badge>
 
-- Takes: a string
-- Current default: `"identica:reservation"`
-- Affects: the namespace used for account reservation replication
+The names under which proxies keep shared state in Redis. Every proxy of a network uses the same names; change them only to run several networks on one Redis.
 
-#### instructions
+| Name | Default | Holds |
+| --- | --- | --- |
+| `reservations` | `"identica:reservation"` | account reservations shared between proxies |
+| `instructions` | `"identica:handshake-instructions"` | providers' decisions to ask a connecting player for their own login |
+| `pipelineState` | `"identica:pipeline-state"` | logins in progress |
+| `attempts` | `"identica:provider-attempts"` | providers already tried for a username and address |
+| `sessions.records` | `"identica:sessions:records"` | sessions |
+| `sessions.accounts` | `"identica:sessions:accounts"` | the sessions of each account |
+| `sessions.subjects` | `"identica:sessions:subjects"` | the sessions of each provider identity |
 
-<Badge type="warning">Advanced</Badge>
+Passwords that players type are never written to Redis. While a registration waits for the password to be repeated, Redis holds that password's hash.
 
-- Takes: a string
-- Current default: `"identica:handshake-instructions"`
-- Affects: the namespace used for handshake instruction replication
+Features and providers have names of their own in their settings, such as `replication.state` of the [sentinel](../features/sentinel/index.mdx#replicationstate).
 
-#### pipelineState
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a string
-- Current default: `"identica:pipeline-state"`
-- Affects: the namespace used for shared pending pipeline state
-
-Passwords that players type are never written to this namespace. While a registration waits for the password to be repeated, it holds that password's hash.
-
-A connection's state is changed only over the version Identica read, so a proxy never overwrites what another proxy saved for the same connection meanwhile; see [Concurrent writes](#concurrent-writes).
-
-#### attempts
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a string
-- Current default: `"identica:provider-attempts"`
-- Affects: the namespace used for provider-attempt replication
-
-#### sessions
-
-A session is stored once, as a record under its own id, and found by account or by provider subject through index entries that list session ids. The `sessions` subsection names the three namespaces.
-
-##### records
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a string
-- Current default: `"identica:sessions:records"`
-- Affects: the namespace of the session records, keyed by session id
-
-A record expires after [`heartbeatTimeout`](#heartbeattimeout) unless the proxy holding the session's connection writes it again.
-
-##### accounts
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a string
-- Current default: `"identica:sessions:accounts"`
-- Affects: the namespace of the index entries that list an account's session ids, keyed by Identica account UUID
-
-##### subjects
-
-<Badge type="warning">Advanced</Badge>
-
-- Takes: a string
-- Current default: `"identica:sessions:subjects"`
-- Affects: the namespace of the index entries that list a provider subject's session ids
-
-An index entry is only a pointer. Identica checks every id it lists against the records and drops the ids whose record is gone, so an outdated entry never shows a session that ended.
-
-## Concurrent writes
-
-The same player can reach two proxies at the same moment, for example by reconnecting from the same address while a login on the other proxy is still being written. Identica writes a connection's login progress and an account's sessions only over what it read: a short Lua script stores the new value only while Redis still holds the value Identica read, or nothing when Identica found nothing, in one atomic step, and keeps the namespace's key index up to date as an ordinary write does.
-
-When another proxy wrote first, the proxy that came second does not overwrite it and does not try again on its own. The connection it served is disconnected with `engine.concurrentChangeKick`, which asks the player to reconnect; the next join continues from what the other proxy wrote and follows `settings.sessions.concurrencyPolicy` as an ordinary later login does. Changes to the index entries of sessions are applied again to what the other proxy wrote, so no session id is lost.
-
-Identica runs these scripts with `EVALSHA`, sending only the script's digest. When Redis answers `NOSCRIPT`, because it restarted or its script cache was flushed, Identica loads the script with `SCRIPT LOAD` and runs it again, so the scripts need no preparation on the Redis side. An ACL user for Identica needs the `evalsha` and `script` commands.
-
-Without Redis, a proxy keeps these values in memory and compares them the same way, so the rule holds on a single proxy too.
-
-## Connection behavior
-
-When replication is enabled, the Redis pool provider immediately tries to create and test a Redis connection.
-If the connection fails, the Redis adapter becomes unavailable and runtime operations fall back to the no-op behavior exposed by the default replication adapter wrapper.
+<Tabs items={["YAML", "JSON"]}>
+  <Tab value="YAML">
+```yaml
+enabled: true
+serverId: "proxy-1"
+heartbeatTimeout: "30s"
+redis:
+  host: "redis.internal"
+  port: 6379
+  credential: ""
+  ssl: false
+  timeout: 5000
+```
+  </Tab>
+  <Tab value="JSON">
+```json
+{
+  "enabled": true,
+  "serverId": "proxy-1",
+  "heartbeatTimeout": "30s",
+  "redis": {
+    "host": "redis.internal",
+    "port": 6379,
+    "credential": "",
+    "ssl": false,
+    "timeout": 5000
+  }
+}
+```
+  </Tab>
+</Tabs>

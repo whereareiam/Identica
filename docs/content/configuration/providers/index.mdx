@@ -1,35 +1,53 @@
 ---
-title: Providers
-description: Field-by-field explanation of Identica's provider configuration area.
+title: providers/providers.yml
+description: Every setting of providers/providers.yml.
 ---
 
-The providers configuration controls which identity providers are enabled and how provider-specific behavior is applied.
-Use this file to enable providers, set priority and entrypoints, tune provider-specific session behavior, and apply feature-owned provider fields.
-
-Shared feature settings and provider-scoped feature overrides are documented under [Features](../features/index.mdx).
-What happens when two accounts want one username is documented under [Username](../identity/username/index.mdx).
+`providers/providers.yml` enables providers and sets their order, their hostnames, and their own session and feature settings. Each provider's own settings are in its folder next to this file. [How a provider is picked](../../admins/guides/logins/provider-selection/index.mdx) explains how the order and the hostnames are used.
 
 ## behavior
 
-`behavior` contains shared runtime timings for all providers.
+<Setting
+  name="attemptTtl"
+  takes="a positive duration"
+  default='`"10m"`'
+  affects="how long Identica remembers that a provider was already tried for a username and address"
+  flag="advanced"
+>
 
-### attemptTtl
+A player whose premium login failed, for example an offline client with a premium username, continues with the next provider when they join again from the same address within this time. Longer values keep that choice longer; shorter ones let the provider be tried again sooner.
 
-<Badge type="warning">Advanced</Badge>
+</Setting>
 
-- Takes: a positive duration
-- Current default: `"10m"`
-- Affects: how long provider-attempt markers stay in the replicated attempt store
+<Setting
+  name="providers"
+  depth={2}
+  takes="a list of provider entries"
+  affects="which providers are loaded, and how each one takes part"
+>
 
-Identica uses this when it marks that a provider attempt already happened for a provider, scope, username, and IP combination.
-Longer values make repeated attempts stay blocked longer.
-Shorter values let retries happen sooner.
+Identica loads a provider only when it has an entry here with `enabled: true`.
 
 <Tabs items={["YAML", "JSON"]}>
   <Tab value="YAML">
 ```yaml
 behavior:
   attemptTtl: "10m"
+providers:
+  - id: "premium"
+    displayName: "Premium"
+    enabled: true
+    priority: 100
+    entrypoints:
+      - "premium.example.com"
+    session:
+      concurrencyPolicy: "REJECT_NEW"
+  - id: "credential"
+    displayName: "Credential"
+    enabled: true
+    priority: 50
+    entrypoints:
+      - "credential.example.com"
 ```
   </Tab>
   <Tab value="JSON">
@@ -37,46 +55,24 @@ behavior:
 {
   "behavior": {
     "attemptTtl": "10m"
-  }
-}
-```
-  </Tab>
-</Tabs>
-
-## providers
-
-- Takes: a list of provider entries
-- Affects: provider enablement, ordering, entrypoint routing, provider-specific session behavior, feature-owned provider overrides
-
-Provider ids should match installed provider descriptors, such as `premium` or `credential`.
-
-<Tabs items={["YAML", "JSON"]}>
-  <Tab value="YAML">
-```yaml
-providers:
-  - id: "premium"
-    displayName: "PR"
-    enabled: true
-    priority: 100
-    entrypoints:
-      - "premium.example.com"
-    session:
-      concurrencyPolicy: "REJECT_NEW"
-```
-  </Tab>
-  <Tab value="JSON">
-```json
-{
+  },
   "providers": [
     {
       "id": "premium",
-      "displayName": "PR",
+      "displayName": "Premium",
       "enabled": true,
       "priority": 100,
       "entrypoints": ["premium.example.com"],
       "session": {
         "concurrencyPolicy": "REJECT_NEW"
       }
+    },
+    {
+      "id": "credential",
+      "displayName": "Credential",
+      "enabled": true,
+      "priority": 50,
+      "entrypoints": ["credential.example.com"]
     }
   ]
 }
@@ -84,94 +80,84 @@ providers:
   </Tab>
 </Tabs>
 
-### id
+</Setting>
 
-- Takes: a provider id string
-- Affects: which installed provider descriptor this entry configures
+<Setting
+  name="id"
+  takes="a provider id, such as `premium` or `credential`, in any case"
+  affects="which installed provider the entry configures"
+>
 
-This should match the provider's descriptor id exactly enough for case-insensitive lookup.
+</Setting>
 
-### displayName
+<Setting
+  name="displayName"
+  takes="a string"
+  default='`""`'
+  affects="the provider's name in messages to players, such as the provider choice"
+>
 
-- Takes: a string
-- Current default: `""`
-- Affects: the user-facing label used for this provider when one is needed
+A blank name uses the provider's own name.
 
-If this is blank, Identica falls back to the provider descriptor name and then the raw id.
+</Setting>
 
-### enabled
+<Setting
+  name="enabled"
+  takes="`true` or `false`"
+  affects="whether the provider is loaded and offered to players"
+>
 
-- Takes: `true` or `false`
-- Affects: whether the provider is available for resolution and flow building
+</Setting>
 
-### priority
+<Setting
+  name="priority"
+  takes="an integer"
+  affects="which provider wins when several have an equally strong reason to handle a player"
+>
 
-- Takes: an integer
-- Affects: ordering when multiple providers are eligible
+Higher values win.
 
-Higher values win before lower values.
+</Setting>
 
-### entrypoints
+<Setting
+  name="entrypoints"
+  takes="a list of hostnames, as `host` or `host:port`"
+  affects="which hostnames pick this provider for a joining player"
+>
 
-- Takes: a list of hostnames, optionally with `:port`
-- Affects: which provider a player who joins through one of these hostnames gets, see [How a provider is picked](#how-a-provider-is-picked)
+A `host` entry matches the hostname on any port; `host:port` only on that port. When several providers list a hostname, the one with the higher `priority` takes it. Leave the list empty when your players all join through one address. See [Hostnames](../../admins/guides/logins/provider-selection/index.mdx#hostnames).
 
-Entries must use the format `host` or `host:port`. An entry without a port matches the hostname on any port; an entry with a port matches only that port. When several providers list the same hostname, the one with the higher `priority` takes it.
-Leave the list empty if provider hostnames are not part of your setup.
+</Setting>
 
-A hostname only picks a provider. It never routes the player to a server, which is what forced hosts and routing's [`forcedHosts`](../routing/index.mdx#forcedhosts) do, and it never lifts a provider's own protection of a name: Premium still demands its login for a premium name or a Premium account, whatever hostname the player used.
+<Setting
+  name="session.concurrencyPolicy"
+  takes='`"REPLACE_EXISTING"` or `"REJECT_NEW"`'
+  default="absent"
+  affects="what happens when an account of this provider logs in from a second connection"
+  flag="advanced"
+>
 
-### session
+When absent, the provider follows [`sessions.concurrencyPolicy`](../settings/index.mdx#concurrencypolicy) of `settings.yml`.
 
-Use `session` when one provider should behave differently from the global live-session defaults.
+</Setting>
 
-#### session.concurrencyPolicy
+<Setting
+  name="features"
+  takes="an object with one entry per feature"
+  default="absent"
+  affects="this provider's own settings for a feature"
+>
 
-<Badge type="warning">Advanced</Badge>
+Whatever an entry leaves out comes from the feature's shared settings. The provider must support the feature; turning on a feature the provider does not support stops the provider from loading.
 
-- Takes: `"REPLACE_EXISTING"` or `"REJECT_NEW"`
-- Current default: absent
-- Affects: how live-session replacement behaves for this specific provider
+| Key | Page |
+| --- | --- |
+| `features.recognition` | [Recognition](../features/recognition/index.mdx#per-provider) |
+| `features.restriction.enabled` | [Restriction](../features/restriction/index.mdx#per-provider) |
+| `features.restriction.join` | [Join restriction](../features/restriction/join/index.mdx#per-provider) |
+| `features.sentinel.enabled` | [Sentinel](../features/sentinel/index.mdx#per-provider) |
+| `features.verification` | [Verification](../features/verification/index.mdx#per-provider) |
 
-If this is absent, Identica uses `settings.sessions.concurrencyPolicy`.
+See [Features](../../admins/features/index.mdx#on-for-everyone-or-per-provider).
 
-### features
-
-Use `features` for per-provider overrides of built-in behavior. Providers declare integration support through `supportedFeatures()`. Omitted settings inherit global defaults; explicit provider values override them.
-
-- Takes: an object containing feature-owned configuration subtrees
-- Current default: absent unless supplied by a feature
-- Affects: provider-scoped overrides for selected features
-
-The supported subtrees include:
-
-- `features.recognition`: [Recognition](../features/recognition/index.mdx#provider-overrides)
-- `features.restriction.join`: [Join restriction](../features/restriction/join/index.mdx#provider-overrides)
-- `features.verification`: [Verification](../features/verification/settings/index.mdx#provider-overrides)
-
-The `restriction-join` feature uses the nested `restriction.join` configuration path.
-Provider guarantees such as `OWNED_USERNAME` are code declarations, not configuration subtrees.
-
-<Include src="../features/_partials/provider-overrides.mdx" />
-
-## How a provider is picked
-
-Every join collects reasons for providers to handle it, and the strongest reason wins. Identica picks the provider once, while the player connects, and keeps it for the whole journey. From strongest to weakest:
-
-1. **A pending migration.** The player confirmed a move to another provider, so the new provider is set up.
-2. **An account of a verified login.** The provider proved that the client owns its identity, such as Premium after an online login, and that identity already belongs to an account. An existing account keeps its provider, so a hostname never moves an account.
-3. **The hostname.** The player joined through one of the provider's [`entrypoints`](#entrypoints). Joining through a hostname is a deliberate choice.
-4. **A verified login without an account.** The provider proved the client's identity, but no account uses it yet. The player registers with that provider unless a hostname picked another one.
-5. **The player's choice.** The player chose the provider in the interactive provider choice. The choice is kept when the player reconnects before the registration ends.
-6. **A matching name.** An account with the player's username uses the provider. Nothing about the client is proven by the name alone.
-7. **Discovery.** The provider recognises the username, without proof.
-
-Reasons of the same strength go to the provider with the higher `priority`. Only providers the journey may use can win: a hostname whose provider the journey does not offer is ignored, and a provider that fails for the player is left out for the rest of the journey.
-
-What this means in practice:
-
-- A new player who joins through a provider's hostname registers with that provider. In an interactive journey, the provider choice is skipped when the hostname's provider is offered.
-- A player whose verified login already has an account keeps that account's provider, whatever hostname they use. A Premium account stays on Premium through the Credential hostname.
-- A new player's hostname beats a verified login without an account. A premium owner who joins through the Credential hostname of a seamless network, and is asked for the premium login because the name is premium, still registers with Credential, and later joins ask for the Credential password. Through the Premium hostname, the same player registers with Premium.
-- When a Credential account holds the name `Steve`, the real premium owner of `Steve` who joins through the Premium hostname is asked for the premium login and reaches his own Premium account, or registers one. Without that login, only the matching name speaks for a provider, so the player is asked for the Credential password.
-
+</Setting>

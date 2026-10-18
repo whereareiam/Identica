@@ -1,0 +1,54 @@
+---
+title: Сети
+description: Прохождения через несколько прокси и на BungeeCord.
+sourceHash: c0640254dd974d1453a4b8c755dce636534e1c13
+---
+
+## Несколько прокси [#several-proxies]
+
+`@IdenticaCluster` запускает два прокси, `proxy-a` и `proxy-b`, которые используют общие серверы `auth` и `lobby` и одну базу данных PostgreSQL и реплицируют данные через один Redis, если тест не отключит репликацию. База данных и Redis работают в контейнерах, поэтому таким тестам нужен Docker, а без него они пропускаются.
+
+Прохождение указывает прокси, через который входит игрок. Несколько клиентов могут использовать один ник, каждый через свой прокси, а `Administrator` выполняет консольные команды на выбранном прокси:
+
+```java
+@Test
+@IdenticaCluster
+void disconnectsAPlayerWhoseAccountIsDeletedOnTheOtherProxy(ScenarioContext anvil) {
+	Journey alice = Accounts.credential(anvil, "Alice", "Secret-123", PROXY_B).rejoin()
+			.on(AUTH)
+			.login("Secret-123")
+			.on(LOBBY);
+
+	Administrator.at(anvil, PROXY_A).deletes("Alice");
+
+	alice.kickedWith(m -> m.identica().getCommands().getAdmin().getDelete().getDisconnect());
+}
+```
+
+`@IdenticaCluster(replication = false)` обходится без Redis — для поведения, которое должно сохраняться, когда у прокси общая только база данных. `@IdenticaCluster` принимает те же цели маршрутизации `step` и `complete`, что и `@Identica`.
+`@IdenticaCluster(configure = ...)` применяет к обоим прокси те же изменения конфигурации, что и `@Identica(configure = ...)`; изменение, предназначенное только для одного из них, проверяет `proxy.name()`. Два клиента с одним ником не могут находиться на одном бэкенд-сервере, потому что бэкенд отключает того, кто вошёл раньше, поэтому прохождение, в котором оба должны быть в сети, держит их на разных серверах. `@IdenticaCluster(ownStepServers = true)` даёт прокси B собственный сервер для шагов, `IdenticaNetwork.AUTH_B`, для прохождения, в котором один аккаунт ждёт на шаге через оба прокси одновременно.
+
+## Другие прокси [#other-proxies]
+
+Каждая сеть работает на Velocity, если тест не указывает другую платформу. `@Identica(platform = Platform.BUNGEECORD)` запускает ту же сеть на прокси BungeeCord:
+
+```java
+@Test
+@Identica(platform = Platform.BUNGEECORD, mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL)
+void registersWithTheOnlyProviderInSeamlessMode(ScenarioContext anvil) {
+	Journey.offline(anvil, "Alice").join()
+			.on(AUTH)
+			.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
+			.register("Secret-123")
+			.on(LOBBY);
+}
+```
+
+Сеть на BungeeCord отличается от сети на Velocity там, где BungeeCord или Anvil не оставляют выбора:
+
+- BungeeCord проверяет лицензионный вход через собственный сессионный сервер Mojang, а Anvil не может заменить его локальной заменой Mojang из сети, поэтому лицензионный игрок в такую сеть не войдёт. Провайдер Premium по-прежнему спрашивает у замены, какие ники лицензионные, поэтому офлайн-игроку с лицензионным ником сначала предлагается лицензионный вход — как и на Velocity.
+- Anvil сам записывает слушатель прокси, без принудительных хостов, поэтому `LOBBY_HOST` нигде не сопоставлен с `lobby`.
+- Аддон-пример — плагин Velocity; `addon = true` на другой платформе завершается ошибкой.
+- BungeeCord называет игрока в консоли только тогда, когда тот попадает на бэкенд, поэтому вход, который прокси отклоняет — например, из-за ограничения входа, — прохождение проверяет только по клиенту.
+
+Прохождения на BungeeCord лежат в пакете и наборе `platform`.

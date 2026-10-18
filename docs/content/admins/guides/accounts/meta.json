@@ -1,0 +1,9 @@
+{
+  "title": "Accounts",
+  "pages": [
+    "usernames",
+    "unique-ids",
+    "managing-accounts",
+    "moving-between-providers"
+  ]
+}

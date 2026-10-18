@@ -1,0 +1,49 @@
+---
+title: Обзор
+description: Что делают функции Identica и как включить их для всех провайдеров или для одного.
+sourceHash: c52cb38edcc42e3cea41b81a510dcfeac1ba47c9
+---
+
+Функции добавляют к входу необязательное поведение. Все они входят в Identica; отдельно ничего устанавливать не нужно.
+
+| Функция | Что делает | По умолчанию |
+| --- | --- | --- |
+| [Подтверждение](./verification/index.mdx) | после провайдера запрашивает второй фактор, например код из приложения-аутентификатора | предлагается, но не обязательна |
+| [Распознавание](./recognition/index.mdx) | позволяет игроку, который только что вошёл, переподключиться без повторного входа | выключена |
+| [Sentinel](./sentinel/index.mdx) | блокирует подключения, которые раз за разом не проходят вход или злоупотребляют им | включена |
+| [Ограничения](./restriction/index.mdx) | позволяет персоналу на время закрыть провайдер для новых входов | ограничение входа выключено |
+
+## Для всех или для отдельного провайдера [#on-for-everyone-or-per-provider]
+
+У каждой функции есть общие настройки в `features/<feature>/` в каталоге данных, которые действуют для всех провайдеров. Провайдер может отличаться от них через `features` в своей записи в `providers/providers.yml`:
+
+```yaml
+providers:
+  - id: "credential"
+    features:
+      recognition:
+        enabled: false
+      verification:
+        enabled: true
+        required: true
+  - id: "premium"
+    features:
+      recognition:
+        enabled: true
+      verification:
+        enabled: false
+```
+
+Здесь распознавание включено только для провайдера Premium, а для провайдера Credential верификация обязательна. Всё, что провайдер не задаёт, берётся из общих настроек.
+
+Функция применяется, только если провайдер её поддерживает. Оба официальных провайдера поддерживают все функции; провайдер, который функцию не поддерживает, не загружается, если его запись её включает.
+
+| Функция | Общие настройки | Для провайдера |
+| --- | --- | --- |
+| Распознавание | `features/recognition/settings` | `features.recognition` |
+| Верификация | `features/verification/settings` | `features.verification` |
+| Sentinel | `features/sentinel/settings` | `features.sentinel.enabled` |
+| Ограничения | `features/restriction/settings` | `features.restriction.enabled` |
+| Ограничение входа | `features/restriction/join/settings` | `features.restriction.join` |
+
+Все настройки каждой функции описаны в разделе [Конфигурация](../../configuration/features/index.mdx).

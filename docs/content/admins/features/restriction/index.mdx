@@ -1,0 +1,23 @@
+---
+title: Overview
+description: Let staff restrict a provider for a while, for example during an attack.
+---
+
+Restrictions let staff limit a provider while the network runs, without editing files or restarting. A restriction is turned on with a command and lasts until staff lift it or it expires.
+
+Identica has one kind of restriction today: [join restriction](./join/index.mdx), which closes a provider to new joins except for players it trusts.
+
+## How long a restriction lasts
+
+A restriction lasts until staff lift it or `toggleTtl` in `features/restriction/settings` passes, 365 days by default, whichever comes first.
+
+Restrictions are not stored in the database:
+
+- With [replication](../../guides/network/several-proxies/index.mdx), they live in Redis. Every proxy of the network sees a restriction as soon as it is turned on or lifted, and a restarted proxy keeps seeing it while Redis keeps it.
+- Without replication, they live in the proxy's memory, so restarting the proxy lifts every restriction. Turn them on again after a restart.
+
+## Turning restrictions off
+
+`enabled: false` in `features/restriction/settings` turns off every kind of restriction, for every provider. A provider's `features.restriction.enabled: false` turns them off for that provider only.
+
+See [Restriction settings](../../../configuration/features/restriction/index.mdx) for every setting.

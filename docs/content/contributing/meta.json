@@ -1,0 +1,11 @@
+{
+  "title": "Contributing",
+  "pages": [
+    "building",
+    "testing",
+    "architecture"
+  ],
+  "description": "Work on Identica itself",
+  "icon": "GitPullRequest",
+  "root": true
+}

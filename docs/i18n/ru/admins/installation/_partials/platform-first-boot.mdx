@@ -1,0 +1,76 @@
+---
+sourceHash: 788f1fc3d9041d3f8be30649e452ff5ecd6d396b
+---
+
+<ContentTabs items={["Velocity", "BungeeCord"]}>
+  <ContentTab value="Velocity">
+    Папка данных Identica — `plugins/identica/`. После первого запуска в ней лежит:
+
+    <Files>
+      <Folder name="plugins" defaultOpen>
+        <Folder name="identica" defaultOpen>
+          <File name="type=YAML" />
+          <File name="settings.yml" />
+          <File name="engine.yml" />
+          <File name="routing.yml" />
+          <File name="commands.yml" />
+          <File name="messages.yml" />
+          <File name="persistence.yml" />
+          <File name="replication.yml" />
+          <Folder name="identity">
+            <Folder name="username" />
+          </Folder>
+          <Folder name="features">
+            <Folder name="recognition" />
+            <Folder name="restriction">
+              <Folder name="join" />
+            </Folder>
+            <Folder name="sentinel" />
+            <Folder name="verification" />
+          </Folder>
+          <Folder name="providers" defaultOpen>
+            <File name="providers.yml" />
+            <Folder name="Credential" />
+            <Folder name="Premium" />
+          </Folder>
+        </Folder>
+      </Folder>
+    </Files>
+  </ContentTab>
+  <ContentTab value="BungeeCord">
+    Папка данных Identica — `plugins/Identica/`. После первого запуска в ней лежит:
+
+    <Files>
+      <Folder name="plugins" defaultOpen>
+        <Folder name="Identica" defaultOpen>
+          <File name="type=YAML" />
+          <File name="settings.yml" />
+          <File name="engine.yml" />
+          <File name="routing.yml" />
+          <File name="commands.yml" />
+          <File name="messages.yml" />
+          <File name="persistence.yml" />
+          <File name="replication.yml" />
+          <Folder name="identity">
+            <Folder name="username" />
+          </Folder>
+          <Folder name="features">
+            <Folder name="recognition" />
+            <Folder name="restriction">
+              <Folder name="join" />
+            </Folder>
+            <Folder name="sentinel" />
+            <Folder name="verification" />
+          </Folder>
+          <Folder name="providers" defaultOpen>
+            <File name="providers.yml" />
+            <Folder name="Credential" />
+            <Folder name="Premium" />
+          </Folder>
+        </Folder>
+      </Folder>
+    </Files>
+  </ContentTab>
+</ContentTabs>
+
+Пустой файл `type=YAML` указывает Identica записывать файлы в формате YAML. Чтобы использовать JSON, переименуйте его в `type=JSON` до того, как менять какие-либо настройки: уже существующие файлы Identica не конвертирует. Все файлы описаны в разделе [Конфигурация](../../../configuration/index.mdx).

@@ -26,7 +26,7 @@ When changing behavior:
 - `identica-adapter-*`
   Infrastructure adapters such as command handling, database persistence, and replication transport.
 - `identica-adapter-database/*`
-  The database family. `database-api` is published and holds the database contracts: `DatabaseService`, `DatabaseSchema`, `SchemaInstaller` and `AccountTable`. `database-common` is the implementation: the connection, the schema installer, the core schema with its entities, repositories and persistence services, and the runtime libraries it loads through Attache; its test fixtures run schema tests on every database for the other owners. `database` is the assembly that binds them into Identica's injector. Every owner of tables (core, feature, provider, integration) declares its own `DatabaseSchema` as a Strata migration stream. Table structure is declared only with Dialectica (entities, and Dialectica schema changes in migrations), runtime reads and writes go through Dialectica's `EntityAccess` (hand-written Jdbi only for custom queries through the entity mapper), and plain standard SQL is only for one-time, rerunnable data steps inside a migration; see `docs/content/developer/advanced/database-schema`.
+  The database family. `database-api` is published and holds the database contracts: `DatabaseService`, `DatabaseSchema`, `SchemaInstaller` and `AccountTable`. `database-common` is the implementation: the connection, the schema installer, the core schema with its entities, repositories and persistence services, and the runtime libraries it loads through Attache; its test fixtures run schema tests on every database for the other owners. `database` is the assembly that binds them into Identica's injector. Every owner of tables (core, feature, provider, integration) declares its own `DatabaseSchema` as a Strata migration stream. Table structure is declared only with Dialectica (entities, and Dialectica schema changes in migrations), runtime reads and writes go through Dialectica's `EntityAccess` (hand-written Jdbi only for custom queries through the entity mapper), and plain standard SQL is only for one-time, rerunnable data steps inside a migration; see `docs/content/developers/extending/database-schemas`.
 - `identica-platform/*`
   The platform family. `type/platform-*` are the platforms themselves: Velocity and BungeeCord/Waterfall wiring, APIs, listeners, adapters, and bootstraps. `common` holds what every platform shares: `PlatformConfiguration`, which names the adapters a platform has to provide, the event-typed adapter contracts, and the decision processors behind them. `bundle` packages the platforms into one jar.
 - `identica-provider/*`
@@ -159,7 +159,7 @@ Do not replace these libraries with unrelated alternatives in the same area unle
 - journeys that start from what an earlier version of Identica left are tagged `@Tag("upgrade")` and form the `upgrade` suite; `./gradlew :identica-testing:anvilUpgradeTest` runs them, by hand and in the release workflow; `ProxyConfiguration.seed(path, file)` places such a file, like the SQLite database built from the `identica-2.2.1` layouts that `EarlierInstallation` creates, before the proxy first starts
 - premium accounts come from the network's own stand-in for Mojang, a `YggdrasilMock` test parameter (`yggdrasil.register(...)`), which also verifies premium logins; never add real account credentials to the repository or CI
 
-See `docs/content/developer/testing/index.mdx`.
+See `docs/content/contributing/testing/`.
 
 ---
 
@@ -261,7 +261,7 @@ One or two sentences about the release.
 
 ## Upgrade Paths
 
-An installation is upgraded by migration streams: `identica/config` and each feature's config stream, and one database stream per owner (see `docs/content/developer/advanced/database-schema`).
+An installation is upgraded by migration streams: `identica/config` and each feature's config stream, and one database stream per owner (see `docs/content/developers/extending/database-schemas`).
 
 - 3.0.x upgrades configuration directories and databases of 2.2.1 and of published 3.0.0 development builds. These paths exist for 3.0.x only.
 - 3.1.0 removes them: the steps and baselines for 2.2.1 and development-build layouts, the 2.2.1 defaults table of the provider-entry migration, and their fixtures and upgrade journeys. Strata then refuses an older installation with "upgrade through an older build first", and the 3.1.0 release notes say that 3.0.x must be started once first.
@@ -270,6 +270,29 @@ An installation is upgraded by migration streams: `identica/config` and each fea
 ---
 
 ## Documentation Rules
+
+### Structure
+
+`docs/content/` is split into four sections, one per reader, each a root folder (`"root": true` in its `meta.json`) that Scriptorium shows as its own sidebar: `admins/` (Server admins), `configuration/` (Configuration reference), `developers/` and `contributing/`. Every page belongs to a section; the docs open on the first page of the first section, the overview `admins/index.md`. Put new text where its reader looks for it:
+
+- **Getting started** (`admins/installation/`, `admins/first-configuration/`): the path from download to the first player joining.
+- **Guides** (`admins/guides/<topic>/<page>/`): how something works and how to do a task, for server admins. Concepts, examples and consequences go here, never into the reference.
+- **Features** (`admins/features/`): what each compiled-in feature does, how players use it, and how to turn it on, with the same order on every page: what it does, turning it on, per provider, what players see.
+- **Providers** and **Addons** (`admins/providers/official/<name>/`, `admins/addons/official/<name>/`): everything about one separately shipped jar in its own subtree: `index` (overview) first, task pages in between, `settings` (and `messages` when it has a messages file to explain) last. A small one may have only an overview and settings.
+- **Configuration reference** (`configuration/`): one page per file of Identica and its features, at the path of that file in the data directory and titled by it (`settings.yml`, `features/sentinel/`). Each field is a `<Setting>` with `name`, `takes`, `default`, `affects` and, when it applies, `flag` (`advanced`, `warning`, `danger`, `experimental`, `reserved`), written over several lines, with at most a few sentences inside; anything longer is a guide that the field links to. A provider's own `settings` page uses `<Setting>` the same way.
+- **Developers** (`developers/`): building on Identica from another plugin or a provider jar: the API, events, writing addons and providers. The developer API of an official addon goes under `developers/` too, linked from the addon's overview.
+- **Contributing** (`contributing/`): working on Identica itself: building, live tests, modules and internal layout.
+- **Help** (`admins/troubleshooting/`, `admins/faq/`, `admins/support/`): symptoms first, each pointing to the guide that explains the cause.
+
+Project components for the docs go into `docs/components/<Name>.tsx`; Scriptorium renders them on the server, so they hold no state, use inline styles or Fumadocs components rather than new Tailwind classes, and never take the name of a built-in component or a Lucide icon.
+
+Rules that keep the sections apart:
+
+- Pages outside Developers and Contributing never name classes, methods, packages, modules, stores, adapters, caches or "the current code". Say what the admin or player notices; move the mechanism to Developers or Contributing, or drop it.
+- A folder exists only for two or more pages. Nest at most two folders below a group.
+- Each page is `<name>/index.mdx` (or `.md`), and each folder with several pages has a `meta.json` that orders them. Only the four section folders carry an `icon`; no other folder or page gets one. Group separators (`---Guides---`) live in the `meta.json` of their section, and a translation names them through `labels` in its own `meta.json`.
+
+### Content
 
 - When changing features, behavior, configuration, installation, provider flows, or other user-visible behavior, update the relevant documentation in the same work.
 - Documentation in `docs/content/` should describe the **current state** of the product.

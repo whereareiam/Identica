@@ -1,0 +1,136 @@
+---
+title: identity/addresses.yml
+description: Every setting of identity/addresses.yml.
+---
+
+`identity/addresses.yml` decides which IP addresses Identica keeps for accounts, how it stores and compares them, and for how long. [Account addresses](../../../admins/guides/accounts/addresses/index.mdx) explains what is kept and what reads it. A reload applies the file to new registrations and logins; addresses that are already stored follow a changed `grouping`, `storage` or `ignored` at the next cleanup, when Identica starts and once a day.
+
+<Tabs items={["YAML", "JSON"]}>
+  <Tab value="YAML">
+```yaml
+record: ALL
+storage: PLAIN
+secret: "3f9c…"
+ignored: []
+grouping:
+  ipv4: 32
+  ipv6: 64
+retention:
+  registration: "0m"
+  idle: "90d"
+  maxPerAccount: 20
+```
+  </Tab>
+  <Tab value="JSON">
+```json
+{
+  "record": "ALL",
+  "storage": "PLAIN",
+  "secret": "3f9c…",
+  "ignored": [],
+  "grouping": { "ipv4": 32, "ipv6": 64 },
+  "retention": { "registration": "0m", "idle": "90d", "maxPerAccount": 20 }
+}
+```
+  </Tab>
+</Tabs>
+
+<Setting
+  name="record"
+  takes='`"ALL"`, `"REGISTRATION"`, or `"NONE"`'
+  default='`"ALL"`'
+  affects="which addresses are kept"
+>
+
+`ALL` keeps the address an account registered from and every address it logs in from. `REGISTRATION` keeps only the address it registered from, which is all the sentinel's account limit needs. `NONE` keeps nothing, and the account limit then limits nothing.
+
+</Setting>
+
+<Setting
+  name="storage"
+  takes='`"PLAIN"` or `"HASHED"`'
+  default='`"PLAIN"`'
+  affects="whether addresses are stored as they are or as hashes"
+>
+
+Hashed addresses can still be counted and compared, but nobody can read them back from the database without `secret`. Switching to `HASHED` hashes the addresses stored so far at the next cleanup. Switching back cannot recover them: hashed addresses stay hashed and only count for the addresses they were hashed from while `secret` stays the same.
+
+</Setting>
+
+<Setting
+  name="secret"
+  takes="a string"
+  default="a random value drawn when the file is first written"
+  affects="the key of the hashes when `storage` is `HASHED`"
+  flag="warning"
+>
+
+Proxies that share a database need the same secret, or each counts only the addresses it hashed itself. Changing it makes every stored hash count as a different address. Without a secret, hashed storage keeps no address and warns at startup.
+
+</Setting>
+
+<Setting
+  name="ignored"
+  takes="a list of addresses and ranges, such as `127.0.0.1` or `10.0.0.0/8`"
+  default="`[]`"
+  affects="which addresses are never kept"
+>
+
+List the addresses that are not players, such as a front proxy that does not forward the players' addresses. Addresses that are already stored and become ignored are deleted at the next cleanup. An entry that is not an address or range is skipped with a warning.
+
+</Setting>
+
+<Setting
+  name="grouping.ipv4"
+  takes="an integer from `0` to `32`"
+  default="`32`"
+  affects="how many leading bits two IPv4 addresses share to count as one address"
+>
+
+`32` compares whole addresses. `24` counts every address of a `/24` block as one.
+
+</Setting>
+
+<Setting
+  name="grouping.ipv6"
+  takes="an integer from `0` to `128`"
+  default="`64`"
+  affects="how many leading bits two IPv6 addresses share to count as one address"
+>
+
+A home connection usually gets a whole `/64` block and can switch addresses inside it at will, so comparing whole IPv6 addresses would let one player look like many.
+
+</Setting>
+
+<Setting
+  name="retention.registration"
+  takes="a duration, or `0m`"
+  default='`"0m"`'
+  affects="how long the address an account registered from counts as its registration address"
+>
+
+`0m` keeps it as long as the account exists. With a duration, it counts as the registration address for that long after the registration and is then kept like any other address, until `idle` removes it.
+
+</Setting>
+
+<Setting
+  name="retention.idle"
+  takes="a duration, or `0m`"
+  default='`"90d"`'
+  affects="how long an address is kept after the account last used it"
+>
+
+`0m` keeps addresses forever. The registration address is not removed while it counts as such.
+
+</Setting>
+
+<Setting
+  name="retention.maxPerAccount"
+  takes="an integer, `0` or greater"
+  default="`20`"
+  affects="how many addresses one account keeps besides its registration address"
+>
+
+Past the limit, the address the account used longest ago is removed. `0` keeps every address.
+
+</Setting>

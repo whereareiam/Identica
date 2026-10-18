@@ -12,6 +12,7 @@ import me.whereareiam.identica.adapter.database.testing.schema.SchemaSnapshot;
 import me.whereareiam.identica.adapter.database.testing.schema.TestDatabase;
 import me.whereareiam.identica.adapter.database.testing.schema.TestDatabases;
 import me.whereareiam.identica.database.schema.DatabaseSchema;
+import me.whereareiam.identica.type.DatabaseType;
 import me.whereareiam.strata.adapter.database.DatabaseContext;
 import org.h2.jdbcx.JdbcDataSource;
 import org.jetbrains.annotations.NotNull;
@@ -45,6 +46,8 @@ class AccountSchemaTest extends DatabaseSchemaContract {
 	private static final String DEVELOPMENT_BUILD = "development-build/account";
 	private static final String USERNAMES = "identica_account_usernames";
 	private static final String STATE = "identica_account_username_state";
+	private static final String ADDRESSES = "identica_account_addresses";
+	private static final List<String> HISTORY = List.of("1 username-layout", "2 username-table", "3 orphaned-profiles", "4 account-addresses");
 
 	private static final String UPGRADER = "dfe90880-73a1-3a0e-a7e7-8cda1bb6cb69";
 	private static final String ALICE = "10920508-d5d8-3eed-93d2-92f193afe7d7";
@@ -80,7 +83,8 @@ class AccountSchemaTest extends DatabaseSchemaContract {
 				"identica_provider_profiles",
 				"identica_account_reservations",
 				USERNAMES,
-				"identica_account_username_history"
+				"identica_account_username_history",
+				ADDRESSES
 		);
 	}
 
@@ -100,13 +104,15 @@ class AccountSchemaTest extends DatabaseSchemaContract {
 	}
 
 	/**
-	 * Every account of a development build gets a username, and the states merge into them.
+	 * Every account of a development build gets a username, and the states merge into them. No addresses were kept
+	 * before.
 	 */
 	@Override
 	protected Map<String, Long> upgradedRows(Map<String, Long> developmentBuild) {
 		Map<String, Long> rows = new LinkedHashMap<>(developmentBuild);
 		rows.remove(STATE);
 		rows.put(USERNAMES, developmentBuild.get("identica_accounts"));
+		rows.put(ADDRESSES, 0L);
 
 		return rows;
 	}
@@ -148,7 +154,30 @@ class AccountSchemaTest extends DatabaseSchemaContract {
 		return developmentBuild.withIndex("identica_account_username_history", "unique_id", "changed_at")
 				.withoutColumn("identica_accounts", "username")
 				.withoutTable(STATE)
-				.withTable(USERNAMES, new SchemaSnapshot.Table(columns, state.primaryKey(), indexes, state.foreignKeys()));
+				.withTable(USERNAMES, new SchemaSnapshot.Table(columns, state.primaryKey(), indexes, state.foreignKeys()))
+				.withTable(ADDRESSES, addresses(database, developmentBuild, varchar));
+	}
+
+	/**
+	 * The addresses table, which no earlier installation had: its key is the account and the address, both
+	 * written like the username state's account and the usernames, and it references the account like the
+	 * username state does. Each database reports the index of the key; H2 adds one for the reference.
+	 */
+	private static SchemaSnapshot.Table addresses(TestDatabase database, SchemaSnapshot developmentBuild, String varchar) {
+		SchemaSnapshot.Table state = developmentBuild.tables().get(STATE);
+		String timestamp = developmentBuild.column(STATE, "updated_at");
+		List<String> columns = List.of(
+				developmentBuild.column(STATE, "unique_id"),
+				"address " + varchar + " key",
+				"network " + varchar + " not null",
+				developmentBuild.column("identica_provider_links", "is_primary").replaceFirst("^is_primary", "is_registration"),
+				timestamp.replaceFirst("^updated_at", "first_seen_at"),
+				timestamp.replaceFirst("^updated_at", "last_seen_at")
+		);
+		Set<String> indexes = new TreeSet<>(Set.of("unique unique_id, address", "network"));
+		if (database.type() == DatabaseType.H2) indexes.add("unique_id");
+
+		return new SchemaSnapshot.Table(columns, List.of("unique_id", "address"), indexes, state.foreignKeys());
 	}
 
 	/**
@@ -177,7 +206,7 @@ class AccountSchemaTest extends DatabaseSchemaContract {
 		install(database);
 
 		assertEquals(expected, database.connect(SchemaSnapshot::everyTable));
-		assertEquals(List.of("1 username-layout", "2 username-table", "3 orphaned-profiles"), history(database));
+		assertEquals(HISTORY, history(database));
 	}
 
 	@ParameterizedTest(name = "{0}")
@@ -336,7 +365,7 @@ class AccountSchemaTest extends DatabaseSchemaContract {
 		install(database);
 
 		assertEquals(expected, database.connect(SchemaSnapshot::everyTable));
-		assertEquals(List.of("1 username-layout", "2 username-table", "3 orphaned-profiles"), history(database));
+		assertEquals(HISTORY, history(database));
 		assertEquals(Stream.of(DAVE + " dave provider", LOWERCASE_DAVE + " null manual").sorted().toList(), rows(database,
 				"SELECT unique_id, username_key, source FROM identica_account_usernames WHERE username IN ('Dave', 'dave')").stream().sorted().toList());
 	}

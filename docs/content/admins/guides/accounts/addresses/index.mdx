@@ -1,0 +1,48 @@
+---
+title: Account addresses
+description: Which IP addresses Identica keeps for accounts, for how long, and how to keep fewer.
+---
+
+Identica keeps the IP addresses accounts register and log in from. The sentinel's [limit on accounts per address](../../../features/sentinel/index.mdx#limiting-accounts-per-address) counts them. `identity/addresses.yml` decides what is kept; [its reference](../../../../configuration/identity/addresses/index.mdx) lists every setting.
+
+## What is kept
+
+By default every account keeps:
+
+- **its registration address**: the address it was registered from, for as long as the account exists;
+- **the addresses it logs in from**: each with when it was first and last used, for 90 days after its last use, and at most 20 of them. Past 20, the address used longest ago goes first.
+
+Deleting an account deletes its addresses. Accounts that existed before Identica kept addresses, and accounts an admin creates from the console, have no registration address; they get login addresses once their players log in.
+
+Proxies that share a database share the addresses, so a limit counts the registrations of every proxy.
+
+## Keeping less
+
+| You want | Set |
+| --- | --- |
+| Only what the account limit needs | `record: REGISTRATION` |
+| Nothing at all | `record: NONE`; the account limit then limits nothing |
+| No readable addresses in the database | `storage: HASHED` |
+| Addresses gone sooner | a shorter `retention.idle`, and `retention.registration` |
+
+With `storage: HASHED`, every address is stored as a hash made with the file's `secret`. Identica can still tell whether two players come from the same address, but nobody can read an address back from the database without the secret. Every proxy that shares the database needs the same `secret`; copy the file to each of them. Addresses stored earlier are hashed at the next cleanup, which runs when Identica starts and once a day.
+
+## When two addresses count as one
+
+Identica compares addresses by their group, which `grouping` sets:
+
+- **IPv4**: by default each address counts on its own. `grouping.ipv4: 24` counts a whole `/24` block as one.
+- **IPv6**: by default a whole `/64` block counts as one address. A home connection usually gets a `/64` and can switch addresses inside it at will, so comparing whole IPv6 addresses would let one player look like many.
+
+A changed grouping applies to stored addresses at the next cleanup. Hashed addresses cannot be regrouped and keep the group they were stored with.
+
+## Addresses that are not players
+
+If players reach the proxy through a service such as TCPShield without address forwarding, every player seems to come from the service's addresses. Set up forwarding, or list those addresses under `ignored` so they are never kept:
+
+```yaml
+ignored:
+  - "192.0.2.0/24"
+```
+
+`ignored` stops an address from being kept at all. To keep an address but never limit it, for a school whose players share one address, use the sentinel's `allowlist` instead.

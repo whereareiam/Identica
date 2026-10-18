@@ -127,9 +127,16 @@ public class CommonConfiguration extends AbstractModule {
 
 	@Provides
 	@Singleton
+	@Named("identityPath")
+	Path provideIdentityPath(@Named("dataPath") Path dataPath) {
+		return dataPath.resolve("identity");
+	}
+
+	@Provides
+	@Singleton
 	@Named("usernamePath")
-	Path provideUsernamePath(@Named("dataPath") Path dataPath) {
-		return dataPath.resolve("identity/username");
+	Path provideUsernamePath(@Named("identityPath") Path identityPath) {
+		return identityPath.resolve("username");
 	}
 
 	@Provides

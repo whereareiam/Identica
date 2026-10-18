@@ -3,6 +3,7 @@
   "pages": [
     "usernames",
     "unique-ids",
+    "addresses",
     "managing-accounts",
     "moving-between-providers"
   ]

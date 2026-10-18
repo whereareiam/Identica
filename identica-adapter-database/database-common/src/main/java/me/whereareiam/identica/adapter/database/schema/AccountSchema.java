@@ -13,6 +13,7 @@ import me.whereareiam.identica.adapter.database.entity.account.AccountEntity;
 import me.whereareiam.identica.adapter.database.entity.account.AccountProviderLinkEntity;
 import me.whereareiam.identica.adapter.database.entity.account.AccountProviderProfileEntity;
 import me.whereareiam.identica.adapter.database.entity.account.AccountReservationEntity;
+import me.whereareiam.identica.adapter.database.entity.address.AccountAddressEntity;
 import me.whereareiam.identica.adapter.database.entity.username.UsernameEntity;
 import me.whereareiam.identica.adapter.database.entity.username.UsernameHistoryEntity;
 import me.whereareiam.identica.adapter.database.mapper.username.UsernameMapper;
@@ -37,15 +38,16 @@ import java.util.TreeMap;
 import java.util.UUID;
 
 /**
- * The core tables: accounts, their provider links and profiles, username reservations, and the
- * username state and history of an account.
+ * The core tables: accounts, their provider links and profiles, username reservations, the username
+ * state and history of an account, and the addresses accounts register and log in from.
  *
  * <p>A database without {@code identica_accounts} is a new installation. Every other one starts at 0
  * and runs version 1, which brings the username tables of Identica 2.2.1 and of the development
  * builds of 3.0.0 to the current layout. It checks the database before each step, so it changes only
  * what a database still lacks and can run again after it stopped halfway on a database whose DDL
  * commits on its own. Version 2 moves the username of each account, with its source, to its own
- * table, where its key keeps usernames unique without regard to case; it too can run again.
+ * table, where its key keeps usernames unique without regard to case; it too can run again. Version 4
+ * adds the table of addresses.
  */
 public final class AccountSchema implements DatabaseSchema {
 	/** Username history of Identica 2.2.1, without a foreign key to the account. */
@@ -71,7 +73,8 @@ public final class AccountSchema implements DatabaseSchema {
 	private static final List<Migration<DatabaseContext>> MIGRATIONS = List.of(
 			new Migration<>(1, "username-layout", AccountSchema::moveUsernameLayout),
 			new Migration<>(2, "username-table", AccountSchema::moveUsernamesToTheirTable),
-			new Migration<>(3, "orphaned-profiles", AccountSchema::deleteOrphanedProfiles)
+			new Migration<>(3, "orphaned-profiles", AccountSchema::deleteOrphanedProfiles),
+			new Migration<>(4, "account-addresses", AccountSchema::createAddresses)
 	);
 
 	@Override
@@ -87,7 +90,8 @@ public final class AccountSchema implements DatabaseSchema {
 				Dialectica.entity(AccountProviderProfileEntity.class).table(),
 				Dialectica.entity(AccountReservationEntity.class).table(),
 				Dialectica.entity(UsernameEntity.class).table(),
-				Dialectica.entity(UsernameHistoryEntity.class).table()
+				Dialectica.entity(UsernameHistoryEntity.class).table(),
+				Dialectica.entity(AccountAddressEntity.class).table()
 		);
 	}
 
@@ -193,6 +197,14 @@ public final class AccountSchema implements DatabaseSchema {
 					AND identica_provider_links.provider_subject = identica_provider_profiles.provider_subject
 				)
 				""");
+	}
+
+	/**
+	 * Creates the table of the addresses accounts register and log in from, which starts empty: addresses were not
+	 * kept before.
+	 */
+	private static void createAddresses(DatabaseContext database) throws SQLException {
+		Dialectica.on(database.getConnection()).apply(new CreateTable(Dialectica.entity(AccountAddressEntity.class).table()));
 	}
 
 	private static void writeUsernames(DatabaseContext database) throws SQLException {

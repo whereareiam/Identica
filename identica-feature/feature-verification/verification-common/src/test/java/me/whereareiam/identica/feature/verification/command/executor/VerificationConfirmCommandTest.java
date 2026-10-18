@@ -43,6 +43,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
@@ -74,6 +76,8 @@ class VerificationConfirmCommandTest {
 	void connectedPlayer() {
 		when(identity.getAccountUniqueId()).thenReturn(accountUniqueId);
 		when(identity.getConnectionUniqueId()).thenReturn(UUID.randomUUID());
+		doCallRealMethod().when(identity).send(anyString());
+		doCallRealMethod().when(identity).send(anyString(), anyMap());
 		when(challenges.findPendingDisable(any())).thenReturn(Optional.empty());
 	}
 

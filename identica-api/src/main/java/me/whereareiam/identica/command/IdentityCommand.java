@@ -15,6 +15,11 @@ public abstract class IdentityCommand {
 
 	protected final void sendMessageText(@NotNull Actor sender, @Nullable String message) {
 		if (message == null || message.isBlank()) return;
+		if (sender instanceof Identity identity) {
+			identity.send(message);
+			return;
+		}
+
 		sender.sendMessage(Serializer.serialize(sender, message));
 	}
 }

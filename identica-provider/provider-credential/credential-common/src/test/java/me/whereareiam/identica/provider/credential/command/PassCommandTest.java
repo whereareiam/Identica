@@ -25,6 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
@@ -50,6 +52,8 @@ class PassCommandTest {
 	@BeforeEach
 	void connectedPlayer() {
 		when(identity.getConnectionUniqueId()).thenReturn(UUID.randomUUID());
+		doCallRealMethod().when(identity).send(anyString());
+		doCallRealMethod().when(identity).send(anyString(), anyMap());
 	}
 
 	@DisplayName("Hands a password typed before its prompt to the pipeline instead of looking for the journey itself")

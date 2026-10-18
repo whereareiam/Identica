@@ -1,5 +1,6 @@
 package me.whereareiam.identica.identity.actor;
 
+import me.whereareiam.identica.Serializer;
 import me.whereareiam.keystone.Actor;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
@@ -8,6 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -67,6 +69,34 @@ public abstract class Identity extends ConnectionIdentity implements Actor {
 	 */
 	@Override
 	public abstract void sendMessage(@NotNull Component message);
+
+	/**
+	 * Sends a message text to this identity, rendered for it with Identica's serializer. Use it rather than
+	 * {@link #sendMessage(Component)} for text Identica or a provider answers the player with, so that a platform can
+	 * defer it to the moment the player's client can show it: a player held on the loading screen sees it once
+	 * their client joined a server's world, through the same queue as Identica's prompts.
+	 *
+	 * <pre>{@code
+	 * identity.send("<red>Wrong password, {attempts} attempts left", Map.of("attempts", "2"));
+	 * }</pre>
+	 *
+	 * @param message message text; a blank text sends nothing
+	 * @param placeholders placeholder values keyed by placeholder name without delimiters
+	 */
+	public void send(@NotNull String message, @NotNull Map<String, String> placeholders) {
+		if (message.isBlank()) return;
+
+		sendMessage(Serializer.serialize(this, message, placeholders));
+	}
+
+	/**
+	 * Sends a message text without placeholders to this identity, as {@link #send(String, Map)} does.
+	 *
+	 * @param message message text; a blank text sends nothing
+	 */
+	public void send(@NotNull String message) {
+		send(message, Map.of());
+	}
 
 	/**
 	 * Sends a title to this identity.

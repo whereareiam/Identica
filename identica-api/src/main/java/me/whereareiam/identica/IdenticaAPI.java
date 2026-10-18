@@ -1,6 +1,8 @@
 package me.whereareiam.identica;
 
 import me.whereareiam.configura.Configura;
+import me.whereareiam.identica.checkpoint.Checkpoint;
+import me.whereareiam.identica.checkpoint.Checkpoints;
 import me.whereareiam.identica.command.CommandService;
 import me.whereareiam.identica.config.ConfigCatalog;
 import me.whereareiam.identica.event.EventManager;
@@ -204,6 +206,15 @@ public interface IdenticaAPI {
 	 * @return pending scenario service
 	 */
 	@NotNull PendingScenarioService getPendingScenarioService();
+
+	/**
+	 * Returns the registry of the places where a connection waits while one of its steps waits for the player. An
+	 * addon registers a {@link Checkpoint} here to hold such connections itself, for example to ask the player on
+	 * the loading screen, and unregisters it when the addon is disabled.
+	 *
+	 * @return checkpoint registry
+	 */
+	@NotNull Checkpoints getCheckpoints();
 
 	/**
 	 * Returns the registry of components that {@code /identica admin reload} refreshes. An addon registers a

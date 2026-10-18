@@ -26,7 +26,6 @@ import me.whereareiam.identica.type.provider.ProviderClaimOrigin;
 import me.whereareiam.keystone.Actor;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -113,6 +112,11 @@ public class EnrollCommand {
 
 	private void sendMessage(@NotNull Actor sender, String message) {
 		if (message == null || message.isBlank()) return;
+		if (sender instanceof Identity identity) {
+			identity.send(message);
+			return;
+		}
+
 		sender.sendMessage(Serializer.serialize(sender, message));
 	}
 

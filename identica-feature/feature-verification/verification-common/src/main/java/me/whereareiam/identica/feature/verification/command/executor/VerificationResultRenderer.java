@@ -1,5 +1,6 @@
 package me.whereareiam.identica.feature.verification.command.executor;
 
+import me.whereareiam.identica.identity.actor.Identity;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
@@ -200,6 +201,11 @@ public class VerificationResultRenderer {
 
 	private void sendMessage(@NotNull Actor sender, @Nullable String message, @NotNull Map<String, String> placeholders) {
 		if (message == null || message.isBlank()) return;
+		if (sender instanceof Identity identity) {
+			identity.send(message, placeholders);
+			return;
+		}
+
 		sender.sendMessage(Serializer.serialize(SerializerContent.builder()
 				.receiver(sender)
 				.message(message)

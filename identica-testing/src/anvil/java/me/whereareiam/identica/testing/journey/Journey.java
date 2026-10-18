@@ -37,8 +37,10 @@ import static org.junit.jupiter.api.Assertions.fail;
  * connections and server changes, what the proxy itself reports on its console, so a journey fails when either
  * Identica or the platform behaves differently.
  *
- * <p>Message expectations only consider messages received since the previous expectation, so a prompt repeated
- * after a reconnect is not satisfied by its earlier occurrence.</p>
+ * <p>Message expectations follow what the player's chat shows, as a vanilla client's chat does: a message that
+ * reaches the client before it joined a server's world, such as while it still configures, is never seen. They only
+ * consider messages shown since the previous expectation, so a prompt repeated after a reconnect is not satisfied by
+ * its earlier occurrence.</p>
  */
 public final class Journey {
 	private static final Duration TIMEOUT = Duration.ofSeconds(20);
@@ -50,7 +52,7 @@ public final class Journey {
 	private final ProxyReports reports;
 	private final Session session;
 	private final Messages messages;
-	/** Messages the player receives from the journey's start; each expectation continues after the previous one. */
+	/** Messages the player's chat shows from the journey's start; each expectation continues after the previous one. */
 	private final MessageWatch chat;
 	private final Players proxyPlayers;
 	/** The player joining the proxy and the backends it connects the player to, as the proxy reports it. */
@@ -561,7 +563,7 @@ public final class Journey {
 		try {
 			return chat.received(matcher, TIMEOUT);
 		} catch (IllegalStateException timeout) {
-			return fail(name + " did not receive " + expected + "; new messages: " + unread(), timeout);
+			return fail(name + " did not see " + expected + "; new messages: " + unread(), timeout);
 		}
 	}
 

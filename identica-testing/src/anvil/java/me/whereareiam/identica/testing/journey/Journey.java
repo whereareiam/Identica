@@ -7,6 +7,8 @@ import me.whereareiam.anvil.api.player.SimulatedPlayer;
 import me.whereareiam.anvil.api.process.RunningProcess;
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.anvil.api.type.DisconnectCause;
+import me.whereareiam.anvil.capability.commands.Commands;
+import me.whereareiam.anvil.capability.commands.type.CommandCheck;
 import me.whereareiam.anvil.capability.messages.MessageWatch;
 import me.whereareiam.anvil.capability.messages.Messages;
 import me.whereareiam.anvil.capability.players.PlayerWatch;
@@ -52,6 +54,7 @@ public final class Journey {
 	private final ProxyReports reports;
 	private final Session session;
 	private final Messages messages;
+	private final Commands commands;
 	/** Messages the player's chat shows from the journey's start; each expectation continues after the previous one. */
 	private final MessageWatch chat;
 	private final Players proxyPlayers;
@@ -85,6 +88,7 @@ public final class Journey {
 		this.reports = ProxyReports.of(Platform.of(anvil, proxy));
 		this.session = player.capability(Session.class);
 		this.messages = player.capability(Messages.class);
+		this.commands = player.capability(Commands.class);
 		this.chat = messages.watch();
 		this.proxyPlayers = anvil.processes().proxy(proxy).capability(Players.class);
 		this.routes = proxyPlayers.watch();
@@ -433,6 +437,19 @@ public final class Journey {
 
 	public Journey command(String command) {
 		messages.command(command);
+		return this;
+	}
+
+	/**
+	 * Expects the command tree the player's client holds to accept a command, so the client completes it and runs it
+	 * from a dialog button or a clicked message without asking the player first. It waits for a tree with the
+	 * command's root, because the tree comes with the backend's own and may reach the client after a prompt.
+	 */
+	public Journey canRun(String command) {
+		String root = command.split(" ", 2)[0];
+		commands.tree(tree -> tree.literal(root).isPresent(), TIMEOUT);
+		assertEquals(CommandCheck.NO_ISSUES, commands.check(command),
+				() -> describe() + " holds a command tree that does not accept /" + command);
 		return this;
 	}
 

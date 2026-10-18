@@ -62,6 +62,16 @@ class BungeeCordJoinTest {
 	}
 
 	@Test
+	@Identica(platform = Platform.BUNGEECORD, mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL)
+	void offersTheRegistrationCommandsInTheClientsCommandTree(ScenarioContext anvil) {
+		Journey.offline(anvil, "Alice").join()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
+				.canRun("pass " + PASSWORD)
+				.canRun("passconfirm " + PASSWORD);
+	}
+
+	@Test
 	@Identica(platform = Platform.BUNGEECORD, mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
 	void logsInWhenReturningAndAgainAfterAReconnect(ScenarioContext anvil) {
 		Accounts.credential(anvil, "Alice", PASSWORD).rejoin()

@@ -48,6 +48,16 @@ class CredentialFirstJoinTest {
 	}
 
 	@Test
+	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL)
+	void offersTheRegistrationCommandsInTheClientsCommandTree(ScenarioContext anvil) {
+		Journey.offline(anvil, "Alice").join()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
+				.canRun("pass " + PASSWORD)
+				.canRun("passconfirm " + PASSWORD);
+	}
+
+	@Test
 	@Identica(mode = JourneyMode.SEAMLESS, policy = JourneyPolicy.STRICT, providers = Provider.CREDENTIAL)
 	void refusesAPlayerWhoWouldHaveToTypeInStrictSeamlessMode(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").attempt()

@@ -11,6 +11,7 @@ import me.whereareiam.identica.engine.pipeline.scenario.type.registration.group.
 import me.whereareiam.identica.engine.pipeline.scenario.type.registration.group.identity.phase.CreateAccountPhase;
 import me.whereareiam.identica.engine.pipeline.scenario.type.registration.group.identity.phase.EnsureNewAccountPhase;
 import me.whereareiam.identica.engine.pipeline.scenario.type.registration.group.identity.phase.LinkProviderPhase;
+import me.whereareiam.identica.engine.pipeline.scenario.type.registration.group.identity.phase.RecordRegistrationAddressPhase;
 import me.whereareiam.identica.engine.pipeline.scenario.type.registration.group.identity.phase.ValidateProviderPhase;
 import me.whereareiam.identica.engine.pipeline.scenario.type.registration.group.policy.PolicyGroup;
 import me.whereareiam.identica.engine.pipeline.scenario.type.registration.group.session.SessionGroup;
@@ -39,6 +40,7 @@ public class RegistrationPipelineRegistry extends AbstractPipelineGroupRegistry 
 			EnsureNewAccountPhase ensureNewAccountPhase,
 			CreateAccountPhase createAccountPhase,
 			LinkProviderPhase linkProviderPhase,
+			RecordRegistrationAddressPhase recordRegistrationAddressPhase,
 			BuildSessionPhase buildSessionPhase,
 			OpenSessionPhase openSessionPhase
 	) {
@@ -59,6 +61,7 @@ public class RegistrationPipelineRegistry extends AbstractPipelineGroupRegistry 
 		registerPhase(identityGroup.id(), ensureNewAccountPhase, PhasePlacement.after(validateProviderPhase.id()));
 		registerPhase(identityGroup.id(), createAccountPhase, PhasePlacement.after(ensureNewAccountPhase.id()));
 		registerPhase(identityGroup.id(), linkProviderPhase, PhasePlacement.after(createAccountPhase.id()));
+		registerPhase(identityGroup.id(), recordRegistrationAddressPhase, PhasePlacement.after(linkProviderPhase.id()));
 
 		registerPhase(sessionGroup.id(), buildSessionPhase, PhasePlacement.first());
 		registerPhase(sessionGroup.id(), openSessionPhase, PhasePlacement.last());

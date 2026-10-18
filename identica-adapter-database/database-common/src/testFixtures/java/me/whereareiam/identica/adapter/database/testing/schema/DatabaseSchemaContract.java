@@ -32,6 +32,8 @@ public abstract class DatabaseSchemaContract {
 	private static final String HISTORY = "strata_history";
 	private static final String LEGACY_USERNAME_STATE = "identica_account_username_state";
 	private static final String USERNAMES = "identica_account_usernames";
+	private static final String ACCOUNTS = "identica_accounts";
+	private static final String ADDRESSES = "identica_account_addresses";
 
 	/**
 	 * Returns the schema under test.
@@ -68,11 +70,13 @@ public abstract class DatabaseSchemaContract {
 	/**
 	 * Returns the names of every table a new installation has, given those of the last development
 	 * build, when a migration adds or drops a table. The core schema, which every schema requires,
-	 * merged the username state of development builds into the usernames table.
+	 * merged the username state of development builds into the usernames table and added the
+	 * addresses table.
 	 */
 	protected Set<String> upgradedTableNames(Set<String> developmentBuild) {
 		Set<String> tables = new TreeSet<>(developmentBuild);
 		if (tables.remove(LEGACY_USERNAME_STATE)) tables.add(USERNAMES);
+		if (tables.contains(ACCOUNTS)) tables.add(ADDRESSES);
 
 		return tables;
 	}

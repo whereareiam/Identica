@@ -64,7 +64,7 @@ The same holds for the replication names in feature and provider settings, such 
 
 - Run the same version of Identica and its providers on every proxy.
 - Install and enable the same providers, with the same ids. An account linked to a provider that another proxy does not have cannot log in there.
-- Use the same `identity/username/conflicts.yml`, feature settings and `settings.yml`, so a player is treated the same on every proxy.
+- Use the same `identity/username/conflicts.yml`, `identity/addresses.yml`, feature settings and `settings.yml`, so a player is treated the same on every proxy. With hashed addresses, a different `secret` in `identity/addresses.yml` makes each proxy count only its own players' addresses.
 
 Routing may differ per proxy, for example when each proxy has its own login server.
 

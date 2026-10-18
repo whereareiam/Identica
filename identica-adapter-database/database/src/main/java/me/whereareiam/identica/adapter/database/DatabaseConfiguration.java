@@ -8,22 +8,26 @@ import me.whereareiam.dialectica.Dialectica;
 import me.whereareiam.dialectica.adapter.jdbi.entity.EntityAccess;
 import me.whereareiam.identica.adapter.database.account.DefaultAccountPersistenceService;
 import me.whereareiam.identica.adapter.database.account.DefaultAccountReservationPersistenceService;
+import me.whereareiam.identica.adapter.database.address.DefaultAccountAddressPersistenceService;
 import me.whereareiam.identica.adapter.database.entity.account.AccountEntity;
 import me.whereareiam.identica.adapter.database.entity.account.AccountProviderLinkEntity;
 import me.whereareiam.identica.adapter.database.entity.account.AccountProviderProfileEntity;
 import me.whereareiam.identica.adapter.database.entity.account.AccountReservationEntity;
+import me.whereareiam.identica.adapter.database.entity.address.AccountAddressEntity;
 import me.whereareiam.identica.adapter.database.entity.username.UsernameEntity;
 import me.whereareiam.identica.adapter.database.entity.username.UsernameHistoryEntity;
 import me.whereareiam.identica.adapter.database.provider.DefaultProviderLinkPersistenceService;
 import me.whereareiam.identica.adapter.database.provider.DefaultProviderProfilePersistenceService;
 import me.whereareiam.identica.adapter.database.repository.account.AccountRepository;
 import me.whereareiam.identica.adapter.database.repository.account.AccountReservationRepository;
+import me.whereareiam.identica.adapter.database.repository.address.AccountAddressRepository;
 import me.whereareiam.identica.adapter.database.repository.provider.ProviderLinkRepository;
 import me.whereareiam.identica.adapter.database.repository.username.UsernameRepository;
 import me.whereareiam.identica.adapter.database.username.DefaultAccountUsernameDuplicatePersistenceService;
 import me.whereareiam.identica.adapter.database.username.DefaultAccountUsernamePersistenceService;
 import me.whereareiam.identica.persistence.AccountPersistenceService;
 import me.whereareiam.identica.persistence.AccountReservationPersistenceService;
+import me.whereareiam.identica.persistence.address.AccountAddressPersistenceService;
 import me.whereareiam.identica.database.DatabaseService;
 import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.persistence.provider.ProviderProfilePersistenceService;
@@ -47,6 +51,7 @@ public class DatabaseConfiguration extends AbstractModule {
 		bind(ProviderProfilePersistenceService.class).to(DefaultProviderProfilePersistenceService.class).asEagerSingleton();
 		bind(AccountUsernamePersistenceService.class).to(DefaultAccountUsernamePersistenceService.class).asEagerSingleton();
 		bind(AccountUsernameDuplicatePersistenceService.class).to(DefaultAccountUsernameDuplicatePersistenceService.class).asEagerSingleton();
+		bind(AccountAddressPersistenceService.class).to(DefaultAccountAddressPersistenceService.class).asEagerSingleton();
 	}
 
 	@Provides
@@ -98,6 +103,12 @@ public class DatabaseConfiguration extends AbstractModule {
 
 	@Provides
 	@Singleton
+	public EntityAccess<AccountAddressEntity> provideAccountAddresses(Jdbi jdbi) {
+		return EntityAccess.of(jdbi, Dialectica.entity(AccountAddressEntity.class));
+	}
+
+	@Provides
+	@Singleton
 	public AccountRepository provideAccountRepository(Jdbi jdbi) {
 		return jdbi.onDemand(AccountRepository.class);
 	}
@@ -112,6 +123,12 @@ public class DatabaseConfiguration extends AbstractModule {
 	@Singleton
 	public ProviderLinkRepository provideProviderLinkRepository(Jdbi jdbi) {
 		return jdbi.onDemand(ProviderLinkRepository.class);
+	}
+
+	@Provides
+	@Singleton
+	public AccountAddressRepository provideAccountAddressRepository(Jdbi jdbi) {
+		return jdbi.onDemand(AccountAddressRepository.class);
 	}
 
 	@Provides

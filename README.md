@@ -1,4 +1,4 @@
-![Header](.github/assets/Header.png)
+![Header](.github/assets/identica/render/01-header.png)
 
 **Identica** is an authentication and identity plugin for Velocity and BungeeCord in which every login method is a provider: passwords, premium accounts, and whatever your network needs next.
 

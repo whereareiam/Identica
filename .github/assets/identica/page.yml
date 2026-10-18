@@ -1,0 +1,79 @@
+# Identica's description page, rendered by Pictura: pictura render <this folder>
+name: Identica
+accent: "#FF961F"
+images: https://github.com/whereareiam/Identica/blob/dev/.github/assets/identica/render/{file}?raw=true
+
+views:
+  - header:
+      logo: {text: IDENTICA, small: IDENTITY PROVIDER, creeper: 7, color: "#FF7A00", small_border: 0, width: 620}
+      pitch: >-
+        A <accent>modern identity plugin</> for Minecraft networks that handles
+        <accent>authentication</>, <accent>registration</>, <accent>verification</> and
+        <accent>account migration</> through one flexible core.
+      badge: badge-light
+      badge_font: minecraft-ten
+      badge_width: 104
+      badge_gap: 39
+      platforms: [Velocity, BungeeCord]
+      versions: "Supported versions: 1.7+"
+      versions_badge: button-green-rim
+      versions_gap: 25
+
+  - board:
+      title: Dependencies & Information
+      cards:
+        - {title: Platform, text: "Identica runs on Velocity, BungeeCord and Waterfall. Install it on your proxy, not on your backend servers."}
+        - {title: Java, text: "Identica requires Java 21 or newer."}
+        - {title: Persistence, text: "SQLite works out of the box. Switch to H2, MySQL, MariaDB or PostgreSQL whenever you need to."}
+        - {title: Replication, text: "Optional Redis replication shares sessions, reservations, conflicts and events between your proxies."}
+        - {title: Good to know, tone: warning, text: "Identica is the core only. Login methods come from providers, which you download and install separately."}
+
+  - feature:
+      title: Providers, not modes
+      icon: key
+      text: >-
+        Most authentication plugins hard-code premium and password login.
+        Identica treats every login method as a <accent>provider</> that plugs into one core.
+      points:
+        - {label: Pick your providers, text: "install only the login methods your network needs."}
+        - {label: One flow, text: "Identica picks the provider, guides the player and keeps sessions consistent."}
+        - {label: Room to grow, text: "add a new provider later without rebuilding your setup."}
+
+  - feature:
+      title: Accounts that move with players
+      icon: diamond
+      text: Players switch between providers <accent>without losing their account</>.
+      points:
+        - {label: Provider migration, text: "a player who switches login method keeps their account, even under a new username."}
+        - {label: Conflict resolution, text: "when two login methods claim the same name, Identica settles it."}
+        - {label: Verification, text: "protect accounts with a second step such as <accent>TOTP 2FA</>."}
+
+  - grid:
+      title: Built-in features
+      tiles:
+        - {icon: shield, title: Verification, text: "A second step after the provider identifies the player."}
+        - {icon: check, title: Recognition, text: "Returning players skip the full login while their signals match."}
+        - {icon: warning, title: Sentinel, text: "Watches for repeated or risky actions."}
+        - {icon: gear, title: Restriction, text: "Lets admins temporarily block new joins through a provider."}
+
+  - list:
+      title: Official providers
+      rows:
+        - {name: credential, icon: key, title: Credential Provider, tag: Free, link: "https://modrinth.com/plugin/identica-credential-provider",
+           text: "Players register and log in with a password."}
+        - {name: premium, icon: diamond, title: Premium Provider, tag: Free, link: "https://modrinth.com/plugin/identica-premium-provider",
+           text: "Players with a Minecraft account join without a password and keep their identity when they change their name."}
+
+  - steps:
+      title: Getting started
+      steps:
+        - {title: Install, text: "Put Identica into your proxy's plugins folder."}
+        - {title: Add providers, text: "Put the providers you want into Identica's providers folder."}
+        - {title: Configure, text: "Start the proxy once, then adjust the generated files."}
+
+  - support:
+      style: panel
+      player: whereareiam
+      link: https://discord.arcadeya.com/
+      text: Stuck? The team and the community answer fast.
+      button: Join Discord

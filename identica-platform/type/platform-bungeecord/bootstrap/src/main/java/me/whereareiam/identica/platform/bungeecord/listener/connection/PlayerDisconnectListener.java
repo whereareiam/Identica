@@ -11,8 +11,8 @@ import me.whereareiam.identica.listener.DynamicListener;
 import me.whereareiam.identica.model.SessionCloseRequest;
 import me.whereareiam.identica.model.SessionConnection;
 import me.whereareiam.identica.pipeline.prepare.PrepareStateStore;
+import me.whereareiam.identica.platform.bungeecord.join.BungeeCordJoinReporter;
 import me.whereareiam.identica.routing.RoutingCoordinator;
-import me.whereareiam.identica.service.PlatformDeliveryAdapter;
 import me.whereareiam.identica.type.routing.reason.RoutingClearReason;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.event.PlayerDisconnectEvent;
@@ -24,7 +24,7 @@ public class PlayerDisconnectListener implements DynamicListener<PlayerDisconnec
 	private final IdentityService identityService;
 	private final SessionService sessionService;
 	private final PrepareStateStore prepareStateStore;
-	private final PlatformDeliveryAdapter deliveryAdapter;
+	private final BungeeCordJoinReporter joinReporter;
 	private final VerificationService verificationService;
 
 	@Override
@@ -41,7 +41,7 @@ public class PlayerDisconnectListener implements DynamicListener<PlayerDisconnec
 		routingCoordinator.clear(player.getUniqueId(), RoutingClearReason.DISCONNECT);
 		identityService.detach(player.getUniqueId());
 		prepareStateStore.clear(player.getUniqueId());
-		deliveryAdapter.clear(player.getUniqueId());
+		joinReporter.clear(player.getUniqueId());
 		verificationService.cancelPendingEnrollment(player.getUniqueId());
 	}
 }

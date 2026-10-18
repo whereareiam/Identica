@@ -13,7 +13,6 @@ import me.whereareiam.identica.handshake.HandshakeContext;
 import me.whereareiam.identica.platform.adapter.PlatformForcedHostAdapter;
 import me.whereareiam.identica.platform.adapter.PlatformHandshakeApplierContributor;
 import me.whereareiam.identica.platform.adapter.PlatformHandshakeApplierRegistry;
-import me.whereareiam.identica.service.PlatformDeliveryAdapter;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.ParameterizedType;
@@ -21,7 +20,9 @@ import java.lang.reflect.Type;
 
 /**
  * Base module of a platform runtime. Each abstract method names one adapter a platform has to provide, so a
- * platform that leaves one out does not compile.
+ * platform that leaves one out does not compile. Besides its adapters, a platform fires
+ * {@link me.whereareiam.identica.event.connection.ServerJoinedEvent} once a player's client is in the world of a
+ * server, which releases the messages Identica queued for the player.
  *
  * <p>An adapter is bound under the contract it implements, with the event or handshake context type its class
  * declares: an adapter that implements {@code PlatformLoginDecisionAdapter<LoginEvent>} is injected as exactly
@@ -32,7 +33,6 @@ import java.lang.reflect.Type;
 public abstract class PlatformConfiguration<C extends HandshakeContext> extends AbstractModule {
 	@Override
 	protected final void configure() {
-		bind(PlatformDeliveryAdapter.class).to(delivery());
 		bind(PlatformForcedHostAdapter.class).to(forcedHost());
 		bindAdapter(PlatformHandshakeDecisionAdapter.class, handshakeDecision());
 		bindAdapter(PlatformLoginDecisionAdapter.class, loginDecision());
@@ -42,11 +42,6 @@ public abstract class PlatformConfiguration<C extends HandshakeContext> extends 
 
 		configurePlatform();
 	}
-
-	/**
-	 * Returns the adapter that coordinates when messages can reach a joining player.
-	 */
-	protected abstract @NotNull Class<? extends PlatformDeliveryAdapter> delivery();
 
 	/**
 	 * Returns the adapter that reads the forced hosts configured on the proxy.

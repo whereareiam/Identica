@@ -61,6 +61,28 @@ Identica starts in phases, each one after the previous has finished: the configu
 - `IdenticaReadyEvent` is called at the end of startup. The providers are loaded with their commands and documents, Identica handles player connections, and the actions given to `IdenticaAPI.whenReady(...)` have run.
 - `IdenticaShutdownEvent` is called when Identica stops. At `EventOrder.LOW` Identica stops the phases in reverse, so a listener with `EventOrder.LOWEST` still runs while the providers and the database are open, and later listeners run after they are closed.
 
+## Messages to a joining player
+
+A player's client shows chat, titles and dialogs only once it is in the world of a server. While it still configures or switches servers, it drops chat and closes dialogs. `ServerJoinedEvent` (in `me.whereareiam.identica.event.connection`) is called at that moment: on the first join and again after every server switch, with the player's `Identity` and the server's name. Identica delivers its own queued messages, such as the first prompt and the completion message, from this event.
+
+Show your own messages or dialogs to a joining player from it rather than from a platform's join or connect event:
+
+```java
+import me.whereareiam.identica.event.EventListener;
+import me.whereareiam.identica.event.base.IdenticEvent;
+import me.whereareiam.identica.event.connection.ServerJoinedEvent;
+import net.kyori.adventure.text.Component;
+
+public final class WelcomeListener implements EventListener {
+    @IdenticEvent
+    public void onServerJoined(ServerJoinedEvent event) {
+        event.getIdentity().sendMessage(Component.text("Welcome to " + event.getServer()));
+    }
+}
+```
+
+On BungeeCord the event is called from Identica's scheduler shortly after the join, because BungeeCord has no event once the client is in the world.
+
 ## Common event categories
 
 The current API exposes event groups such as:

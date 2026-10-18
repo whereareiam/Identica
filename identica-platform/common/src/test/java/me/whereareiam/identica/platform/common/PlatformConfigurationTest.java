@@ -13,21 +13,16 @@ import me.whereareiam.identica.handshake.HandshakeApplier;
 import me.whereareiam.identica.handshake.HandshakeApplierRegistry;
 import me.whereareiam.identica.handshake.HandshakeContext;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
-import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.model.auth.handshake.HandshakeInstruction;
 import me.whereareiam.identica.platform.adapter.PlatformForcedHostAdapter;
 import me.whereareiam.identica.platform.adapter.PlatformHandshakeApplierContributor;
 import me.whereareiam.identica.platform.adapter.PlatformHandshakeApplierRegistry;
-import me.whereareiam.identica.service.PlatformDeliveryAdapter;
-import me.whereareiam.identica.type.messaging.DeliveryCheckpoint;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -46,7 +41,6 @@ class PlatformConfigurationTest {
 		assertInstanceOf(TestLoginDecision.class, injector.getInstance(Key.get(new TypeLiteral<PlatformLoginDecisionAdapter<LoginEvent>>() {})));
 		assertInstanceOf(TestResumeDecision.class, injector.getInstance(Key.get(new TypeLiteral<PlatformResumeDecisionAdapter<LoginEvent>>() {})));
 		assertInstanceOf(TestProfile.class, injector.getInstance(Key.get(new TypeLiteral<PlatformProfileAdapter<LoginEvent>>() {})));
-		assertInstanceOf(TestDelivery.class, injector.getInstance(PlatformDeliveryAdapter.class));
 		assertInstanceOf(TestForcedHost.class, injector.getInstance(PlatformForcedHostAdapter.class));
 	}
 
@@ -76,11 +70,6 @@ class PlatformConfigurationTest {
 
 	private static final class TestConfiguration extends PlatformConfiguration<TestContext> {
 		private static final String MARKER = "platform";
-
-		@Override
-		protected @NotNull Class<TestDelivery> delivery() {
-			return TestDelivery.class;
-		}
 
 		@Override
 		protected @NotNull Class<TestForcedHost> forcedHost() {
@@ -125,21 +114,6 @@ class PlatformConfigurationTest {
 	}
 
 	private record LoginEvent() {
-	}
-
-	private static final class TestDelivery implements PlatformDeliveryAdapter {
-		@Override
-		public @NotNull DeliveryCheckpoint initialPromptCheckpoint() {
-			return DeliveryCheckpoint.values()[0];
-		}
-
-		@Override
-		public void armInitialReady(@NotNull Identity identity, @Nullable String currentServer) {
-		}
-
-		@Override
-		public void clear(@NotNull UUID connectionUniqueId) {
-		}
 	}
 
 	private static final class TestForcedHost implements PlatformForcedHostAdapter {

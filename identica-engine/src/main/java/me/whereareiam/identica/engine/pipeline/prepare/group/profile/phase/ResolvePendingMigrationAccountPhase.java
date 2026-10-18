@@ -31,7 +31,6 @@ import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import me.whereareiam.identica.provider.selection.ProviderSelector;
 import me.whereareiam.identica.service.DeliveryService;
 import me.whereareiam.identica.type.ScenarioResolution;
-import me.whereareiam.identica.type.messaging.DeliveryCheckpoint;
 import me.whereareiam.identica.type.messaging.DeliverySemantics;
 import me.whereareiam.identica.type.messaging.DeliverySource;
 import me.whereareiam.identica.type.pipeline.PipelineType;
@@ -194,7 +193,6 @@ public class ResolvePendingMigrationAccountPhase implements PipelinePhase<Prepar
 					.payload(DeliveryPayload.builder()
 							.chatMessage(notice)
 							.build())
-					.checkpoint(DeliveryCheckpoint.PLATFORM_READY_INITIAL)
 					.semantics(DeliverySemantics.ONCE)
 					.createdAt(now)
 					.updatedAt(now)

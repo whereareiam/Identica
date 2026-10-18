@@ -9,8 +9,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Coordinates queued delivery work and dispatches requests when their
- * checkpoint and routing requirements have been satisfied.
+ * Coordinates queued delivery work and dispatches requests once the player's client joined a server's world that
+ * satisfies their routing requirements.
  */
 public interface DeliveryService {
 	/**
@@ -37,9 +37,9 @@ public interface DeliveryService {
 	@NotNull List<DeliveryRequest> pendingForAccount(@NotNull UUID accountUniqueId);
 
 	/**
-	 * Dispatches all pending requests that match the supplied context.
+	 * Dispatches all pending requests of the identity that the server it joined satisfies.
 	 *
-	 * @param context dispatch checkpoint, identity, and server context
+	 * @param context identity and the server its client joined
 	 * @return requests that were dispatched during this pass
 	 */
 	@NotNull List<DeliveryRequest> dispatch(@NotNull DeliveryDispatchContext context);

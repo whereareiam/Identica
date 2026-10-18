@@ -7,7 +7,7 @@ import me.whereareiam.identica.engine.pipeline.completion.runtime.CompletionPipe
 import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.base.IdenticEvent;
-import me.whereareiam.identica.event.delivery.DeliveryCheckpointReachedEvent;
+import me.whereareiam.identica.event.connection.ServerJoinedEvent;
 import me.whereareiam.identica.event.identity.IdentityDetachedEvent;
 import me.whereareiam.identica.event.pipeline.attempt.PipelineAttemptFinishedEvent;
 import me.whereareiam.identica.event.routing.completion.CompletionRoutingReachedEvent;
@@ -23,8 +23,6 @@ import me.whereareiam.identica.model.delivery.DeliveryTarget;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.completion.CompletionPendingState;
 import me.whereareiam.identica.service.DeliveryService;
-import me.whereareiam.identica.service.PlatformDeliveryAdapter;
-import me.whereareiam.identica.type.messaging.DeliveryCheckpoint;
 import me.whereareiam.identica.type.messaging.DeliverySemantics;
 import me.whereareiam.identica.type.messaging.DeliverySource;
 import me.whereareiam.identica.type.pipeline.PipelineStatus;
@@ -42,23 +40,20 @@ public class CompletionPendingLifecycle implements EventListener {
 	private final DeliveryService deliveryService;
 	private final CompletionPipeline completionPipeline;
 	private final IdentityService identityService;
-	private final PlatformDeliveryAdapter platformDeliveryAdapter;
 	private final Provider<Routing> routingProvider;
-	private final Map<UUID, String> readyServerByConnection = new ConcurrentHashMap<>();
+	private final Map<UUID, String> joinedServerByConnection = new ConcurrentHashMap<>();
 
 	@Inject
 	public CompletionPendingLifecycle(
 			@NotNull DeliveryService deliveryService,
 			@NotNull CompletionPipeline completionPipeline,
 			@NotNull IdentityService identityService,
-			@NotNull PlatformDeliveryAdapter platformDeliveryAdapter,
 			@NotNull Provider<Routing> routingProvider,
 			@NotNull EventManager eventManager
 	) {
 		this.deliveryService = deliveryService;
 		this.completionPipeline = completionPipeline;
 		this.identityService = identityService;
-		this.platformDeliveryAdapter = platformDeliveryAdapter;
 		this.routingProvider = routingProvider;
 		eventManager.register(this);
 	}
@@ -80,7 +75,6 @@ public class CompletionPendingLifecycle implements EventListener {
 								.pipelineType(event.getPipelineType())
 								.build())
 						.build())
-				.checkpoint(DeliveryCheckpoint.PLATFORM_READY_INITIAL)
 				.semantics(DeliverySemantics.ONCE)
 				.requiredServer(completionTarget)
 				.createdAt(System.currentTimeMillis())
@@ -89,9 +83,11 @@ public class CompletionPendingLifecycle implements EventListener {
 	}
 
 	@IdenticEvent
-	public void onDeliveryCheckpointReached(@NotNull DeliveryCheckpointReachedEvent event) {
-		rememberReadyServer(event);
-		dispatchCompletion(event.getIdentity(), event.getCheckpoint(), event.getCurrentServer());
+	public void onServerJoined(@NotNull ServerJoinedEvent event) {
+		UUID connectionUniqueId = event.getIdentity().getConnectionUniqueId();
+		if (connectionUniqueId != null) joinedServerByConnection.put(connectionUniqueId, event.getServer());
+
+		dispatchCompletion(event.getIdentity(), event.getServer());
 	}
 
 	@IdenticEvent
@@ -103,47 +99,39 @@ public class CompletionPendingLifecycle implements EventListener {
 		UUID connectionUniqueId = event.getContext() != null ? event.getContext().getConnectionUniqueId() : null;
 		if (connectionUniqueId == null) return;
 
-		// Without a completion target no routing will re-arm the ready checkpoint, so a player
-		// already on a server would otherwise never receive the completion.
-		String readyServer = readyServerByConnection.get(connectionUniqueId);
-		if (readyServer == null) return;
+		// Without a completion target the player joins no further server, so a player already in a server's world
+		// would otherwise never receive the completion.
+		String joinedServer = joinedServerByConnection.get(connectionUniqueId);
+		if (joinedServer == null) return;
 
 		identityService.findByConnectionUniqueId(connectionUniqueId).ifPresent(identity -> {
 			Logger.debug("Completion dispatching on current server connection=%s pipeline=%s server=%s",
-					connectionUniqueId, event.getPipelineType(), readyServer);
-			dispatchCompletion(identity, DeliveryCheckpoint.PLATFORM_READY_INITIAL, readyServer);
+					connectionUniqueId, event.getPipelineType(), joinedServer);
+			dispatchCompletion(identity, joinedServer);
 		});
 	}
 
 	@IdenticEvent
 	public void onIdentityDetached(@NotNull IdentityDetachedEvent event) {
-		readyServerByConnection.remove(event.getUniqueId());
+		joinedServerByConnection.remove(event.getUniqueId());
 	}
 
 	@IdenticEvent
 	public void onCompletionRoutingReached(@NotNull CompletionRoutingReachedEvent event) {
-		identityService.findByConnectionUniqueId(event.getIntent().getConnectionUniqueId())
-				.ifPresent(identity -> platformDeliveryAdapter.armInitialReady(identity, event.getCurrentServer()));
+		UUID connectionUniqueId = event.getIntent().getConnectionUniqueId();
+		String currentServer = event.getCurrentServer();
+		// Routing reaches a target the player already joined without a new join, such as the server it is on.
+		if (currentServer == null || !currentServer.equalsIgnoreCase(joinedServerByConnection.get(connectionUniqueId)))
+			return;
+
+		identityService.findByConnectionUniqueId(connectionUniqueId)
+				.ifPresent(identity -> dispatchCompletion(identity, currentServer));
 	}
 
-	private void rememberReadyServer(@NotNull DeliveryCheckpointReachedEvent event) {
-		if (event.getCheckpoint() != DeliveryCheckpoint.PLATFORM_READY_INITIAL) return;
-
-		UUID connectionUniqueId = event.getIdentity().getConnectionUniqueId();
-		if (connectionUniqueId == null || isBlank(event.getCurrentServer())) return;
-
-		readyServerByConnection.put(connectionUniqueId, event.getCurrentServer());
-	}
-
-	private void dispatchCompletion(
-			@NotNull Identity identity,
-			@NotNull DeliveryCheckpoint checkpoint,
-			String currentServer
-	) {
+	private void dispatchCompletion(@NotNull Identity identity, @NotNull String server) {
 		List<DeliveryRequest> delivered = deliveryService.dispatch(DeliveryDispatchContext.builder()
-				.checkpoint(checkpoint)
 				.identity(identity)
-				.currentServer(currentServer)
+				.server(server)
 				.build());
 		for (DeliveryRequest request : delivered) {
 			DeliveryPayload.CompletionPayload completion = request.getPayload().getCompletion();

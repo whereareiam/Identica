@@ -57,8 +57,7 @@ class ConnectionDecisionApplierTest {
 	void waitDecisionSendsActorMessage() {
 		ConnectionDecisionApplier applier = new ConnectionDecisionApplier(
 				this::messages,
-				mock(ConnectionDecisionDeliveryCoordinator.class),
-				mock(me.whereareiam.identica.service.PlatformDeliveryAdapter.class)
+				mock(ConnectionDecisionDeliveryCoordinator.class)
 		);
 		TestActor actor = new TestActor();
 		TestTarget target = new TestTarget();
@@ -75,8 +74,7 @@ class ConnectionDecisionApplierTest {
 	void denyDecisionUsesTarget() {
 		ConnectionDecisionApplier applier = new ConnectionDecisionApplier(
 				this::messages,
-				mock(ConnectionDecisionDeliveryCoordinator.class),
-				mock(me.whereareiam.identica.service.PlatformDeliveryAdapter.class)
+				mock(ConnectionDecisionDeliveryCoordinator.class)
 		);
 		TestActor actor = new TestActor();
 		TestTarget target = new TestTarget();
@@ -91,8 +89,7 @@ class ConnectionDecisionApplierTest {
 	void reconnectDecisionUsesTarget() {
 		ConnectionDecisionApplier applier = new ConnectionDecisionApplier(
 				this::messages,
-				mock(ConnectionDecisionDeliveryCoordinator.class),
-				mock(me.whereareiam.identica.service.PlatformDeliveryAdapter.class)
+				mock(ConnectionDecisionDeliveryCoordinator.class)
 		);
 		TestActor actor = new TestActor();
 		TestTarget target = new TestTarget();
@@ -107,8 +104,7 @@ class ConnectionDecisionApplierTest {
 	void denialsAreAppliedWithoutAnyText() {
 		ConnectionDecisionApplier applier = new ConnectionDecisionApplier(
 				() -> messages(List.of()),
-				mock(ConnectionDecisionDeliveryCoordinator.class),
-				mock(me.whereareiam.identica.service.PlatformDeliveryAdapter.class)
+				mock(ConnectionDecisionDeliveryCoordinator.class)
 		);
 		TestTarget target = new TestTarget();
 

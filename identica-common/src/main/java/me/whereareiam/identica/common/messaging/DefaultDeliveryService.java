@@ -67,7 +67,6 @@ public class DefaultDeliveryService implements DeliveryService {
 
 		List<DeliveryRequest> dispatched = new ArrayList<>();
 		for (DeliveryRequest request : requests.values()) {
-			if (request.getCheckpoint() != context.getCheckpoint()) continue;
 			if (!matchesRequiredServer(request, context)) continue;
 			if (!isStillValid(request, identity)) {
 				acknowledge(request.getId(), "invalidated");
@@ -139,9 +138,8 @@ public class DefaultDeliveryService implements DeliveryService {
 	) {
 		String targetServer = request.getRequiredServer();
 		if (targetServer == null || targetServer.isBlank()) return true;
-		if (context.getCurrentServer() == null || context.getCurrentServer().isBlank()) return false;
 
-		return targetServer.equalsIgnoreCase(context.getCurrentServer());
+		return targetServer.equalsIgnoreCase(context.getServer());
 	}
 
 	private boolean isStillValid(@NotNull DeliveryRequest request, @NotNull Identity identity) {

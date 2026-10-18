@@ -8,7 +8,6 @@ import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.config.Messages;
-import me.whereareiam.identica.service.PlatformDeliveryAdapter;
 import me.whereareiam.keystone.Actor;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
@@ -19,7 +18,6 @@ import org.jetbrains.annotations.Nullable;
 public class ConnectionDecisionApplier {
 	private final @NotNull Provider<Messages> messagesProvider;
 	private final @NotNull ConnectionDecisionDeliveryCoordinator deliveryCoordinator;
-	private final @NotNull PlatformDeliveryAdapter platformDeliveryAdapter;
 
 	public void apply(
 			@Nullable ConnectionDecision decision,
@@ -49,11 +47,7 @@ public class ConnectionDecisionApplier {
 			@NotNull Target target,
 			@NotNull ConnectionIdentity connection
 	) {
-		boolean deferred = deliveryCoordinator.queueWaitDecision(
-				connection,
-				decision,
-				platformDeliveryAdapter.initialPromptCheckpoint()
-		);
+		boolean deferred = deliveryCoordinator.queueWaitDecision(connection, decision);
 		if (!deferred)
 			apply(decision, actor, target);
 

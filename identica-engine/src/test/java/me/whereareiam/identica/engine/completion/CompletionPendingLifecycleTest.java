@@ -3,7 +3,7 @@ package me.whereareiam.identica.engine.completion;
 import me.whereareiam.identica.engine.pipeline.completion.lifecycle.CompletionPendingLifecycle;
 import me.whereareiam.identica.engine.pipeline.completion.runtime.CompletionPipeline;
 import me.whereareiam.identica.event.EventManager;
-import me.whereareiam.identica.event.delivery.DeliveryCheckpointReachedEvent;
+import me.whereareiam.identica.event.connection.ServerJoinedEvent;
 import me.whereareiam.identica.event.identity.IdentityDetachedEvent;
 import me.whereareiam.identica.event.pipeline.attempt.PipelineAttemptFinishedEvent;
 import me.whereareiam.identica.event.routing.completion.CompletionRoutingReachedEvent;
@@ -23,8 +23,6 @@ import me.whereareiam.identica.model.routing.attempt.RoutingAttemptPolicy;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptState;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.service.DeliveryService;
-import me.whereareiam.identica.service.PlatformDeliveryAdapter;
-import me.whereareiam.identica.type.messaging.DeliveryCheckpoint;
 import me.whereareiam.identica.type.messaging.DeliverySemantics;
 import me.whereareiam.identica.type.messaging.DeliverySource;
 import me.whereareiam.identica.type.pipeline.PipelineType;
@@ -53,7 +51,6 @@ class CompletionPendingLifecycleTest {
 		DeliveryService deliveryService = mock(DeliveryService.class);
 		CompletionPipeline completionPipeline = mock(CompletionPipeline.class);
 		IdentityService identityService = mock(IdentityService.class);
-		PlatformDeliveryAdapter platformDeliveryAdapter = mock(PlatformDeliveryAdapter.class);
 		EventManager eventManager = mock(EventManager.class);
 		Routing settings = new Routing();
 		settings.getDefaults().getComplete().setTarget("limbo");
@@ -64,7 +61,6 @@ class CompletionPendingLifecycleTest {
 				deliveryService,
 				completionPipeline,
 				identityService,
-				platformDeliveryAdapter,
 				() -> settings,
 				eventManager
 		);
@@ -84,19 +80,17 @@ class CompletionPendingLifecycleTest {
 		verify(deliveryService).queue(argThat((DeliveryRequest request) ->
 				request != null
 						&& request.getPayload().getCompletion() != null
-						&& request.getCheckpoint() == DeliveryCheckpoint.PLATFORM_READY_INITIAL
 						&& "migration-limbo".equals(request.getRequiredServer())
 		));
 		verify(completionPipeline, never()).complete(any());
 	}
 
-	@DisplayName("Authentication completion keeps using the initial ready checkpoint")
+	@DisplayName("Authentication completion waits for its completion server")
 	@Test
-	void authenticationCompletionUsesInitialReadyCheckpoint() {
+	void authenticationCompletionWaitsForItsCompletionServer() {
 		DeliveryService deliveryService = mock(DeliveryService.class);
 		CompletionPipeline completionPipeline = mock(CompletionPipeline.class);
 		IdentityService identityService = mock(IdentityService.class);
-		PlatformDeliveryAdapter platformDeliveryAdapter = mock(PlatformDeliveryAdapter.class);
 		EventManager eventManager = mock(EventManager.class);
 		Routing settings = new Routing();
 		settings.getDefaults().getComplete().setTarget("survival");
@@ -104,7 +98,6 @@ class CompletionPendingLifecycleTest {
 				deliveryService,
 				completionPipeline,
 				identityService,
-				platformDeliveryAdapter,
 				() -> settings,
 				eventManager
 		);
@@ -123,26 +116,23 @@ class CompletionPendingLifecycleTest {
 
 		verify(deliveryService).queue(argThat((DeliveryRequest request) ->
 				request != null
-						&& request.getCheckpoint() == DeliveryCheckpoint.PLATFORM_READY_INITIAL
 						&& "survival".equals(request.getRequiredServer())
 		));
 		verify(completionPipeline, never()).complete(any());
 	}
 
-	@DisplayName("Completion routing reached rearms the platform ready checkpoint")
+	@DisplayName("Completion routing that reaches a server the player has not joined yet waits for the join")
 	@Test
-	void completionRoutingReachedRearmsPlatformReady() {
+	void completionRoutingReachedWaitsForTheJoin() {
 		DeliveryService deliveryService = mock(DeliveryService.class);
 		CompletionPipeline completionPipeline = mock(CompletionPipeline.class);
 		IdentityService identityService = mock(IdentityService.class);
-		PlatformDeliveryAdapter platformDeliveryAdapter = mock(PlatformDeliveryAdapter.class);
 		EventManager eventManager = mock(EventManager.class);
 		Routing settings = new Routing();
 		CompletionPendingLifecycle lifecycle = new CompletionPendingLifecycle(
 				deliveryService,
 				completionPipeline,
 				identityService,
-				platformDeliveryAdapter,
 				() -> settings,
 				eventManager
 		);
@@ -165,27 +155,70 @@ class CompletionPendingLifecycleTest {
 
 		when(identityService.findByConnectionUniqueId(connectionUniqueId)).thenReturn(Optional.of(identity));
 
+		lifecycle.onServerJoined(new ServerJoinedEvent(identity, "lobby"));
+		clearInvocations(deliveryService);
+
 		lifecycle.onCompletionRoutingReached(new CompletionRoutingReachedEvent(intent, "survival"));
 
-		verify(platformDeliveryAdapter).armInitialReady(identity, "survival");
+		verify(deliveryService, never()).dispatch(any());
 		verify(completionPipeline, never()).complete(any(), any());
-		verify(deliveryService, never()).acknowledge(any(), any());
 	}
 
-	@DisplayName("Delivery checkpoint dispatches queued completion")
+	@DisplayName("Completion routing that reaches the server the player already joined dispatches completion")
 	@Test
-	void deliveryCheckpointDispatchesQueuedCompletion() {
+	void completionRoutingReachedOnTheJoinedServerDispatches() {
 		DeliveryService deliveryService = mock(DeliveryService.class);
 		CompletionPipeline completionPipeline = mock(CompletionPipeline.class);
 		IdentityService identityService = mock(IdentityService.class);
-		PlatformDeliveryAdapter platformDeliveryAdapter = mock(PlatformDeliveryAdapter.class);
 		EventManager eventManager = mock(EventManager.class);
 		Routing settings = new Routing();
 		CompletionPendingLifecycle lifecycle = new CompletionPendingLifecycle(
 				deliveryService,
 				completionPipeline,
 				identityService,
-				platformDeliveryAdapter,
+				() -> settings,
+				eventManager
+		);
+		UUID connectionUniqueId = UUID.randomUUID();
+		UUID accountUniqueId = UUID.randomUUID();
+		TestIdentity identity = new TestIdentity(connectionUniqueId, accountUniqueId, "PlayerOne");
+		RoutingIntent intent = new RoutingIntent(
+				UUID.randomUUID(),
+				connectionUniqueId,
+				new RoutingEndpoint("survival"),
+				RoutingReason.COMPLETION,
+				RoutingAttemptPolicy.defaultCompletion(),
+				new RoutingAttemptState(),
+				PipelineType.MIGRATION,
+				null,
+				"credential",
+				null,
+				System.currentTimeMillis()
+		);
+
+		when(identityService.findByConnectionUniqueId(connectionUniqueId)).thenReturn(Optional.of(identity));
+
+		lifecycle.onServerJoined(new ServerJoinedEvent(identity, "survival"));
+		clearInvocations(deliveryService);
+
+		lifecycle.onCompletionRoutingReached(new CompletionRoutingReachedEvent(intent, "survival"));
+
+		verify(deliveryService).dispatch(argThat(context ->
+				context.getIdentity() == identity && "survival".equals(context.getServer())));
+	}
+
+	@DisplayName("Joining a server dispatches queued completion")
+	@Test
+	void joiningAServerDispatchesQueuedCompletion() {
+		DeliveryService deliveryService = mock(DeliveryService.class);
+		CompletionPipeline completionPipeline = mock(CompletionPipeline.class);
+		IdentityService identityService = mock(IdentityService.class);
+		EventManager eventManager = mock(EventManager.class);
+		Routing settings = new Routing();
+		CompletionPendingLifecycle lifecycle = new CompletionPendingLifecycle(
+				deliveryService,
+				completionPipeline,
+				identityService,
 				() -> settings,
 				eventManager
 		);
@@ -207,7 +240,6 @@ class CompletionPendingLifecycleTest {
 								.pipelineType(PipelineType.MIGRATION)
 								.build())
 						.build())
-				.checkpoint(DeliveryCheckpoint.PLATFORM_READY_INITIAL)
 				.semantics(me.whereareiam.identica.type.messaging.DeliverySemantics.ONCE)
 				.requiredServer("survival")
 				.createdAt(System.currentTimeMillis())
@@ -215,16 +247,10 @@ class CompletionPendingLifecycleTest {
 				.build();
 
 		when(deliveryService.dispatch(argThat(context ->
-				context.getCheckpoint() == DeliveryCheckpoint.PLATFORM_READY_INITIAL
-						&& context.getIdentity() == identity
-						&& "survival".equals(context.getCurrentServer())
+				context.getIdentity() == identity && "survival".equals(context.getServer())
 		))).thenReturn(List.of(request));
 
-		lifecycle.onDeliveryCheckpointReached(new DeliveryCheckpointReachedEvent(
-				DeliveryCheckpoint.PLATFORM_READY_INITIAL,
-				identity,
-				"survival"
-		));
+		lifecycle.onServerJoined(new ServerJoinedEvent(identity, "survival"));
 
 		verify(completionPipeline).complete(eq(identity), argThat((CompletionPendingState pendingState) ->
 				pendingState != null
@@ -241,14 +267,12 @@ class CompletionPendingLifecycleTest {
 		DeliveryService deliveryService = mock(DeliveryService.class);
 		CompletionPipeline completionPipeline = mock(CompletionPipeline.class);
 		IdentityService identityService = mock(IdentityService.class);
-		PlatformDeliveryAdapter platformDeliveryAdapter = mock(PlatformDeliveryAdapter.class);
 		EventManager eventManager = mock(EventManager.class);
 		Routing settings = new Routing();
 		CompletionPendingLifecycle lifecycle = new CompletionPendingLifecycle(
 				deliveryService,
 				completionPipeline,
 				identityService,
-				platformDeliveryAdapter,
 				() -> settings,
 				eventManager
 		);
@@ -258,15 +282,9 @@ class CompletionPendingLifecycleTest {
 		DeliveryRequest request = completionRequest(connectionUniqueId, accountUniqueId, PipelineType.REGISTRATION, "");
 
 		when(identityService.findByConnectionUniqueId(connectionUniqueId)).thenReturn(Optional.of(identity));
-		lifecycle.onDeliveryCheckpointReached(new DeliveryCheckpointReachedEvent(
-				DeliveryCheckpoint.PLATFORM_READY_INITIAL,
-				identity,
-				"lobby"
-		));
+		lifecycle.onServerJoined(new ServerJoinedEvent(identity, "lobby"));
 		when(deliveryService.dispatch(argThat(context ->
-				context.getCheckpoint() == DeliveryCheckpoint.PLATFORM_READY_INITIAL
-						&& context.getIdentity() == identity
-						&& "lobby".equals(context.getCurrentServer())
+				context.getIdentity() == identity && "lobby".equals(context.getServer())
 		))).thenReturn(List.of(request));
 
 		lifecycle.onPipelineAttemptFinished(new PipelineAttemptFinishedEvent(
@@ -283,20 +301,18 @@ class CompletionPendingLifecycleTest {
 		verify(deliveryService).acknowledge(request.getId(), "completion-dispatched");
 	}
 
-	@DisplayName("Finishing a pipeline before the player reaches a server keeps completion queued")
+	@DisplayName("Finishing a pipeline after the player left keeps completion queued")
 	@Test
-	void pipelineFinishedBeforePlatformReadyKeepsCompletionQueued() {
+	void pipelineFinishedAfterThePlayerLeftKeepsCompletionQueued() {
 		DeliveryService deliveryService = mock(DeliveryService.class);
 		CompletionPipeline completionPipeline = mock(CompletionPipeline.class);
 		IdentityService identityService = mock(IdentityService.class);
-		PlatformDeliveryAdapter platformDeliveryAdapter = mock(PlatformDeliveryAdapter.class);
 		EventManager eventManager = mock(EventManager.class);
 		Routing settings = new Routing();
 		CompletionPendingLifecycle lifecycle = new CompletionPendingLifecycle(
 				deliveryService,
 				completionPipeline,
 				identityService,
-				platformDeliveryAdapter,
 				() -> settings,
 				eventManager
 		);
@@ -304,11 +320,7 @@ class CompletionPendingLifecycleTest {
 		TestIdentity identity = new TestIdentity(connectionUniqueId, UUID.randomUUID(), "PlayerOne");
 
 		when(identityService.findByConnectionUniqueId(connectionUniqueId)).thenReturn(Optional.of(identity));
-		lifecycle.onDeliveryCheckpointReached(new DeliveryCheckpointReachedEvent(
-				DeliveryCheckpoint.PLATFORM_READY_INITIAL,
-				identity,
-				"lobby"
-		));
+		lifecycle.onServerJoined(new ServerJoinedEvent(identity, "lobby"));
 		lifecycle.onIdentityDetached(new IdentityDetachedEvent(connectionUniqueId));
 		clearInvocations(deliveryService);
 
@@ -328,7 +340,6 @@ class CompletionPendingLifecycleTest {
 		DeliveryService deliveryService = mock(DeliveryService.class);
 		CompletionPipeline completionPipeline = mock(CompletionPipeline.class);
 		IdentityService identityService = mock(IdentityService.class);
-		PlatformDeliveryAdapter platformDeliveryAdapter = mock(PlatformDeliveryAdapter.class);
 		EventManager eventManager = mock(EventManager.class);
 		Routing settings = new Routing();
 		settings.getDefaults().getComplete().setTarget("survival");
@@ -336,7 +347,6 @@ class CompletionPendingLifecycleTest {
 				deliveryService,
 				completionPipeline,
 				identityService,
-				platformDeliveryAdapter,
 				() -> settings,
 				eventManager
 		);
@@ -344,11 +354,7 @@ class CompletionPendingLifecycleTest {
 		TestIdentity identity = new TestIdentity(connectionUniqueId, UUID.randomUUID(), "PlayerOne");
 
 		when(identityService.findByConnectionUniqueId(connectionUniqueId)).thenReturn(Optional.of(identity));
-		lifecycle.onDeliveryCheckpointReached(new DeliveryCheckpointReachedEvent(
-				DeliveryCheckpoint.PLATFORM_READY_INITIAL,
-				identity,
-				"lobby"
-		));
+		lifecycle.onServerJoined(new ServerJoinedEvent(identity, "lobby"));
 		clearInvocations(deliveryService);
 
 		lifecycle.onPipelineAttemptFinished(new PipelineAttemptFinishedEvent(
@@ -381,7 +387,6 @@ class CompletionPendingLifecycleTest {
 								.pipelineType(pipelineType)
 								.build())
 						.build())
-				.checkpoint(DeliveryCheckpoint.PLATFORM_READY_INITIAL)
 				.semantics(DeliverySemantics.ONCE)
 				.requiredServer(requiredServer)
 				.createdAt(System.currentTimeMillis())

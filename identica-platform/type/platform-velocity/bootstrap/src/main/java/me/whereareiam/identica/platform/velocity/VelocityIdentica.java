@@ -80,6 +80,7 @@ public class VelocityIdentica {
 		VelocityLibraryManager libraryManager = new VelocityLibraryManager(proxyServer, pluginContainer, logger, dataPath, ".libraries");
 		libraryManager.setVerbosityMode(VerbosityMode.SUMMARY);
 		libraryManager.loadDescriptors();
+		libraryManager.loadGroups("velocity");
 
 		featureRuntime = BuiltinFeatures.runtime(dataPath);
 		List<Module> modules = new ArrayList<>(List.of(

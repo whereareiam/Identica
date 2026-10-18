@@ -32,12 +32,17 @@ dependencies {
     compileOnly(libs.velocity)
     annotationProcessor(libs.velocity)
 
-    attache(libs.cloud.velocity)
-
     testRuntimeOnly(libs.strata)
     testRuntimeOnly(libs.strata.adapter.configura)
     testRuntimeOnly(libs.strata.adapter.database)
     testRuntimeOnly(libs.strata.adapter.database.dialectica)
     testRuntimeOnly(libs.jedis)
     testRuntimeOnly(libs.hikaricp)
+}
+
+// The bundle jar carries the descriptors of every platform, so each platform loads its own libraries as a group.
+attache {
+    group("velocity") {
+        library(libs.cloud.velocity)
+    }
 }

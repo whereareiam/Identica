@@ -47,6 +47,7 @@ public class BungeeCordIdentica extends Plugin {
 		BungeeCordLibraryManager libraryManager = new BungeeCordLibraryManager(this, ".libraries");
 		libraryManager.setVerbosityMode(VerbosityMode.SUMMARY);
 		libraryManager.loadDescriptors();
+		libraryManager.loadGroups("bungeecord");
 
 		audiences = BungeeAudiences.builder(this).build();
 		featureRuntime = BuiltinFeatures.runtime(getDataFolder().toPath());

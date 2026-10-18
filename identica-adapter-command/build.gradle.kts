@@ -15,3 +15,13 @@ dependencies {
     attache(libs.cloud.core)
     attache(libs.cloud.minecraft.extras)
 }
+
+// The platform supplies Adventure: the proxy on Velocity, the bootstrap on BungeeCord.
+attache {
+    library(libs.cloud.minecraft.extras) {
+        excludeTransitive("net.kyori", "adventure-api")
+        excludeTransitive("net.kyori", "adventure-key")
+        excludeTransitive("net.kyori", "adventure-text-minimessage")
+        excludeTransitive("net.kyori", "adventure-text-serializer-plain")
+    }
+}

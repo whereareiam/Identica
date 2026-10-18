@@ -77,7 +77,8 @@ public @interface Identica {
 
 	/**
 	 * Whether the proxy also runs the example addon, which holds back chat and commands until a player has
-	 * authenticated. The addon is a Velocity plugin.
+	 * authenticated and holds the players of {@link IdenticaNetwork#HOLD_HOST} and {@link IdenticaNetwork#ASK_HOST} at
+	 * its checkpoints. On BungeeCord, the addon runs only its checkpoints.
 	 */
 	boolean addon() default false;
 

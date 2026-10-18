@@ -327,7 +327,7 @@ class TotpVerificationTest {
 	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void anAdministratorResetByUniqueIdLetsThePlayerInWithThePasswordAlone(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
-		String uniqueId = alice.journey().identity().getObserved().getUniqueId().toString();
+		String uniqueId = alice.journey().profile().getUniqueId().toString();
 		alice.journey().leave();
 
 		Administrator.at(anvil, PROXY).resetsVerificationOf(uniqueId);

@@ -60,7 +60,7 @@ class UniqueUsernameTest {
 				.sees(m -> m.example().getPrompt())
 				.command("passphrase " + PASSPHRASE)
 				.on(LOBBY);
-		UUID account = steve.identity().getObserved().getUniqueId();
+		UUID account = steve.profile().getUniqueId();
 		steve.leave();
 
 		Administrator.at(anvil, PROXY)
@@ -73,19 +73,19 @@ class UniqueUsernameTest {
 				.sees(m -> m.example().getPrompt())
 				.command("passphrase " + PASSPHRASE)
 				.on(LOBBY);
-		assertEquals(account, steve.identity().getObserved().getUniqueId());
+		assertEquals(account, steve.profile().getUniqueId());
 	}
 
 	@Test
 	@Identica(providers = Provider.CREDENTIAL)
 	void logsAPlayerJoiningInAnotherCaseInToTheirCredentialAccount(ScenarioContext anvil) {
 		Journey registered = loggedIn(Accounts.credential(anvil, "Steve", PASSWORD).rejoin());
-		UUID account = registered.identity().getObserved().getUniqueId();
+		UUID account = registered.profile().getUniqueId();
 		registered.leave();
 
 		Journey player = loggedIn(Journey.offline(anvil, "steve").join());
 
-		assertEquals(account, player.identity().getObserved().getUniqueId());
+		assertEquals(account, player.profile().getUniqueId());
 		Administrator.at(anvil, PROXY).findsNoDuplicateUsernames();
 	}
 

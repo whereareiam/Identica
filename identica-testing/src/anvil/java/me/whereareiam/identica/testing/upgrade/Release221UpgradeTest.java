@@ -58,9 +58,9 @@ class Release221UpgradeTest {
 	void logsInWithThePasswordOf221AlsoInAnotherCase(ScenarioContext anvil) {
 		// The usernames move to their own tables, and the migration history 2.x kept for the credential tables goes.
 		ProcessConsole console = anvil.processes().proxy(PROXY).console();
-		console.await("Database schema identica/account: applied 1 username-layout", 0, Duration.ofSeconds(5));
-		console.await("Database schema identica/account: applied 2 username-table", 0, Duration.ofSeconds(5));
-		console.await("Database schema identica/provider/credential: applied 2 legacy-migration-history", 0, Duration.ofSeconds(5));
+		console.watchFromStart().printed("Database schema identica/account: applied 1 username-layout", Duration.ofSeconds(5));
+		console.watchFromStart().printed("Database schema identica/account: applied 2 username-table", Duration.ofSeconds(5));
+		console.watchFromStart().printed("Database schema identica/provider/credential: applied 2 legacy-migration-history", Duration.ofSeconds(5));
 
 		Journey.offline(anvil, "Upgrader").join()
 				.on(AUTH)
@@ -127,7 +127,7 @@ class Release221UpgradeTest {
 	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.EXAMPLE, configure = Release221Database.class)
 	void keepsLoggingInBothAccountsOfAUsername221HeldInTwoCases(ScenarioContext anvil) {
 		ProcessConsole console = anvil.processes().proxy(PROXY).console();
-		console.await("Duplicate usernames: dave", 0, Duration.ofSeconds(5));
+		console.watchFromStart().printed("Duplicate usernames: dave", Duration.ofSeconds(5));
 
 		for (String username : List.of("Dave", "dave"))
 			Journey.offline(anvil, username).join()

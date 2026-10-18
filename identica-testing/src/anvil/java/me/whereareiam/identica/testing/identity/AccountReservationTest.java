@@ -42,7 +42,7 @@ class AccountReservationTest {
 
 		Journey alice = registered(Journey.offline(anvil, "Alice").join());
 
-		assertEquals(reserved, alice.identity().getObserved().getUniqueId());
+		assertEquals(reserved, alice.profile().getUniqueId());
 	}
 
 	@Test
@@ -60,14 +60,14 @@ class AccountReservationTest {
 				.login(PASSWORD)
 				.on(LOBBY);
 
-		assertEquals(reserved, alice.identity().getObserved().getUniqueId());
+		assertEquals(reserved, alice.profile().getUniqueId());
 	}
 
 	@Test
 	@Identica(providers = Provider.CREDENTIAL)
 	void givesTheReservedUuidToThePlayerOfADeletedAccount(ScenarioContext anvil) {
 		Journey alice = loggedIn(Accounts.credential(anvil, "Alice", PASSWORD));
-		UUID deleted = alice.identity().getObserved().getUniqueId();
+		UUID deleted = alice.profile().getUniqueId();
 		UUID reserved = offline("Alice");
 		assertNotEquals(reserved, deleted);
 
@@ -76,7 +76,7 @@ class AccountReservationTest {
 		admin.reserves("Alice", reserved);
 
 		registered(alice.rejoin());
-		assertEquals(reserved, alice.identity().getObserved().getUniqueId());
+		assertEquals(reserved, alice.profile().getUniqueId());
 	}
 
 	@Test
@@ -101,7 +101,7 @@ class AccountReservationTest {
 
 		Journey alice = registered(Journey.offline(anvil, "Alice").join());
 
-		assertNotEquals(reserved, alice.identity().getObserved().getUniqueId());
+		assertNotEquals(reserved, alice.profile().getUniqueId());
 	}
 
 	@Test
@@ -112,7 +112,7 @@ class AccountReservationTest {
 
 		Journey bob = registered(Journey.offline(anvil, "Bob").join());
 
-		assertNotEquals(reserved, bob.identity().getObserved().getUniqueId());
+		assertNotEquals(reserved, bob.profile().getUniqueId());
 	}
 
 	@Test
@@ -126,7 +126,7 @@ class AccountReservationTest {
 		Journey alice = Journey.offline(anvil, "Alice").waits(RESERVATION_TTL);
 		registered(alice.join());
 
-		assertNotEquals(reserved, alice.identity().getObserved().getUniqueId());
+		assertNotEquals(reserved, alice.profile().getUniqueId());
 	}
 
 	private static Journey loggedIn(Journey player) {

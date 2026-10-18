@@ -27,11 +27,13 @@ public final class Administrator {
 
 	private final ProcessConsole console;
 	private final IdenticaMessages configured;
-	private long lastCommand;
+	/** What the proxy printed since the previous command was sent, or since it started before the first one. */
+	private ConsoleLines sinceCommand;
 
 	private Administrator(ScenarioContext anvil, String proxy) {
 		this.console = anvil.processes().proxy(proxy).console();
 		this.configured = new IdenticaMessages(Platform.dataDirectory(anvil, proxy));
+		this.sinceCommand = ConsoleLines.fromStart(console);
 	}
 
 	/**
@@ -406,7 +408,7 @@ public final class Administrator {
 		List<String> expected = List.of(texts);
 		Instant deadline = Instant.now().plus(TIMEOUT);
 		while (true) {
-			List<String> lines = ConsoleLines.read(console, lastCommand, 2000);
+			List<String> lines = sinceCommand.lines();
 			if (lines.stream().anyMatch(line -> expected.stream().allMatch(line::contains))) return this;
 			if (Instant.now().isAfter(deadline))
 				fail("The console did not show a line with " + expected + "; console: " + lines);
@@ -452,11 +454,11 @@ public final class Administrator {
 		Set<String> holding = Set.of(proxies);
 		Instant deadline = Instant.now().plus(TIMEOUT);
 		while (true) {
-			long before = console.checkpoint();
+			ConsoleLines output = ConsoleLines.from(console);
 			console.sendCommand(command);
 			pause(500);
 
-			String answer = String.join("\n", ConsoleLines.read(console, before, 500));
+			String answer = String.join("\n", output.lines());
 			boolean exact = true;
 			for (String proxy : List.of(IdenticaNetwork.PROXY_A, IdenticaNetwork.PROXY_B))
 				exact &= heldBy(message, proxy).in(answer) == holding.contains(proxy);
@@ -491,13 +493,13 @@ public final class Administrator {
 	 */
 	private void run(String command, Object answer) {
 		MessageText expected = new MessageText(answer);
-		long before = console.checkpoint();
-		lastCommand = before;
+		ConsoleLines output = ConsoleLines.from(console);
+		sinceCommand = output;
 		console.sendCommand(command);
 
 		Instant deadline = Instant.now().plus(TIMEOUT);
 		while (true) {
-			List<String> lines = ConsoleLines.read(console, before, 500);
+			List<String> lines = output.lines();
 			if (expected.in(String.join("\n", lines))) return;
 			if (Instant.now().isAfter(deadline))
 				fail("The proxy did not answer \"" + command + "\" with " + expected + "; console: " + lines);

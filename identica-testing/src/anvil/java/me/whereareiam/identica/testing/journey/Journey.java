@@ -1,15 +1,16 @@
 package me.whereareiam.identica.testing.journey;
 
-import me.whereareiam.anvil.api.model.player.PlayerIdentity;
 import me.whereareiam.anvil.api.model.player.PlayerOptions;
+import me.whereareiam.anvil.api.model.player.PlayerProfile;
 import me.whereareiam.anvil.api.model.player.SessionIdentity;
 import me.whereareiam.anvil.api.player.SimulatedPlayer;
-import me.whereareiam.anvil.api.process.ProcessConsole;
+import me.whereareiam.anvil.api.process.RunningProcess;
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.anvil.api.type.DisconnectCause;
+import me.whereareiam.anvil.capability.messages.MessageWatch;
 import me.whereareiam.anvil.capability.messages.Messages;
-import me.whereareiam.anvil.capability.messages.model.ReceivedMessage;
-import me.whereareiam.anvil.capability.server.Server;
+import me.whereareiam.anvil.capability.players.PlayerWatch;
+import me.whereareiam.anvil.capability.players.Players;
 import me.whereareiam.anvil.capability.session.Session;
 import me.whereareiam.identica.testing.environment.Platform;
 import me.whereareiam.identica.testing.environment.Provider;
@@ -20,8 +21,11 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -46,15 +50,25 @@ public final class Journey {
 	private final ProxyReports reports;
 	private final Session session;
 	private final Messages messages;
-	private final Server server;
-	private final ProcessConsole proxy;
+	/** Messages the player receives from the journey's start; each expectation continues after the previous one. */
+	private final MessageWatch chat;
+	private final Players proxyPlayers;
+	/** The player joining the proxy and the backends it connects the player to, as the proxy reports it. */
+	private final PlayerWatch routes;
+	/** The player joining each backend, as the backend itself reports it. */
+	private final Map<String, PlayerWatch> arrivals;
+	private final Map<String, Players> backends;
+	/** What the proxy prints from the journey's start on. */
+	private final ConsoleLines proxy;
 	private final IdenticaMessages configured;
-	private final long created;
 
 	private String playedAs;
-	private int read;
-	private long console;
-	private long attempted;
+	/** Backend the player was last expected on. */
+	private String backend;
+	/** Proxy console lines up to and including the one the previous expectation matched. */
+	private int console;
+	/** Proxy console lines printed before the latest attempt. */
+	private int attempted;
 	private int connections;
 	/** Whether the proxy has named the player of the current connection on its console. */
 	private boolean named;
@@ -69,12 +83,15 @@ public final class Journey {
 		this.reports = ProxyReports.of(Platform.of(anvil, proxy));
 		this.session = player.capability(Session.class);
 		this.messages = player.capability(Messages.class);
-		this.server = player.capability(Server.class);
-		this.proxy = anvil.processes().proxy(proxy).console();
+		this.chat = messages.watch();
+		this.proxyPlayers = anvil.processes().proxy(proxy).capability(Players.class);
+		this.routes = proxyPlayers.watch();
+		this.backends = anvil.processes().servers().stream()
+				.collect(Collectors.toUnmodifiableMap(RunningProcess::name, server -> server.capability(Players.class)));
+		this.arrivals = backends.entrySet().stream()
+				.collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, entry -> entry.getValue().watch()));
+		this.proxy = ConsoleLines.from(anvil.processes().proxy(proxy).console());
 		this.configured = new IdenticaMessages(Platform.dataDirectory(anvil, proxy));
-		this.console = this.proxy.checkpoint();
-		this.created = console;
-		this.read = messages.checkpoint();
 	}
 
 	/**
@@ -121,7 +138,7 @@ public final class Journey {
 	 * Connects without expecting an outcome, for joins the proxy may refuse.
 	 */
 	public Journey attempt() {
-		attempted = proxy.checkpoint();
+		attempted = proxy.lines().size();
 		named = false;
 		session.connect();
 		return this;
@@ -131,7 +148,7 @@ public final class Journey {
 	 * Reconnects without expecting an outcome, for joins the proxy may refuse.
 	 */
 	public Journey attemptAgain() {
-		attempted = proxy.checkpoint();
+		attempted = proxy.lines().size();
 		named = false;
 		session.rejoin();
 		return this;
@@ -166,12 +183,14 @@ public final class Journey {
 	}
 
 	/**
-	 * Expects the player on a backend: observed by that server's agent and reported by the proxy.
+	 * Expects the proxy to connect the player to a backend: reported by the proxy's agent and on its console, and
+	 * observed by that server's agent.
 	 */
 	public Journey on(String backend) {
-		PlayerIdentity identity = server.joined(backend, TIMEOUT);
-		assertEquals(backend, identity.getRoute().getServer());
+		routes.joined(player, backend, TIMEOUT);
+		arrival(backend).joined(player, TIMEOUT);
 		reported(reports.connected(playedAs, backend), playedAs + " has connected to " + backend);
+		this.backend = backend;
 		named = true;
 		return this;
 	}
@@ -181,8 +200,10 @@ public final class Journey {
 	 * connection another server refused, which the proxy reports as connected and then disconnected, is no move.
 	 */
 	public Journey remainsOn(String backend) {
-		server.stayed(backend, SETTLE);
-		List<String> lines = ConsoleLines.read(proxy, console, 200);
+		routes.neverJoined(player, SETTLE);
+		assertEquals(Optional.of(backend), proxyPlayers.backend(player), name + " must stay on " + backend);
+		assertTrue(players(backend).profile(player).isPresent(), backend + " must still see " + name);
+		List<String> lines = proxy.after(console);
 		List<String> moves = new ArrayList<>();
 		for (int index = 0; index < lines.size(); index++) {
 			String line = lines.get(index);
@@ -294,7 +315,7 @@ public final class Journey {
 		Predicate<String> matcher = received -> expected.stream().anyMatch(alternative -> alternative.in(received));
 		int first;
 		try {
-			first = player.awaitFirst(TIMEOUT, messages.expectReceived(matcher, read), session.expectKicked());
+			first = player.awaitFirst(TIMEOUT, chat.expectReceived(matcher), session.expectKicked());
 		} catch (IllegalStateException timeout) {
 			return fail(name + " neither received " + expected + " nor was disconnected; new messages: " + unread(), timeout);
 		}
@@ -308,8 +329,7 @@ public final class Journey {
 	 * Returns the messages received since the previous expectation, without consuming them.
 	 */
 	public List<String> unread() {
-		List<String> history = messages.history();
-		return List.copyOf(history.subList(Math.min(read, history.size()), history.size()));
+		return chat.unread();
 	}
 
 	/**
@@ -317,7 +337,7 @@ public final class Journey {
 	 */
 	public Journey doesNotSee(Function<IdenticaMessages, ?> message) {
 		MessageText unexpected = text(message);
-		messages.notReceived(unexpected::in, read, SETTLE);
+		chat.neverReceived(unexpected::in, SETTLE);
 		return this;
 	}
 
@@ -339,7 +359,7 @@ public final class Journey {
 		Predicate<String> accepted = reports.accepted(playedAs, source);
 		if (accepted == null) return this;
 
-		List<String> acceptedLines = ConsoleLines.read(proxy, created, 2000).stream()
+		List<String> acceptedLines = proxy.lines().stream()
 				.filter(accepted)
 				.toList();
 		assertEquals(connections, acceptedLines.size(), "The proxy must not accept " + name + "; console: " + acceptedLines);
@@ -361,26 +381,28 @@ public final class Journey {
 	 * Expects the player's current backend to see the player under a username.
 	 */
 	public Journey playsAs(String username) {
-		assertEquals(username, identity().getObserved().getUsername(), name + " must play as " + username);
+		assertEquals(username, profile().getUsername(), name + " must play as " + username);
 		return this;
 	}
 
-	/**
-	 * Returns the identity the player's current backend observes.
-	 */
 	/**
 	 * Returns when the proxy connected this player to a backend since the journey began, as the times of its console
 	 * lines. A connection the backend refused counts as well, so this tells how often the proxy tried.
 	 */
 	public List<LocalTime> connectionsTo(String backend) {
-		return ConsoleLines.read(proxy, created, 2000).stream()
+		return proxy.lines().stream()
 				.filter(reports.connected(playedAs, backend))
 				.map(reports::time)
 				.toList();
 	}
 
-	public PlayerIdentity identity() {
-		return server.identity();
+	/**
+	 * Returns the profile the backend the player was last expected {@link #on} reports for the player.
+	 */
+	public PlayerProfile profile() {
+		if (backend == null) throw new IllegalStateException(name + " has not been expected on a backend");
+		return players(backend).profile(player)
+				.orElseThrow(() -> new AssertionError(backend + " does not see " + name));
 	}
 
 	/**
@@ -434,7 +456,7 @@ public final class Journey {
 	 * Expects that no message containing a text has arrived since the previous expectation, after giving it time to.
 	 */
 	public Journey doesNotSeeText(String text) {
-		messages.notReceived(received -> received.contains(text), read, SETTLE);
+		chat.neverReceived(received -> received.contains(text), SETTLE);
 		return this;
 	}
 
@@ -481,7 +503,7 @@ public final class Journey {
 	public Journey refusedAtLoginWith(Function<IdenticaMessages, ?> message) {
 		kickedWith(message);
 		assertEquals(DisconnectCause.SERVER, session.state().disconnectCause(), name + " must be refused by the proxy");
-		List<String> routed = ConsoleLines.read(proxy, attempted, 500).stream()
+		List<String> routed = proxy.after(attempted).stream()
 				.filter(line -> reports.connectedTo(line, name) != null)
 				.toList();
 		assertEquals(List.of(), routed, name + " must be refused before reaching a backend");
@@ -537,9 +559,7 @@ public final class Journey {
 	 */
 	private String receive(Predicate<String> matcher, List<MessageText> expected) {
 		try {
-			ReceivedMessage message = messages.received(matcher, read, TIMEOUT);
-			read = message.getCheckpoint();
-			return message.getText();
+			return chat.received(matcher, TIMEOUT);
 		} catch (IllegalStateException timeout) {
 			return fail(name + " did not receive " + expected + "; new messages: " + unread(), timeout);
 		}
@@ -565,20 +585,31 @@ public final class Journey {
 	private String reported(Predicate<String> report, String description) {
 		Instant deadline = Instant.now().plus(TIMEOUT);
 		while (true) {
-			var output = proxy.read(console, 500);
-			for (var line : output.getLines()) {
-				String text = ConsoleLines.plain(line.getText());
-				if (!report.test(text)) continue;
+			List<String> lines = proxy.after(console);
+			for (int index = 0; index < lines.size(); index++) {
+				String line = lines.get(index);
+				if (!report.test(line)) continue;
 
-				console = line.getSequence();
-				return text;
+				console += index + 1;
+				return line;
 			}
 
 			if (Instant.now().isAfter(deadline))
-				fail("The proxy did not report \"" + description + "\"; console: "
-						+ output.getLines().stream().map(line -> ConsoleLines.plain(line.getText())).toList());
+				fail("The proxy did not report \"" + description + "\"; console: " + lines);
 			sleep(Duration.ofMillis(100));
 		}
+	}
+
+	private Players players(String backend) {
+		Players players = backends.get(backend);
+		if (players == null) throw new IllegalArgumentException("No running backend is named " + backend);
+		return players;
+	}
+
+	private PlayerWatch arrival(String backend) {
+		PlayerWatch arrival = arrivals.get(backend);
+		if (arrival == null) throw new IllegalArgumentException("No running backend is named " + backend);
+		return arrival;
 	}
 
 	private static void sleep(Duration duration) {

@@ -200,7 +200,7 @@ A merged pull request lands in the release draft as `* <title> ([#<number>](<url
 
 Areas for admins and players:
 
-`Authentication`, `Commands`, `Configuration`, `Credential`, `Database`, `Messages`, `Migration`, `Platform`, `Premium`, `Recognition`, `Replication`, `Restriction`, `Routing`, `Sessions`, `Statistics`
+`Authentication`, `Commands`, `Configuration`, `Credential`, `Database`, `Messages`, `Migration`, `Platform`, `Premium`, `Recognition`, `Replication`, `Restriction`, `Routing`, `Sentinel`, `Sessions`, `Statistics`
 
 - reuse an existing area whenever one fits; a new admin command is `Commands`, a new setting in a feature's file belongs to that feature's area
 - add a new area only for something admins recognise by that name, such as a new feature, provider, or config file, and add it to this list in the same pull request

@@ -1,6 +1,12 @@
 package me.whereareiam.identica.common.routing;
 
+import me.whereareiam.identica.checkpoint.Checkpoint;
+import me.whereareiam.identica.checkpoint.CheckpointStop;
+import me.whereareiam.identica.checkpoint.Checkpoints;
+import me.whereareiam.identica.common.checkpoint.DefaultCheckpoints;
+import me.whereareiam.identica.common.event.EventController;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
+import me.whereareiam.identica.model.checkpoint.CheckpointRequest;
 import me.whereareiam.identica.model.config.Routing;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.ScenarioTransitionItem;
@@ -12,6 +18,8 @@ import me.whereareiam.identica.model.routing.RoutingSignal;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.platform.adapter.PlatformForcedHostAdapter;
 import me.whereareiam.identica.pipeline.journey.step.Step;
+import me.whereareiam.identica.platform.adapter.PlatformCheckpointAdapter;
+import me.whereareiam.identica.type.checkpoint.CheckpointPlacement;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.StageType;
@@ -26,11 +34,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -43,7 +53,7 @@ class RoutingPlannerTest {
 	@DisplayName("A waiting step produces a step-based routing intent")
 	@Test
 	void waitingStepCreatesStepIntent() {
-		RoutingPlanner planner = new RoutingPlanner(this::settings, NO_FORCED_HOSTS);
+		RoutingPlanner planner = new RoutingPlanner(this::settings, NO_FORCED_HOSTS, checkpoints(Set.of()));
 		RoutingPlan plan = planner.plan(RoutingSignal.stepFinished(
 				context(UUID.randomUUID()),
 				PipelineType.AUTHENTICATION,
@@ -57,10 +67,72 @@ class RoutingPlannerTest {
 		assertEquals("auth", plan.getIntent().getEndpoint().getServer());
 	}
 
+	@DisplayName("A step a checkpoint holds on the loading screen gets no step target")
+	@Test
+	void stepHeldOnTheLoadingScreenIsNotRouted() {
+		UUID connectionId = UUID.randomUUID();
+		Checkpoints checkpoints = checkpoints(Set.of(CheckpointPlacement.LOADING_SCREEN));
+		checkpoints.register(checkpoint(CheckpointPlacement.LOADING_SCREEN));
+		RoutingPlanner planner = new RoutingPlanner(this::settings, NO_FORCED_HOSTS, checkpoints);
+
+		RoutingPlan plan = planner.plan(RoutingSignal.stepFinished(
+				context(connectionId),
+				PipelineType.AUTHENTICATION,
+				StageType.PROVIDER,
+				step("credential"),
+				StepResult.waiting("")
+		));
+
+		assertEquals(RoutingPlanAction.IGNORE, plan.getAction());
+		assertEquals("loading-screen", checkpoints.selected(connectionId).orElseThrow().getCheckpoint().id());
+	}
+
+	@DisplayName("A step a checkpoint holds on the step's server is routed there")
+	@Test
+	void stepHeldOnTheStepServerIsRoutedThere() {
+		UUID connectionId = UUID.randomUUID();
+		Checkpoints checkpoints = checkpoints(Set.of());
+		checkpoints.register(checkpoint(CheckpointPlacement.LOADING_SCREEN, CheckpointPlacement.STEP_SERVER));
+		RoutingPlanner planner = new RoutingPlanner(this::settings, NO_FORCED_HOSTS, checkpoints);
+
+		RoutingPlan plan = planner.plan(RoutingSignal.stepFinished(
+				context(connectionId),
+				PipelineType.AUTHENTICATION,
+				StageType.PROVIDER,
+				step("credential"),
+				StepResult.waiting("")
+		));
+
+		assertEquals(RoutingPlanAction.REPLACE, plan.getAction());
+		assertEquals("auth", plan.getIntent().getEndpoint().getServer());
+		assertEquals(CheckpointPlacement.STEP_SERVER, checkpoints.selected(connectionId).orElseThrow().getPlacement());
+	}
+
+	@DisplayName("A checkpoint the platform cannot hold leaves the step on its server")
+	@Test
+	void checkpointThePlatformCannotHoldIsSkipped() {
+		UUID connectionId = UUID.randomUUID();
+		Checkpoints checkpoints = checkpoints(Set.of());
+		checkpoints.register(checkpoint(CheckpointPlacement.LOADING_SCREEN));
+		RoutingPlanner planner = new RoutingPlanner(this::settings, NO_FORCED_HOSTS, checkpoints);
+
+		RoutingPlan plan = planner.plan(RoutingSignal.stepFinished(
+				context(connectionId),
+				PipelineType.AUTHENTICATION,
+				StageType.PROVIDER,
+				step("credential"),
+				StepResult.waiting("")
+		));
+
+		assertEquals(RoutingPlanAction.REPLACE, plan.getAction());
+		assertEquals("auth", plan.getIntent().getEndpoint().getServer());
+		assertEquals(Optional.empty(), checkpoints.selected(connectionId));
+	}
+
 	@DisplayName("A completed pipeline produces a completion routing intent")
 	@Test
 	void completedPipelineCreatesCompletionIntent() {
-		RoutingPlanner planner = new RoutingPlanner(this::settings, NO_FORCED_HOSTS);
+		RoutingPlanner planner = new RoutingPlanner(this::settings, NO_FORCED_HOSTS, checkpoints(Set.of()));
 		RoutingPlan plan = planner.plan(RoutingSignal.pipelineFinished(
 				context(UUID.randomUUID()),
 				PipelineType.AUTHENTICATION,
@@ -78,7 +150,7 @@ class RoutingPlannerTest {
 		Routing settings = settings();
 		settings.getScenarios().clear();
 
-		RoutingPlanner planner = new RoutingPlanner(() -> settings, NO_FORCED_HOSTS);
+		RoutingPlanner planner = new RoutingPlanner(() -> settings, NO_FORCED_HOSTS, checkpoints(Set.of()));
 		RoutingPlan stepPlan = planner.plan(RoutingSignal.stepFinished(
 				context(UUID.randomUUID()),
 				PipelineType.REGISTRATION,
@@ -103,7 +175,7 @@ class RoutingPlannerTest {
 		settings.getDefaults().getComplete().getAttempts().setMode(RoutingRetryMode.UNTIL_REACHED);
 		settings.getScenarios().get("authentication").getComplete().setAttempts(null);
 
-		RoutingPlanner planner = new RoutingPlanner(() -> settings, NO_FORCED_HOSTS);
+		RoutingPlanner planner = new RoutingPlanner(() -> settings, NO_FORCED_HOSTS, checkpoints(Set.of()));
 		RoutingPlan plan = planner.plan(RoutingSignal.pipelineFinished(
 				context(UUID.randomUUID()),
 				PipelineType.AUTHENTICATION,
@@ -117,7 +189,7 @@ class RoutingPlannerTest {
 	@Test
 	void failedPipelineClearsIntent() {
 		UUID connectionId = UUID.randomUUID();
-		RoutingPlanner planner = new RoutingPlanner(this::settings, NO_FORCED_HOSTS);
+		RoutingPlanner planner = new RoutingPlanner(this::settings, NO_FORCED_HOSTS, checkpoints(Set.of()));
 		RoutingPlan plan = planner.plan(RoutingSignal.pipelineFinished(
 				context(connectionId),
 				PipelineType.AUTHENTICATION,
@@ -141,7 +213,7 @@ class RoutingPlannerTest {
 		targets.getOverrides().getStages().put(StageType.PROVIDER.id(), stageTarget);
 		targets.getOverrides().getSteps().put("credential", stepTarget);
 
-		RoutingPlanner planner = new RoutingPlanner(() -> settings, NO_FORCED_HOSTS);
+		RoutingPlanner planner = new RoutingPlanner(() -> settings, NO_FORCED_HOSTS, checkpoints(Set.of()));
 		RoutingPlan plan = planner.plan(RoutingSignal.stepFinished(
 				context(UUID.randomUUID()),
 				PipelineType.AUTHENTICATION,
@@ -160,7 +232,7 @@ class RoutingPlannerTest {
 		settings.getScenarios().get("authentication").getStep().setTarget("");
 		settings.getDefaults().getStep().setTarget("");
 
-		RoutingPlanner planner = new RoutingPlanner(() -> settings, NO_FORCED_HOSTS);
+		RoutingPlanner planner = new RoutingPlanner(() -> settings, NO_FORCED_HOSTS, checkpoints(Set.of()));
 		RoutingPlan plan = planner.plan(RoutingSignal.stepFinished(
 				context(UUID.randomUUID()),
 				PipelineType.AUTHENTICATION,
@@ -179,7 +251,7 @@ class RoutingPlannerTest {
 		Routing settings = settings();
 		settings.getScenarios().get("authentication").getComplete().setForcedHosts(true);
 
-		RoutingPlanner planner = new RoutingPlanner(() -> settings, FORCED_HOSTS);
+		RoutingPlanner planner = new RoutingPlanner(() -> settings, FORCED_HOSTS, checkpoints(Set.of()));
 		RoutingPlan plan = planner.plan(RoutingSignal.pipelineFinished(
 				context(UUID.randomUUID(), "survival.example.com"),
 				PipelineType.AUTHENTICATION,
@@ -196,7 +268,7 @@ class RoutingPlannerTest {
 		Routing settings = settings();
 		settings.getScenarios().get("authentication").getComplete().setForcedHosts(true);
 
-		RoutingPlanner planner = new RoutingPlanner(() -> settings, FORCED_HOSTS);
+		RoutingPlanner planner = new RoutingPlanner(() -> settings, FORCED_HOSTS, checkpoints(Set.of()));
 		RoutingPlan otherHost = planner.plan(RoutingSignal.pipelineFinished(
 				context(UUID.randomUUID(), "play.example.com"),
 				PipelineType.AUTHENTICATION,
@@ -215,7 +287,7 @@ class RoutingPlannerTest {
 	@DisplayName("Forced hosts are ignored unless the target follows them")
 	@Test
 	void forcedHostIgnoredWhenTargetDoesNotFollowIt() {
-		RoutingPlanner planner = new RoutingPlanner(this::settings, FORCED_HOSTS);
+		RoutingPlanner planner = new RoutingPlanner(this::settings, FORCED_HOSTS, checkpoints(Set.of()));
 		RoutingPlan plan = planner.plan(RoutingSignal.pipelineFinished(
 				context(UUID.randomUUID(), "survival.example.com"),
 				PipelineType.AUTHENTICATION,
@@ -235,7 +307,7 @@ class RoutingPlannerTest {
 		registration.getComplete().setForcedHosts(false);
 		settings.getScenarios().put("registration", registration);
 
-		RoutingPlanner planner = new RoutingPlanner(() -> settings, FORCED_HOSTS);
+		RoutingPlanner planner = new RoutingPlanner(() -> settings, FORCED_HOSTS, checkpoints(Set.of()));
 		RoutingPlan inherited = planner.plan(RoutingSignal.pipelineFinished(
 				context(UUID.randomUUID(), "survival.example.com"),
 				PipelineType.AUTHENTICATION,
@@ -260,7 +332,7 @@ class RoutingPlannerTest {
 		complete.setForcedHosts(true);
 		settings.getDefaults().getComplete().setTarget("");
 
-		RoutingPlanner planner = new RoutingPlanner(() -> settings, FORCED_HOSTS);
+		RoutingPlanner planner = new RoutingPlanner(() -> settings, FORCED_HOSTS, checkpoints(Set.of()));
 		RoutingPlan forced = planner.plan(RoutingSignal.pipelineFinished(
 				context(UUID.randomUUID(), "survival.example.com"),
 				PipelineType.AUTHENTICATION,
@@ -275,6 +347,49 @@ class RoutingPlannerTest {
 		assertEquals("survival", forced.getIntent().getEndpoint().getServer());
 		assertEquals(RoutingPlanAction.CLEAR, unforced.getAction());
 		assertEquals(RoutingClearReason.NO_TARGET, unforced.getClearReason());
+	}
+
+	private static Checkpoints checkpoints(Set<CheckpointPlacement> placements) {
+		PlatformCheckpointAdapter platform = new PlatformCheckpointAdapter() {
+			@Override
+			public @NotNull Set<CheckpointPlacement> placements(@NotNull UUID connectionUniqueId) {
+				return placements;
+			}
+
+			@Override
+			public @NotNull CompletionStage<Boolean> answer(@NotNull UUID connectionUniqueId, @NotNull String command) {
+				throw new AssertionError("Planning does not answer");
+			}
+		};
+		return new DefaultCheckpoints(platform, () -> {
+			throw new AssertionError("Planning does not route again");
+		}, () -> {
+			throw new AssertionError("Planning does not attempt routing");
+		}, new EventController());
+	}
+
+	private static Checkpoint checkpoint(CheckpointPlacement... placements) {
+		return new Checkpoint() {
+			@Override
+			public @NotNull String id() {
+				return "loading-screen";
+			}
+
+			@Override
+			public @NotNull List<CheckpointPlacement> placements() {
+				return List.of(placements);
+			}
+
+			@Override
+			public boolean accepts(@NotNull CheckpointRequest request) {
+				return true;
+			}
+
+			@Override
+			public void arrived(@NotNull CheckpointStop stop) {
+				throw new AssertionError("Routing does not hold connections");
+			}
+		};
 	}
 
 	private Routing settings() {

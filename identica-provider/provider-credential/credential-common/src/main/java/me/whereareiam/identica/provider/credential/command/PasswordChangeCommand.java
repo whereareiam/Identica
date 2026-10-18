@@ -3,7 +3,6 @@ package me.whereareiam.identica.provider.credential.command;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.annotation.Argument;
 import me.whereareiam.identica.annotation.Command;
 import me.whereareiam.identica.annotation.Definition;
@@ -22,7 +21,6 @@ import me.whereareiam.identica.provider.credential.type.PasswordChangeReason;
 import me.whereareiam.identica.provider.credential.util.PasswordRules;
 import me.whereareiam.identica.util.UniqueIdGenerator;
 import me.whereareiam.keystone.Actor;
-import me.whereareiam.keystone.model.SerializerContent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -117,11 +115,7 @@ public class PasswordChangeCommand {
 	private void sendMessage(@NotNull Identity identity, String message) {
 		if (message == null || message.isBlank())
 			return;
-		SerializerContent content = SerializerContent.builder()
-				.receiver(identity)
-				.message(message)
-				.build();
-		identity.sendMessage(Serializer.serialize(content));
+		identity.send(message);
 	}
 
 	private String resolveProviderSubject(String username) {

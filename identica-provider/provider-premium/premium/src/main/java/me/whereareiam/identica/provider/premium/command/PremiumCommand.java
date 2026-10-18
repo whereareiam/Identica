@@ -3,7 +3,6 @@ package me.whereareiam.identica.provider.premium.command;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 import com.google.inject.Provider;
-import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.annotation.Argument;
 import me.whereareiam.identica.annotation.Command;
 import me.whereareiam.identica.annotation.Definition;
@@ -205,7 +204,7 @@ public class PremiumCommand extends ProtectedActionCommand<MigrationRequest> {
 
 	private void sendMessage(@NotNull Identity sender, @NotNull String message) {
 		if (message.isBlank()) return;
-		sender.sendMessage(Serializer.serialize(sender, message));
+		sender.send(message);
 	}
 
 	private String joinMessage(List<String> lines) {

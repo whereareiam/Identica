@@ -54,6 +54,6 @@ public class ExamplePassphraseCommand {
 	private static void send(@NotNull Identity identity, String message) {
 		if (message == null || message.isBlank()) return;
 
-		identity.sendMessage(Serializer.serialize(identity, message));
+		identity.send(message);
 	}
 }

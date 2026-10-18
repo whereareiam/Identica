@@ -129,6 +129,11 @@ public class VerificationEnrollmentCommand extends ProtectedActionCommand<Void> 
 
 	private void sendMessage(@NotNull Actor sender, @Nullable String message, @NotNull Map<String, String> placeholders) {
 		if (message == null || message.isBlank()) return;
+		if (sender instanceof Identity identity) {
+			identity.send(message, placeholders);
+			return;
+		}
+
 		sender.sendMessage(Serializer.serialize(SerializerContent.builder()
 				.receiver(sender)
 				.message(message)

@@ -15,7 +15,6 @@ import me.whereareiam.identica.model.auth.request.AdvanceRequest;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.pipeline.CredentialRegistrationAttempt;
 import me.whereareiam.keystone.Actor;
-import me.whereareiam.keystone.model.SerializerContent;
 import org.jetbrains.annotations.NotNull;
 
 @RequiredArgsConstructor(onConstructor_ = @Inject)
@@ -76,11 +75,8 @@ public class PassCommand {
 
 	private void sendMessage(@NotNull Identity identity, String message) {
 		if (message == null || message.isBlank()) return;
-		SerializerContent content = SerializerContent.builder()
-				.receiver(identity)
-				.message(message)
-				.build();
-		identity.sendMessage(Serializer.serialize(content));
+
+		identity.send(message);
 	}
 
 	/** A denial disconnects whether or not it comes with a reason to show. */

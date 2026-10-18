@@ -4,7 +4,9 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.identica.checkpoint.Checkpoints;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.model.checkpoint.CheckpointRequest;
 import me.whereareiam.identica.model.config.Routing;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
@@ -15,6 +17,7 @@ import me.whereareiam.identica.model.routing.RoutingIntent;
 import me.whereareiam.identica.model.routing.RoutingPlan;
 import me.whereareiam.identica.model.routing.RoutingSignal;
 import me.whereareiam.identica.platform.adapter.PlatformForcedHostAdapter;
+import me.whereareiam.identica.type.checkpoint.CheckpointPlacement;
 import me.whereareiam.identica.type.pipeline.PipelineStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.routing.reason.RoutingClearReason;
@@ -31,6 +34,7 @@ import java.util.UUID;
 public class RoutingPlanner {
 	private final Provider<Routing> routingProvider;
 	private final PlatformForcedHostAdapter forcedHostAdapter;
+	private final Checkpoints checkpoints;
 
 	public @NotNull RoutingPlan plan(@NotNull RoutingSignal signal) {
 		UUID connectionId = signal.connectionUniqueId();
@@ -64,6 +68,12 @@ public class RoutingPlanner {
 			return RoutingPlan.clear(connectionId, RoutingClearReason.PIPELINE_FAILED);
 		}
 
+		if (heldOnLoadingScreen(signal, connectionId, result)) {
+			Logger.debug("Step routing ignored because a checkpoint holds the connection on the loading screen connection=%s pipeline=%s stage=%s step=%s",
+					connectionId, signal.getPipelineType(), stageId(signal), stepName(signal));
+			return RoutingPlan.ignore();
+		}
+
 		Routing.Target target = resolveStepTarget(signal);
 		String server = resolveServer(signal, target);
 		if (isBlank(server)) {
@@ -75,6 +85,20 @@ public class RoutingPlanner {
 		Logger.debug("Step routing planned connection=%s pipeline=%s stage=%s step=%s target=%s",
 				connectionId, signal.getPipelineType(), stageId(signal), stepName(signal), server);
 		return RoutingPlan.replace(createIntent(signal, connectionId, server, target, RoutingReason.STEP));
+	}
+
+	/**
+	 * Asks the checkpoints where the connection waits. One that holds it on the loading screen leaves it without a
+	 * step target; completion routing later sends it straight to where the journey ends.
+	 */
+	private boolean heldOnLoadingScreen(@NotNull RoutingSignal signal, @NotNull UUID connectionId, @NotNull StepResult result) {
+		if (signal.getStep() == null || signal.getStage() == null) return false;
+
+		CheckpointRequest request = new CheckpointRequest(connectionId, signal.getContext(), signal.getPipelineType(), signal.getStage(),
+				signal.getStep(), result);
+		return checkpoints.select(request)
+				.filter(selection -> selection.getPlacement() == CheckpointPlacement.LOADING_SCREEN)
+				.isPresent();
 	}
 
 	private @NotNull RoutingPlan planPipeline(@NotNull RoutingSignal signal, @NotNull UUID connectionId) {

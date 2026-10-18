@@ -3,7 +3,6 @@ package me.whereareiam.identica.provider.credential.command;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 import com.google.inject.Provider;
-import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.annotation.Argument;
 import me.whereareiam.identica.annotation.Command;
 import me.whereareiam.identica.annotation.Definition;
@@ -199,7 +198,7 @@ public class CredentialCommand extends ProtectedActionCommand<MigrationRequest> 
 
 	private void sendMessage(@NotNull Identity identity, String message) {
 		if (message == null || message.isBlank()) return;
-		identity.sendMessage(Serializer.serialize(identity, message));
+		identity.send(message);
 	}
 
 	private String joinMessage(List<String> lines) {

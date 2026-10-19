@@ -481,6 +481,15 @@ public final class Journey {
 	}
 
 	/**
+	 * Expects the dialog matched by the previous {@link #seesDialog} to have been shown on the loading screen, while
+	 * the client was still configuring, before it entered any server's world.
+	 */
+	public Journey onLoadingScreen() {
+		assertTrue(openDialog().isConfiguration(), name + " must see the dialog on the loading screen");
+		return this;
+	}
+
+	/**
 	 * Expects the dialog matched by the previous {@link #seesDialog} to show its own text for an answer, why Identica
 	 * asks again, such as its text for a wrong password.
 	 *

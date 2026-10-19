@@ -26,6 +26,7 @@ class MigrationDialogTest {
 	@Test
 	@Identica(mode = JourneyMode.SEAMLESS, addons = Addon.DIALOGS)
 	void setsThePasswordOfAMovedAccountInTheRegistrationDialogs(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+		InGameDialogs.use(anvil);
 		SessionIdentity account = yggdrasil.register("Steve");
 
 		Journey.premium(anvil, account).join()

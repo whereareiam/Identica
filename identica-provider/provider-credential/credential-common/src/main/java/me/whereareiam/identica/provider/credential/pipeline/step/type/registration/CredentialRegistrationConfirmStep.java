@@ -21,6 +21,7 @@ public class CredentialRegistrationConfirmStep extends AbstractCredentialConfirm
 	) {
 		super(
 				"password-registration-confirm",
+				CredentialRegistrationStep.NAME,
 				messagesProvider,
 				coreSettingsProvider,
 				credentialService,

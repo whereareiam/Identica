@@ -11,6 +11,8 @@ import me.whereareiam.identica.provider.credential.config.CredentialSettings;
 import me.whereareiam.identica.provider.credential.cryptography.CryptographyService;
 import me.whereareiam.identica.provider.credential.cryptography.PasswordCandidate;
 import me.whereareiam.identica.provider.credential.model.CredentialAccount;
+import me.whereareiam.identica.provider.credential.pipeline.CredentialAnswers;
+import me.whereareiam.identica.provider.credential.pipeline.CredentialPrompts;
 import me.whereareiam.identica.provider.credential.pipeline.CredentialRegisterStateItem;
 import me.whereareiam.identica.provider.credential.type.PasswordChangeReason;
 import me.whereareiam.identica.provider.credential.util.PasswordRules;
@@ -69,12 +71,18 @@ public abstract class AbstractCredentialSetupStep extends AbstractCredentialStat
 		if (!requireRepeat && pending != null) clearRegisterState(state);
 
 		var input = consumeRegistrationAttempt(state);
-		if (input == null) return CompletableFuture.completedFuture(StepResult.waiting(registerPrompt(messages)));
-		if (input.isConfirm()) return CompletableFuture.completedFuture(StepResult.waiting(noPendingMessage(messages)));
+		if (input == null)
+			return CompletableFuture.completedFuture(StepResult.waiting(registerPrompt(messages)).withPrompt(CredentialPrompts.NEW_PASSWORD));
+		if (input.isConfirm())
+			return CompletableFuture.completedFuture(StepResult.waiting(noPendingMessage(messages))
+					.withPrompt(CredentialPrompts.NEW_PASSWORD)
+					.withAnswer(CredentialAnswers.NO_NEW_PASSWORD));
 
-		String error = passwordPolicy.validate(input.getPassword());
-		if (error != null && !error.isBlank())
-			return CompletableFuture.completedFuture(StepResult.waiting(error));
+		PasswordRules.Violation violation = passwordPolicy.check(input.getPassword());
+		if (violation != null)
+			return CompletableFuture.completedFuture(StepResult.waiting(violation.message())
+					.withPrompt(CredentialPrompts.NEW_PASSWORD)
+					.withAnswer(violation.answer()));
 
 		PasswordCandidate candidate = cryptographyService.hash(input.getPassword());
 		if (candidate == null) return CompletableFuture.completedFuture(StepResult.failed(""));

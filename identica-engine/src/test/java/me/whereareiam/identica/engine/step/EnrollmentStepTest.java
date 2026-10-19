@@ -127,6 +127,7 @@ class EnrollmentStepTest {
 		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
 		assertNotNull(result.getMessage());
 		assertFalse(result.getMessage().isBlank());
+		assertEquals(EnrollmentStep.PROMPT, result.getPrompt());
 		assertNull(context.getProvider());
 		verify(eventManager).call(any());
 	}

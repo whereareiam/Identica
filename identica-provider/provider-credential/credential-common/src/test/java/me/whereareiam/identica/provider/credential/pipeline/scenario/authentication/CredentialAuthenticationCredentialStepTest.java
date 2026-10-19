@@ -13,6 +13,7 @@ import me.whereareiam.identica.provider.credential.config.defaults.CredentialMes
 import me.whereareiam.identica.provider.credential.cryptography.CryptographyService;
 import me.whereareiam.identica.provider.credential.model.CredentialAccount;
 import me.whereareiam.identica.provider.credential.pipeline.CredentialAuthenticationAttempt;
+import me.whereareiam.identica.provider.credential.pipeline.CredentialPrompts;
 import me.whereareiam.identica.provider.credential.pipeline.step.type.authentication.CredentialAuthenticationPasswordStep;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +26,7 @@ import java.time.Duration;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -75,6 +77,27 @@ class CredentialAuthenticationCredentialStepTest {
 
 		assertEquals(StepResult.StepStatus.CONTINUE, result.getStatus());
 		assertTrue(state.get(CredentialAuthenticationAttempt.KEY).isEmpty(), "the step takes the attempt out of the run's state");
+	}
+
+	@DisplayName("Without a password typed, the step asks for the account's password")
+	@Test
+	void asksForThePasswordUntilOneIsTyped() {
+		AuthContext context = AuthContext.builder()
+				.identity(new ConnectionIdentity("whereareiam", "127.0.0.1"))
+				.provider(ProviderContext.of("credential", "subject", "whereareiam"))
+				.build();
+		when(accountService.find("subject")).thenReturn(Optional.of(CredentialAccount.builder()
+				.providerId("credential")
+				.providerSubject("subject")
+				.passwordHash("hash")
+				.hashingMethod("bcrypt")
+				.build()));
+
+		StepResult result = step.execute(context, PipelineState.initial()).join();
+
+		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
+		assertEquals(CredentialPrompts.PASSWORD, result.getPrompt());
+		assertNull(result.getAnswer());
 	}
 
 	private CredentialMessages messages() {

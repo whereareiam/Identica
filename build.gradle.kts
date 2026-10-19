@@ -40,14 +40,17 @@ defaultTasks("pluginJars")
 
 tasks.register("pluginJars") {
     group = "build"
-    description = "Builds the proxy bootstrap jars and all bundled provider jars."
+    description = "Builds the proxy bootstrap jars, all bundled provider jars and the official addons."
 
     dependsOn(
         ":platform-bungeecord-bootstrap:shadowJar",
         ":platform-velocity-bootstrap:shadowJar",
         ":identica-platform:bundle:shadowJar",
         ":provider-credential-runtime:shadowJar",
-        ":provider-premium-runtime:shadowJar"
+        ":provider-premium-runtime:shadowJar",
+        ":dialogs-platform-bundle:shadowJar",
+        ":dialogs-platform-bungeecord:shadowJar",
+        ":dialogs-platform-velocity:shadowJar"
     )
 }
 
@@ -63,6 +66,10 @@ toolkitDistribution {
     }
     file("Credential", ":provider-credential-runtime", "shadowJar")
     file("Premium", ":provider-premium-runtime", "shadowJar")
+    file("Dialogs", ":dialogs-platform-bundle", "shadowJar")
+    // Modrinth takes the addon once per proxy, since only Velocity needs PacketEvents; the release ships the bundle.
+    file("Dialogs-BUNGEECORD", ":dialogs-platform-bungeecord", "shadowJar")
+    file("Dialogs-VELOCITY", ":dialogs-platform-velocity", "shadowJar")
 }
 
 val validatePipelineStructure = tasks.register("validatePipelineStructure") {

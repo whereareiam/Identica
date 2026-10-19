@@ -8,6 +8,8 @@ import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.cryptography.CryptographyService;
+import me.whereareiam.identica.provider.credential.pipeline.CredentialAnswers;
+import me.whereareiam.identica.provider.credential.pipeline.CredentialPrompts;
 import me.whereareiam.identica.provider.credential.pipeline.CredentialRegisterStateItem;
 import me.whereareiam.identica.provider.credential.type.PasswordChangeReason;
 import org.jetbrains.annotations.NotNull;
@@ -16,11 +18,13 @@ import java.util.concurrent.CompletableFuture;
 
 public abstract class AbstractCredentialConfirmStep extends AbstractCredentialStatefulStep {
 	protected final Provider<CredentialMessages> messagesProvider;
+	private final String setupStep;
 	private final CredentialAccountService credentialService;
 	private final CryptographyService cryptographyService;
 
 	protected AbstractCredentialConfirmStep(
 			@NotNull String name,
+			@NotNull String setupStep,
 			@NotNull Provider<CredentialMessages> messagesProvider,
 			@NotNull Provider<Engine> coreSettingsProvider,
 			@NotNull CredentialAccountService credentialService,
@@ -28,6 +32,7 @@ public abstract class AbstractCredentialConfirmStep extends AbstractCredentialSt
 	) {
 		super(name, coreSettingsProvider);
 		this.messagesProvider = messagesProvider;
+		this.setupStep = setupStep;
 		this.credentialService = credentialService;
 		this.cryptographyService = cryptographyService;
 	}
@@ -38,19 +43,18 @@ public abstract class AbstractCredentialConfirmStep extends AbstractCredentialSt
 
 		CredentialMessages messages = messagesProvider.get();
 		CredentialRegisterStateItem pending = getRegisterState(state);
-		if (pending == null) return CompletableFuture.completedFuture(StepResult.waiting(registerPrompt(messages)));
+		if (pending == null) return CompletableFuture.completedFuture(StepResult.waitingAt(setupStep, registerPrompt(messages))
+				.withPrompt(CredentialPrompts.NEW_PASSWORD));
 
 		var input = consumeRegistrationAttempt(state);
-		if (input == null) return CompletableFuture.completedFuture(StepResult.waiting(confirmPrompt(messages)));
+		if (input == null) return CompletableFuture.completedFuture(StepResult.waiting(confirmPrompt(messages))
+				.withPrompt(CredentialPrompts.REPEAT_PASSWORD));
 
-		if (!input.isConfirm()) {
+		if (!input.isConfirm() || !matchesPending(input.getPassword(), pending)) {
 			clearRegisterState(state);
-			return CompletableFuture.completedFuture(StepResult.waiting(registerReset(messages)));
-		}
-
-		if (!matchesPending(input.getPassword(), pending)) {
-			clearRegisterState(state);
-			return CompletableFuture.completedFuture(StepResult.waiting(registerReset(messages)));
+			return CompletableFuture.completedFuture(StepResult.waitingAt(setupStep, registerReset(messages))
+					.withPrompt(CredentialPrompts.NEW_PASSWORD)
+					.withAnswer(CredentialAnswers.PASSWORDS_DIFFER));
 		}
 
 		boolean registered = credentialService.register(

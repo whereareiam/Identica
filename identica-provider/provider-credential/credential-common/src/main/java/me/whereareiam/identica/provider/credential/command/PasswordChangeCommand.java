@@ -58,7 +58,8 @@ public class PasswordChangeCommand {
 			return;
 		}
 
-		String error = passwordPolicy.validate(next);
+		PasswordRules.Violation violation = passwordPolicy.check(next);
+		String error = violation == null ? null : violation.message();
 		if (error != null && !error.isBlank()) {
 			sendMessage(identity, error);
 			return;

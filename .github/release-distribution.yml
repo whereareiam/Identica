@@ -138,6 +138,25 @@ artifacts:
         loaders: *proxy_loaders
         game_versions: *supported_game_versions
 
+  # The dialogs addon is a plugin of its own, with a jar per proxy for Modrinth.
+  dialogs-velocity:
+    file: Identica-Dialogs-VELOCITY-{version}.jar
+    platforms:
+      velocity:
+        loaders:
+          - velocity
+        game_versions: *supported_game_versions
+        platform_versions: *supported_velocity_versions
+
+  dialogs-bungeecord:
+    file: Identica-Dialogs-BUNGEECORD-{version}.jar
+    platforms:
+      bungeecord:
+        loaders:
+          - bungeecord
+          - waterfall
+        game_versions: *supported_game_versions
+
 publications:
   # Identica gets one Modrinth version per proxy, each with its own jar.
   identica-velocity-modrinth:
@@ -191,6 +210,29 @@ publications:
         - project_id: DDxUcAy9
           dependency_type: required
     artifact: premium-provider
+
+  # Velocity cannot show dialogs itself, so only its version requires PacketEvents.
+  dialogs-velocity-modrinth:
+    provider:
+      id: modrinth
+      project_id: F8YlC3Fs
+      release_type_map: *modrinth_release_types
+      dependencies:
+        - project_id: DDxUcAy9
+          dependency_type: required
+        - project_id: HYKaKraK
+          dependency_type: required
+    artifact: dialogs-velocity
+
+  dialogs-bungeecord-modrinth:
+    provider:
+      id: modrinth
+      project_id: F8YlC3Fs
+      release_type_map: *modrinth_release_types
+      dependencies:
+        - project_id: DDxUcAy9
+          dependency_type: required
+    artifact: dialogs-bungeecord
 
   # Hangar publications are disabled, because the plugin is blocked there.
   # Hangar needs real proxy platforms, so the provider artifacts would need velocity and bungeecord platforms again.

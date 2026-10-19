@@ -14,6 +14,8 @@ import me.whereareiam.identica.provider.credential.config.defaults.CredentialSet
 import me.whereareiam.identica.provider.credential.cryptography.CryptographyService;
 import me.whereareiam.identica.provider.credential.cryptography.PasswordCandidate;
 import me.whereareiam.identica.provider.credential.model.CredentialAccount;
+import me.whereareiam.identica.provider.credential.pipeline.CredentialAnswers;
+import me.whereareiam.identica.provider.credential.pipeline.CredentialPrompts;
 import me.whereareiam.identica.provider.credential.pipeline.CredentialRegisterStateItem;
 import me.whereareiam.identica.provider.credential.pipeline.CredentialRegistrationAttempt;
 import me.whereareiam.identica.provider.credential.pipeline.step.type.registration.CredentialRegistrationConfirmStep;
@@ -81,6 +83,49 @@ class CredentialRegistrationStepsTest {
 		assertEquals(StepResult.StepStatus.COMPLETE, confirmation.getStatus());
 		assertTrue(state.get(CredentialRegisterStateItem.KEY).isEmpty());
 		verify(accountService).register("subject", "hash", "bcrypt", PasswordChangeReason.REGISTER);
+	}
+
+	@DisplayName("A repetition that does not match sends the journey back to the first step")
+	@Test
+	void aRepetitionThatDoesNotMatchStartsTheRegistrationOver() {
+		RegistrationContext context = RegistrationContext.builder()
+				.identity(new ConnectionIdentity("whereareiam", "127.0.0.1"))
+				.build();
+		context.setProvider(ProviderContext.of("credential", "subject", "whereareiam"));
+		PipelineState state = PipelineState.initial();
+		state.put(CredentialRegisterStateItem.KEY, new CredentialRegisterStateItem("hash", "bcrypt"), TTL);
+		state.put(CredentialRegistrationAttempt.KEY, new CredentialRegistrationAttempt("Other-456", true), TTL);
+		when(cryptographyService.verify("Other-456", "hash", "bcrypt")).thenReturn(false);
+
+		StepResult confirmation = new CredentialRegistrationConfirmStep(this::messages, this::settings, accountService,
+				cryptographyService).execute(context, state).join();
+
+		assertEquals(StepResult.StepStatus.WAITING, confirmation.getStatus());
+		assertEquals(CredentialRegistrationStep.NAME, confirmation.getResumeStep());
+		assertEquals(CredentialPrompts.NEW_PASSWORD, confirmation.getPrompt());
+		assertEquals(CredentialAnswers.PASSWORDS_DIFFER, confirmation.getAnswer());
+		assertTrue(state.get(CredentialRegisterStateItem.KEY).isEmpty(), "the step forgets the first password");
+	}
+
+	@DisplayName("A new password that breaks a rule is asked for again, naming the rule")
+	@Test
+	void aPasswordThatBreaksARuleIsAskedForAgain() {
+		RegistrationContext context = RegistrationContext.builder()
+				.identity(new ConnectionIdentity("whereareiam", "127.0.0.1"))
+				.build();
+		context.setProvider(ProviderContext.of("credential", "subject", "whereareiam"));
+		PipelineState state = PipelineState.initial();
+		when(accountService.find("subject")).thenReturn(Optional.empty());
+		when(passwordRules.check("short")).thenReturn(new PasswordRules.Violation(CredentialAnswers.PASSWORD_TOO_SHORT, "Too short."));
+
+		state.put(CredentialRegistrationAttempt.KEY, new CredentialRegistrationAttempt("short", false), TTL);
+		StepResult result = new CredentialRegistrationStep(this::messages, this::credentialSettings, this::settings, accountService,
+				cryptographyService, passwordRules).execute(context, state).join();
+
+		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
+		assertEquals("Too short.", result.getMessage());
+		assertEquals(CredentialPrompts.NEW_PASSWORD, result.getPrompt());
+		assertEquals(CredentialAnswers.PASSWORD_TOO_SHORT, result.getAnswer());
 	}
 
 	private CredentialMessages messages() {

@@ -498,7 +498,7 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 				}
 
 				if (status == PipelineStatus.WAITING || status == PipelineStatus.REQUIRE_RECONNECT)
-					persistPending(pipelineState, context, journeyMode, stage.getId(), index);
+					persistPending(pipelineState, context, journeyMode, stage.getId(), resumeIndex(steps, index, stepResult));
 
 				return PipelineResult.fromStepResult(stepResult);
 			}
@@ -635,6 +635,22 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 			endIndex = index;
 		}
 		return new BlockRegion(List.copyOf(grouped), endIndex);
+	}
+
+	/**
+	 * Returns where a waiting journey continues: at the waiting step, or at the earlier step of the stage its result
+	 * names.
+	 */
+	private static int resumeIndex(@NotNull List<JourneyStep> steps, int waiting, @NotNull StepResult result) {
+		String resumeStep = result.getResumeStep();
+		if (resumeStep == null) return waiting;
+
+		for (int index = 0; index < waiting; index++)
+			if (steps.get(index).getStep().getName().equalsIgnoreCase(resumeStep)) return index;
+
+		Logger.warn("Journey step %s asks to continue at %s, which its stage does not run before it",
+				steps.get(waiting).getStep().getName(), resumeStep);
+		return waiting;
 	}
 
 	private void persistPending(

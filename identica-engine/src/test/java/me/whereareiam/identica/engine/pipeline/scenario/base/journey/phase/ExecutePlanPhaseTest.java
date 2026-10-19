@@ -227,6 +227,73 @@ class ExecutePlanPhaseTest {
 		assertTrue(pipelineState.has(JourneyStateItem.KEY));
 	}
 
+	@DisplayName("A waiting step continues the journey at the earlier step of its stage it names")
+	@Test
+	void waitingStepResumesAtTheEarlierStepItNames() {
+		assertEquals(0, resumedStepIndex("setup"));
+	}
+
+	@DisplayName("A waiting step that names no earlier step of its stage continues the journey where it waits")
+	@Test
+	void waitingStepResumesWhereItWaitsWithoutAnEarlierStep() {
+		assertEquals(1, resumedStepIndex("unknown"));
+		assertEquals(1, resumedStepIndex("confirm"));
+	}
+
+	private int resumedStepIndex(String resumeStep) {
+		IdentityService identityService = mock(IdentityService.class);
+		ProviderManager providerManager = mock(ProviderManager.class);
+		ExecutePlanPhase phase = new ExecutePlanPhase(
+				identityService,
+				mock(EventManager.class),
+				this::settings,
+				Messages::new,
+				providerManager,
+				providerOperations(),
+				mock(RoutingCoordinator.class),
+				new DefaultProviderSelector(new ProviderClaimRanking(providerManager))
+		);
+
+		JourneyStage providerStage = JourneyStage.builder()
+				.id(StageType.PROVIDER.id())
+				.type(StageType.PROVIDER)
+				.order(200)
+				.pipelineTypes(EnumSet.of(PipelineType.AUTHENTICATION))
+				.journeyModes(EnumSet.of(JourneyMode.INTERACTIVE))
+				.allowFallback(true)
+				.build();
+		Step setup = step("setup", StepResult::proceed);
+		Step confirm = step("confirm", context -> StepResult.waitingAt(resumeStep, "Start over."));
+		JourneyExecutionPlan plan = new JourneyExecutionPlan(List.of(new JourneyExecutionBlock(
+				"group-provider",
+				JourneyExecutionPolicy.SEQUENTIAL,
+				null,
+				List.of(new JourneyExecutionStage(providerStage, List.of(
+						journeyStep(StageType.PROVIDER, setup, 10),
+						journeyStep(StageType.PROVIDER, confirm, 20)
+				)))
+		)));
+
+		AuthContext context = AuthContext.builder()
+				.connectionUniqueId(UUID.randomUUID())
+				.identity(new ConnectionIdentity(UUID.randomUUID(), "PlayerOne", "127.0.0.1"))
+				.intendedServer("auth")
+				.build();
+		PipelineState pipelineState = PipelineState.initial();
+		pipelineState.setPipelineType(PipelineType.AUTHENTICATION);
+		pipelineState.setScenario(context);
+
+		JourneyState state = new JourneyState();
+		state.setContext(context);
+		state.setJourneyMode(JourneyMode.INTERACTIVE);
+		state.setExecutionPlan(plan);
+
+		PhaseResult<JourneyState> result = phase.execute(pipelineState, state).toCompletableFuture().join();
+
+		assertEquals(PipelineStatus.WAITING, result.getState().getResult().getStatus());
+		return pipelineState.get(JourneyStateItem.KEY).orElseThrow().getStepIndex();
+	}
+
 	@DisplayName("Provider blocks enrich a missing provider subject from the selected provider resolvers")
 	@Test
 	void providerBlocksResolveMissingProviderSubject() {

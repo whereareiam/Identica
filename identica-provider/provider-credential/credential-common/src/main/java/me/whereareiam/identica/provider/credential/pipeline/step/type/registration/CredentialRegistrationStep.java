@@ -18,6 +18,11 @@ import org.jetbrains.annotations.Nullable;
 
 @Singleton
 public class CredentialRegistrationStep extends AbstractCredentialSetupStep {
+	/**
+	 * The step's name.
+	 */
+	public static final String NAME = "password-registration";
+
 	@Inject
 	public CredentialRegistrationStep(
 			Provider<CredentialMessages> messagesProvider,
@@ -28,7 +33,7 @@ public class CredentialRegistrationStep extends AbstractCredentialSetupStep {
 			PasswordRules passwordPolicy
 	) {
 		super(
-				"password-registration",
+				NAME,
 				messagesProvider,
 				settingsProvider,
 				coreSettingsProvider,

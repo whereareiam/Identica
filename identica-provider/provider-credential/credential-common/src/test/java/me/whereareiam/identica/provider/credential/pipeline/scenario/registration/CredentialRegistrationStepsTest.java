@@ -83,6 +83,26 @@ class CredentialRegistrationStepsTest {
 		verify(accountService).register("subject", "hash", "bcrypt", PasswordChangeReason.REGISTER);
 	}
 
+	@DisplayName("A repetition that does not match sends the journey back to the first step")
+	@Test
+	void aRepetitionThatDoesNotMatchStartsTheRegistrationOver() {
+		RegistrationContext context = RegistrationContext.builder()
+				.identity(new ConnectionIdentity("whereareiam", "127.0.0.1"))
+				.build();
+		context.setProvider(ProviderContext.of("credential", "subject", "whereareiam"));
+		PipelineState state = PipelineState.initial();
+		state.put(CredentialRegisterStateItem.KEY, new CredentialRegisterStateItem("hash", "bcrypt"), TTL);
+		state.put(CredentialRegistrationAttempt.KEY, new CredentialRegistrationAttempt("Other-456", true), TTL);
+		when(cryptographyService.verify("Other-456", "hash", "bcrypt")).thenReturn(false);
+
+		StepResult confirmation = new CredentialRegistrationConfirmStep(this::messages, this::settings, accountService,
+				cryptographyService).execute(context, state).join();
+
+		assertEquals(StepResult.StepStatus.WAITING, confirmation.getStatus());
+		assertEquals(CredentialRegistrationStep.NAME, confirmation.getResumeStep());
+		assertTrue(state.get(CredentialRegisterStateItem.KEY).isEmpty(), "the step forgets the first password");
+	}
+
 	private CredentialMessages messages() {
 		return new CredentialMessagesDefaults().supply(new CredentialMessages());
 	}

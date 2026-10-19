@@ -47,6 +47,27 @@ class CredentialFirstJoinTest {
 				.sees(m -> m.credential().getCompletion().getRegistration().getBody());
 	}
 
+	/**
+	 * Alice repeats her password wrongly: Identica tells her and asks for a new password, and she registers with it
+	 * and its repetition.
+	 */
+	@Test
+	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL)
+	void registersAfterRepeatingThePasswordWrongly(ScenarioContext anvil) {
+		Journey.offline(anvil, "Alice").join()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
+				.command("pass " + PASSWORD)
+				.sees(m -> m.credential().getScenario().getRegistration().getConfirmPrompt())
+				.command("passconfirm Other-456")
+				.sees(m -> m.credential().getScenario().getRegistration().getStatus().getMismatch())
+				.command("pass " + PASSWORD)
+				.sees(m -> m.credential().getScenario().getRegistration().getConfirmPrompt())
+				.command("passconfirm " + PASSWORD)
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getRegistration().getBody());
+	}
+
 	@Test
 	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL)
 	void offersTheRegistrationCommandsInTheClientsCommandTree(ScenarioContext anvil) {

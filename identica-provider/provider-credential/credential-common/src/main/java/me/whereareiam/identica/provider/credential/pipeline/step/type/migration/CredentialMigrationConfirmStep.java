@@ -21,6 +21,7 @@ public class CredentialMigrationConfirmStep extends AbstractCredentialConfirmSte
 	) {
 		super(
 				"password-migration-confirm",
+				CredentialMigrationRegistrationStep.NAME,
 				messagesProvider,
 				coreSettingsProvider,
 				credentialService,

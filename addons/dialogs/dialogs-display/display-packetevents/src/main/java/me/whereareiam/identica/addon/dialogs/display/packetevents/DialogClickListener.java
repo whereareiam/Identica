@@ -7,10 +7,13 @@ import com.github.retrooper.packetevents.protocol.nbt.NBTCompound;
 import com.github.retrooper.packetevents.protocol.nbt.NBTNumber;
 import com.github.retrooper.packetevents.protocol.nbt.NBTString;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.wrapper.common.client.WrapperCommonClientCustomClickAction;
+import com.github.retrooper.packetevents.wrapper.configuration.client.WrapperConfigClientCustomClickAction;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientCustomClickAction;
 import me.whereareiam.identica.addon.dialogs.platform.DialogPlatform;
 import me.whereareiam.identica.addon.dialogs.presentation.DialogClicks;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -18,7 +21,8 @@ import java.util.UUID;
 
 /**
  * Reads the clicks the addon's buttons send, such as a command button or the one that switches to chat, keeps them
- * from the server and reports them with the values they carry.
+ * from the server and reports them with the values they carry. A client sends them in the game, and in the
+ * configuration phase while it is on the loading screen.
  */
 final class DialogClickListener implements PacketListener {
 	private final DialogPlatform.Listener listener;
@@ -34,9 +38,9 @@ final class DialogClickListener implements PacketListener {
 
 	@Override
 	public void onPacketReceive(PacketReceiveEvent event) {
-		if (event.getPacketType() != PacketType.Play.Client.CUSTOM_CLICK_ACTION) return;
+		WrapperCommonClientCustomClickAction<?> click = click(event);
+		if (click == null) return;
 
-		WrapperPlayClientCustomClickAction click = new WrapperPlayClientCustomClickAction(event);
 		String id = click.getId().toString();
 		if (!id.startsWith(DialogClicks.PREFIX)) return;
 
@@ -45,6 +49,13 @@ final class DialogClickListener implements PacketListener {
 		if (connectionUniqueId == null) return;
 
 		listener.clicked(connectionUniqueId, id, values(click.getPayload()));
+	}
+
+	private static @Nullable WrapperCommonClientCustomClickAction<?> click(PacketReceiveEvent event) {
+		if (event.getPacketType() == PacketType.Play.Client.CUSTOM_CLICK_ACTION) return new WrapperPlayClientCustomClickAction(event);
+		if (event.getPacketType() == PacketType.Configuration.Client.CUSTOM_CLICK_ACTION) return new WrapperConfigClientCustomClickAction(event);
+
+		return null;
 	}
 
 	private static Map<String, String> values(NBT payload) {

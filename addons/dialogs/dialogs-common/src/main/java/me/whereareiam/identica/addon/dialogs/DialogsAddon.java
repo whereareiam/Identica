@@ -5,6 +5,7 @@ import me.whereareiam.identica.addon.dialogs.config.DialogsFiles;
 import me.whereareiam.identica.addon.dialogs.platform.DialogDisplay;
 import me.whereareiam.identica.addon.dialogs.platform.DialogPlatform;
 import me.whereareiam.identica.addon.dialogs.presentation.DialogPresenter;
+import me.whereareiam.identica.addon.dialogs.presentation.DialogsCheckpoint;
 import me.whereareiam.identica.addon.dialogs.presentation.ServerJoinListener;
 import me.whereareiam.identica.addon.dialogs.trigger.StepWaitingTrigger;
 import me.whereareiam.identica.addon.dialogs.trigger.TriggerRegistry;
@@ -15,19 +16,27 @@ import java.nio.file.Path;
 /**
  * Starts and stops the addon on a proxy, the same way on every platform: once Identica is ready, it reads the
  * files, starts the platform and the display it picks, follows Identica's server joins and the {@code step-waiting}
- * trigger, and registers {@link Dialogs}.
+ * trigger, registers its checkpoint for the loading screen, and registers {@link Dialogs}.
  */
 public final class DialogsAddon {
 	private final IdenticaAPI identica;
 	private final DialogsFiles files;
 	private final TriggerRegistry triggers;
 	private final ServerJoinListener joins;
+	private final DialogsCheckpoint checkpoint;
 
-	private DialogsAddon(IdenticaAPI identica, DialogsFiles files, TriggerRegistry triggers, ServerJoinListener joins) {
+	private DialogsAddon(
+			IdenticaAPI identica,
+			DialogsFiles files,
+			TriggerRegistry triggers,
+			ServerJoinListener joins,
+			DialogsCheckpoint checkpoint
+	) {
 		this.identica = identica;
 		this.files = files;
 		this.triggers = triggers;
 		this.joins = joins;
+		this.checkpoint = checkpoint;
 	}
 
 	/**
@@ -51,15 +60,19 @@ public final class DialogsAddon {
 		TriggerRegistry triggers = new TriggerRegistry(presenter);
 		triggers.register(new StepWaitingTrigger(identica.getEventManager()));
 
+		DialogsCheckpoint checkpoint = new DialogsCheckpoint(platform, presenter, files::loadingScreen);
+		identica.getCheckpoints().register(checkpoint);
 		Dialogs.register(new DialogsService(files, presenter, triggers));
-		return new DialogsAddon(identica, files, triggers, joins);
+
+		return new DialogsAddon(identica, files, triggers, joins, checkpoint);
 	}
 
 	/**
-	 * Stops the addon: its triggers stop, it no longer follows server joins, its files are no longer reloaded, and
-	 * {@link Dialogs} is unregistered.
+	 * Stops the addon: its checkpoint takes no more players, its triggers stop, it no longer follows server joins, its
+	 * files are no longer reloaded, and {@link Dialogs} is unregistered.
 	 */
 	public void stop() {
+		identica.getCheckpoints().unregister(checkpoint);
 		Dialogs.unregister();
 		triggers.stopAll();
 		identica.getEventManager().unregister(joins);

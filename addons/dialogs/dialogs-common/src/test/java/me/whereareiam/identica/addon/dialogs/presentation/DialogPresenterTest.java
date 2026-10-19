@@ -11,7 +11,10 @@ import me.whereareiam.identica.addon.dialogs.trigger.TriggerContext;
 import me.whereareiam.identica.addon.dialogs.type.ActionType;
 import me.whereareiam.identica.addon.dialogs.type.AfterAction;
 import me.whereareiam.identica.addon.dialogs.type.DialogType;
+import me.whereareiam.identica.checkpoint.CheckpointStop;
 import me.whereareiam.identica.identity.IdentityService;
+import me.whereareiam.identica.model.checkpoint.CheckpointRequest;
+import me.whereareiam.identica.type.checkpoint.CheckpointPlacement;
 import me.whereareiam.keystone.model.SerializerContent;
 import me.whereareiam.keystone.serializer.SerializerEngine;
 import net.kyori.adventure.text.Component;
@@ -28,6 +31,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -189,6 +194,90 @@ class DialogPresenterTest {
 		assertEquals(List.of("show login {answer=, name=Alice}", "disconnect Bye, Alice!"), platform.calls);
 	}
 
+	@Test
+	void disconnectsAPlayerOnTheLoadingScreenThroughTheDisconnectButton() {
+		platform.supported.add(ALICE);
+		RecordingStop stop = new RecordingStop(CheckpointPlacement.LOADING_SCREEN);
+		presenter.held(stop);
+		presenter.show(ALICE, "login", Map.of("name", "Alice"));
+
+		presenter.clicked(ALICE, DialogClicks.DISCONNECT, Map.of("identica:dialog", "login", "identica:button", "exit"));
+
+		assertEquals(List.of("show login {answer=, name=Alice}", "disconnect Bye, Alice!"), platform.calls);
+		assertEquals(List.of(), stop.answers);
+	}
+
+	/**
+	 * A player on the loading screen sees the dialog right away and its text for Identica's answer when asked again;
+	 * once the hold ends, the next dialog waits for the client to enter a world.
+	 */
+	@Test
+	void showsTheDialogOnTheLoadingScreenWhileIdenticaHoldsThePlayerThere() {
+		platform.supported.add(ALICE);
+		presenter.fire(waiting("password-registration", ""));
+		assertEquals(List.of(), platform.calls);
+
+		RecordingStop stop = new RecordingStop(CheckpointPlacement.LOADING_SCREEN);
+		presenter.held(stop);
+		presenter.fire(waiting("password-registration", "test:taken"));
+		assertEquals(List.of("show register {answer=}", "show register {answer=Taken.}"), platform.calls);
+
+		stop.released.complete(null);
+		presenter.fire(waiting("password-registration", ""));
+		assertEquals(2, platform.calls.size());
+
+		presenter.joined(ALICE);
+		assertEquals(List.of("show register {answer=}", "show register {answer=Taken.}", "show register {answer=}"), platform.calls);
+	}
+
+	@Test
+	void showsTheDialogOfAPlayerHeldOnTheStepsServerOnlyInItsWorld() {
+		platform.supported.add(ALICE);
+		presenter.held(new RecordingStop(CheckpointPlacement.STEP_SERVER));
+		presenter.fire(waiting("password-registration", ""));
+		assertEquals(List.of(), platform.calls);
+
+		presenter.joined(ALICE);
+
+		assertEquals(List.of("show register {answer=}"), platform.calls);
+	}
+
+	@Test
+	void answersThroughTheCheckpointThatHoldsThePlayer() {
+		platform.supported.add(ALICE);
+		RecordingStop stop = new RecordingStop(CheckpointPlacement.LOADING_SCREEN);
+		presenter.held(stop);
+		presenter.fire(waiting("password-authentication-password", ""));
+
+		presenter.clicked(ALICE, DialogClicks.COMMAND, Map.of("identica:dialog", "login", "identica:button", "0", "password", "Secret-123"));
+
+		assertEquals(List.of("login Secret-123"), stop.answers);
+		assertEquals(List.of("show login {answer=}"), platform.calls);
+	}
+
+	@Test
+	void handsAPlayerOnTheLoadingScreenOverForChatOrForAStepWithoutADialog() {
+		platform.supported.add(ALICE);
+		RecordingStop chat = new RecordingStop(CheckpointPlacement.LOADING_SCREEN);
+		presenter.held(chat);
+		presenter.fire(waiting("password-authentication-password", ""));
+		presenter.clicked(ALICE, DialogClicks.CHAT, Map.of());
+		assertEquals(1, chat.handOvers);
+
+		presenter.left(ALICE);
+		RecordingStop withoutDialog = new RecordingStop(CheckpointPlacement.LOADING_SCREEN);
+		presenter.held(withoutDialog);
+		presenter.fire(waiting("password-validation", ""));
+		presenter.fire(waiting("password-validation", ""));
+		assertEquals(1, withoutDialog.handOvers);
+
+		presenter.left(ALICE);
+		RecordingStop otherTrigger = new RecordingStop(CheckpointPlacement.LOADING_SCREEN);
+		presenter.held(otherTrigger);
+		presenter.fire(TriggerContext.builder().connectionUniqueId(ALICE).trigger("other-trigger").build());
+		assertEquals(0, otherTrigger.handOvers);
+	}
+
 	private static TriggerContext waiting(String step, String answer) {
 		TriggerContext.TriggerContextBuilder context = TriggerContext.builder()
 				.connectionUniqueId(ALICE)
@@ -212,6 +301,52 @@ class DialogPresenterTest {
 		IdentityService identities = mock(IdentityService.class);
 		when(identities.findByConnectionUniqueId(any())).thenReturn(Optional.empty());
 		return identities;
+	}
+
+	/**
+	 * Alice held at a checkpoint, recording her answers and hand-overs.
+	 */
+	private static final class RecordingStop implements CheckpointStop {
+		private final CheckpointPlacement placement;
+		private final CompletableFuture<Void> released = new CompletableFuture<>();
+		private final List<String> answers = new ArrayList<>();
+		private int handOvers;
+
+		private RecordingStop(CheckpointPlacement placement) {
+			this.placement = placement;
+		}
+
+		@Override
+		public @NotNull UUID getConnectionUniqueId() {
+			return ALICE;
+		}
+
+		@Override
+		public @NotNull CheckpointPlacement getPlacement() {
+			return placement;
+		}
+
+		@Override
+		public @NotNull Optional<CheckpointRequest> getWaiting() {
+			return Optional.empty();
+		}
+
+		@Override
+		public @NotNull CompletionStage<Boolean> answer(@NotNull String command) {
+			answers.add(command);
+			return CompletableFuture.completedFuture(true);
+		}
+
+		@Override
+		public void handOver() {
+			handOvers++;
+			released.complete(null);
+		}
+
+		@Override
+		public @NotNull CompletionStage<Void> released() {
+			return released;
+		}
 	}
 
 	/**

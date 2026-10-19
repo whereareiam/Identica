@@ -72,7 +72,7 @@ public final class Journey {
 	private String backend;
 	/** Proxy console lines up to and including the one the previous expectation matched. */
 	private int console;
-	/** Proxy console lines printed before the latest attempt. */
+	/** Proxy console lines printed before the latest connection began. */
 	private int attempted;
 	private int connections;
 	/** Whether the proxy has named the player of the current connection on its console. */
@@ -174,6 +174,7 @@ public final class Journey {
 	 * Connects and expects the proxy to accept the connection.
 	 */
 	public Journey join() {
+		attempted = proxy.lines().size();
 		named = false;
 		session.connect();
 		return accepted();
@@ -183,6 +184,7 @@ public final class Journey {
 	 * Reconnects after a disconnect or kick and expects the proxy to accept the connection.
 	 */
 	public Journey rejoin() {
+		attempted = proxy.lines().size();
 		named = false;
 		session.rejoin();
 		return accepted();
@@ -269,6 +271,18 @@ public final class Journey {
 		}
 		assertEquals(List.of(), moves, name + " must stay on " + backend);
 		assertTrue(session.state().connected(), name + " must stay connected");
+		return this;
+	}
+
+	/**
+	 * Expects the proxy not to have connected the player to a backend since the latest connection began, not even for
+	 * a moment on the way to another one. Call it once the player has arrived where it was sent.
+	 */
+	public Journey bypasses(String backend) {
+		List<String> visits = proxy.after(attempted).stream()
+				.filter(reports.connected(playedAs, backend))
+				.toList();
+		assertEquals(List.of(), visits, name + " must not pass through " + backend);
 		return this;
 	}
 

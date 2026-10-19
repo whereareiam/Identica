@@ -65,6 +65,35 @@ class PremiumToCredentialMigrationTest {
 				.sees(m -> m.premium().getCompletion().getMigration().getBody());
 	}
 
+	/**
+	 * Steve repeats his new password wrongly while moving to Credential: Identica asks for a new password, and he
+	 * finishes the move with it and its repetition.
+	 */
+	@Test
+	@Identica(mode = JourneyMode.SEAMLESS)
+	void movesToCredentialAfterRepeatingThePasswordWrongly(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+		SessionIdentity account = yggdrasil.register("Steve");
+
+		Journey.premium(anvil, account).join()
+				.on(LOBBY)
+				.command("credential")
+				.sees(m -> m.credential().getCommands().getCredential().getConfirm())
+				.command("credential confirm")
+				.kickedWith(m -> m.credential().getCommands().getCredential().getConfirmed())
+				.rejoin()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getMigration().getSetup().getPrompt())
+				.command("pass " + PASSWORD)
+				.sees(m -> m.credential().getScenario().getMigration().getSetup().getConfirmPrompt())
+				.command("passconfirm Other-456")
+				.sees(m -> m.credential().getScenario().getMigration().getSetup().getStatus().getMismatch())
+				.command("pass " + PASSWORD)
+				.sees(m -> m.credential().getScenario().getMigration().getSetup().getConfirmPrompt())
+				.command("passconfirm " + PASSWORD)
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getMigration().getBody());
+	}
+
 	@Test
 	@Identica(mode = JourneyMode.SEAMLESS)
 	void refusesAnOfflineClientUsingThePremiumNameWithoutAPendingMigration(ScenarioContext anvil, YggdrasilMock yggdrasil) {

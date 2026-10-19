@@ -18,6 +18,11 @@ import org.jetbrains.annotations.Nullable;
 
 @Singleton
 public class CredentialMigrationRegistrationStep extends AbstractCredentialSetupStep {
+	/**
+	 * The step's name.
+	 */
+	public static final String NAME = "password-migration-registration";
+
 	@Inject
 	public CredentialMigrationRegistrationStep(
 			Provider<CredentialMessages> messagesProvider,
@@ -28,7 +33,7 @@ public class CredentialMigrationRegistrationStep extends AbstractCredentialSetup
 			PasswordRules passwordPolicy
 	) {
 		super(
-				"password-migration-registration",
+				NAME,
 				messagesProvider,
 				settingsProvider,
 				coreSettingsProvider,

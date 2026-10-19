@@ -1,31 +1,33 @@
 package me.whereareiam.identica.feature.sentinel;
 
-import com.google.inject.Singleton;
 import me.whereareiam.identica.Registry;
-import me.whereareiam.identica.feature.sentinel.SentinelDefinition;
 
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-@Singleton
-public class SentinelRegistry implements Registry<SentinelDefinition> {
-	private final Set<SentinelDefinition> definitions = new CopyOnWriteArraySet<>();
+/**
+ * The sentinels of one kind that are registered: the definitions that count attempts, or the quotas.
+ *
+ * @param <T> the kind of sentinel
+ */
+public class SentinelRegistry<T> implements Registry<T> {
+	private final Set<T> values = new CopyOnWriteArraySet<>();
 
 	@Override
-	public void register(SentinelDefinition value) {
+	public void register(T value) {
 		if (value == null) return;
-		definitions.add(value);
+		values.add(value);
 	}
 
 	@Override
-	public void unregister(SentinelDefinition value) {
+	public void unregister(T value) {
 		if (value == null) return;
-		definitions.remove(value);
+		values.remove(value);
 	}
 
 	@Override
-	public Set<SentinelDefinition> values() {
-		return Collections.unmodifiableSet(definitions);
+	public Set<T> values() {
+		return Collections.unmodifiableSet(values);
 	}
 }

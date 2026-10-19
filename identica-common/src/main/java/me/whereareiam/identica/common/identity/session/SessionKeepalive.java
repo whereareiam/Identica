@@ -8,7 +8,9 @@ import me.whereareiam.identica.model.replication.LeaseRenewal;
 import me.whereareiam.identica.replication.lease.LeaseKeeper;
 import me.whereareiam.identica.replication.lease.LeasedRecords;
 import me.whereareiam.identica.replication.lease.Leases;
+import me.whereareiam.identica.replication.cache.Versioned;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -62,16 +64,26 @@ public class SessionKeepalive {
 	private static final class SessionRecords implements LeasedRecords<Session> {
 		private final @NotNull SessionStore store;
 
+		/**
+		 * Reads the session. The session store has no revisions, so the session stands for its own revision and
+		 * {@link #write} writes it unconditionally.
+		 */
 		@Override
-		public @NotNull CompletableFuture<Optional<Session>> find(@NotNull String sessionId) {
-			return store.find(sessionId);
+		public @NotNull CompletableFuture<Optional<Versioned<Session>>> find(@NotNull String sessionId) {
+			return store.find(sessionId).thenApply(session -> session.map(found -> new Versioned<>(found, found)));
 		}
 
 		@Override
-		public @NotNull CompletableFuture<Void> write(@NotNull String sessionId, @NotNull Session session, @NotNull LeaseRenewal renewal) {
-			return renewal.isRestored() || renewal.getCount() % REFRESHES_PER_INDEXING == 0
+		public @NotNull CompletableFuture<Boolean> write(
+				@NotNull String sessionId,
+				@Nullable Versioned<Session> found,
+				@NotNull Session session,
+				@NotNull LeaseRenewal renewal
+		) {
+			CompletableFuture<Void> written = renewal.isRestored() || renewal.getCount() % REFRESHES_PER_INDEXING == 0
 					? store.put(session)
 					: store.touch(session);
+			return written.thenApply(ignored -> true);
 		}
 	}
 }

@@ -14,6 +14,7 @@ import me.whereareiam.identica.model.scheduler.JobKey;
 import me.whereareiam.identica.model.scheduler.Origin;
 import me.whereareiam.identica.model.scheduler.PeriodicalRunnableTask;
 import me.whereareiam.identica.model.scheduler.Purpose;
+import me.whereareiam.identica.replication.cache.Versioned;
 import me.whereareiam.identica.replication.lease.LeaseKeeper;
 import me.whereareiam.identica.replication.lease.LeasedRecords;
 import me.whereareiam.identica.replication.lease.Leases;
@@ -149,18 +150,24 @@ public class DefaultLeaseKeeper implements LeaseKeeper, RuntimeLifecycle {
 
 		/**
 		 * Writes the stored record again, so a change another proxy made to it is kept, or the copy kept here when
-		 * the record is gone. A lease that was released, taken over or ended meanwhile is not written.
+		 * the record is gone. A lease that was released, taken over or ended meanwhile is not written, and neither is
+		 * a record that changed after it was read.
 		 */
 		private void renew(@NotNull String key) {
 			records.find(key)
-					.thenCompose(stored -> {
+					.thenCompose(found -> {
+						Optional<T> stored = found.map(Versioned::getValue);
 						Held<T> renewed = held.computeIfPresent(key, (ignored, current) -> next(current, stored));
 						if (renewed == null) return CompletableFuture.<Void>completedFuture(null);
 
 						long ttlMs = ttlMs(renewed.endsAt);
 						if (ttlMs <= 0) return end(key, renewed);
 
-						return records.write(key, renewed.record, new LeaseRenewal(renewed.renewals, stored.isEmpty(), ttlMs));
+						return records.write(key, found.orElse(null), renewed.record, new LeaseRenewal(renewed.renewals, stored.isEmpty(), ttlMs))
+								.thenAccept(written -> {
+									if (!written)
+										Logger.debug("Lease of %s %s was not renewed: the record changed after it was read", name, key);
+								});
 					})
 					.exceptionally(failure -> {
 						Logger.debug("Could not renew the lease of %s %s: %s", name, key, failure.getMessage());

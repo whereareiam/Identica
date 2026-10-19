@@ -8,15 +8,16 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Optional;
 
 /**
- * Evaluates registered sentinel policies and manages their attempt counters.
+ * Evaluates registered sentinel policies and quotas and manages the policies' attempt counters.
  * This service exists only while the sentinel feature is installed.
  */
 public interface SentinelService {
 	/**
-	 * Evaluates policies for an operation, recording attempts for record-mode policies.
+	 * Evaluates policies and quotas for an operation, recording attempts for record-mode policies. A quota the
+	 * connection reached always denies.
 	 * @param scope connection operation
 	 * @param context connection and account identifiers
-	 * @return strongest limited decision, or empty when no policy limits the operation
+	 * @return strongest limited decision, or empty when no policy or quota limits the operation
 	 */
 	@NotNull Optional<SentinelDecision> evaluate(@NotNull SentinelScope scope, @NotNull SentinelContext context);
 

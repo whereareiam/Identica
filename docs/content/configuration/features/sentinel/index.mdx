@@ -119,6 +119,48 @@ It counts the connections of an address that are refused because another address
 </Setting>
 
 <Setting
+  name="sentinels.accountsPerAddress.enabled"
+  takes="`true` or `false`"
+  default="`false`"
+  affects="whether registrations from one address are limited"
+>
+
+Once an address reached `maxAccounts`, its next registration is refused before the player is asked for a password. Players who already have an account keep logging in. It counts the addresses Identica keeps in [`identity/addresses.yml`](../../identity/addresses/index.mdx), which also decides which addresses count as one; see [Limiting accounts per address](../../../admins/features/sentinel/index.mdx#limiting-accounts-per-address).
+
+</Setting>
+
+<Setting
+  name="sentinels.accountsPerAddress.maxAccounts"
+  takes="an integer greater than `0`"
+  default="`3`"
+  affects="how many accounts may be registered from one address"
+>
+
+</Setting>
+
+<Setting
+  name="sentinels.accountsPerAddress.window"
+  takes="a duration, or `0m`"
+  default='`"0m"`'
+  affects="how far back registrations count"
+>
+
+`0m` counts every account whose registration address is still kept. With a window such as `"30d"`, a registration stops counting 30 days after it happened.
+
+</Setting>
+
+<Setting
+  name="sentinels.accountsPerAddress.allowlist"
+  takes="a list of addresses and ranges, such as `203.0.113.7` or `10.0.0.0/8`"
+  default="`[]`"
+  affects="which addresses are never limited"
+>
+
+Use it for addresses many real players share, such as a school. Their registrations are still kept, unlike the addresses `identity/addresses.yml` ignores. An entry that is not an address or range is skipped with a warning.
+
+</Setting>
+
+<Setting
   name="replication.state"
   takes="a string"
   default='`"identica:sentinels"`'
@@ -165,6 +207,17 @@ The `{seconds}` placeholder is replaced with the remaining lockout duration. An 
 
 </Setting>
 
+<Setting
+  name="accountsPerAddress.denied"
+  takes="a list of lines"
+  default="a notice reading `Too many accounts were registered from your address.` and the limit"
+  affects="the reason shown to a player whose registration the account limit refuses"
+>
+
+`{maxAccounts}` is replaced with `sentinels.accountsPerAddress.maxAccounts`. `{seconds}` is replaced with the time until the oldest registration that counts leaves the `window`, and with `0` without a window. An empty list silences the message; the registration is still refused.
+
+</Setting>
+
 ## Example
 
 `features/sentinel/settings.yml`:
@@ -188,6 +241,11 @@ sentinels:
     lockout:
       enabled: true
       duration: "1m"
+  accountsPerAddress:
+    enabled: false
+    maxAccounts: 3
+    window: "0m"
+    allowlist: []
 replication:
   state: "identica:sentinels"
 ```
@@ -215,6 +273,12 @@ replication:
         "enabled": true,
         "duration": "1m"
       }
+    },
+    "accountsPerAddress": {
+      "enabled": false,
+      "maxAccounts": 3,
+      "window": "0m",
+      "allowlist": []
     }
   },
   "replication": {

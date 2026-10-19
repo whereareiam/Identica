@@ -1,10 +1,12 @@
 package me.whereareiam.identica.util;
 
 import com.google.common.net.HostAndPort;
+import com.google.common.net.InetAddresses;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.IDN;
+import java.net.InetAddress;
 import java.util.Locale;
 
 /**
@@ -57,6 +59,36 @@ public final class NetworkUtil {
 		}
 
 		return normalized.toLowerCase(Locale.ROOT);
+	}
+
+	/**
+	 * Parses an IP address written as an IPv4 or IPv6 literal. Host names are never looked up, the scope of an IPv6
+	 * address is dropped, and an IPv6 address that maps an IPv4 address becomes that IPv4 address.
+	 *
+	 * @param value the written address, with or without the brackets of an IPv6 literal
+	 * @return the address, or {@code null} when the value is not an IP literal
+	 */
+	public static @Nullable InetAddress parseAddress(@Nullable String value) {
+		if (value == null) return null;
+
+		String literal = value.trim();
+		if (literal.startsWith("[") && literal.endsWith("]")) literal = literal.substring(1, literal.length() - 1);
+
+		int scope = literal.indexOf('%');
+		if (scope >= 0) literal = literal.substring(0, scope);
+		if (!InetAddresses.isInetAddress(literal)) return null;
+
+		return InetAddresses.forString(literal);
+	}
+
+	/**
+	 * Writes an IP address in its shortest form, such as {@code 2001:db8::1}, without a scope.
+	 *
+	 * @param address the address
+	 * @return the written address
+	 */
+	public static @NotNull String formatAddress(@NotNull InetAddress address) {
+		return InetAddresses.toAddrString(address);
 	}
 
 	private static boolean isIpv6Literal(@NotNull String host) {

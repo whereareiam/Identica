@@ -1,7 +1,7 @@
 ---
 title: Живые тесты
 description: Запуск и написание прохождений игрока для собранного плагина на настоящем прокси.
-sourceHash: 2923e1a52a788ba852856e1ab27a9a203ef0be9d
+sourceHash: 636dc14a2637fcebb62be65a257a97b071e915da
 ---
 
 Модуль `identica-testing` запускает собранный плагин и провайдеры на настоящем прокси Velocity или BungeeCord с бэкенд-серверами Paper и проводит через них симулированных игроков с помощью [Anvil](https://github.com/whereareiam/anvil). Модульные тесты остаются в своих модулях, а эти тесты проверяют то, что видит игрок при входе на сервер.
@@ -27,7 +27,7 @@ sourceHash: 2923e1a52a788ba852856e1ab27a9a203ef0be9d
 | Набор | Задача | Пакеты | Что проверяет |
 | --- | --- | --- | --- |
 | `join` | `anvilJoinTest` | `join`, `entrypoint`, `routing`, `restriction` | вход игрока: регистрация, вход в аккаунт, определение премиум-аккаунта, хосты и цели маршрутизации |
-| `account` | `anvilAccountTest` | `credential`, `verification`, `recognition`, `security` | уже созданный аккаунт: смена пароля, двухфакторная проверка, узнанные сессии, защита от злоупотреблений |
+| `account` | `anvilAccountTest` | `credential`, `verification`, `recognition`, `security`, `dialogs` | уже созданный аккаунт: смена пароля, двухфакторная проверка, узнанные сессии, защита от злоупотреблений |
 | `identity` | `anvilIdentityTest` | `username`, `identity` | ники и их конфликты, уникальные идентификаторы, резервирования |
 | `operations` | `anvilOperationsTest` | `administration`, `migration`, `startup`, `database`, `example` | перезагрузка, миграции, запуск, бэкенды баз данных, примеры |
 | `cluster` | `anvilClusterTest` | `cluster` | два прокси с общей базой данных; нужен Docker |

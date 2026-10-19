@@ -1,6 +1,7 @@
 package me.whereareiam.identica.testing.example;
 
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
+import me.whereareiam.identica.testing.environment.Addon;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.journey.Journey;
@@ -40,7 +41,7 @@ class ExampleProviderTest {
 	}
 
 	@Test
-	@Identica(providers = Provider.EXAMPLE, addon = true)
+	@Identica(providers = Provider.EXAMPLE, addons = Addon.EXAMPLE)
 	void theExampleAddonLetsThePassphraseCommandThroughAndHoldsBackChat(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)

@@ -1,7 +1,7 @@
 ---
 title: Сборка Identica
 description: Как собрать плагин со всеми встроенными функциями и jar-файлы его провайдеров.
-sourceHash: 6e2b9402e695b3ca3db7047aadd1f8dc6fb8f389
+sourceHash: 37f89f26c987b25c9a9a3258bd4ea2d2fc4aa457
 ---
 
 Запускайте из корня репозитория. Исходники компилируются и тестируются установленной на машине Java 21 — той, которой запускается Gradle:
@@ -27,7 +27,7 @@ sourceHash: 6e2b9402e695b3ca3db7047aadd1f8dc6fb8f389
 ./gradlew assembleDistribution
 ```
 
-Команда записывает в `build/distribution/` файлы `Identica-BUNDLE-<version>.jar`, `Identica-BUNGEECORD-<version>.jar`, `Identica-VELOCITY-<version>.jar`, `Identica-PLATFORMS-<version>.zip` с jar-файлами для обоих прокси и два jar-файла провайдеров. Версия берётся из переменной окружения `VERSION`, по умолчанию — `dev`.
+Команда записывает в `build/distribution/` файлы `Identica-BUNDLE-<version>.jar`, `Identica-BUNGEECORD-<version>.jar`, `Identica-VELOCITY-<version>.jar`, `Identica-PLATFORMS-<version>.zip` с jar-файлами для обоих прокси, два jar-файла провайдеров, а также аддон диалогов: `Identica-Dialogs-<version>.jar`, `Identica-Dialogs-BUNGEECORD-<version>.jar` и `Identica-Dialogs-VELOCITY-<version>.jar`. Версия берётся из переменной окружения `VERSION`, по умолчанию — `dev`.
 
 Каждая сборка плагина включает реализации всех встроенных функций и подсистему идентификации по нику. Администраторы настраивают использование функций глобально и для каждого провайдера; они не устанавливают jar-файлы функций и не выбирают, какие реализации компилировать.
 

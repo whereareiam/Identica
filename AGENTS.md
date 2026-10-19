@@ -35,12 +35,14 @@ When changing behavior:
   Compiled features: verification, recognition, sentinel, restriction, and restriction-join. Feature API, implementation, persistence, commands, and pipeline contributions stay in their owning feature modules; join restriction is nested under `feature-restriction/restriction-join`.
 - `identica-integration/*`
   External integrations, such as usage statistics and error reports sent to bStats and FastStats through Statistica.
+- `addons/*`
+  Official addons: plugins of their own that ship with Identica's releases and use only its public API. Each addon is a family that groups its own modules; `addons/dialogs` shows Identica's prompts as Minecraft dialogs, with `dialogs-api`, `dialogs-common`, `dialogs-display/{display-packetevents,display-bungeecord}` (how dialogs reach the client: PacketEvents on Velocity, BungeeCord's own API on BungeeCord) and `dialogs-platform/{type/platform-velocity,type/platform-bungeecord,bundle}`.
 - `examples/*`
   The example addon (a separate Velocity plugin on the public API, whose checkpoints the same jar also registers on BungeeCord) and the example provider (a provider jar) that the developer documentation walks through. Not shipped; `identica-testing` runs both on a real proxy, so keep them working when the API changes.
 - `identica-testing`
   Live player journeys against the packaged plugin on a real proxy, run through Anvil. Not part of the shipped plugin.
 - `build-logic/`
-  Shared Gradle conventions. `module-*` says what kind of module a project is: `module-java` (Java 21 toolchain, Lombok, common dependencies), `module-api` (a published `-api` module), `module-feature` (a module published in the feature group). `packaging-*` says what it produces: `packaging-publication`, `packaging-relocations`, `packaging-shaded-jar` (a loadable plugin or provider jar), `packaging-platform-jar` (a proxy's plugin jar) and `packaging-bundle-jar`. A published module that is not an API applies `module-java` and `packaging-publication`.
+  Shared Gradle conventions. `module-*` says what kind of module a project is: `module-java` (Java 21 toolchain, Lombok, common dependencies), `module-api` (a published `-api` module), `module-feature` (a module published in the feature group), `module-addon` (a module published in the addon group). `packaging-*` says what it produces: `packaging-publication`, `packaging-relocations`, `packaging-shaded-jar` (a loadable plugin or provider jar), `packaging-platform-jar` (a proxy's plugin jar), `packaging-bundle-jar` and `packaging-addon-jar` (an addon's plugin jar, which shades only the addon's modules and relocates nothing). A published module that is not an API applies `module-java` and `packaging-publication`.
 - `docs/content/`
   User-facing and developer-facing documentation.
 - `dev/`
@@ -145,7 +147,7 @@ Do not replace these libraries with unrelated alternatives in the same area unle
 
 `identica-testing` starts the packaged plugin on a real Velocity proxy with Paper backends and drives simulated players through it.
 
-- journeys are split into suites, each a JUnit tag on the class and an `anvil<Suite>Test` task: `join` (join, entrypoint, routing, restriction), `account` (credential, verification, recognition, security), `identity` (username, identity), `operations` (administration, migration, startup, database, example), `cluster` and `upgrade`; `journeySuites` in the module's build lists them
+- journeys are split into suites, each a JUnit tag on the class and an `anvil<Suite>Test` task: `join` (join, entrypoint, routing, restriction), `account` (credential, verification, recognition, security, dialogs), `identity` (username, identity), `operations` (administration, migration, startup, database, example), `cluster` and `upgrade`; `journeySuites` in the module's build lists them
 - a new journey class carries the tag of its package's suite; `@IdenticaCluster` carries `cluster` itself; `anvilTest` runs only `JourneySuitesTest`, which fails when a journey is in no suite or in several
 - run them with `./gradlew :identica-testing:anvil` (every suite) or one suite, such as `./gradlew :identica-testing:anvilJoinTest --tests 'me.whereareiam.identica.testing.routing.*'`; `test` and `pluginJars` do not start them
 - they need an installed Java 21 and network access on first use; a test takes about 5 seconds and several run at once, each on its own network (`-Pidentica.journeys.parallelism=1` runs them one after another)
@@ -154,7 +156,9 @@ Do not replace these libraries with unrelated alternatives in the same area unle
 - declare the network with `@Identica`, describe the player with `Journey`, and name player-facing messages through Identica's message models (`.sees(m -> m.credential()...)`) instead of copying their text
 - a player who announces a hostname or connects from another loopback address joins with `Journey.of(anvil, Client.offline("Alice").through(host).from("127.0.0.2"))`; every other player connects from `127.0.0.1`
 - a failed test keeps its network under `identica-testing/build/anvil/`; read the `anvil-console.log` files there, where Identica's debug logging is enabled
-- change a test proxy's files through `@Identica(configure = ...)` (both proxies of a cluster through `@IdenticaCluster(configure = ...)`), a `Consumer<ProxyConfiguration>` working on Identica's models; `omit` and `corrupt` cover new installations and unreadable files; `ProxyConfiguration.editGenerated` and `corruptGenerated` change the files of a running proxy before `Administrator` reloads it
+- run addons on the test proxy with `@Identica(addons = ...)`: `Addon.EXAMPLE` (Velocity only) or `Addon.DIALOGS`, which also installs PacketEvents on Velocity; a journey answers the dialogs addon's dialogs with `seesDialog(id)` and `presses(dialog -> ..., inputs)`, naming dialogs and buttons through the addon's files
+- change a test proxy's files through `@Identica(configure = ...)` (both proxies of a cluster through `@IdenticaCluster(configure = ...)`), a `Consumer<ProxyConfiguration>` working on Identica's models; `omit` and `corrupt` cover new installations and unreadable files; `ProxyConfiguration.editGenerated` and `corruptGenerated` change the files of a running proxy before `Administrator` reloads it, and `editGenerated(anvil, addon, ...)` an addon's files
+- backends and clients run Minecraft 1.21.11; `@Identica(minecraft = MinecraftVersion.V1_21_1)` runs a network on 1.21.1, a client from before dialogs
 - `@IdenticaCluster` starts two proxies on a shared PostgreSQL and, unless turned off, one Redis; a journey names its proxy (`Journey.offline(anvil, "Alice", PROXY_B)`) and `Administrator` runs console commands on one; these tests need Docker and are skipped without it
 - journeys that start from what an earlier version of Identica left are tagged `@Tag("upgrade")` and form the `upgrade` suite; `./gradlew :identica-testing:anvilUpgradeTest` runs them, by hand and in the release workflow; `ProxyConfiguration.seed(path, file)` places such a file, like the SQLite database built from the `identica-2.2.1` layouts that `EarlierInstallation` creates, before the proxy first starts
 - premium accounts come from the network's own stand-in for Mojang, a `YggdrasilMock` test parameter (`yggdrasil.register(...)`), which also verifies premium logins; never add real account credentials to the repository or CI
@@ -200,7 +204,7 @@ A merged pull request lands in the release draft as `* <title> ([#<number>](<url
 
 Areas for admins and players:
 
-`Authentication`, `Commands`, `Configuration`, `Credential`, `Database`, `Messages`, `Migration`, `Platform`, `Premium`, `Recognition`, `Replication`, `Restriction`, `Routing`, `Sentinel`, `Sessions`, `Statistics`
+`Authentication`, `Commands`, `Configuration`, `Credential`, `Database`, `Dialogs`, `Messages`, `Migration`, `Platform`, `Premium`, `Recognition`, `Replication`, `Restriction`, `Routing`, `Sentinel`, `Sessions`, `Statistics`
 
 - reuse an existing area whenever one fits; a new admin command is `Commands`, a new setting in a feature's file belongs to that feature's area
 - add a new area only for something admins recognise by that name, such as a new feature, provider, or config file, and add it to this list in the same pull request

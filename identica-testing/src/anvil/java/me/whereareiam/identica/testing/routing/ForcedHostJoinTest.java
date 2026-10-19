@@ -1,6 +1,8 @@
 package me.whereareiam.identica.testing.routing;
 
+import me.whereareiam.anvil.api.model.player.SessionIdentity;
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
+import me.whereareiam.anvil.environment.yggdrasil.YggdrasilMock;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
@@ -17,8 +19,9 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY_HOST;
 
 /**
- * Players register on networks whose proxy forces {@link me.whereareiam.identica.testing.environment.IdenticaNetwork#LOBBY_HOST}
- * to {@code lobby} and whose routing has no completion server of its own. They register on {@code auth}.
+ * Players join networks whose proxy forces {@link me.whereareiam.identica.testing.environment.IdenticaNetwork#LOBBY_HOST}
+ * to {@code lobby} and whose routing has no completion server of its own. Credential players register on
+ * {@code auth}; a returning premium player needs no step there.
  */
 @Tag("join")
 class ForcedHostJoinTest {
@@ -33,6 +36,19 @@ class ForcedHostJoinTest {
 				.register(PASSWORD)
 				.on(LOBBY)
 				.sees(m -> m.credential().getCompletion().getRegistration().getBody());
+	}
+
+	@Test
+	@Identica(mode = JourneyMode.SEAMLESS, complete = "", configure = FollowForcedHosts.class)
+	void returnsWithPremiumStraightToTheForcedHostServer(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+		SessionIdentity account = yggdrasil.register("Steve");
+
+		Journey.of(anvil, Client.premium(account).through(LOBBY_HOST)).join()
+				.on(LOBBY)
+				.leave()
+				.rejoin()
+				.on(LOBBY)
+				.bypasses(AUTH);
 	}
 
 	@Test

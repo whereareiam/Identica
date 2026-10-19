@@ -68,10 +68,10 @@ public class CredentialPipelineExtension implements PipelineExtension {
 				&& settings.getScenario().getRegistration() != null
 				&& settings.getScenario().getRegistration().isRequireRepeat();
 
-		registerForBothJourneyModes(
-				builder,
+		builder.registerStep(
 				PipelineType.REGISTRATION,
 				providerId,
+				StageType.PROVIDER,
 				validationStep
 		);
 		registerForBothJourneyModes(
@@ -95,16 +95,16 @@ public class CredentialPipelineExtension implements PipelineExtension {
 			);
 		}
 
-		registerForBothJourneyModes(
-				builder,
+		builder.registerStep(
 				PipelineType.AUTHENTICATION,
 				providerId,
+				StageType.PROVIDER,
 				validationStep
 		);
-		registerForBothJourneyModes(
-				builder,
+		builder.registerStep(
 				PipelineType.AUTHENTICATION,
 				providerId,
+				StageType.PROVIDER,
 				recognitionStep
 		);
 

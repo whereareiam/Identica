@@ -58,6 +58,20 @@ class RoutingTargetJoinTest {
 	}
 
 	@Test
+	@Identica(mode = JourneyMode.SEAMLESS, complete = "")
+	void returnsWithPremiumToTheFirstServerWithoutACompletionTarget(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+		SessionIdentity account = yggdrasil.register("Steve");
+
+		Journey.premium(anvil, account).join()
+				.on(LOBBY)
+				.leave()
+				.rejoin()
+				.on(LOBBY)
+				.bypasses(AUTH)
+				.remainsOn(LOBBY);
+	}
+
+	@Test
 	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL, complete = "")
 	void staysOnTheStepServerWithoutACompletionTarget(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()

@@ -5,14 +5,14 @@ import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.pipeline.ScenarioContext;
+import me.whereareiam.identica.pipeline.journey.step.type.SeamlessStep;
 import me.whereareiam.identica.provider.credential.CredentialConstants;
-import me.whereareiam.identica.provider.credential.pipeline.step.base.AbstractCredentialStep;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
 
 @Singleton
-public class CredentialValidationStep extends AbstractCredentialStep {
+public class CredentialValidationStep extends SeamlessStep {
 	public CredentialValidationStep() {
 		super("password-validation");
 	}

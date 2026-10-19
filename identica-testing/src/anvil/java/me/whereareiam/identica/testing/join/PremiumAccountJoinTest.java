@@ -33,7 +33,7 @@ class PremiumAccountJoinTest {
 		UUID registered = player.profile().getUniqueId();
 		assertEquals(account.getUsername(), player.profile().getUsername());
 
-		player.leave().rejoin().on(LOBBY);
+		player.leave().rejoin().on(LOBBY).bypasses(AUTH);
 		assertEquals(registered, player.profile().getUniqueId());
 	}
 
@@ -47,7 +47,8 @@ class PremiumAccountJoinTest {
 				.sees(m -> m.premium().getCompletion().getRegistration().getBody())
 				.leave()
 				.rejoin()
-				.on(LOBBY);
+				.on(LOBBY)
+				.bypasses(AUTH);
 	}
 
 	@Test
@@ -67,7 +68,8 @@ class PremiumAccountJoinTest {
 				.sees(m -> m.premium().getCompletion().getRegistration().getBody())
 				.leave()
 				.rejoin()
-				.on(LOBBY);
+				.on(LOBBY)
+				.bypasses(AUTH);
 	}
 
 	@Test

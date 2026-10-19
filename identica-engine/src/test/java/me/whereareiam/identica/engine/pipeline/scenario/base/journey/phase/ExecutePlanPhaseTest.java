@@ -19,6 +19,7 @@ import me.whereareiam.identica.model.pipeline.journey.stage.step.JourneyStep;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
+import me.whereareiam.identica.model.routing.RoutingSignal;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.journey.step.Step;
 import me.whereareiam.identica.pipeline.state.PipelineState;
@@ -42,11 +43,13 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -225,6 +228,44 @@ class ExecutePlanPhaseTest {
 		assertEquals(connectionUniqueId, persistedContext.getConnectionUniqueId());
 		assertEquals(accountUniqueId, persistedContext.getAccountUniqueId());
 		assertTrue(pipelineState.has(JourneyStateItem.KEY));
+	}
+
+	@DisplayName("A step that needs only the login runs while the player logs in and finishes the journey")
+	@Test
+	void loginStepFinishesTheJourneyWhileThePlayerLogsIn() {
+		AtomicBoolean executed = new AtomicBoolean();
+		RoutingCoordinator routingCoordinator = mock(RoutingCoordinator.class);
+		Step lookup = step("lookup", StepContextRequirement.LOGIN, context -> {
+			executed.set(true);
+			return StepResult.complete(context);
+		});
+
+		PipelineResult result = executeWhileLoggingIn(lookup, routingCoordinator);
+		List<StepResult> stepResults = stepResults(routingCoordinator);
+
+		assertTrue(executed.get());
+		assertEquals(PipelineStatus.COMPLETE, result.getStatus());
+		assertTrue(stepResults.stream().noneMatch(stepResult -> stepResult.getStatus() == StepResult.StepStatus.WAITING),
+				"a step that needs only the login must not wait for the player: " + stepResults);
+	}
+
+	@DisplayName("A step that needs the player online waits for the player before it runs and reports the wait to routing")
+	@Test
+	void onlineStepWaitsForThePlayerBeforeItRuns() {
+		AtomicBoolean executed = new AtomicBoolean();
+		RoutingCoordinator routingCoordinator = mock(RoutingCoordinator.class);
+		Step prompt = step("prompt", StepContextRequirement.ONLINE, context -> {
+			executed.set(true);
+			return StepResult.complete(context);
+		});
+
+		PipelineResult result = executeWhileLoggingIn(prompt, routingCoordinator);
+		List<StepResult> stepResults = stepResults(routingCoordinator);
+
+		assertFalse(executed.get());
+		assertEquals(PipelineStatus.WAITING, result.getStatus());
+		assertTrue(stepResults.stream().anyMatch(stepResult -> stepResult.getStatus() == StepResult.StepStatus.WAITING
+				&& stepResult.getWaitReason() == StepWaitReason.ONLINE), "routing must learn of the wait: " + stepResults);
 	}
 
 	@DisplayName("Provider blocks enrich a missing provider subject from the selected provider resolvers")
@@ -673,6 +714,67 @@ class ExecutePlanPhaseTest {
 						.build();
 			}
 		};
+	}
+
+	/**
+	 * Runs a journey of one provider step for a player who is still logging in, so not yet online.
+	 */
+	private PipelineResult executeWhileLoggingIn(@NotNull Step step, @NotNull RoutingCoordinator routingCoordinator) {
+		IdentityService identityService = mock(IdentityService.class);
+		ProviderManager providerManager = mock(ProviderManager.class);
+		when(identityService.findByConnectionUniqueId(any(UUID.class))).thenReturn(Optional.empty());
+
+		ExecutePlanPhase phase = new ExecutePlanPhase(
+				identityService,
+				mock(EventManager.class),
+				this::settings,
+				Messages::new,
+				providerManager,
+				providerOperations(),
+				routingCoordinator,
+				new DefaultProviderSelector(new ProviderClaimRanking(providerManager))
+		);
+
+		JourneyStage providerStage = JourneyStage.builder()
+				.id(StageType.PROVIDER.id())
+				.type(StageType.PROVIDER)
+				.order(200)
+				.pipelineTypes(EnumSet.of(PipelineType.AUTHENTICATION))
+				.journeyModes(EnumSet.of(JourneyMode.INTERACTIVE))
+				.allowFallback(true)
+				.build();
+		JourneyExecutionPlan plan = new JourneyExecutionPlan(List.of(new JourneyExecutionBlock(
+				"group-provider",
+				JourneyExecutionPolicy.SEQUENTIAL,
+				null,
+				List.of(new JourneyExecutionStage(providerStage, List.of(journeyStep(StageType.PROVIDER, step, 10))))
+		)));
+
+		AuthContext context = AuthContext.builder()
+				.connectionUniqueId(UUID.randomUUID())
+				.identity(new ConnectionIdentity(UUID.randomUUID(), "PlayerOne", "127.0.0.1"))
+				.intendedServer("auth")
+				.build();
+		PipelineState pipelineState = PipelineState.initial();
+		pipelineState.setPipelineType(PipelineType.AUTHENTICATION);
+		pipelineState.setScenario(context);
+
+		JourneyState state = new JourneyState();
+		state.setContext(context);
+		state.setJourneyMode(JourneyMode.INTERACTIVE);
+		state.setExecutionPlan(plan);
+
+		return phase.execute(pipelineState, state).toCompletableFuture().join().getState().getResult();
+	}
+
+	private List<StepResult> stepResults(@NotNull RoutingCoordinator routingCoordinator) {
+		ArgumentCaptor<RoutingSignal> signals = ArgumentCaptor.forClass(RoutingSignal.class);
+		verify(routingCoordinator, atLeastOnce()).accept(signals.capture());
+
+		return signals.getAllValues().stream()
+				.map(RoutingSignal::getStepResult)
+				.filter(Objects::nonNull)
+				.toList();
 	}
 
 	private JourneyStep journeyStep(@NotNull StageType stageType, @NotNull Step step, int order) {

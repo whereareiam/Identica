@@ -18,8 +18,11 @@ import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceServi
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
 import me.whereareiam.identica.provider.premium.config.defaults.PremiumMessagesDefaults;
+import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.step.StepContextRequirement;
 import org.junit.jupiter.api.Test;
 
+import java.util.EnumSet;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -35,6 +38,14 @@ class PremiumVerificationStepTest {
 	private final ProviderLinkPersistenceService links = mock(ProviderLinkPersistenceService.class);
 	private final VerificationService verification = mock(VerificationService.class);
 	private final UUID accountId = UUID.randomUUID();
+
+	@Test
+	void decidesFromTheLoginInEveryJourney() {
+		PremiumVerificationStep step = new PremiumVerificationStep(PremiumMessages::new, links, features, mock(Injector.class));
+
+		assertEquals(EnumSet.allOf(JourneyMode.class), step.journeyModes());
+		assertEquals(StepContextRequirement.LOGIN, step.contextRequirement());
+	}
 
 	@Test
 	void skipsWithoutVerificationBindingsOrLookingUpAccount() {

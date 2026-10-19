@@ -7,15 +7,16 @@ import me.whereareiam.identica.feature.FeatureRegistry;
 import me.whereareiam.identica.feature.recognition.SessionRecognitionService;
 import me.whereareiam.identica.feature.recognition.store.RecognizedConnectionStore;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
+import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.pipeline.ScenarioContext;
+import me.whereareiam.identica.pipeline.journey.step.type.SeamlessStep;
 import me.whereareiam.identica.provider.credential.CredentialConstants;
-import me.whereareiam.identica.provider.credential.pipeline.step.base.AbstractCredentialStep;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
 
 @Singleton
-public class CredentialRecognitionStep extends AbstractCredentialStep {
+public class CredentialRecognitionStep extends SeamlessStep {
 	private final @NotNull FeatureRegistry features;
 	private final @NotNull Injector injector;
 
@@ -34,10 +35,13 @@ public class CredentialRecognitionStep extends AbstractCredentialStep {
 		if (!features.isEnabled("credential", "recognition"))
 			return CompletableFuture.completedFuture(StepResult.proceed(context));
 
-		String providerSubject = requireProviderSubject(context);
+		ProviderContext provider = context.getProvider();
+		if (provider == null)
+			return CompletableFuture.completedFuture(StepResult.proceed(context));
+
 		boolean recognized = injector.getInstance(SessionRecognitionService.class).matches(
 				CredentialConstants.PROVIDER_ID,
-				providerSubject,
+				provider.getProviderSubject(),
 				context.getUsername(),
 				context.getIp(),
 				context.getIdentity().getOrigin()

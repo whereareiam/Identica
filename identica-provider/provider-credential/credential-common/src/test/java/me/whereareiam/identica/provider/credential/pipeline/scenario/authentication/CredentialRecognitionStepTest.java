@@ -10,8 +10,12 @@ import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.provider.credential.pipeline.step.type.authentication.CredentialRecognitionStep;
+import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.step.StepContextRequirement;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.util.EnumSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -19,6 +23,15 @@ import static org.mockito.Mockito.*;
 
 @DisplayName("Credential Recognition Step")
 class CredentialRecognitionStepTest {
+	@DisplayName("Decides from the login in every journey")
+	@Test
+	void decidesFromTheLoginInEveryJourney() {
+		CredentialRecognitionStep step = new CredentialRecognitionStep(mock(FeatureRegistry.class), mock(Injector.class));
+
+		assertEquals(EnumSet.allOf(JourneyMode.class), step.journeyModes());
+		assertEquals(StepContextRequirement.LOGIN, step.contextRequirement());
+	}
+
 	@DisplayName("Completes authentication when shared session recognition matches")
 	@Test
 	void completesWhenRecognitionMatches() {

@@ -14,7 +14,6 @@ import me.whereareiam.identica.provider.premium.pipeline.step.type.authenticatio
 import me.whereareiam.identica.provider.premium.pipeline.step.type.authentication.PremiumVerificationStep;
 import me.whereareiam.identica.provider.premium.pipeline.step.type.migration.PremiumMigrationCompleteStep;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.StageType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -29,6 +28,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(MockitoExtension.class)
@@ -50,17 +50,21 @@ class PremiumPipelineExtensionTest {
 	private PremiumVerificationStep verificationStep;
 
 	@Test
-	@DisplayName("completes authentication in both journey modes")
-	void registersTheStepsThatCompleteAuthenticationForBothJourneyModes() {
+	@DisplayName("registers the steps that complete authentication in the journey modes they declare")
+	void registersTheStepsThatCompleteAuthenticationInTheJourneyModesTheyDeclare() {
 		List<JourneyStep> registered = registered();
 
-		for (Step completing : List.of(recognitionStep, verificationStep))
-			for (JourneyMode mode : JourneyMode.values())
-				assertTrue(registered.stream().anyMatch(step -> step.getStep() == completing
-								&& step.getScenarios().contains(PipelineType.AUTHENTICATION)
-								&& PROVIDER.equals(step.getProviderId())
-								&& step.getJourneyModes().contains(mode)),
-						completing + " must take part in " + mode + " authentication");
+		for (Step completing : List.of(recognitionStep, verificationStep)) {
+			List<JourneyStep> registrations = registered.stream()
+					.filter(step -> step.getStep() == completing)
+					.toList();
+
+			assertEquals(1, registrations.size(), completing + " must be registered once: " + registrations);
+			JourneyStep registration = registrations.getFirst();
+			assertEquals(Set.of(PipelineType.AUTHENTICATION), registration.getScenarios());
+			assertEquals(PROVIDER, registration.getProviderId());
+			assertTrue(registration.getJourneyModes().isEmpty(), completing + " must take its journey modes from the step");
+		}
 	}
 
 	private List<JourneyStep> registered() {

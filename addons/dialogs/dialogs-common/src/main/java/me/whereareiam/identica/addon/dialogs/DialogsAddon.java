@@ -8,6 +8,7 @@ import me.whereareiam.identica.addon.dialogs.platform.DialogPlatform;
 import me.whereareiam.identica.addon.dialogs.presentation.DialogChooser;
 import me.whereareiam.identica.addon.dialogs.presentation.DialogPartRenderer;
 import me.whereareiam.identica.addon.dialogs.presentation.DialogPresenter;
+import me.whereareiam.identica.addon.dialogs.presentation.DialogsCheckpoint;
 import me.whereareiam.identica.addon.dialogs.presentation.JourneyListener;
 import me.whereareiam.identica.addon.dialogs.presentation.RulePresentations;
 import me.whereareiam.identica.message.MessageService;
@@ -20,8 +21,8 @@ import java.nio.file.Path;
 /**
  * Starts and stops the addon on a proxy, the same way on every platform: once Identica is ready, it reads the
  * files, starts the platform and the display it picks, registers the dialog part type with Identica's message service
- * and presents what the rules name, follows Identica's server joins and resolved scenarios, and registers
- * {@link Dialogs}.
+ * and presents what the rules name, follows Identica's server joins and waiting steps, registers its checkpoint for
+ * the loading screen, and registers {@link Dialogs}.
  */
 public final class DialogsAddon {
 	private final IdenticaAPI identica;
@@ -29,14 +30,17 @@ public final class DialogsAddon {
 	private final RulePresentations presentations;
 	private final MessageService.Registration partType;
 	private final JourneyListener journeys;
+	private final DialogsCheckpoint checkpoint;
 
 	private DialogsAddon(
 			IdenticaAPI identica,
 			DialogsFiles files,
 			RulePresentations presentations,
 			MessageService.Registration partType,
-			JourneyListener journeys
+			JourneyListener journeys,
+			DialogsCheckpoint checkpoint
 	) {
+		this.checkpoint = checkpoint;
 		this.identica = identica;
 		this.files = files;
 		this.presentations = presentations;
@@ -59,30 +63,35 @@ public final class DialogsAddon {
 		identica.getReloadables().register(files);
 
 		DialogDisplay display = platform.display();
-		DialogPresenter presenter = new DialogPresenter(platform, display, identica.getIdentityService(), messages, files::dialogs);
+		DialogChooser chooser = new DialogChooser(identica.getPendingScenarioService(), files::rules, files::dialogs);
+		DialogPresenter presenter = new DialogPresenter(platform, display, identica.getIdentityService(), messages, chooser, files::dialogs);
 		platform.start(presenter);
 		display.start(presenter);
-		DialogChooser chooser = new DialogChooser(identica.getPendingScenarioService(), files::rules, files::dialogs);
 		MessageService.Registration partType = messages.registerPartType(PartType.<DialogPart>builder()
 				.id(DialogPart.TYPE)
 				.partClass(DialogPart.class)
-				.renderer(new DialogPartRenderer(presenter, chooser, messages))
+				.renderer(new DialogPartRenderer(presenter, chooser))
 				.fallback(ChatPart.TYPE)
 				.droppedOnServerSwitch(true)
 				.build());
 		JourneyListener journeys = new JourneyListener(presenter);
 		identica.getEventManager().register(journeys);
 
+		DialogsCheckpoint checkpoint = new DialogsCheckpoint(platform, presenter, files::loadingScreen);
+		identica.getCheckpoints().register(checkpoint);
+
 		Dialogs.register(new DialogsService(files, presenter));
-		return new DialogsAddon(identica, files, presentations, partType, journeys);
+		return new DialogsAddon(identica, files, presentations, partType, journeys, checkpoint);
 	}
 
 	/**
-	 * Stops the addon: Identica tells players its messages in chat again, the addon no longer follows Identica's
-	 * events, its files are no longer reloaded, and {@link Dialogs} is unregistered.
+	 * Stops the addon: its checkpoint takes no more players, Identica tells players its messages in chat again, the
+	 * addon no longer follows Identica's events, its files are no longer reloaded, and {@link Dialogs} is
+	 * unregistered.
 	 */
 	public void stop() {
 		Dialogs.unregister();
+		identica.getCheckpoints().unregister(checkpoint);
 		presentations.remove();
 		partType.remove();
 		identica.getEventManager().unregister(journeys);

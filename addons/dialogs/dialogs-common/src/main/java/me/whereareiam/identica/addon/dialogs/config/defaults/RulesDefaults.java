@@ -8,7 +8,8 @@ import java.util.Map;
 
 /**
  * The shipped rules: a dialog for every prompt of the official providers that asks for a password or a two-factor
- * code. A rule for a provider that is not installed never matches.
+ * code, asked on the loading screen where the player's proxy and client allow it. A rule for a provider that is not
+ * installed never matches.
  */
 public class RulesDefaults implements DefaultsProvider<RulesDocument> {
 	@Override
@@ -19,6 +20,11 @@ public class RulesDefaults implements DefaultsProvider<RulesDocument> {
 				prompt("credential:repeat-password", "register-confirm"),
 				prompt("verification:code", "verification")
 		));
+		RulesDocument.LoadingScreen loadingScreen = new RulesDocument.LoadingScreen();
+		loadingScreen.setEnabled(true);
+		loadingScreen.setWhen(Map.of());
+		rules.setLoadingScreen(loadingScreen);
+
 		return rules;
 	}
 

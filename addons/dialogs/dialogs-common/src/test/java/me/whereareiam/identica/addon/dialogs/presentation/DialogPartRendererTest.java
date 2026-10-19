@@ -68,8 +68,9 @@ class DialogPartRendererTest {
 		when(identities.findByConnectionUniqueId(any())).thenReturn(Optional.empty());
 		Map<String, Dialog> dialogs = Map.of("login", dialog("login"), "event", dialog("event"), "wrong", dialog("wrong"), "register", dialog("register"));
 		when(messages.screen(any())).thenReturn(ClientScreen.WORLD);
-		presenter = new DialogPresenter(platform, platform, identities, messages, () -> dialogs);
-		renderer = new DialogPartRenderer(presenter, new DialogChooser(scenarios, () -> RULES, () -> dialogs), messages);
+		DialogChooser chooser = new DialogChooser(scenarios, () -> RULES, () -> dialogs);
+		presenter = new DialogPresenter(platform, platform, identities, messages, chooser, () -> dialogs);
+		renderer = new DialogPartRenderer(presenter, chooser);
 		when(alice.getConnectionUniqueId()).thenReturn(ALICE);
 		when(scenarios.find(ALICE)).thenReturn(Optional.of(PipelineType.AUTHENTICATION));
 		platform.supported.add(ALICE);

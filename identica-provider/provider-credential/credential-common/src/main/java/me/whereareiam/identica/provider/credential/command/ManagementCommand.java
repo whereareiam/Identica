@@ -76,7 +76,8 @@ public class ManagementCommand {
 			return;
 		}
 
-		String error = passwordPolicy.validate(password);
+		PasswordRules.Violation violation = passwordPolicy.check(password);
+		String error = violation == null ? null : violation.message();
 		if (error != null && !error.isBlank()) {
 			sendMessage(sender, error);
 			return;
@@ -126,7 +127,8 @@ public class ManagementCommand {
 			return;
 		}
 
-		String error = passwordPolicy.validate(password);
+		PasswordRules.Violation violation = passwordPolicy.check(password);
+		String error = violation == null ? null : violation.message();
 		if (error != null && !error.isBlank()) {
 			sendMessage(sender, error);
 			return;

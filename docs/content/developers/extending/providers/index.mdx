@@ -64,17 +64,22 @@ A step in the provider's stage of registration and authentication waits until th
 ```java
 public CompletableFuture<StepResult> execute(ScenarioContext context, PipelineState state) {
     ExamplePassphraseAttempt attempt = state.get(ExamplePassphraseAttempt.KEY).orElse(null);
-    if (attempt == null) return CompletableFuture.completedFuture(StepResult.waiting(messages.get().getPrompt()));
+    if (attempt == null)
+        return CompletableFuture.completedFuture(StepResult.waiting(messages.get().getPrompt()).withPrompt(PROMPT));
 
     state.remove(ExamplePassphraseAttempt.KEY);
     if (!settings.get().getPassphrase().equals(attempt.getPassphrase()))
-        return CompletableFuture.completedFuture(StepResult.waiting(messages.get().getInvalid()));
+        return CompletableFuture.completedFuture(StepResult.waiting(messages.get().getInvalid())
+                .withPrompt(PROMPT)
+                .withAnswer(INVALID));
 
     return CompletableFuture.completedFuture(StepResult.complete(context));
 }
 ```
 
 A `PipelineExtension` registers the step with `builder.registerStep(providerId, StageType.PROVIDER, mode, step)` for both journey modes.
+
+Next to the chat message, a waiting result names what it asks for with `withPrompt(id)`, here `example:passphrase`, and why it asks again with `withAnswer(id)`, here `example:passphrase-invalid`. The chat shows only the message; the IDs let another way of asking, such as the dialogs addon, show its own text for them. Name IDs `<provider>:<name>`, keep them stable once released, and give every step that asks for the same thing the same prompt ID.
 
 A waiting journey continues at the step that waits. When the player's next answer belongs to an earlier step of the same stage, such as a new password after its repetition did not match, return `StepResult.waitingAt(step, message)` with that step's name: the journey continues there once the player answers. A name the stage does not run before the waiting step keeps the journey where it waits.
 

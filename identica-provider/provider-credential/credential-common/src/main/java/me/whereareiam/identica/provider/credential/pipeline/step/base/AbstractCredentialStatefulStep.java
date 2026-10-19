@@ -80,4 +80,14 @@ public abstract class AbstractCredentialStatefulStep extends AbstractCredentialS
 		if (lines == null || lines.isEmpty()) return "";
 		return String.join("\n", lines);
 	}
+
+	/**
+	 * Joins two messages on separate lines, leaving out one that is blank.
+	 */
+	protected static @NotNull String joinNonBlank(@Nullable String first, @Nullable String second) {
+		if (second == null || second.isBlank()) return first == null ? "" : first;
+		if (first == null || first.isBlank()) return second;
+
+		return first + "\n" + second;
+	}
 }

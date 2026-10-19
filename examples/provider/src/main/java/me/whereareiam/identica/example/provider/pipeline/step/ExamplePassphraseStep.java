@@ -21,6 +21,15 @@ import java.util.concurrent.CompletableFuture;
  */
 @Singleton
 public class ExamplePassphraseStep extends InteractiveStep implements StatefulStep {
+	/**
+	 * ID of what the step asks for: the passphrase.
+	 */
+	public static final String PROMPT = "example:passphrase";
+	/**
+	 * ID of why the step asks again: the passphrase was wrong.
+	 */
+	public static final String INVALID = "example:passphrase-invalid";
+
 	private final Provider<ExampleSettings> settings;
 	private final Provider<ExampleMessages> messages;
 
@@ -34,11 +43,13 @@ public class ExamplePassphraseStep extends InteractiveStep implements StatefulSt
 	@Override
 	public @NotNull CompletableFuture<StepResult> execute(@NotNull ScenarioContext context, @NotNull PipelineState state) {
 		ExamplePassphraseAttempt attempt = state.get(ExamplePassphraseAttempt.KEY).orElse(null);
-		if (attempt == null) return CompletableFuture.completedFuture(StepResult.waiting(messages.get().getPrompt()));
+		if (attempt == null) return CompletableFuture.completedFuture(StepResult.waiting(messages.get().getPrompt()).withPrompt(PROMPT));
 
 		state.remove(ExamplePassphraseAttempt.KEY);
 		if (!settings.get().getPassphrase().equals(attempt.getPassphrase()))
-			return CompletableFuture.completedFuture(StepResult.waiting(messages.get().getInvalid()));
+			return CompletableFuture.completedFuture(StepResult.waiting(messages.get().getInvalid())
+					.withPrompt(PROMPT)
+					.withAnswer(INVALID));
 
 		return CompletableFuture.completedFuture(StepResult.complete(context));
 	}

@@ -3,6 +3,8 @@ package me.whereareiam.identica.provider.premium.pipeline.step.type.authenticati
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import me.whereareiam.identica.feature.FeatureRegistry;
+import me.whereareiam.identica.feature.verification.VerificationAnswers;
+import me.whereareiam.identica.feature.verification.VerificationPrompts;
 import me.whereareiam.identica.feature.verification.VerificationService;
 import me.whereareiam.identica.feature.verification.config.VerificationMessages;
 import me.whereareiam.identica.feature.verification.model.resolution.VerificationCodeAttempt;
@@ -57,6 +59,7 @@ class PremiumVerificationStepTest {
 		StepResult result = step().execute(context(), PipelineState.initial()).join();
 
 		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
+		assertEquals(VerificationPrompts.CODE, result.getPrompt());
 		verify(verification).resolveVerification(argThat(request -> accountId.equals(request.getUniqueId())
 				&& "premium".equals(request.getProviderId()) && "authentication".equals(request.getPurpose())
 				&& request.getCode() == null));
@@ -83,6 +86,8 @@ class PremiumVerificationStepTest {
 
 		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
 		assertEquals(INVALID_CODE, result.getMessage());
+		assertEquals(VerificationPrompts.CODE, result.getPrompt());
+		assertEquals(VerificationAnswers.CODE_INVALID, result.getAnswer());
 	}
 
 	@Test
@@ -93,6 +98,7 @@ class PremiumVerificationStepTest {
 
 		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
 		assertEquals(NO_PENDING, result.getMessage());
+		assertEquals(VerificationAnswers.NO_CHALLENGE, result.getAnswer());
 	}
 
 	private PremiumVerificationStep step() {

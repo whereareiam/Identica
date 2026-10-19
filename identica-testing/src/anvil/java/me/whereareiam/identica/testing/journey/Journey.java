@@ -45,6 +45,9 @@ import static org.junit.jupiter.api.Assertions.fail;
  * its earlier occurrence.</p>
  */
 public final class Journey {
+	/** The cooldown Identica, its features and the official providers give their commands by default. */
+	public static final Duration COMMAND_COOLDOWN = Duration.ofSeconds(2);
+
 	private static final Duration TIMEOUT = Duration.ofSeconds(20);
 	private static final Duration SETTLE = Duration.ofSeconds(3);
 
@@ -235,6 +238,14 @@ public final class Journey {
 	public Journey waits(Duration configured) {
 		sleep(configured);
 		return this;
+	}
+
+	/**
+	 * Lets the default cooldown of a command pass, so that the player can run the command they just ran again: by
+	 * default every command refuses a player who ran it in the last {@link #COMMAND_COOLDOWN}.
+	 */
+	public Journey waitsForCooldown() {
+		return waits(COMMAND_COOLDOWN);
 	}
 
 	/**

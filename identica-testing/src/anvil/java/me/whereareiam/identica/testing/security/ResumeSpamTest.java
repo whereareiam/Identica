@@ -65,7 +65,7 @@ class ResumeSpamTest {
 				.on(AUTH)
 				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt());
 		for (int attempt = 0; attempt < ATTEMPTS * 2; attempt++)
-			alice.login(WRONG);
+			alice.waitsForCooldown().login(WRONG);
 
 		alice.remainsOn(AUTH)
 				.login(PASSWORD)
@@ -73,8 +73,9 @@ class ResumeSpamTest {
 	}
 
 	/**
-	 * Joining and every command count as attempts, so sending as many commands as the sentinel allows attempts
-	 * always exceeds it.
+	 * Joining and every command count as attempts, so joining and sending one command fewer than the sentinel allows
+	 * attempts exceeds it. The player waits out the cooldown of {@code /login} each time, as a command it refuses
+	 * resumes nothing.
 	 */
 	private static Journey flooded(ScenarioContext anvil) {
 		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
@@ -82,8 +83,8 @@ class ResumeSpamTest {
 		Journey alice = Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
 				.sees(m -> m.credential().getScenario().getAuthentication().getPrompt());
-		for (int attempt = 0; attempt < ATTEMPTS; attempt++)
-			alice.login(WRONG);
+		for (int attempt = 1; attempt < ATTEMPTS; attempt++)
+			alice.waitsForCooldown().login(WRONG);
 
 		return alice.kickedWith(m -> m.sentinel().getResumeSpam().getDenied());
 	}

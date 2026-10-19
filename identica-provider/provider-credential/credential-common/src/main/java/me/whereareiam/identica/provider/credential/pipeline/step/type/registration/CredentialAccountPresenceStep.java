@@ -13,6 +13,8 @@ import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.cryptography.CryptographyService;
 import me.whereareiam.identica.provider.credential.event.authentication.AuthenticationAttemptDecision;
 import me.whereareiam.identica.provider.credential.model.CredentialAccount;
+import me.whereareiam.identica.provider.credential.pipeline.CredentialAnswers;
+import me.whereareiam.identica.provider.credential.pipeline.CredentialPrompts;
 import me.whereareiam.identica.provider.credential.pipeline.step.base.AbstractCredentialAttemptStep;
 import org.jetbrains.annotations.NotNull;
 
@@ -62,7 +64,9 @@ public class CredentialAccountPresenceStep extends AbstractCredentialAttemptStep
 		CredentialMessages messages = messagesProvider.get();
 		var input = consumeAuthenticationAttempt(state);
 		if (input == null)
-			return StepResult.waiting(joinAlreadyRegistered(messages));
+			return StepResult.waiting(joinAlreadyRegistered(messages))
+					.withPrompt(CredentialPrompts.PASSWORD)
+					.withAnswer(CredentialAnswers.ALREADY_REGISTERED);
 
 		if (!cryptographyService.verify(credential, input.getPassword())) {
 			AuthenticationAttemptDecision decision = recordBruteForceDecision(credential, context);
@@ -88,8 +92,8 @@ public class CredentialAccountPresenceStep extends AbstractCredentialAttemptStep
 			String warning
 	) {
 		String invalid = messages.getScenario().getAuthentication().getStatus().getInvalid();
-		if (warning == null || warning.isBlank()) return StepResult.waiting(invalid);
-		if (invalid == null || invalid.isBlank()) return StepResult.waiting(warning);
-		return StepResult.waiting(invalid + "\n" + warning);
+		return StepResult.waiting(joinNonBlank(invalid, warning))
+				.withPrompt(CredentialPrompts.PASSWORD)
+				.withAnswer(CredentialAnswers.PASSWORD_INVALID);
 	}
 }

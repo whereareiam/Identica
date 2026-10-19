@@ -6,6 +6,8 @@ import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.config.CredentialSettings;
+import me.whereareiam.identica.provider.credential.pipeline.CredentialAnswers;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 @Singleton
@@ -14,7 +16,13 @@ public class PasswordRules {
 	private final Provider<CredentialSettings> settingsProvider;
 	private final Provider<CredentialMessages> messagesProvider;
 
-	public @Nullable String validate(@Nullable String password) {
+	/**
+	 * Checks a new password against the settings.
+	 *
+	 * @param password the new password
+	 * @return the first rule it breaks, or {@code null} when it keeps them all
+	 */
+	public @Nullable Violation check(@Nullable String password) {
 		CredentialSettings settings = settingsProvider.get();
 		if (settings == null || settings.getScenario() == null || settings.getScenario().getRegistration() == null)
 			return null;
@@ -26,24 +34,31 @@ public class PasswordRules {
 		CredentialMessages.Password messages = messagesProvider.get().getPassword();
 
 		int minLength = passwordSettings.getMinLength();
-		if (minLength > 0 && length < minLength) return messages.getTooShort();
+		if (minLength > 0 && length < minLength)
+			return new Violation(CredentialAnswers.PASSWORD_TOO_SHORT, messages.getTooShort());
 
 		int maxLength = passwordSettings.getMaxLength();
-		if (maxLength > 0 && length > maxLength) return messages.getTooLong();
+		if (maxLength > 0 && length > maxLength)
+			return new Violation(CredentialAnswers.PASSWORD_TOO_LONG, messages.getTooLong());
 
-		if (containsWhitespace(value)) return messages.getNoSpaces();
+		if (containsWhitespace(value))
+			return new Violation(CredentialAnswers.PASSWORD_HAS_SPACES, messages.getNoSpaces());
 
 		int minUpper = passwordSettings.getMinUpper();
-		if (minUpper > 0 && countUpper(value) < minUpper) return messages.getMissingUpper();
+		if (minUpper > 0 && countUpper(value) < minUpper)
+			return new Violation(CredentialAnswers.PASSWORD_MISSING_UPPER, messages.getMissingUpper());
 
 		int minLower = passwordSettings.getMinLower();
-		if (minLower > 0 && countLower(value) < minLower) return messages.getMissingLower();
+		if (minLower > 0 && countLower(value) < minLower)
+			return new Violation(CredentialAnswers.PASSWORD_MISSING_LOWER, messages.getMissingLower());
 
 		int minNumber = passwordSettings.getMinNumber();
-		if (minNumber > 0 && countDigits(value) < minNumber) return messages.getMissingNumber();
+		if (minNumber > 0 && countDigits(value) < minNumber)
+			return new Violation(CredentialAnswers.PASSWORD_MISSING_NUMBER, messages.getMissingNumber());
 
 		int minSpecial = passwordSettings.getMinSpecial();
-		if (minSpecial > 0 && countSpecial(value) < minSpecial) return messages.getMissingSpecial();
+		if (minSpecial > 0 && countSpecial(value) < minSpecial)
+			return new Violation(CredentialAnswers.PASSWORD_MISSING_SPECIAL, messages.getMissingSpecial());
 
 		return null;
 	}
@@ -95,5 +110,14 @@ public class PasswordRules {
 		}
 
 		return count;
+	}
+
+	/**
+	 * A rule a new password breaks.
+	 *
+	 * @param answer the ID of the answer, one of {@link CredentialAnswers}
+	 * @param message the message to the player
+	 */
+	public record Violation(@NotNull String answer, @NotNull String message) {
 	}
 }

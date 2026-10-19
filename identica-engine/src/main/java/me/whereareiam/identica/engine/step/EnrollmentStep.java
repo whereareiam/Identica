@@ -33,6 +33,11 @@ import java.util.concurrent.CompletableFuture;
 
 @Singleton
 public class EnrollmentStep extends InteractiveStep {
+	/**
+	 * ID of what the step asks for: the provider the player chooses to register with.
+	 */
+	public static final String PROMPT = "identica:provider-choice";
+
 	private final ProviderOperations providerOperations;
 	private final Provider<Engine> engineProvider;
 	private final Provider<Messages> messagesProvider;
@@ -95,7 +100,7 @@ public class EnrollmentStep extends InteractiveStep {
 		}
 
 		String message = buildMessage(enrollment, entries);
-		return CompletableFuture.completedFuture(StepResult.waiting(message));
+		return CompletableFuture.completedFuture(StepResult.waiting(message).withPrompt(PROMPT));
 	}
 
 	private boolean shouldAutoSelectSingleProvider() {

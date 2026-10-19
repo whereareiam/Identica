@@ -4,6 +4,8 @@ import com.google.inject.Inject;
 import com.google.inject.Injector;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
+import me.whereareiam.identica.feature.verification.VerificationAnswers;
+import me.whereareiam.identica.feature.verification.VerificationPrompts;
 import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.feature.FeatureRegistry;
 import me.whereareiam.identica.feature.verification.VerificationService;
@@ -111,9 +113,11 @@ public class PremiumVerificationStep extends InteractiveStep implements Stateful
 		if (status == VerificationResolutionStatus.SATISFIED || status == VerificationResolutionStatus.SKIPPED)
 			return StepResult.complete(context);
 		if (status == VerificationResolutionStatus.WAITING)
-			return StepResult.waiting(joinLines(messages.getPrompt()));
+			return StepResult.waiting(joinLines(messages.getPrompt())).withPrompt(VerificationPrompts.CODE);
 		if (status == VerificationResolutionStatus.REJECTED)
-			return StepResult.waiting(rejectionMessage(result));
+			return StepResult.waiting(rejectionMessage(result))
+					.withPrompt(VerificationPrompts.CODE)
+					.withAnswer(rejectionAnswer(result));
 
 		if (status == VerificationResolutionStatus.DENIED)
 			return StepResult.denied(result.getMethodId() == null
@@ -143,6 +147,12 @@ public class PremiumVerificationStep extends InteractiveStep implements Stateful
 		if (result.getRejection() == VerificationChallengeStatus.INVALID) return messages.getInvalidCode();
 
 		return messages.getNoPending();
+	}
+
+	private static @NotNull String rejectionAnswer(@NotNull VerificationResolutionResult result) {
+		if (result.getRejection() == VerificationChallengeStatus.INVALID) return VerificationAnswers.CODE_INVALID;
+
+		return VerificationAnswers.NO_CHALLENGE;
 	}
 
 	private static @NotNull String joinLines(@Nullable List<String> lines) {

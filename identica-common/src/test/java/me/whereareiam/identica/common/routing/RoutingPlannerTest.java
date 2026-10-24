@@ -21,9 +21,7 @@ import me.whereareiam.identica.pipeline.journey.step.Step;
 import me.whereareiam.identica.platform.adapter.PlatformCheckpointAdapter;
 import me.whereareiam.identica.type.checkpoint.CheckpointPlacement;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.StageType;
-import me.whereareiam.identica.type.pipeline.journey.step.StepContextRequirement;
 import me.whereareiam.identica.type.routing.RoutingPlanAction;
 import me.whereareiam.identica.type.routing.RoutingRetryMode;
 import me.whereareiam.identica.type.routing.reason.RoutingClearReason;
@@ -481,16 +479,6 @@ class RoutingPlannerTest {
 			@Override
 			public @NotNull String getName() {
 				return name;
-			}
-
-			@Override
-			public @NotNull Set<JourneyMode> journeyModes() {
-				return Set.of(JourneyMode.SEAMLESS, JourneyMode.INTERACTIVE);
-			}
-
-			@Override
-			public @NotNull StepContextRequirement contextRequirement() {
-				return StepContextRequirement.LOGIN;
 			}
 
 			@Override

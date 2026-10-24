@@ -8,7 +8,6 @@ import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -28,7 +27,7 @@ class PasswordHashingTest {
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void passwordsKeepWorkingWhileTheAlgorithmChangesAndLoginsUpgradeThem(ScenarioContext anvil) {
 		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD);
 
@@ -43,7 +42,7 @@ class PasswordHashingTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void passwordsKeepWorkingWhileTheAlgorithmChangesWithoutUpgrades(ScenarioContext anvil) {
 		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD);
 
@@ -57,7 +56,7 @@ class PasswordHashingTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Argon2.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Argon2.class)
 	void registersAndLogsInWithArgon2(ScenarioContext anvil) {
 		logsIn(Accounts.credential(anvil, "Alice", PASSWORD));
 	}
@@ -67,7 +66,7 @@ class PasswordHashingTest {
 	 * still registers and logs in.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = LongPasswords.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = LongPasswords.class)
 	void registersAndLogsInWithAPasswordLongerThanBcryptReads(ScenarioContext anvil) {
 		String password = "Secret-123" + "x".repeat(80);
 

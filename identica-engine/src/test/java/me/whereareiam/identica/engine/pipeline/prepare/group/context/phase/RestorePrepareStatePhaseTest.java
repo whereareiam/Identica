@@ -16,7 +16,7 @@ import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.prepare.PrepareGroupState;
 import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.type.PrepareStage;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import me.whereareiam.identica.type.provider.ProviderClaimOrigin;
 import me.whereareiam.identica.type.provider.ProviderState;
 import org.junit.jupiter.api.DisplayName;
@@ -60,7 +60,7 @@ class RestorePrepareStatePhaseTest {
 				ProviderClaim.of("beta", ProviderClaimOrigin.HOSTNAME)
 		)));
 		handshake.setPreferredLink(link);
-		handshake.setJourneyMode(JourneyMode.SEAMLESS);
+		handshake.setChoice(JourneyChoice.AUTOMATIC);
 		when(prepareStateStore.peek(CONNECTION_KEY)).thenReturn(Optional.of(PrepareDecision.allow(handshake, null, "Alice")));
 
 		PrepareGroupState groupState = new PrepareGroupState();
@@ -76,7 +76,7 @@ class RestorePrepareStatePhaseTest {
 		assertEquals("beta", restored.getSelection().getWinnerProviderId());
 		assertTrue(restored.getSelection().findVerifiedSubject("alpha").isEmpty());
 		assertEquals(link, restored.getPreferredLink());
-		assertEquals(JourneyMode.SEAMLESS, restored.getJourneyMode());
+		assertEquals(JourneyChoice.AUTOMATIC, restored.getChoice());
 	}
 
 	private static InternalProvider provider(String id) {

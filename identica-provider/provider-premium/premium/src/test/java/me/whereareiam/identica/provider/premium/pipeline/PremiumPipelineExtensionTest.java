@@ -1,6 +1,7 @@
 package me.whereareiam.identica.provider.premium.pipeline;
 
 import me.whereareiam.identica.model.pipeline.journey.stage.JourneyStage;
+import me.whereareiam.identica.model.pipeline.journey.ProviderMethod;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.JourneyStep;
 import me.whereareiam.identica.model.pipeline.phase.PhasePlacement;
 import me.whereareiam.identica.pipeline.PipelineGroup;
@@ -14,7 +15,6 @@ import me.whereareiam.identica.provider.premium.pipeline.step.type.authenticatio
 import me.whereareiam.identica.provider.premium.pipeline.step.type.authentication.PremiumVerificationStep;
 import me.whereareiam.identica.provider.premium.pipeline.step.type.migration.PremiumMigrationCompleteStep;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.StageType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -50,17 +50,15 @@ class PremiumPipelineExtensionTest {
 	private PremiumVerificationStep verificationStep;
 
 	@Test
-	@DisplayName("completes authentication in both journey modes")
-	void registersTheStepsThatCompleteAuthenticationForBothJourneyModes() {
+	@DisplayName("completes authentication with its own steps")
+	void registersTheStepsThatCompleteAuthentication() {
 		List<JourneyStep> registered = registered();
 
 		for (Step completing : List.of(recognitionStep, verificationStep))
-			for (JourneyMode mode : JourneyMode.values())
-				assertTrue(registered.stream().anyMatch(step -> step.getStep() == completing
-								&& step.getScenarios().contains(PipelineType.AUTHENTICATION)
-								&& PROVIDER.equals(step.getProviderId())
-								&& step.getJourneyModes().contains(mode)),
-						completing + " must take part in " + mode + " authentication");
+			assertTrue(registered.stream().anyMatch(step -> step.getStep() == completing
+							&& step.getScenarios().contains(PipelineType.AUTHENTICATION)
+							&& PROVIDER.equals(step.getProviderId())),
+					completing + " must take part in authentication");
 	}
 
 	private List<JourneyStep> registered() {
@@ -80,7 +78,7 @@ class PremiumPipelineExtensionTest {
 		}
 
 		/**
-		 * Registers a step without explicit journey modes, as the engine's builder does.
+		 * Registers a step as the engine's builder does.
 		 */
 		@Override
 		public void registerStep(
@@ -93,9 +91,13 @@ class PremiumPipelineExtensionTest {
 					.stageId(stageType.id())
 					.providerId(providerId)
 					.scenarios(EnumSet.of(pipelineType))
-					.journeyModes(Set.of())
 					.step(step)
 					.build());
+		}
+
+		@Override
+		public void registerMethod(@NotNull ProviderMethod method) {
+			throw new UnsupportedOperationException();
 		}
 
 		@Override

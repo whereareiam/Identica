@@ -25,9 +25,7 @@ import me.whereareiam.identica.provider.subject.SubjectResolution;
 import me.whereareiam.identica.provider.subject.SubjectResolveContext;
 import me.whereareiam.identica.provider.subject.SubjectResolver;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.StageType;
-import me.whereareiam.identica.type.pipeline.journey.step.StepContextRequirement;
 import me.whereareiam.identica.type.provider.ProviderState;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -182,7 +180,7 @@ class DefaultProviderOperationsTest {
 		InternalProvider provider = enabledProvider();
 		when(authenticationJourneyRegistry.resolvePlan(any(), any(), any(), any())).thenReturn(providerPlan());
 
-		assertTrue(operations(providers).isEligible(autoContext(), provider, PipelineType.AUTHENTICATION, JourneyMode.INTERACTIVE));
+		assertTrue(operations(providers).isEligible(autoContext(), provider, PipelineType.AUTHENTICATION));
 	}
 
 	@DisplayName("Returns no profile resolution when no provider resolver applies")
@@ -391,13 +389,11 @@ class DefaultProviderOperationsTest {
 				.id(StageType.PROVIDER.id())
 				.type(StageType.PROVIDER)
 				.pipelineTypes(Set.of(PipelineType.AUTHENTICATION))
-				.journeyModes(Set.of(JourneyMode.INTERACTIVE, JourneyMode.SEAMLESS))
 				.build();
 		JourneyStep step = JourneyStep.builder()
 				.stageId(StageType.PROVIDER.id())
 				.step(new NoopStep())
 				.scenarios(Set.of(PipelineType.AUTHENTICATION))
-				.journeyModes(Set.of(JourneyMode.INTERACTIVE, JourneyMode.SEAMLESS))
 				.build();
 		return new JourneyPlan(List.of(new JourneyPlan.StageEntry(stage, List.of(step))));
 	}
@@ -406,16 +402,6 @@ class DefaultProviderOperationsTest {
 		@Override
 		public @NotNull String getName() {
 			return "noop";
-		}
-
-		@Override
-		public @NotNull Set<JourneyMode> journeyModes() {
-			return Set.of(JourneyMode.INTERACTIVE, JourneyMode.SEAMLESS);
-		}
-
-		@Override
-		public @NotNull StepContextRequirement contextRequirement() {
-			return StepContextRequirement.LOGIN;
 		}
 
 		@Override

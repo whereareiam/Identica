@@ -8,7 +8,7 @@ import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -27,8 +27,8 @@ class ProviderEntrypointJoinTest {
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, entrypoints = true)
-	void registersAnOfflinePlayerWithCredentialWithoutTheChoiceInInteractiveMode(ScenarioContext anvil) {
+	@Identica(choice = JourneyChoice.PROMPTED, entrypoints = true)
+	void registersAnOfflinePlayerWithCredentialWithoutTheChoiceWhenAsked(ScenarioContext anvil) {
 		Journey.of(anvil, Client.offline("Alice").through(Provider.CREDENTIAL.getEntrypoint())).join()
 				.on(AUTH)
 				.doesNotSee(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
@@ -39,8 +39,8 @@ class ProviderEntrypointJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, entrypoints = true)
-	void registersAPremiumOwnerWithPremiumWithoutTheChoiceInInteractiveMode(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+	@Identica(choice = JourneyChoice.PROMPTED, entrypoints = true)
+	void registersAPremiumOwnerWithPremiumWithoutTheChoiceWhenAsked(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 
 		Journey.of(anvil, Client.premium(account).through(Provider.PREMIUM.getEntrypoint())).join()
@@ -50,8 +50,8 @@ class ProviderEntrypointJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, entrypoints = true)
-	void givesAPremiumOwnerHisOwnAccountThroughThePremiumHostnameWhileACredentialAccountHoldsTheNameInInteractiveMode(
+	@Identica(choice = JourneyChoice.PROMPTED, entrypoints = true)
+	void givesAPremiumOwnerHisOwnAccountThroughThePremiumHostnameWhileACredentialAccountHoldsTheNameWhenAsked(
 			ScenarioContext anvil,
 			YggdrasilMock yggdrasil
 	) {
@@ -65,8 +65,8 @@ class ProviderEntrypointJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, entrypoints = true)
-	void asksAPremiumOwnerWithoutProofForThePasswordOfTheCredentialAccountHoldingTheNameInInteractiveMode(
+	@Identica(choice = JourneyChoice.PROMPTED, entrypoints = true)
+	void asksAPremiumOwnerWithoutProofForThePasswordOfTheCredentialAccountHoldingTheNameWhenAsked(
 			ScenarioContext anvil,
 			YggdrasilMock yggdrasil
 	) {
@@ -79,7 +79,7 @@ class ProviderEntrypointJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, entrypoints = true)
+	@Identica(entrypoints = true)
 	void registersAPremiumOwnerWithPremiumThroughItsHostname(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 
@@ -89,7 +89,7 @@ class ProviderEntrypointJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, entrypoints = true)
+	@Identica(entrypoints = true)
 	void registersAnOfflinePlayerWithCredentialThroughItsHostname(ScenarioContext anvil) {
 		Journey.of(anvil, Client.offline("Alice").through(Provider.CREDENTIAL.getEntrypoint())).join()
 				.on(AUTH)
@@ -100,7 +100,7 @@ class ProviderEntrypointJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, entrypoints = true)
+	@Identica(entrypoints = true)
 	void registersAPremiumOwnerWithCredentialAfterThePremiumLoginThroughTheCredentialHostname(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 
@@ -121,7 +121,7 @@ class ProviderEntrypointJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, entrypoints = true)
+	@Identica(entrypoints = true)
 	void demandsThePremiumLoginForAPremiumNameThroughTheCredentialHostname(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		yggdrasil.register("Alice");
 
@@ -130,7 +130,7 @@ class ProviderEntrypointJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, entrypoints = true)
+	@Identica(entrypoints = true)
 	void keepsAPremiumAccountOnPremiumThroughTheCredentialHostname(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 		Journey.premium(anvil, account).join()
@@ -144,14 +144,14 @@ class ProviderEntrypointJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, entrypoints = true)
+	@Identica(entrypoints = true)
 	void demandsAPremiumLoginFromAnOfflinePlayerThroughThePremiumHostname(ScenarioContext anvil) {
 		Journey.of(anvil, Client.offline("Alice").through(Provider.PREMIUM.getEntrypoint())).attempt()
 				.authenticationRequired();
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, entrypoints = true)
+	@Identica(entrypoints = true)
 	void givesAPremiumOwnerHisOwnAccountThroughThePremiumHostnameWhileACredentialAccountHoldsTheName(
 			ScenarioContext anvil,
 			YggdrasilMock yggdrasil
@@ -165,7 +165,7 @@ class ProviderEntrypointJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, entrypoints = true)
+	@Identica(entrypoints = true)
 	void asksAPremiumOwnerWithoutProofForThePasswordOfTheCredentialAccountHoldingTheName(
 			ScenarioContext anvil,
 			YggdrasilMock yggdrasil

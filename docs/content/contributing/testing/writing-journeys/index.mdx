@@ -9,7 +9,7 @@ A test declares its network with `@Identica` and describes a player with `Journe
 
 ```java
 @Test
-@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+@Identica(choice = JourneyChoice.PROMPTED, providers = {Provider.CREDENTIAL, Provider.EXAMPLE})
 void registersWithCredential(ScenarioContext anvil) {
 	Journey.offline(anvil, "Alice").join()
 			.on(AUTH)
@@ -22,7 +22,7 @@ void registersWithCredential(ScenarioContext anvil) {
 }
 ```
 
-`@Identica` sets the journey mode and policy, the enabled providers, provider entrypoints, `autoSelectSingleProvider`, and the routing targets. The network is one proxy, Velocity unless the test names [another platform](../networks/index.mdx#other-proxies), an `auth` server for authentication and registration steps, and a `lobby` that completed players reach. Players join `lobby`; `step` and `complete` name the servers they are routed to while a step waits and once they are done, `auth` and `lobby` unless the test changes them, and a blank target leaves them where they are:
+`@Identica` sets whether registration asks the player to choose the provider, the enabled providers, provider entrypoints, and the routing targets. With only one provider that can register a player, nobody is asked to choose. The network is one proxy, Velocity unless the test names [another platform](../networks/index.mdx#other-proxies), an `auth` server for authentication and registration steps, and a `lobby` that completed players reach. Players join `lobby`; `step` and `complete` name the servers they are routed to while a step waits and once they are done, `auth` and `lobby` unless the test changes them, and a blank target leaves them where they are:
 
 ```java
 @Test
@@ -58,7 +58,7 @@ A join the proxy may refuse starts with `attempt()`, or `attemptAgain()` for a p
 A player a checkpoint holds on the loading screen logs in but enters no server's world until the journey has finished. `joinsHeld()` joins such a player and expects the proxy to hold them, `isHeld()` checks again that their client entered no world, `staysHeld(duration)` keeps checking for longer, such as past the proxy's read timeout, and `neverJoins(backend)` checks that the player never reaches that backend. The example addon's checkpoints hold players who announce `IdenticaNetwork.HOLD_HOST` on the loading screen and players who announce `IdenticaNetwork.ASK_HOST` on the step's server, and `Administrator.answersFor(username, command)` answers for them from the console:
 
 ```java
-@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL, addon = true)
+@Identica(providers = Provider.CREDENTIAL, addon = true)
 void holdsAPlayerUntilTheyHaveRegistered(ScenarioContext anvil) {
 	Journey alice = Journey.of(anvil, Client.offline("Alice").through(HOLD_HOST)).joinsHeld();
 	Administrator console = Administrator.at(anvil, PROXY);
@@ -106,7 +106,7 @@ A test takes the stand-in as a parameter and registers the premium accounts that
 
 ```java
 @Test
-@Identica(mode = JourneyMode.SEAMLESS)
+@Identica
 void joins(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 	SessionIdentity account = yggdrasil.register("Steve");
 	Journey.premium(anvil, account).join().on(LOBBY);

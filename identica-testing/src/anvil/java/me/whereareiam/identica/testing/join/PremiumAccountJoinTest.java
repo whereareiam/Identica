@@ -4,7 +4,7 @@ import me.whereareiam.anvil.api.model.player.SessionIdentity;
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.anvil.environment.yggdrasil.YggdrasilMock;
 import me.whereareiam.identica.testing.environment.Identica;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.journey.Journey;
 import org.junit.jupiter.api.Tag;
@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @Tag("join")
 class PremiumAccountJoinTest {
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS)
+	@Identica
 	void joinsTheLobbyWithoutAnyPromptAndKeepsItsIdentityWhenReturning(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 
@@ -33,12 +33,12 @@ class PremiumAccountJoinTest {
 		UUID registered = player.profile().getUniqueId();
 		assertEquals(account.getUsername(), player.profile().getUsername());
 
-		player.leave().rejoin().on(LOBBY);
+		player.leave().rejoin().on(LOBBY).bypasses(AUTH);
 		assertEquals(registered, player.profile().getUniqueId());
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.PREMIUM)
+	@Identica(providers = Provider.PREMIUM)
 	void joinsAndReturnsWhenPremiumIsTheOnlyProvider(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 
@@ -47,11 +47,12 @@ class PremiumAccountJoinTest {
 				.sees(m -> m.premium().getCompletion().getRegistration().getBody())
 				.leave()
 				.rejoin()
-				.on(LOBBY);
+				.on(LOBBY)
+				.bypasses(AUTH);
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE)
+	@Identica(choice = JourneyChoice.PROMPTED)
 	void returnsToTheLobbyInInteractiveModeAfterRegisteringWithPremium(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 
@@ -67,12 +68,13 @@ class PremiumAccountJoinTest {
 				.sees(m -> m.premium().getCompletion().getRegistration().getBody())
 				.leave()
 				.rejoin()
-				.on(LOBBY);
+				.on(LOBBY)
+				.bypasses(AUTH);
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE)
-	void choosesPremiumThenRejoinsToVerifyTheAccountInInteractiveMode(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+	@Identica(choice = JourneyChoice.PROMPTED)
+	void choosesPremiumThenRejoinsToVerifyTheAccountWhenAsked(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 
 		Journey player = Journey.premium(anvil, account).join()

@@ -7,7 +7,6 @@ import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -28,7 +27,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
 @Tag("identity")
 class ProvenTakeoverTest {
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, configure = ClientProfileDetection.class)
+	@Identica(configure = ClientProfileDetection.class)
 	void letsTheProvenOwnerTakeOverAUsernameAnUnprovenClientHolds(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 		Journey holder = Journey.of(anvil, Client.offline("Steve").from("127.0.0.2")).join()

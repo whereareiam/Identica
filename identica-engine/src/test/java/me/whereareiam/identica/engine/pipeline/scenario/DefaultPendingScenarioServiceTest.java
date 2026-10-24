@@ -36,7 +36,7 @@ class DefaultPendingScenarioServiceTest {
 	void pendingBetweenRequiredAndResolved() {
 		AuthContext context = authContext();
 
-		eventManager.call(new AuthenticationRequiredEvent(connectionUniqueId, accountUniqueId, context, false, 0L, null));
+		eventManager.call(new AuthenticationRequiredEvent(connectionUniqueId, accountUniqueId, context, false, 0L));
 		assertEquals(Optional.of(PipelineType.AUTHENTICATION), service.find(connectionUniqueId));
 
 		eventManager.call(new AuthenticationResolvedEvent(connectionUniqueId, accountUniqueId, context, ScenarioResolution.COMPLETED, true));
@@ -53,8 +53,8 @@ class DefaultPendingScenarioServiceTest {
 				.targetProviderId("premium")
 				.build();
 
-		eventManager.call(new AuthenticationRequiredEvent(connectionUniqueId, accountUniqueId, context, false, 0L, null));
-		eventManager.call(new MigrationRequiredEvent(connectionUniqueId, accountUniqueId, migration, false, 0L, null));
+		eventManager.call(new AuthenticationRequiredEvent(connectionUniqueId, accountUniqueId, context, false, 0L));
+		eventManager.call(new MigrationRequiredEvent(connectionUniqueId, accountUniqueId, migration, false, 0L));
 		eventManager.call(new AuthenticationResolvedEvent(connectionUniqueId, accountUniqueId, context, ScenarioResolution.COMPLETED, true));
 
 		assertEquals(Optional.of(PipelineType.MIGRATION), service.find(connectionUniqueId));
@@ -63,7 +63,7 @@ class DefaultPendingScenarioServiceTest {
 	@DisplayName("A connection that leaves is no longer pending")
 	@Test
 	void detachedConnectionIsNotPending() {
-		eventManager.call(new AuthenticationRequiredEvent(connectionUniqueId, accountUniqueId, authContext(), false, 0L, null));
+		eventManager.call(new AuthenticationRequiredEvent(connectionUniqueId, accountUniqueId, authContext(), false, 0L));
 
 		eventManager.call(new IdentityDetachedEvent(connectionUniqueId));
 
@@ -81,7 +81,7 @@ class DefaultPendingScenarioServiceTest {
 			}
 		});
 
-		eventManager.call(new AuthenticationRequiredEvent(connectionUniqueId, accountUniqueId, authContext(), false, 0L, null));
+		eventManager.call(new AuthenticationRequiredEvent(connectionUniqueId, accountUniqueId, authContext(), false, 0L));
 
 		assertTrue(seenPending.get());
 	}

@@ -6,7 +6,7 @@ import me.whereareiam.anvil.environment.yggdrasil.YggdrasilMock;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +23,7 @@ class ProviderMigrationTest {
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE)
+	@Identica(choice = JourneyChoice.PROMPTED)
 	void movesACredentialAccountToPremium(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 
@@ -49,7 +49,7 @@ class ProviderMigrationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE)
+	@Identica(choice = JourneyChoice.PROMPTED)
 	void movesACredentialAccountToPremiumAndBackWithItsExistingPassword(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 
@@ -94,7 +94,7 @@ class ProviderMigrationTest {
 	 * asking for the premium login again.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS)
+	@Identica
 	void fallsBackToCredentialWhenThePremiumLoginOfAMoveFails(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		yggdrasil.register("Alice");
 		Journey alice = Journey.offline(anvil, "Alice").attempt();

@@ -1,7 +1,7 @@
 ---
 title: События
 description: Как слушать события Identica, реагировать на них и учитывать их особенности.
-sourceHash: 56792f136f75d6d7a31dca17cbbf89dcf1990284
+sourceHash: ad7d4c23cc598acc2e19160e0735e1c5d853e132
 ---
 
 У Identica собственная система событий для плагинов-аддонов, интеграций и внутренних компонентов.
@@ -22,11 +22,13 @@ import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.event.scenario.registration.RegistrationRequiredEvent;
 
+import java.time.Instant;
+
 public final class ExampleRegistrationListener implements EventListener {
     @IdenticEvent
     public void onRegistrationRequired(RegistrationRequiredEvent event) {
         System.out.println(
-            "Registration is now required with journey mode: " + event.getJourneyMode()
+            "Registration is now required until " + Instant.ofEpochMilli(event.getExpiresAt())
         );
     }
 

@@ -7,7 +7,7 @@ import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -25,7 +25,7 @@ class ProviderLinkAdministrationTest {
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE)
+	@Identica(choice = JourneyChoice.PROMPTED)
 	void listsBothLinksWithTheMovedToProviderAsPrimary(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		movedToPremium(anvil, yggdrasil);
 
@@ -35,7 +35,7 @@ class ProviderLinkAdministrationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE)
+	@Identica(choice = JourneyChoice.PROMPTED)
 	void droppingTheOtherLinkKeepsThePrimaryLogin(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		Journey steve = movedToPremium(anvil, yggdrasil).leave();
 
@@ -51,7 +51,7 @@ class ProviderLinkAdministrationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE)
+	@Identica(choice = JourneyChoice.PROMPTED)
 	void makingCredentialPrimaryAndDroppingPremiumAsksForThePassword(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		Journey steve = movedToPremium(anvil, yggdrasil).leave();
 

@@ -36,21 +36,20 @@ providers:
 
 ### Choose how players log in [step]
 
-Open `engine.yml`. Each scenario has a `journeyMode`:
+Open `engine.yml`. Each scenario has a `choice`: who picks how a player logs in or registers when more than one provider could do it.
 
-- `INTERACTIVE`: Identica may ask the player, for example to choose a provider or type a password.
-- `SEAMLESS`: Identica continues on its own as far as it can and asks only when it has to.
+- `AUTOMATIC`: Identica picks, and asks the player only for what that provider needs, such as a password.
+- `PROMPTED`: the player chooses the provider. With only one provider to choose from, nobody is asked.
 
-For registration, `INTERACTIVE` is the easier start. With `SEAMLESS`, a new player who joins from an offline client with a premium username is asked for a premium login first, which their client cannot complete, so they are disconnected with an invalid-session message on their first join. In `INTERACTIVE`, the same player chooses the provider instead. Premium's [`CLIENT_PROFILE` detection](../providers/official/premium/detection/index.mdx) avoids the disconnect for clients on 1.19.1 or newer in either mode.
+For registration, `PROMPTED` is the easier start. With `AUTOMATIC`, a new player who joins from an offline client with a premium username is asked for a premium login first, which their client cannot complete, so they are disconnected with an invalid-session message on their first join. With `PROMPTED`, the same player chooses the provider instead. Premium's [`CLIENT_PROFILE` detection](../providers/official/premium/detection/index.mdx) avoids the disconnect for clients on 1.19.1 or newer either way.
 
 ```yaml
 scenarios:
   registration:
-    journeyMode: "INTERACTIVE"
-    journeyPolicy: "PREFER"
+    choice: "PROMPTED"
 ```
 
-With only one provider enabled, `autoSelectSingleProvider: true` in the registration scenario skips the provider choice. [Journey modes](../guides/logins/journey-modes/index.mdx) covers both modes and `journeyPolicy`.
+[Provider choice](../guides/logins/provider-choice/index.mdx) covers both in detail.
 
 ### Point routing at your servers [step]
 

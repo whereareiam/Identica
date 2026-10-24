@@ -15,7 +15,7 @@ import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.DatabaseType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import me.whereareiam.identica.type.session.SessionConcurrencyPolicy;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -54,7 +54,7 @@ class Release221UpgradeTest {
 	private static final String CUSTOMISED = "[customised]";
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Release221Database.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Release221Database.class)
 	void logsInWithThePasswordOf221AlsoInAnotherCase(ScenarioContext anvil) {
 		// The usernames move to their own tables, and the migration history 2.x kept for the credential tables goes.
 		ProcessConsole console = anvil.processes().proxy(PROXY).console();
@@ -80,7 +80,7 @@ class Release221UpgradeTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Release221Directory.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Release221Directory.class)
 	void startsOnACustomised221DirectoryWithItsSettings(ScenarioContext anvil) {
 		// The operator's settings reached their places: its timeouts and its texts, and its completion server.
 		Engine engine = ProxyConfiguration.generated(anvil, "engine.yml", Engine.class);
@@ -124,7 +124,7 @@ class Release221UpgradeTest {
 	 * username; both go on logging in through their own provider links, and the console names them at every start.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.EXAMPLE, configure = Release221Database.class)
+	@Identica(choice = JourneyChoice.PROMPTED, providers = Provider.EXAMPLE, configure = Release221Database.class)
 	void keepsLoggingInBothAccountsOfAUsername221HeldInTwoCases(ScenarioContext anvil) {
 		ProcessConsole console = anvil.processes().proxy(PROXY).console();
 		console.watchFromStart().printed("Duplicate usernames: dave", Duration.ofSeconds(5));

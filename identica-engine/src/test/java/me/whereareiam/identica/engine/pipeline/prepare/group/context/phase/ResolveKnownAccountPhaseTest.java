@@ -13,7 +13,7 @@ import me.whereareiam.identica.pipeline.state.prepare.PrepareGroupState;
 import me.whereareiam.identica.provider.ProviderOperations;
 import me.whereareiam.identica.provider.subject.SubjectResolution;
 import me.whereareiam.identica.type.PrepareStage;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -48,8 +48,8 @@ class ResolveKnownAccountPhaseTest {
 
 	@BeforeEach
 	void setUp() {
-		engine.getScenarios().getAuthentication().setJourneyMode(JourneyMode.SEAMLESS);
-		engine.getScenarios().getRegistration().setJourneyMode(JourneyMode.INTERACTIVE);
+		engine.getScenarios().getAuthentication().setChoice(JourneyChoice.AUTOMATIC);
+		engine.getScenarios().getRegistration().setChoice(JourneyChoice.PROMPTED);
 		phase = new ResolveKnownAccountPhase(
 				providerOperations,
 				providerLinkPersistenceService,
@@ -71,7 +71,7 @@ class ResolveKnownAccountPhaseTest {
 		PrepareContextItem context = execute(PrepareStage.HANDSHAKE);
 
 		assertEquals(link.getProviderSubject(), context.getPreferredLink().getProviderSubject());
-		assertEquals(JourneyMode.SEAMLESS, context.getJourneyMode());
+		assertEquals(JourneyChoice.AUTOMATIC, context.getChoice());
 		verify(accountPersistenceService, never()).findByUsername(any());
 	}
 
@@ -101,7 +101,7 @@ class ResolveKnownAccountPhaseTest {
 		PrepareContextItem context = execute(PrepareStage.HANDSHAKE);
 
 		assertNull(context.getPreferredLink());
-		assertEquals(JourneyMode.INTERACTIVE, context.getJourneyMode());
+		assertEquals(JourneyChoice.PROMPTED, context.getChoice());
 	}
 
 	@DisplayName("Only runs during the handshake")

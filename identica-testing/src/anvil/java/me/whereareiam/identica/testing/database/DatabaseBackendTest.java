@@ -11,7 +11,6 @@ import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.type.DatabaseType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -28,25 +27,25 @@ class DatabaseBackendTest {
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, database = Database.MARIADB)
+	@Identica(providers = Provider.CREDENTIAL, database = Database.MARIADB)
 	void registersAndLogsInOnMariaDb(ScenarioContext anvil) {
 		registersAndLogsIn(anvil, MysqlPersistence.class, DatabaseType.MYSQL);
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, database = Database.MYSQL)
+	@Identica(providers = Provider.CREDENTIAL, database = Database.MYSQL)
 	void registersAndLogsInOnMySql(ScenarioContext anvil) {
 		registersAndLogsIn(anvil, MysqlPersistence.class, DatabaseType.MYSQL);
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, database = Database.POSTGRESQL)
+	@Identica(providers = Provider.CREDENTIAL, database = Database.POSTGRESQL)
 	void registersAndLogsInOnPostgreSql(ScenarioContext anvil) {
 		registersAndLogsIn(anvil, PostgresPersistence.class, DatabaseType.POSTGRES);
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, database = Database.H2)
+	@Identica(providers = Provider.CREDENTIAL, database = Database.H2)
 	void registersAndLogsInOnH2(ScenarioContext anvil) {
 		registersAndLogsIn(anvil, H2Persistence.class, DatabaseType.H2);
 	}

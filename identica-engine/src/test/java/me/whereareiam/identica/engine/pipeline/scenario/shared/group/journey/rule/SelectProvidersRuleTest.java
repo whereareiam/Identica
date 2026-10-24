@@ -2,10 +2,13 @@ package me.whereareiam.identica.engine.pipeline.scenario.shared.group.journey.ru
 
 import me.whereareiam.identica.common.provider.selection.DefaultProviderSelector;
 import me.whereareiam.identica.common.provider.selection.ProviderClaimRanking;
+import me.whereareiam.identica.engine.pipeline.scenario.shared.group.journey.option.JourneyOptions;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
+import me.whereareiam.identica.model.config.provider.Providers;
 import me.whereareiam.identica.model.migration.MigrationContext;
 import me.whereareiam.identica.model.pipeline.journey.JourneyPlan;
 import me.whereareiam.identica.model.pipeline.journey.JourneyRuleContext;
+import me.whereareiam.identica.model.pipeline.journey.ProviderMethod;
 import me.whereareiam.identica.model.pipeline.journey.execution.JourneyExecutionBlock;
 import me.whereareiam.identica.model.pipeline.journey.execution.JourneyExecutionPlan;
 import me.whereareiam.identica.model.pipeline.journey.execution.JourneyExecutionStage;
@@ -27,9 +30,7 @@ import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.provider.ProviderOperations;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.pipeline.journey.JourneyExecutionPolicy;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.StageType;
-import me.whereareiam.identica.type.pipeline.journey.step.StepContextRequirement;
 import me.whereareiam.identica.type.provider.ProviderClaimOrigin;
 import me.whereareiam.identica.type.provider.ProviderState;
 import org.jetbrains.annotations.NotNull;
@@ -63,12 +64,12 @@ class SelectProvidersRuleTest {
 				.identity(new ConnectionIdentity(UUID.randomUUID(), "PlayerOne", "127.0.0.1"))
 				.targetProviderId("premium")
 				.build();
-		when(providerOperations.eligibleProviders(context, PipelineType.MIGRATION, JourneyMode.SEAMLESS))
+		when(providerOperations.eligibleProviders(context, PipelineType.MIGRATION))
 				.thenReturn(List.of(provider));
-		when(migrationJourneyRegistry.resolvePlan(context, PipelineType.MIGRATION, JourneyMode.SEAMLESS, "premium"))
+		when(migrationJourneyRegistry.resolvePlan(context, PipelineType.MIGRATION, "premium", null))
 				.thenReturn(providerPlan("premium"));
 
-		SelectProvidersRule rule = new SelectProvidersRule(
+		SelectProvidersRule rule = rule(
 				providerOperations,
 				authenticationJourneyRegistry,
 				registrationJourneyRegistry,
@@ -78,7 +79,7 @@ class SelectProvidersRuleTest {
 		);
 
 		JourneyExecutionPlan result = rule.apply(
-				new JourneyRuleContext(context, PipelineType.MIGRATION, JourneyMode.SEAMLESS, null, null),
+				new JourneyRuleContext(context, PipelineType.MIGRATION, null, null),
 				seedPlan()
 		);
 
@@ -106,15 +107,15 @@ class SelectProvidersRuleTest {
 				ProviderClaim.of("alpha", ProviderClaimOrigin.DISCOVERY),
 				ProviderClaim.of("delta", ProviderClaimOrigin.MIGRATION)
 		)));
-		when(providerOperations.eligibleProviders(context, PipelineType.REGISTRATION, JourneyMode.SEAMLESS))
+		when(providerOperations.eligibleProviders(context, PipelineType.REGISTRATION))
 				.thenReturn(providers);
 		for (InternalProvider provider : providers) {
 			String id = provider.getDescriptor().getId();
-			when(registrationJourneyRegistry.resolvePlan(context, PipelineType.REGISTRATION, JourneyMode.SEAMLESS, id))
+			when(registrationJourneyRegistry.resolvePlan(context, PipelineType.REGISTRATION, id, null))
 					.thenReturn(providerPlan(id));
 		}
 
-		SelectProvidersRule rule = new SelectProvidersRule(
+		SelectProvidersRule rule = rule(
 				providerOperations,
 				mock(AuthenticationJourneyRegistry.class),
 				registrationJourneyRegistry,
@@ -124,7 +125,7 @@ class SelectProvidersRuleTest {
 		);
 
 		JourneyExecutionPlan result = rule.apply(
-				new JourneyRuleContext(context, PipelineType.REGISTRATION, JourneyMode.SEAMLESS, null, PipelineState.initial()),
+				new JourneyRuleContext(context, PipelineType.REGISTRATION, null, PipelineState.initial()),
 				seedPlan()
 		);
 
@@ -132,6 +133,76 @@ class SelectProvidersRuleTest {
 				List.of("gamma", "alpha", "beta"),
 				result.blocks().stream().map(JourneyExecutionBlock::providerId).toList()
 		);
+	}
+
+	@Test
+	@DisplayName("Runs each method of a provider as an option of its own, in the provider's order")
+	void runsEachMethodAsAnOption() {
+		ProviderOperations providerOperations = mock(ProviderOperations.class);
+		MigrationJourneyRegistry migrationJourneyRegistry = mock(MigrationJourneyRegistry.class);
+		MigrationContext context = MigrationContext.builder()
+				.connectionUniqueId(UUID.randomUUID())
+				.identity(new ConnectionIdentity(UUID.randomUUID(), "PlayerOne", "127.0.0.1"))
+				.targetProviderId("website")
+				.build();
+		when(providerOperations.eligibleProviders(context, PipelineType.MIGRATION))
+				.thenReturn(List.of(provider("website")));
+		when(migrationJourneyRegistry.methods("website")).thenReturn(List.of(method("website", "quick"), method("website", "guided")));
+		when(migrationJourneyRegistry.resolvePlan(context, PipelineType.MIGRATION, "website", "quick"))
+				.thenReturn(providerPlan("website"));
+		when(migrationJourneyRegistry.resolvePlan(context, PipelineType.MIGRATION, "website", "guided"))
+				.thenReturn(providerPlan("website"));
+
+		SelectProvidersRule rule = rule(
+				providerOperations,
+				mock(AuthenticationJourneyRegistry.class),
+				mock(RegistrationJourneyRegistry.class),
+				migrationJourneyRegistry,
+				new DefaultProviderSelector(new ProviderClaimRanking(mock(ProviderManager.class))),
+				mock(PipelineStateStore.class)
+		);
+
+		JourneyExecutionPlan result = rule.apply(
+				new JourneyRuleContext(context, PipelineType.MIGRATION, null, PipelineState.initial()),
+				seedPlan()
+		);
+
+		assertEquals(List.of("quick", "guided"), result.blocks().stream().map(JourneyExecutionBlock::method).toList());
+		assertEquals(List.of("website", "website"), result.blocks().stream().map(JourneyExecutionBlock::providerId).toList());
+	}
+
+	private SelectProvidersRule rule(
+			ProviderOperations providerOperations,
+			AuthenticationJourneyRegistry authenticationJourneyRegistry,
+			RegistrationJourneyRegistry registrationJourneyRegistry,
+			MigrationJourneyRegistry migrationJourneyRegistry,
+			DefaultProviderSelector selector,
+			PipelineStateStore pipelineStateStore
+	) {
+		JourneyOptions options = new JourneyOptions(
+				providerOperations,
+				selector,
+				() -> authenticationJourneyRegistry,
+				() -> registrationJourneyRegistry,
+				() -> migrationJourneyRegistry,
+				Providers::new
+		);
+
+		return new SelectProvidersRule(
+				options,
+				authenticationJourneyRegistry,
+				registrationJourneyRegistry,
+				migrationJourneyRegistry,
+				pipelineStateStore
+		);
+	}
+
+	private ProviderMethod method(String providerId, String name) {
+		return ProviderMethod.builder()
+				.providerId(providerId)
+				.name(name)
+				.scenario(PipelineType.MIGRATION)
+				.build();
 	}
 
 	private InternalProvider provider(String id, int priority) {
@@ -167,21 +238,10 @@ class SelectProvidersRuleTest {
 						.stageId(StageType.PROVIDER.id())
 						.providerId(providerId)
 						.scenarios(EnumSet.of(PipelineType.MIGRATION))
-						.journeyModes(EnumSet.of(JourneyMode.SEAMLESS))
 						.step(new Step() {
 							@Override
 							public @NotNull String getName() {
 								return "migration-step";
-							}
-
-							@Override
-							public @NotNull Set<JourneyMode> journeyModes() {
-								return Set.of(JourneyMode.SEAMLESS);
-							}
-
-							@Override
-							public @NotNull StepContextRequirement contextRequirement() {
-								return StepContextRequirement.LOGIN;
 							}
 
 							@Override
@@ -199,7 +259,6 @@ class SelectProvidersRuleTest {
 				.type(StageType.PROVIDER)
 				.order(100)
 				.pipelineTypes(EnumSet.of(PipelineType.MIGRATION))
-				.journeyModes(EnumSet.allOf(JourneyMode.class))
 				.build();
 	}
 }

@@ -36,8 +36,7 @@ import me.whereareiam.identica.provider.credential.config.CredentialSettings;
 import me.whereareiam.identica.provider.credential.config.defaults.CredentialCommandsDefaults;
 import me.whereareiam.identica.provider.credential.config.defaults.CredentialSettingsDefaults;
 import me.whereareiam.identica.provider.premium.config.PremiumSettings;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
-import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import me.whereareiam.identica.type.routing.RoutingRetryMode;
 
 import java.io.IOException;
@@ -88,17 +87,15 @@ public final class ProxyConfiguration {
 	ProxyConfiguration(
 			String name,
 			Platform platform,
-			JourneyMode mode,
-			JourneyPolicy policy,
+			JourneyChoice choice,
 			Set<Provider> enabled,
 			boolean entrypoints,
-			boolean autoSelectSingleProvider,
 			String step,
 			String complete,
 			YggdrasilMock yggdrasil
 	) {
 		this.name = name;
-		documents.put(ENGINE, defaultEngine(mode, policy, autoSelectSingleProvider));
+		documents.put(ENGINE, defaultEngine(choice));
 		documents.put(ROUTING, defaultRouting(step, complete));
 		documents.put(SETTINGS, defaultSettings(platform));
 		documents.put(PROVIDERS, defaultProviders(enabled, entrypoints));
@@ -344,14 +341,9 @@ public final class ProxyConfiguration {
 		return files;
 	}
 
-	private static Engine defaultEngine(JourneyMode mode, JourneyPolicy policy, boolean autoSelectSingleProvider) {
+	private static Engine defaultEngine(JourneyChoice choice) {
 		Engine engine = new EngineDefaults().supply(new Engine());
-		Engine.Scenarios scenarios = engine.getScenarios();
-		for (Engine.Scenario scenario : List.of(scenarios.getAuthentication(), scenarios.getRegistration())) {
-			scenario.setJourneyMode(mode);
-			scenario.setJourneyPolicy(policy);
-		}
-		scenarios.getRegistration().setAutoSelectSingleProvider(autoSelectSingleProvider);
+		engine.getScenarios().getRegistration().setChoice(choice);
 
 		return engine;
 	}

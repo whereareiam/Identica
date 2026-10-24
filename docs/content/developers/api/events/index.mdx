@@ -21,11 +21,13 @@ import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.event.scenario.registration.RegistrationRequiredEvent;
 
+import java.time.Instant;
+
 public final class ExampleRegistrationListener implements EventListener {
     @IdenticEvent
     public void onRegistrationRequired(RegistrationRequiredEvent event) {
         System.out.println(
-            "Registration is now required with journey mode: " + event.getJourneyMode()
+            "Registration is now required until " + Instant.ofEpochMilli(event.getExpiresAt())
         );
     }
 

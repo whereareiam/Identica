@@ -6,7 +6,7 @@ import lombok.ToString;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.provider.selection.ProviderSelection;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -29,8 +29,8 @@ public class HandshakeRequest {
 	 */
 	private final @Nullable AccountProviderLink preferredLink;
 	/**
-	 * Preferred journey mode of the scenario the connection heads to: authentication for a known account,
-	 * registration otherwise.
+	 * How the scenario the connection heads to picks its option: authentication for a known account, registration
+	 * otherwise. With {@link JourneyChoice#PROMPTED} the player picks the provider after joining.
 	 */
-	private final @Nullable JourneyMode journeyMode;
+	private final @Nullable JourneyChoice choice;
 }

@@ -3,7 +3,7 @@ package me.whereareiam.identica.testing.join;
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.anvil.environment.yggdrasil.YggdrasilMock;
 import me.whereareiam.identica.testing.environment.Identica;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.journey.Journey;
 import org.junit.jupiter.api.Tag;
@@ -21,7 +21,7 @@ class MixedProviderJoinTest {
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS)
+	@Identica
 	void registersWithCredentialWhenTheUsernameIsNotPremium(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
@@ -32,7 +32,7 @@ class MixedProviderJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS)
+	@Identica
 	void refusesThePremiumUsernameOnceThenFallsBackToCredential(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		yggdrasil.register("Alice");
 
@@ -48,8 +48,8 @@ class MixedProviderJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE)
-	void offersBothProvidersForAPremiumUsernameInInteractiveMode(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+	@Identica(choice = JourneyChoice.PROMPTED)
+	void offersBothProvidersForAPremiumUsernameWhenAsked(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		yggdrasil.register("Alice");
 
 		Journey.offline(anvil, "Alice").join()
@@ -65,18 +65,17 @@ class MixedProviderJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE)
-	void offersOnlyCredentialWhenTheUsernameIsNotPremium(ScenarioContext anvil) {
+	@Identica(choice = JourneyChoice.PROMPTED)
+	void registersWithCredentialWithoutAChoiceWhenTheUsernameIsNotPremium(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
-				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
-				.with(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getDescriptions().get("credential"))
-				.without(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getDescriptions().get("premium"));
+				.doesNotSee(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt());
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE)
-	void sendsAnOfflinePlayerWhoChoosesPremiumBackToTheProviderChoice(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+	@Identica(choice = JourneyChoice.PROMPTED)
+	void sendsAnOfflinePlayerWhoChoosesPremiumOnToCredential(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		yggdrasil.register("Alice");
 
 		Journey alice = Journey.offline(anvil, "Alice").join()
@@ -90,8 +89,7 @@ class MixedProviderJoinTest {
 
 		alice.rejoin()
 				.on(AUTH)
-				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
-				.with(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getDescriptions().get("credential"));
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt());
 	}
 
 	/**
@@ -99,7 +97,7 @@ class MixedProviderJoinTest {
 	 * so an offline player can register it with Credential.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS)
+	@Identica
 	void treatsAPremiumUsernameAsOrdinaryWhileTheLookupIsUnavailable(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		yggdrasil.register("Alice");
 		yggdrasil.available(false);

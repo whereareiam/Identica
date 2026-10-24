@@ -109,8 +109,8 @@ public class DefaultCheckpoints implements Checkpoints, EventListener {
 				.flatMap(Optional::stream)
 				.findFirst()
 				.orElse(null);
-		Logger.debug("Checkpoint selected connection=%s step=%s reason=%s checkpoint=%s placement=%s",
-				connectionUniqueId, request.getStep().getName(), request.getResult().getWaitReason(),
+		Logger.debug("Checkpoint selected connection=%s step=%s prompt=%s checkpoint=%s placement=%s",
+				connectionUniqueId, request.getStep().getName(), request.getResult().getPrompt(),
 				selected != null ? selected.getCheckpoint().id() : "step-server",
 				selected != null ? selected.getPlacement() : null);
 		if (selected == null) {

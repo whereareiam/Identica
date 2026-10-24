@@ -8,7 +8,7 @@ import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -26,7 +26,7 @@ class LoginWithoutResumeTest {
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL, configure = NoResume.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = NoResume.class)
 	void registersAndLogsInOnOneConnection(ScenarioContext anvil) {
 		Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)
@@ -37,7 +37,7 @@ class LoginWithoutResumeTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL, configure = NoResume.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = NoResume.class)
 	void startsARegistrationAgainAfterARejoin(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
@@ -58,7 +58,7 @@ class LoginWithoutResumeTest {
 	 * Choosing Premium asks the player to rejoin for the premium login, and that rejoin continues the registration.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, configure = NoResume.class)
+	@Identica(choice = JourneyChoice.PROMPTED, configure = NoResume.class)
 	void registersWithPremiumAfterTheRequestedRejoin(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 

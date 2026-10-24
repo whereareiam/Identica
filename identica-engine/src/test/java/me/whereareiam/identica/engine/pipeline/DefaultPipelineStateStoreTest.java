@@ -118,7 +118,7 @@ class DefaultPipelineStateStoreTest {
 	private PipelineState pendingState() {
 		PipelineState state = PipelineState.initial();
 		state.setPipelineType(PipelineType.REGISTRATION);
-		state.put(JourneyStateItem.KEY, new JourneyStateItem(null, null, 0), 1_000L);
+		state.put(JourneyStateItem.KEY, new JourneyStateItem(null, 0), 1_000L);
 		return state;
 	}
 

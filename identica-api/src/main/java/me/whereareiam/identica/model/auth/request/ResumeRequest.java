@@ -15,7 +15,7 @@ import java.util.UUID;
  * Resume request details for pending authentication journeys.
  *
  * <p>The resume request should include the latest connection identity so pending
- * journeyModes can re-evaluate IP-sensitive steps. When {@code identity}
+ * journeys can re-evaluate IP-sensitive steps. When {@code identity}
  * is omitted, the stored context data is reused.</p>
  */
 @Getter

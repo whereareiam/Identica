@@ -1,7 +1,7 @@
 ---
 title: Написание прохождений
 description: Как объявить тестовую сеть, описать игрока и проверить, что сообщают игрок и прокси.
-sourceHash: 0e1e397b1b041ecd783fbe410e06e16e3a25d6f3
+sourceHash: 25274fd7eb093c5a0cc11e1b80428809d0c545be
 ---
 
 ## Написание теста [#write-a-test]
@@ -10,7 +10,7 @@ sourceHash: 0e1e397b1b041ecd783fbe410e06e16e3a25d6f3
 
 ```java
 @Test
-@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+@Identica(choice = JourneyChoice.PROMPTED, providers = {Provider.CREDENTIAL, Provider.EXAMPLE})
 void registersWithCredential(ScenarioContext anvil) {
 	Journey.offline(anvil, "Alice").join()
 			.on(AUTH)
@@ -23,7 +23,7 @@ void registersWithCredential(ScenarioContext anvil) {
 }
 ```
 
-`@Identica` задаёт режим и политику прохождения, включённые провайдеры, точки входа провайдеров, `autoSelectSingleProvider` и цели маршрутизации. Сеть состоит из одного прокси — Velocity, если тест не указывает [другую платформу](../networks/index.mdx#other-proxies), — сервера `auth` для шагов аутентификации и регистрации и сервера `lobby`, куда попадают игроки, завершившие прохождение. Игроки входят на `lobby`; `step` и `complete` задают серверы, на которые игроков направляют, пока шаг ожидает, и после завершения, — по умолчанию `auth` и `lobby`, если тест их не меняет; пустая цель оставляет игроков там, где они находятся:
+`@Identica` задаёт, предлагает ли регистрация игроку выбрать провайдера, включённые провайдеры, точки входа провайдеров и цели маршрутизации. Если зарегистрировать игрока может только один провайдер, выбирать никого не просят. Сеть состоит из одного прокси — Velocity, если тест не указывает [другую платформу](../networks/index.mdx#other-proxies), — сервера `auth` для шагов аутентификации и регистрации и сервера `lobby`, куда попадают игроки, завершившие прохождение. Игроки входят на `lobby`; `step` и `complete` задают серверы, на которые игроков направляют, пока шаг ожидает, и после завершения, — по умолчанию `auth` и `lobby`, если тест их не меняет; пустая цель оставляет игроков там, где они находятся:
 
 ```java
 @Test
@@ -59,7 +59,7 @@ Journey routed = Journey.of(anvil, Client.offline("Bob").through(Provider.CREDEN
 Игрок, которого контрольная точка удерживает на экране загрузки, входит, но не попадает в мир ни одного сервера, пока путь не завершится. `joinsHeld()` подключает такого игрока и ожидает, что прокси его удерживает, `isHeld()` ещё раз проверяет, что его клиент не вошёл ни в один мир, `staysHeld(duration)` проверяет это дольше, например дольше тайм-аута чтения прокси, а `neverJoins(backend)` — что игрок так и не попадает на этот бэкенд. Контрольные точки аддона-примера удерживают игроков, которые указывают `IdenticaNetwork.HOLD_HOST`, на экране загрузки, а игроков, которые указывают `IdenticaNetwork.ASK_HOST`, — на сервере шага; `Administrator.answersFor(username, command)` отвечает за них из консоли:
 
 ```java
-@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL, addon = true)
+@Identica(providers = Provider.CREDENTIAL, addon = true)
 void holdsAPlayerUntilTheyHaveRegistered(ScenarioContext anvil) {
 	Journey alice = Journey.of(anvil, Client.offline("Alice").through(HOLD_HOST)).joinsHeld();
 	Administrator console = Administrator.at(anvil, PROXY);
@@ -107,7 +107,7 @@ Identica принимает каждый код один раз, включая 
 
 ```java
 @Test
-@Identica(mode = JourneyMode.SEAMLESS)
+@Identica
 void joins(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 	SessionIdentity account = yggdrasil.register("Steve");
 	Journey.premium(anvil, account).join().on(LOBBY);

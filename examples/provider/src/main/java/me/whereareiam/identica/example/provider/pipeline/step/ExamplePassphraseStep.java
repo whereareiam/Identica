@@ -9,7 +9,7 @@ import me.whereareiam.identica.example.provider.pipeline.ExamplePassphraseAttemp
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.journey.step.StatefulStep;
-import me.whereareiam.identica.pipeline.journey.step.type.InteractiveStep;
+import me.whereareiam.identica.pipeline.journey.step.AbstractStep;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import org.jetbrains.annotations.NotNull;
 
@@ -20,7 +20,7 @@ import java.util.concurrent.CompletableFuture;
  * time {@code /passphrase} hands it an attempt; completing it completes this provider's part of the journey.
  */
 @Singleton
-public class ExamplePassphraseStep extends InteractiveStep implements StatefulStep {
+public class ExamplePassphraseStep extends AbstractStep implements StatefulStep {
 	/**
 	 * ID of what the step asks for: the passphrase.
 	 */

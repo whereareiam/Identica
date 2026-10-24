@@ -8,7 +8,6 @@ import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -25,7 +24,7 @@ class ProviderRenameTest {
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS)
+	@Identica
 	void followsARenameIntoAFreeUsername(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Alice");
 		Journey.premium(anvil, account).join()
@@ -42,7 +41,7 @@ class ProviderRenameTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, entrypoints = true)
+	@Identica(entrypoints = true)
 	void renamesTheOwnerWhenARenameMeetsACredentialAccount(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Alice");
 		premium(anvil, account).join()
@@ -60,7 +59,7 @@ class ProviderRenameTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS)
+	@Identica
 	void givesAStaleUsernameToItsCurrentOwner(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity first = yggdrasil.register("Steve");
 		Journey.premium(anvil, first).join()

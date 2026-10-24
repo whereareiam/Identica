@@ -9,7 +9,7 @@ import me.whereareiam.identica.model.pipeline.prepare.PrepareContextItem;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import me.whereareiam.identica.pipeline.state.StateKey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -63,9 +63,9 @@ public class PrepareDecision {
 	 */
 	private final @Nullable AccountProviderLink preferredLink;
 	/**
-	 * Journey mode of the scenario the connection heads to, resolved at the handshake.
+	 * How the scenario the connection heads to picks its option, resolved at the handshake.
 	 */
-	private final @Nullable JourneyMode journeyMode;
+	private final @Nullable JourneyChoice choice;
 
 	private final @Nullable String denialMessage;
 	private final @NotNull Status status;
@@ -155,7 +155,7 @@ public class PrepareDecision {
 				.provider(context != null ? context.getProvider() : null)
 				.selection(context != null ? context.getSelection() : null)
 				.preferredLink(context != null ? context.getPreferredLink() : null)
-				.journeyMode(context != null ? context.getJourneyMode() : null);
+				.choice(context != null ? context.getChoice() : null);
 	}
 
 	/**

@@ -3,7 +3,7 @@ title: engine.yml
 description: Every setting of engine.yml.
 ---
 
-`engine.yml` sets how each scenario runs: whether it asks the player or continues on its own, and how long a login that waits for the player is kept. [How logins work](../../admins/guides/logins/index.mdx) and [Journey modes](../../admins/guides/logins/journey-modes/index.mdx) explain them.
+`engine.yml` sets how each scenario runs: whether Identica or the player picks how it gets done, and how long a login that waits for the player is kept. [How logins work](../../admins/guides/logins/index.mdx) and [Provider choice](../../admins/guides/logins/provider-choice/index.mdx) explain them.
 
 ## behavior
 
@@ -31,7 +31,7 @@ Timers that apply to every scenario. The defaults suit every network; they only 
 
 ## scenarios
 
-`authentication`, `registration` and `migration` each have these settings. `registration` has `autoSelectSingleProvider` as well.
+`authentication`, `registration` and `migration` each have these settings.
 
 <Setting
   name="pipelineTtl"
@@ -58,36 +58,13 @@ With `false`, such a player starts over. A reconnect the login asks for itself, 
 </Setting>
 
 <Setting
-  name="journeyMode"
-  takes='`"SEAMLESS"` or `"INTERACTIVE"`'
-  default='`"SEAMLESS"` for `authentication` and `registration`, `"INTERACTIVE"` for `migration`'
-  affects="whether Identica asks the player, such as to choose a provider, or continues on its own as far as it can"
+  name="choice"
+  takes='`"AUTOMATIC"` or `"PROMPTED"`'
+  default='`"AUTOMATIC"`'
+  affects="who picks how the scenario gets done when several providers, or several methods of one provider, could do it: Identica or the player"
 >
 
-See [Journey modes](../../admins/guides/logins/journey-modes/index.mdx#modes).
-
-</Setting>
-
-<Setting
-  name="journeyPolicy"
-  takes='`"PREFER"` or `"STRICT"`'
-  default='`"PREFER"`'
-  affects="whether Identica may fall back to the other journey mode when the configured one cannot complete the login"
-  flag="advanced"
->
-
-With `SEAMLESS` and `STRICT`, a login that needs the player's input disconnects them with `engine.journey.step.interactionRequired`. See [Policies](../../admins/guides/logins/journey-modes/index.mdx#policies).
-
-</Setting>
-
-<Setting
-  name="autoSelectSingleProvider"
-  takes="`true` or `false`"
-  default="`false`"
-  affects="whether an `INTERACTIVE` registration with exactly one provider to choose from picks it without asking"
->
-
-Only in `registration`.
+A player is never disconnected for having to type something: whatever the choice, they are asked for a password or a code when the picked provider needs one. See [Provider choice](../../admins/guides/logins/provider-choice/index.mdx).
 
 </Setting>
 
@@ -101,19 +78,15 @@ scenarios:
   authentication:
     pipelineTtl: "5m"
     allowResume: true
-    journeyMode: "SEAMLESS"
-    journeyPolicy: "PREFER"
+    choice: "AUTOMATIC"
   registration:
     pipelineTtl: "5m"
     allowResume: true
-    journeyMode: "SEAMLESS"
-    journeyPolicy: "PREFER"
-    autoSelectSingleProvider: false
+    choice: "AUTOMATIC"
   migration:
     pipelineTtl: "5m"
     allowResume: true
-    journeyMode: "INTERACTIVE"
-    journeyPolicy: "PREFER"
+    choice: "AUTOMATIC"
 ```
   </Tab>
   <Tab value="JSON">
@@ -127,21 +100,17 @@ scenarios:
     "authentication": {
       "pipelineTtl": "5m",
       "allowResume": true,
-      "journeyMode": "SEAMLESS",
-      "journeyPolicy": "PREFER"
+      "choice": "AUTOMATIC"
     },
     "registration": {
       "pipelineTtl": "5m",
       "allowResume": true,
-      "journeyMode": "SEAMLESS",
-      "journeyPolicy": "PREFER",
-      "autoSelectSingleProvider": false
+      "choice": "AUTOMATIC"
     },
     "migration": {
       "pipelineTtl": "5m",
       "allowResume": true,
-      "journeyMode": "INTERACTIVE",
-      "journeyPolicy": "PREFER"
+      "choice": "AUTOMATIC"
     }
   }
 }

@@ -21,9 +21,9 @@ Reasons of the same strength go to the provider with the higher `priority` in `p
 
 ## In practice
 
-- A new player who joins through a provider's hostname registers with that provider. In an `INTERACTIVE` registration, the provider choice is skipped when the hostname's provider is offered.
+- A new player who joins through a provider's hostname registers with that provider. When the registration's `choice` is `PROMPTED`, the player is not asked to choose the provider when the hostname's provider is offered, only among its methods if it has several.
 - A player whose verified login already has an account keeps that account's provider, whatever hostname they use. A Premium account stays on Premium through the Credential hostname.
-- A new player's hostname beats a verified login without an account. A premium owner who joins through the Credential hostname of a `SEAMLESS` network, and is asked for the premium login because the name is premium, still registers with Credential, and later joins ask for the Credential password. Through the Premium hostname, the same player registers with Premium.
+- A new player's hostname beats a verified login without an account. A premium owner who joins through the Credential hostname of a network whose registration `choice` is `AUTOMATIC`, and is asked for the premium login because the name is premium, still registers with Credential, and later joins ask for the Credential password. Through the Premium hostname, the same player registers with Premium.
 - When a Credential account holds the name `Steve`, the real premium owner of `Steve` who joins through the Premium hostname is asked for the premium login and reaches their own Premium account, or registers one. Without that login, only the matching name speaks for a provider, so the player is asked for the Credential password. What happens to the name is decided by the [username rules](../../accounts/usernames/index.mdx).
 
 ## Hostnames

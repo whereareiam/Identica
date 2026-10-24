@@ -95,7 +95,7 @@ class ScenarioPipelineResumeAccessTest {
 				.connectionUniqueId(player)
 				.identity(identity())
 				.build());
-		state.put(JourneyStateItem.KEY, new JourneyStateItem(null, null, 0), 60_000L);
+		state.put(JourneyStateItem.KEY, new JourneyStateItem(null, 0), 60_000L);
 		return state;
 	}
 

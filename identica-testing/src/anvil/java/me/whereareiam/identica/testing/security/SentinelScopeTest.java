@@ -9,7 +9,6 @@ import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -35,7 +34,7 @@ class SentinelScopeTest {
 	private static final Duration LOCKOUT = Duration.ofMinutes(5);
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = ThreeAttempts.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = ThreeAttempts.class)
 	void bruteForceLocksOutTheAccountOnlyFromTheAddressThatGuessed(ScenarioContext anvil) {
 		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
 		Journey guesser = Journey.of(anvil, Client.offline("Alice").from(FIRST)).join()
@@ -58,7 +57,7 @@ class SentinelScopeTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = FewResumes.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = FewResumes.class)
 	void resumeSpamLocksOutOnlyTheFloodingAccountFromItsAddress(ScenarioContext anvil) {
 		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
 		Accounts.credentialByAdmin(anvil, "Bob", PASSWORD);

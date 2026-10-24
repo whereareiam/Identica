@@ -21,7 +21,7 @@ import me.whereareiam.identica.type.ScenarioResolution;
 import me.whereareiam.identica.type.migration.MigrationInitiator;
 import me.whereareiam.identica.type.migration.MigrationResultStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -224,7 +224,7 @@ class MigrationJourneysTest {
 				.targetProviderId("premium")
 				.build());
 		state.put(MigrationPendingState.KEY, new MigrationPendingState("premium", 1234L, MigrationInitiator.ADMIN, null), 60_000L);
-		state.put(JourneyStateItem.KEY, new JourneyStateItem(JourneyMode.INTERACTIVE, null, 0), 60_000L);
+		state.put(JourneyStateItem.KEY, new JourneyStateItem(null, 0), 60_000L);
 		return state;
 	}
 
@@ -245,7 +245,7 @@ class MigrationJourneysTest {
 	private static Engine engine() {
 		Engine engine = new Engine();
 		engine.getScenarios().getMigration().setPipelineTtl(Duration.ofMinutes(5));
-		engine.getScenarios().getMigration().setJourneyMode(JourneyMode.INTERACTIVE);
+		engine.getScenarios().getMigration().setChoice(JourneyChoice.PROMPTED);
 		return engine;
 	}
 }

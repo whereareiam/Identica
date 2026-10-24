@@ -7,7 +7,6 @@ import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -28,7 +27,7 @@ class AccountRemovalConfirmationTest {
 	private static final Duration CONFIRM_TTL = Duration.ofSeconds(2);
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void cancellingADeletionKeepsTheAccount(ScenarioContext anvil) {
 		Journey alice = online(anvil);
 
@@ -42,7 +41,7 @@ class AccountRemovalConfirmationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = ShortConfirmation.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = ShortConfirmation.class)
 	void aDeletionConfirmedTooLateDeletesNothing(ScenarioContext anvil) {
 		Journey alice = online(anvil);
 		Administrator administrator = Administrator.at(anvil, PROXY).requestsDeletionOf("Alice");
@@ -55,7 +54,7 @@ class AccountRemovalConfirmationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void cancellingAClearKeepsTheAccount(ScenarioContext anvil) {
 		Journey alice = online(anvil);
 

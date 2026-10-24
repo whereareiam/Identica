@@ -28,7 +28,6 @@ public class MigrationPipelineRegistry extends AbstractPipelineGroupRegistry imp
 			IdentityGroup identityGroup,
 			SessionGroup sessionGroup,
 			LoadContextPhase loadContextPhase,
-			ResolveJourneyModePhase resolveJourneyModePhase,
 			BuildExecutionPlanPhase buildExecutionPlanPhase,
 			ApplyRulesPhase applyRulesPhase,
 			ExecutePlanPhase executePlanPhase,
@@ -45,8 +44,7 @@ public class MigrationPipelineRegistry extends AbstractPipelineGroupRegistry imp
 		register(finalizeGroup);
 
 		registerPhase(journeyGroup.id(), loadContextPhase, PhasePlacement.first());
-		registerPhase(journeyGroup.id(), resolveJourneyModePhase, PhasePlacement.after(loadContextPhase.id()));
-		registerPhase(journeyGroup.id(), buildExecutionPlanPhase, PhasePlacement.after(resolveJourneyModePhase.id()));
+		registerPhase(journeyGroup.id(), buildExecutionPlanPhase, PhasePlacement.after(loadContextPhase.id()));
 		registerPhase(journeyGroup.id(), applyRulesPhase, PhasePlacement.after(buildExecutionPlanPhase.id()));
 		registerPhase(journeyGroup.id(), executePlanPhase, PhasePlacement.last());
 

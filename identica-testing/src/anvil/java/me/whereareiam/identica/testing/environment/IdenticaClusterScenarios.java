@@ -8,8 +8,7 @@ import me.whereareiam.anvil.integration.junit.ScenarioResources;
 import me.whereareiam.identica.adapter.database.testing.DatabaseContainers;
 import me.whereareiam.identica.model.config.Replication;
 import me.whereareiam.identica.model.config.persistence.external.PostgresPersistence;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
-import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import org.jetbrains.annotations.NotNull;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -46,8 +45,8 @@ public final class IdenticaClusterScenarios implements AnvilScenarioFactory<Iden
 		Map<String, String> stepServers = cluster.ownStepServers() ? Map.of(IdenticaNetwork.PROXY_B, IdenticaNetwork.AUTH_B) : Map.of();
 		Map<String, ProxyConfiguration> proxies = new LinkedHashMap<>();
 		for (String proxy : List.of(IdenticaNetwork.PROXY_A, IdenticaNetwork.PROXY_B)) {
-			ProxyConfiguration configuration = new ProxyConfiguration(proxy, Platform.VELOCITY, JourneyMode.INTERACTIVE, JourneyPolicy.PREFER,
-					EnumSet.of(Provider.CREDENTIAL), false, true, step(cluster, stepServers, proxy), cluster.complete(), yggdrasil);
+			ProxyConfiguration configuration = new ProxyConfiguration(proxy, Platform.VELOCITY, JourneyChoice.PROMPTED,
+					EnumSet.of(Provider.CREDENTIAL), false, step(cluster, stepServers, proxy), cluster.complete(), yggdrasil);
 			configuration.put("persistence.yml", persistence(database));
 			if (redis != null)
 				replicate(configuration.replication(), proxy, redis);

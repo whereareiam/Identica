@@ -9,7 +9,6 @@ import me.whereareiam.identica.event.base.Event;
 import me.whereareiam.identica.event.base.SynchronousEvent;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.model.provider.InternalProvider;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -22,6 +21,5 @@ import org.jetbrains.annotations.NotNull;
 public class ProviderEligibilityEvent implements Event, SynchronousEvent, CancellableEvent {
 	private final @NotNull ScenarioContext context;
 	private final @NotNull InternalProvider provider;
-	private final @NotNull JourneyMode journeyMode;
 	private boolean cancelled;
 }

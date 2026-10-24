@@ -15,7 +15,7 @@ import me.whereareiam.identica.provider.premium.resolver.PremiumDetector;
 import me.whereareiam.identica.provider.premium.resolver.PremiumProfileLookup;
 import me.whereareiam.identica.provider.premium.type.PremiumDetectionMethod;
 import me.whereareiam.identica.provider.selection.ProviderSelector;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import me.whereareiam.identica.type.provider.ProviderClaimOrigin;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -79,7 +79,7 @@ class PremiumHandshakePolicyTest {
 	@DisplayName("Asks for a premium login when the account prefers premium")
 	@Test
 	void premiumPreferredLinkForcesOnline() {
-		HandshakeDecision decision = evaluate(request(null, null, link("premium", UUID.randomUUID()), JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(null, null, link("premium", UUID.randomUUID()), JourneyChoice.AUTOMATIC));
 
 		assertEquals(Optional.of(true), forcesOnline(decision));
 		verify(profileLookup, never()).findProfileId(any());
@@ -88,7 +88,7 @@ class PremiumHandshakePolicyTest {
 	@DisplayName("Lets an account that prefers another provider join without a premium login")
 	@Test
 	void otherPreferredLinkAllowsWithoutPremiumLogin() {
-		HandshakeDecision decision = evaluate(request(null, null, link("credential", UUID.randomUUID()), JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(null, null, link("credential", UUID.randomUUID()), JourneyChoice.AUTOMATIC));
 
 		assertEquals(HandshakeDecision.Status.ALLOW, decision.getStatus());
 		assertEquals(Optional.empty(), forcesOnline(decision));
@@ -98,7 +98,7 @@ class PremiumHandshakePolicyTest {
 	@DisplayName("Asks for a premium login when Premium won the selection with its hostname")
 	@Test
 	void premiumEntrypointForcesPremiumHandshake() {
-		HandshakeDecision decision = evaluate(request(null, selection("premium", ProviderClaimOrigin.HOSTNAME), null, JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(null, selection("premium", ProviderClaimOrigin.HOSTNAME), null, JourneyChoice.AUTOMATIC));
 
 		assertEquals(Optional.of(true), forcesOnline(decision));
 		verify(profileLookup, never()).findProfileId(any());
@@ -107,7 +107,7 @@ class PremiumHandshakePolicyTest {
 	@DisplayName("Asks for a premium login when a pending migration to Premium won the selection")
 	@Test
 	void pendingMigrationToPremiumForcesPremiumHandshake() {
-		HandshakeDecision decision = evaluate(request(null, pendingMigrationToPremium(), null, JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(null, pendingMigrationToPremium(), null, JourneyChoice.AUTOMATIC));
 
 		assertEquals(Optional.of(true), forcesOnline(decision));
 	}
@@ -115,7 +115,7 @@ class PremiumHandshakePolicyTest {
 	@DisplayName("Does not ask for a premium login only because Premium discovered a profile for the name")
 	@Test
 	void premiumDiscoveryDoesNotForcePremiumHandshake() {
-		HandshakeDecision decision = evaluate(request(null, selection("premium", ProviderClaimOrigin.DISCOVERY), null, JourneyMode.INTERACTIVE));
+		HandshakeDecision decision = evaluate(request(null, selection("premium", ProviderClaimOrigin.DISCOVERY), null, JourneyChoice.PROMPTED));
 
 		assertEquals(Optional.empty(), forcesOnline(decision));
 		verify(profileLookup, never()).findProfileId(any());
@@ -126,7 +126,7 @@ class PremiumHandshakePolicyTest {
 	void pendingMigrationAwayFromPremiumStillForcesOnline() {
 		ProviderSelection credential = selection("credential", ProviderClaimOrigin.MIGRATION);
 
-		HandshakeDecision decision = evaluate(request(null, credential, link("premium", UUID.randomUUID()), JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(null, credential, link("premium", UUID.randomUUID()), JourneyChoice.AUTOMATIC));
 
 		assertEquals(Optional.of(true), forcesOnline(decision));
 	}
@@ -136,7 +136,7 @@ class PremiumHandshakePolicyTest {
 	void existingVerifyAttemptSkipsManualPremiumRequeue() {
 		when(attemptStore.hasAttempt("premium", "verify", USERNAME, IP)).thenReturn(true);
 
-		HandshakeDecision decision = evaluate(request(null, pendingMigrationToPremium(), null, JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(null, pendingMigrationToPremium(), null, JourneyChoice.AUTOMATIC));
 
 		assertEquals(Optional.empty(), forcesOnline(decision));
 		verify(profileLookup, never()).findProfileId(any());
@@ -145,7 +145,7 @@ class PremiumHandshakePolicyTest {
 	@DisplayName("Keeps asking an account that prefers premium for a premium login despite an existing verify attempt")
 	@Test
 	void existingVerifyAttemptDoesNotSkipThePremiumLoginOfAPremiumAccount() {
-		HandshakeDecision decision = evaluate(request(null, null, link("premium", UUID.randomUUID()), JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(null, null, link("premium", UUID.randomUUID()), JourneyChoice.AUTOMATIC));
 
 		assertEquals(Optional.of(true), forcesOnline(decision));
 		verify(attemptStore, never()).hasAttempt(anyString(), anyString(), anyString(), anyString());
@@ -156,7 +156,7 @@ class PremiumHandshakePolicyTest {
 	void existingVerifyAttemptFallsBackFromAPendingMoveToPremium() {
 		when(attemptStore.hasAttempt("premium", "verify", USERNAME, IP)).thenReturn(true);
 
-		HandshakeDecision decision = evaluate(request(null, pendingMigrationToPremium(), link("credential", UUID.randomUUID()), JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(null, pendingMigrationToPremium(), link("credential", UUID.randomUUID()), JourneyChoice.AUTOMATIC));
 
 		assertEquals(HandshakeDecision.Status.ALLOW, decision.getStatus());
 		assertEquals(Optional.empty(), forcesOnline(decision));
@@ -167,7 +167,7 @@ class PremiumHandshakePolicyTest {
 	void lookupForcesOnlineForAPremiumUsername() {
 		when(profileLookup.findProfileId(USERNAME)).thenReturn(profile(UUID.randomUUID()));
 
-		HandshakeDecision decision = evaluate(request(null, null, null, JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(null, null, null, JourneyChoice.AUTOMATIC));
 
 		assertEquals(Optional.of(true), forcesOnline(decision));
 		verify(attemptStore).markAttempt("premium", "verify", USERNAME, IP);
@@ -180,7 +180,7 @@ class PremiumHandshakePolicyTest {
 		detection(CLIENT_PROFILE, LOOKUP);
 		when(profileLookup.findProfileId(USERNAME)).thenReturn(profile(premium));
 
-		HandshakeDecision decision = evaluate(request(premium, null, null, JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(premium, null, null, JourneyChoice.AUTOMATIC));
 
 		assertEquals(Optional.of(true), forcesOnline(decision));
 		verify(attemptStore).markAttempt("premium", "verify", USERNAME, IP);
@@ -192,7 +192,7 @@ class PremiumHandshakePolicyTest {
 		detection(CLIENT_PROFILE, LOOKUP);
 		when(profileLookup.findProfileId(USERNAME)).thenReturn(profile(UUID.randomUUID()));
 
-		HandshakeDecision decision = evaluate(request(UUID.randomUUID(), null, null, JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(UUID.randomUUID(), null, null, JourneyChoice.AUTOMATIC));
 
 		assertEquals(Optional.empty(), forcesOnline(decision));
 		verify(attemptStore, never()).markAttempt(anyString(), anyString(), anyString(), anyString());
@@ -207,7 +207,7 @@ class PremiumHandshakePolicyTest {
 		when(profileLookup.findProfileId(USERNAME)).thenReturn(profile(UUID.randomUUID()));
 		when(profileLookup.fetchProfileId(USERNAME)).thenReturn(profile(claimed));
 
-		HandshakeDecision decision = evaluate(request(claimed, null, null, JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(claimed, null, null, JourneyChoice.AUTOMATIC));
 
 		assertEquals(Optional.of(true), forcesOnline(decision));
 	}
@@ -218,7 +218,7 @@ class PremiumHandshakePolicyTest {
 		detection(CLIENT_PROFILE, LOOKUP);
 		when(profileLookup.findProfileId(USERNAME)).thenReturn(profile(UUID.randomUUID()));
 
-		HandshakeDecision decision = evaluate(request(null, null, null, JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(null, null, null, JourneyChoice.AUTOMATIC));
 
 		assertEquals(Optional.of(true), forcesOnline(decision));
 	}
@@ -228,18 +228,18 @@ class PremiumHandshakePolicyTest {
 	void unclaimedProfileIsNotPremiumWithoutLookup() {
 		detection(CLIENT_PROFILE);
 
-		HandshakeDecision decision = evaluate(request(null, null, null, JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(null, null, null, JourneyChoice.AUTOMATIC));
 
 		assertEquals(Optional.empty(), forcesOnline(decision));
 		verify(profileLookup, never()).findProfileId(any());
 	}
 
-	@DisplayName("Leaves an unknown username of an interactive journey to the provider choice")
+	@DisplayName("Leaves an unknown username to the player when the registration asks which provider")
 	@Test
-	void interactiveJourneyLeavesTheChoiceToThePlayer() {
+	void askedChoiceLeavesTheProviderToThePlayer() {
 		detection(CLIENT_PROFILE, LOOKUP);
 
-		HandshakeDecision decision = evaluate(request(UUID.randomUUID(), null, null, JourneyMode.INTERACTIVE));
+		HandshakeDecision decision = evaluate(request(UUID.randomUUID(), null, null, JourneyChoice.PROMPTED));
 
 		assertEquals(Optional.empty(), forcesOnline(decision));
 		verify(profileLookup, never()).findProfileId(any());
@@ -252,7 +252,7 @@ class PremiumHandshakePolicyTest {
 		detection(CLIENT_PROFILE, LOOKUP);
 		when(profileLookup.findProfileId(USERNAME)).thenReturn(profile(linked));
 
-		HandshakeDecision decision = evaluate(request(UUID.randomUUID(), null, link("premium", linked), JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(UUID.randomUUID(), null, link("premium", linked), JourneyChoice.AUTOMATIC));
 
 		assertEquals(HandshakeDecision.Status.DENY, decision.getStatus());
 		assertTrue(decision.getMessage().contains("This username belongs to a premium account."));
@@ -264,7 +264,7 @@ class PremiumHandshakePolicyTest {
 		UUID linked = UUID.randomUUID();
 		detection(CLIENT_PROFILE, LOOKUP);
 
-		HandshakeDecision decision = evaluate(request(linked, null, link("premium", linked), JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(linked, null, link("premium", linked), JourneyChoice.AUTOMATIC));
 
 		assertEquals(Optional.of(true), forcesOnline(decision));
 		verify(profileLookup, never()).findProfileId(any());
@@ -277,7 +277,7 @@ class PremiumHandshakePolicyTest {
 		detection(CLIENT_PROFILE, LOOKUP);
 		when(profileLookup.findProfileId(USERNAME)).thenReturn(profile(claimed));
 
-		HandshakeDecision decision = evaluate(request(claimed, null, link("premium", UUID.randomUUID()), JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(claimed, null, link("premium", UUID.randomUUID()), JourneyChoice.AUTOMATIC));
 
 		assertEquals(Optional.of(true), forcesOnline(decision));
 	}
@@ -285,7 +285,7 @@ class PremiumHandshakePolicyTest {
 	@DisplayName("Keeps asking a linked username for a premium login without the client profile method")
 	@Test
 	void linkedUsernameWithoutClientProfileForcesOnline() {
-		HandshakeDecision decision = evaluate(request(UUID.randomUUID(), null, link("premium", UUID.randomUUID()), JourneyMode.SEAMLESS));
+		HandshakeDecision decision = evaluate(request(UUID.randomUUID(), null, link("premium", UUID.randomUUID()), JourneyChoice.AUTOMATIC));
 
 		assertEquals(Optional.of(true), forcesOnline(decision));
 	}
@@ -310,12 +310,12 @@ class PremiumHandshakePolicyTest {
 			UUID claimedUniqueId,
 			ProviderSelection selection,
 			AccountProviderLink preferredLink,
-			JourneyMode journeyMode
+			JourneyChoice choice
 	) {
 		ConnectionIdentity identity = new ConnectionIdentity(USERNAME, IP);
 		identity.setClaimedUniqueId(claimedUniqueId);
 
-		return new HandshakeRequest(identity, selection != null ? selection : ProviderSelection.empty(), preferredLink, journeyMode);
+		return new HandshakeRequest(identity, selection != null ? selection : ProviderSelection.empty(), preferredLink, choice);
 	}
 
 	private ProviderSelection pendingMigrationToPremium() {

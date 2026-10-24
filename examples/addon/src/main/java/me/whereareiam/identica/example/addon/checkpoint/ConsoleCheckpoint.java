@@ -9,7 +9,6 @@ import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.checkpoint.CheckpointRequest;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.type.checkpoint.CheckpointPlacement;
-import me.whereareiam.identica.type.pipeline.journey.step.StepWaitReason;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -79,8 +78,12 @@ public final class ConsoleCheckpoint implements Checkpoint, EventListener {
 		});
 		console.accept("Example checkpoint holds " + name + " on the " + stop.getPlacement().name().toLowerCase(Locale.ROOT).replace('_', ' '));
 		stop.getWaiting()
-				.filter(waiting -> waiting.getResult().getWaitReason() != StepWaitReason.ONLINE)
+				.filter(waiting -> asksSomething(waiting.getResult()))
 				.ifPresent(waiting -> asks(name, waiting.getStep().getName(), waiting.getResult().getMessage()));
+	}
+
+	private static boolean asksSomething(@NotNull StepResult result) {
+		return result.getMessage() != null && !result.getMessage().isBlank();
 	}
 
 	/**
@@ -90,7 +93,7 @@ public final class ConsoleCheckpoint implements Checkpoint, EventListener {
 	public void onStepFinished(StepFinishedEvent event) {
 		UUID connection = event.getContext().getConnectionUniqueId();
 		if (connection == null || !stops.containsKey(connection)) return;
-		if (event.getResult().getStatus() != StepResult.StepStatus.WAITING || event.getResult().getWaitReason() == StepWaitReason.ONLINE) return;
+		if (event.getResult().getStatus() != StepResult.StepStatus.WAITING || !asksSomething(event.getResult())) return;
 
 		asks(names.getOrDefault(connection, connection.toString()), event.getStep().getName(), event.getResult().getMessage());
 	}

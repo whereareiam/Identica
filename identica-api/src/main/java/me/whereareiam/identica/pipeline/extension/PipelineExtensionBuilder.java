@@ -1,5 +1,6 @@
 package me.whereareiam.identica.pipeline.extension;
 
+import me.whereareiam.identica.model.pipeline.journey.ProviderMethod;
 import me.whereareiam.identica.model.pipeline.journey.stage.JourneyStage;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.JourneyStep;
 import me.whereareiam.identica.model.pipeline.phase.PhasePlacement;
@@ -7,7 +8,6 @@ import me.whereareiam.identica.pipeline.PipelineGroup;
 import me.whereareiam.identica.pipeline.PipelinePhase;
 import me.whereareiam.identica.pipeline.journey.step.Step;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.StageType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -71,6 +71,14 @@ public interface PipelineExtensionBuilder {
 	void registerStage(@NotNull PipelineType pipelineType, @NotNull JourneyStage stage);
 
 	/**
+	 * Registers a provider method: one way the provider offers to get a scenario done. Its steps run in the provider
+	 * stage of the method's scenario, together with the steps the provider registers without a method.
+	 *
+	 * @param method method to register
+	 */
+	void registerMethod(@NotNull ProviderMethod method);
+
+	/**
 	 * Registers a journey step using the scenarios declared on the step itself.
 	 *
 	 * @param step journey step to register
@@ -78,7 +86,7 @@ public interface PipelineExtensionBuilder {
 	void registerStep(@NotNull JourneyStep step);
 
 	/**
-	 * Registers a journey step for a scenario pipeline using the step's default journey modes.
+	 * Registers a journey step for a scenario pipeline. A step of a provider runs in each of its methods.
 	 *
 	 * @param pipelineType scenario pipeline to register into
 	 * @param providerId provider identifier, if the step is provider-specific
@@ -101,31 +109,12 @@ public interface PipelineExtensionBuilder {
 	}
 
 	/**
-	 * Registers a journey step for a specific journey mode in a scenario pipeline.
+	 * Registers a journey step for the authentication and registration pipelines.
 	 *
-	 * @param pipelineType scenario pipeline to register into
 	 * @param providerId provider identifier, if the step is provider-specific
 	 * @param stageType target journey stage type
-	 * @param journeyMode target journey mode
 	 * @param step step to register
 	 */
-	default void registerStep(
-			@NotNull PipelineType pipelineType,
-			@Nullable String providerId,
-			@NotNull StageType stageType,
-			@NotNull JourneyMode journeyMode,
-			@NotNull Step step
-	) {
-		registerStep(JourneyStep.builder()
-				.stageId(stageType.id())
-				.providerId(providerId)
-				.order(step.order())
-				.scenarios(EnumSet.of(pipelineType))
-				.journeyModes(EnumSet.of(journeyMode))
-				.step(step)
-				.build());
-	}
-
 	default void registerStep(
 			@Nullable String providerId,
 			@NotNull StageType stageType,
@@ -133,16 +122,6 @@ public interface PipelineExtensionBuilder {
 	) {
 		registerStep(PipelineType.AUTHENTICATION, providerId, stageType, step);
 		registerStep(PipelineType.REGISTRATION, providerId, stageType, step);
-	}
-
-	default void registerStep(
-			@Nullable String providerId,
-			@NotNull StageType stageType,
-			@NotNull JourneyMode journeyMode,
-			@NotNull Step step
-	) {
-		registerStep(PipelineType.AUTHENTICATION, providerId, stageType, journeyMode, step);
-		registerStep(PipelineType.REGISTRATION, providerId, stageType, journeyMode, step);
 	}
 
 }

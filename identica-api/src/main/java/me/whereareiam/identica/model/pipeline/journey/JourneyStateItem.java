@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import me.whereareiam.identica.pipeline.state.StateKey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.jetbrains.annotations.Nullable;
 
 @Getter
@@ -18,7 +17,6 @@ public final class JourneyStateItem {
 	 */
 	public static final StateKey<JourneyStateItem> KEY = StateKey.persisted("journey:position", JourneyStateItem.class);
 
-	private @Nullable JourneyMode journeyMode;
 	private @Nullable String stageId;
 	private int stepIndex;
 }

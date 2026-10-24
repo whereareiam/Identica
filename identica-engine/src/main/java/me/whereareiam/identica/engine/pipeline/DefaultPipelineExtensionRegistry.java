@@ -4,6 +4,7 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.model.pipeline.journey.ProviderMethod;
 import me.whereareiam.identica.model.pipeline.journey.stage.JourneyStage;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.JourneyStep;
 import me.whereareiam.identica.model.pipeline.phase.PhasePlacement;
@@ -19,7 +20,6 @@ import me.whereareiam.identica.pipeline.journey.registry.type.MigrationJourneyRe
 import me.whereareiam.identica.pipeline.journey.registry.type.RegistrationJourneyRegistry;
 import me.whereareiam.identica.pipeline.journey.step.Step;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.StageType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -160,6 +160,13 @@ public class DefaultPipelineExtensionRegistry implements PipelineExtensionRegist
 		}
 
 		@Override
+		public void registerMethod(@NotNull ProviderMethod method) {
+			JourneyRegistry registry = resolveJourneyRegistry(method.getScenario());
+			registry.registerMethod(method);
+			rollbackActions.add(() -> registry.removeMethod(method.getProviderId(), method.getName()));
+		}
+
+		@Override
 		public void registerStep(@NotNull JourneyStep step) {
 			Set<PipelineType> targetTypes = step.getScenarios();
 			if (targetTypes.isEmpty()) {
@@ -192,34 +199,11 @@ public class DefaultPipelineExtensionRegistry implements PipelineExtensionRegist
 
 		@Override
 		public void registerStep(
-				@NotNull PipelineType pipelineType,
-				@Nullable String providerId,
-				@NotNull StageType stageType,
-				@NotNull JourneyMode journeyMode,
-				@NotNull Step step
-		) {
-			JourneyRegistry registry = resolveJourneyRegistry(pipelineType);
-			registry.registerStep(providerId, stageType, step.order(), pipelineType, journeyMode, step);
-			recordStepRollback(registry, stageType.id(), providerId, pipelineType, step);
-		}
-
-		@Override
-		public void registerStep(
 				@Nullable String providerId,
 				@NotNull StageType stageType,
 				@NotNull Step step
 		) {
 			PipelineExtensionBuilder.super.registerStep(providerId, stageType, step);
-		}
-
-		@Override
-		public void registerStep(
-				@Nullable String providerId,
-				@NotNull StageType stageType,
-				@NotNull JourneyMode journeyMode,
-				@NotNull Step step
-		) {
-			PipelineExtensionBuilder.super.registerStep(providerId, stageType, journeyMode, step);
 		}
 
 		private void recordStepRollback(

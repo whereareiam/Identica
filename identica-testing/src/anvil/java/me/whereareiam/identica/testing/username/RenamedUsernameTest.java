@@ -9,7 +9,6 @@ import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -26,7 +25,7 @@ class RenamedUsernameTest {
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, entrypoints = true)
+	@Identica(entrypoints = true)
 	void givesARenamedAccountItsUsernameBackOnceItIsFree(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		Journey holder = Accounts.credential(anvil, Client.offline("Steve").through(Provider.CREDENTIAL.getEntrypoint()), PASSWORD);
 		SessionIdentity account = yggdrasil.register("Steve");
@@ -44,7 +43,7 @@ class RenamedUsernameTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS)
+	@Identica
 	void keepsAUsernameAnAdministratorGave(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 		Journey owner = Journey.premium(anvil, account).join()
@@ -61,7 +60,7 @@ class RenamedUsernameTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS)
+	@Identica
 	void refusesToRenameAnAccountToAHeldUsername(ScenarioContext anvil) {
 		Accounts.credential(anvil, "Alice", PASSWORD);
 		Journey bob = Accounts.credential(anvil, "Bob", PASSWORD);

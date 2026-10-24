@@ -3,8 +3,6 @@ package me.whereareiam.identica.testing.join;
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
-import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
@@ -29,14 +27,14 @@ class CredentialReturningJoinTest {
 	private static final int ALLOWED_ATTEMPTS = 5;
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
-	void logsInWithThePasswordInInteractiveMode(ScenarioContext anvil) {
+	@Identica(providers = Provider.CREDENTIAL)
+	void logsInWithThePasswordWhenAsked(ScenarioContext anvil) {
 		logsIn(anvil);
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL)
-	void logsInWithThePasswordInSeamlessMode(ScenarioContext anvil) {
+	@Identica(providers = Provider.CREDENTIAL)
+	void logsInWithThePasswordWhenPickedAutomatically(ScenarioContext anvil) {
 		logsIn(anvil);
 	}
 
@@ -45,7 +43,7 @@ class CredentialReturningJoinTest {
 	 * her journey. The password waits for that run instead of finding nothing pending.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void logsInWithAPasswordTypedBeforeThePrompt(ScenarioContext anvil) {
 		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
 
@@ -57,7 +55,7 @@ class CredentialReturningJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void refusesAWrongPasswordAndAcceptsTheRightOne(ScenarioContext anvil) {
 		Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)
@@ -71,7 +69,7 @@ class CredentialReturningJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void locksTheAccountOutWithTheConfiguredMessageAfterTheLastAllowedWrongPassword(ScenarioContext anvil) {
 		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
 
@@ -85,7 +83,7 @@ class CredentialReturningJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void asksForThePasswordAgainAfterAReconnect(ScenarioContext anvil) {
 		Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)
@@ -99,7 +97,7 @@ class CredentialReturningJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = RejectNewSessions.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = RejectNewSessions.class)
 	void closesTheSessionOnLeavingSoAReconnectLogsInWhileNewSessionsAreRejected(ScenarioContext anvil) {
 		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)
@@ -120,24 +118,15 @@ class CredentialReturningJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
-	void logsInToAnAccountAnAdministratorRegisteredInInteractiveMode(ScenarioContext anvil) {
+	@Identica(providers = Provider.CREDENTIAL)
+	void logsInToAnAccountAnAdministratorRegisteredWhenAsked(ScenarioContext anvil) {
 		logsInToAnAdministratorRegisteredAccount(anvil);
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL)
-	void logsInToAnAccountAnAdministratorRegisteredInSeamlessMode(ScenarioContext anvil) {
+	@Identica(providers = Provider.CREDENTIAL)
+	void logsInToAnAccountAnAdministratorRegisteredWhenPickedAutomatically(ScenarioContext anvil) {
 		logsInToAnAdministratorRegisteredAccount(anvil);
-	}
-
-	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, policy = JourneyPolicy.STRICT, providers = Provider.CREDENTIAL)
-	void refusesARegisteredPlayerWhoWouldHaveToTypeInStrictSeamlessMode(ScenarioContext anvil) {
-		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
-
-		Journey.offline(anvil, "Alice").attempt()
-				.kickedWith(m -> m.identica().getEngine().getJourney().getStep().getInteractionRequired());
 	}
 
 	private void logsInToAnAdministratorRegisteredAccount(ScenarioContext anvil) {

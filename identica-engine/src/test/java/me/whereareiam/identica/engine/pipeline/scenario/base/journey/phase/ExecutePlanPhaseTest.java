@@ -4,12 +4,12 @@ import me.whereareiam.identica.common.provider.selection.DefaultProviderSelector
 import me.whereareiam.identica.common.provider.selection.ProviderClaimRanking;
 import me.whereareiam.identica.engine.pipeline.scenario.shared.group.journey.phase.ExecutePlanPhase;
 import me.whereareiam.identica.event.EventManager;
-import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
+import me.whereareiam.identica.model.pipeline.journey.JourneyOverrideItem;
 import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
 import me.whereareiam.identica.model.pipeline.journey.execution.JourneyExecutionBlock;
 import me.whereareiam.identica.model.pipeline.journey.execution.JourneyExecutionPlan;
@@ -33,11 +33,8 @@ import me.whereareiam.identica.routing.RoutingCoordinator;
 import me.whereareiam.identica.type.pipeline.PipelineStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.pipeline.journey.JourneyExecutionPolicy;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
-import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import me.whereareiam.identica.type.pipeline.journey.StageType;
-import me.whereareiam.identica.type.pipeline.journey.step.StepContextRequirement;
-import me.whereareiam.identica.type.pipeline.journey.step.StepWaitReason;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
@@ -61,7 +58,6 @@ class ExecutePlanPhaseTest {
 	@DisplayName("Complete step stops the current stage but still allows later stages to run")
 	@Test
 	void completeStepStopsCurrentStageOnly() {
-		IdentityService identityService = mock(IdentityService.class);
 		EventManager eventManager = mock(EventManager.class);
 		ProviderManager providerManager = mock(ProviderManager.class);
 		PipelineStateStore pipelineStateStore = mock(PipelineStateStore.class);
@@ -70,7 +66,6 @@ class ExecutePlanPhaseTest {
 				.thenReturn(Optional.empty());
 
 		ExecutePlanPhase phase = new ExecutePlanPhase(
-				identityService,
 				eventManager,
 				this::settings,
                 Messages::new,
@@ -102,7 +97,6 @@ class ExecutePlanPhaseTest {
 				.type(StageType.PROVIDER)
 				.order(200)
 				.pipelineTypes(EnumSet.of(PipelineType.AUTHENTICATION))
-				.journeyModes(EnumSet.of(JourneyMode.INTERACTIVE))
 				.requireCompletion(true)
 				.allowFallback(true)
 				.build();
@@ -111,7 +105,6 @@ class ExecutePlanPhaseTest {
 				.type(StageType.END)
 				.order(300)
 				.pipelineTypes(EnumSet.of(PipelineType.AUTHENTICATION))
-				.journeyModes(EnumSet.of(JourneyMode.INTERACTIVE))
 				.allowFallback(true)
 				.build();
 
@@ -146,7 +139,6 @@ class ExecutePlanPhaseTest {
 
 		JourneyState state = new JourneyState();
 		state.setContext(context);
-		state.setJourneyMode(JourneyMode.INTERACTIVE);
 		state.setExecutionPlan(plan);
 
 		PhaseResult<JourneyState> result = phase.execute(pipelineState, state).toCompletableFuture().join();
@@ -161,17 +153,14 @@ class ExecutePlanPhaseTest {
 	@DisplayName("Waiting steps persist the current scenario identity reference")
 	@Test
 	void waitingStepPersistsCurrentScenarioIdentityReference() {
-		IdentityService identityService = mock(IdentityService.class);
 		EventManager eventManager = mock(EventManager.class);
 		ProviderManager providerManager = mock(ProviderManager.class);
 		PipelineStateStore pipelineStateStore = mock(PipelineStateStore.class);
 		RoutingCoordinator routingCoordinator = mock(RoutingCoordinator.class);
 		when(pipelineStateStore.find(any(PipelineStateReference.class)))
 				.thenReturn(Optional.empty());
-		when(identityService.findByConnectionUniqueId(any(UUID.class))).thenReturn(Optional.empty());
 
 		ExecutePlanPhase phase = new ExecutePlanPhase(
-				identityService,
 				eventManager,
 				this::settings,
 				Messages::new,
@@ -202,20 +191,18 @@ class ExecutePlanPhaseTest {
 				.type(StageType.PROVIDER)
 				.order(200)
 				.pipelineTypes(EnumSet.of(PipelineType.AUTHENTICATION))
-				.journeyModes(EnumSet.of(JourneyMode.INTERACTIVE))
 				.allowFallback(true)
 				.build();
-		Step onlineStep = step("online-wait", StepContextRequirement.ONLINE, StepResult::proceed);
+		Step askingStep = step("asks", ignored -> StepResult.waiting("prompt"));
 		JourneyExecutionPlan plan = new JourneyExecutionPlan(List.of(new JourneyExecutionBlock(
 				"group-provider",
 				JourneyExecutionPolicy.SEQUENTIAL,
 				null,
-				List.of(new JourneyExecutionStage(providerStage, List.of(journeyStep(StageType.PROVIDER, onlineStep, 10))))
+				List.of(new JourneyExecutionStage(providerStage, List.of(journeyStep(StageType.PROVIDER, askingStep, 10))))
 		)));
 
 		JourneyState state = new JourneyState();
 		state.setContext(currentContext);
-		state.setJourneyMode(JourneyMode.INTERACTIVE);
 		state.setExecutionPlan(plan);
 
 		PhaseResult<JourneyState> result = phase.execute(pipelineState, state).toCompletableFuture().join();
@@ -241,10 +228,8 @@ class ExecutePlanPhaseTest {
 	}
 
 	private int resumedStepIndex(String resumeStep) {
-		IdentityService identityService = mock(IdentityService.class);
 		ProviderManager providerManager = mock(ProviderManager.class);
 		ExecutePlanPhase phase = new ExecutePlanPhase(
-				identityService,
 				mock(EventManager.class),
 				this::settings,
 				Messages::new,
@@ -259,7 +244,6 @@ class ExecutePlanPhaseTest {
 				.type(StageType.PROVIDER)
 				.order(200)
 				.pipelineTypes(EnumSet.of(PipelineType.AUTHENTICATION))
-				.journeyModes(EnumSet.of(JourneyMode.INTERACTIVE))
 				.allowFallback(true)
 				.build();
 		Step setup = step("setup", StepResult::proceed);
@@ -285,7 +269,6 @@ class ExecutePlanPhaseTest {
 
 		JourneyState state = new JourneyState();
 		state.setContext(context);
-		state.setJourneyMode(JourneyMode.INTERACTIVE);
 		state.setExecutionPlan(plan);
 
 		PhaseResult<JourneyState> result = phase.execute(pipelineState, state).toCompletableFuture().join();
@@ -297,7 +280,6 @@ class ExecutePlanPhaseTest {
 	@DisplayName("Provider blocks enrich a missing provider subject from the selected provider resolvers")
 	@Test
 	void providerBlocksResolveMissingProviderSubject() {
-		IdentityService identityService = mock(IdentityService.class);
 		EventManager eventManager = mock(EventManager.class);
 		ProviderManager providerManager = mock(ProviderManager.class);
 		PipelineStateStore pipelineStateStore = mock(PipelineStateStore.class);
@@ -305,7 +287,6 @@ class ExecutePlanPhaseTest {
 		when(pipelineStateStore.find(any(PipelineStateReference.class))).thenReturn(Optional.empty());
 
 		ExecutePlanPhase phase = new ExecutePlanPhase(
-				identityService,
 				eventManager,
 				this::settings,
 				Messages::new,
@@ -329,7 +310,6 @@ class ExecutePlanPhaseTest {
 				.type(StageType.PROVIDER)
 				.order(200)
 				.pipelineTypes(EnumSet.of(PipelineType.AUTHENTICATION))
-				.journeyModes(EnumSet.of(JourneyMode.INTERACTIVE))
 				.allowFallback(true)
 				.build();
 
@@ -356,7 +336,6 @@ class ExecutePlanPhaseTest {
 
 		JourneyState state = new JourneyState();
 		state.setContext(context);
-		state.setJourneyMode(JourneyMode.INTERACTIVE);
 		state.setExecutionPlan(plan);
 
 		PhaseResult<JourneyState> result = phase.execute(pipelineState, state).toCompletableFuture().join();
@@ -365,41 +344,17 @@ class ExecutePlanPhaseTest {
 		assertEquals(PipelineStatus.COMPLETE, result.getState().getResult().getStatus());
 	}
 
-	@DisplayName("A strict seamless journey denies a step that waits for player input")
+	@DisplayName("A step that asks while the player logs in keeps the journey waiting, whoever picks the option")
 	@Test
-	void strictSeamlessJourneyDeniesAStepWaitingForInput() {
-		assertEquals(PipelineStatus.DENIED, seamlessWaitingResult(JourneyPolicy.STRICT, StepWaitReason.INPUT).getStatus());
-		assertEquals("interaction-required", seamlessWaitingResult(JourneyPolicy.STRICT, StepWaitReason.INPUT).getMessage());
-	}
+	void askingStepKeepsTheJourneyWaiting() {
+		for (JourneyChoice choice : JourneyChoice.values()) {
+			List<String> executed = new ArrayList<>();
+			PipelineResult result = providerFallbackResult(executed, choice, StepResult.waiting("prompt"), StepResult.complete(null));
 
-	@DisplayName("A seamless journey keeps waiting when the mode is only preferred or the step waits for presence")
-	@Test
-	void seamlessJourneyKeepsWaitingWhenInputIsAllowedOrNotNeeded() {
-		assertEquals(PipelineStatus.WAITING, seamlessWaitingResult(JourneyPolicy.PREFER, StepWaitReason.INPUT).getStatus());
-		assertEquals(PipelineStatus.WAITING, seamlessWaitingResult(JourneyPolicy.STRICT, StepWaitReason.ONLINE).getStatus());
-	}
-
-	@DisplayName("A strict seamless journey reports the refused input when its last provider needed it")
-	@Test
-	void strictSeamlessJourneyReportsRefusedInputAfterTheLastProvider() {
-		PipelineResult result = seamlessWaitingResult(JourneyPolicy.STRICT, StepWaitReason.INPUT, JourneyExecutionPolicy.FALLBACK, "credential");
-
-		assertEquals(PipelineStatus.DENIED, result.getStatus());
-		assertEquals("interaction-required", result.getMessage());
-	}
-
-	@DisplayName("A strict seamless journey refuses input in the same way when the refusal has no text")
-	@Test
-	void strictSeamlessJourneyRefusesInputWithoutText() {
-		PipelineResult sequential = seamlessWaitingResult(
-				JourneyPolicy.STRICT, StepWaitReason.INPUT, JourneyExecutionPolicy.SEQUENTIAL, null, List.of());
-		PipelineResult lastProvider = seamlessWaitingResult(
-				JourneyPolicy.STRICT, StepWaitReason.INPUT, JourneyExecutionPolicy.FALLBACK, "credential", List.of());
-
-		assertEquals(PipelineStatus.DENIED, sequential.getStatus());
-		assertEquals("", sequential.getMessage());
-		assertEquals(PipelineStatus.DENIED, lastProvider.getStatus());
-		assertEquals("", lastProvider.getMessage());
+			assertEquals(PipelineStatus.WAITING, result.getStatus(), choice.name());
+			assertEquals("prompt", result.getMessage());
+			assertEquals(List.of("credential"), executed);
+		}
 	}
 
 	@DisplayName("A provider's denial ends the journey with that provider's message")
@@ -444,50 +399,121 @@ class ExecutePlanPhaseTest {
 		assertEquals(List.of("credential", "premium", "excluded:credential", "end"), executed);
 	}
 
-	@DisplayName("A strict seamless journey still tries the next provider after one needed input")
+	@DisplayName("A method that fails falls back to the next method of its provider without excluding the provider")
 	@Test
-	void strictSeamlessJourneyTriesTheNextProviderAfterRefusedInput() {
+	void failedMethodFallsBackToTheNextMethod() {
 		List<String> executed = new ArrayList<>();
-		PipelineResult result = providerFallbackResult(
-				executed, JourneyPolicy.STRICT, StepResult.waiting("prompt", StepWaitReason.INPUT), StepResult.complete(null));
+		PipelineState pipelineState = PipelineState.initial();
+		PipelineResult result = methodFallbackResult(executed, pipelineState, StepResult.failed(""), StepResult.complete(null));
 
 		assertEquals(PipelineStatus.COMPLETE, result.getStatus());
-		assertEquals(List.of("credential", "premium", "excluded:credential", "end"), executed);
+		assertEquals(List.of("website:quick", "website:guided", "end"), executed);
+		JourneyOverrideItem override = pipelineState.get(JourneyOverrideItem.KEY).orElseThrow();
+		assertEquals(List.of("website:quick"), override.getExcludedMethods());
+		assertTrue(override.getExcludedProviders().isEmpty());
+	}
+
+	@DisplayName("The last method of a provider that fails excludes its provider from the selection")
+	@Test
+	void lastFailedMethodExcludesItsProvider() {
+		List<String> executed = new ArrayList<>();
+		PipelineResult result = methodFallbackResult(executed, PipelineState.initial(), StepResult.failed("no website account"));
+
+		assertEquals(PipelineStatus.FAILED, result.getStatus());
+		assertEquals("no website account", result.getMessage());
+		assertEquals(List.of("website:quick"), executed);
+	}
+
+	@DisplayName("A provider the player picked without naming a method continues with its first method")
+	@Test
+	void pickedProviderContinuesWithItsFirstMethod() {
+		List<String> executed = new ArrayList<>();
+		ExecutePlanPhase phase = new ExecutePlanPhase(
+				mock(EventManager.class),
+				this::settings,
+				Messages::new,
+				mock(ProviderManager.class),
+				providerOperations(),
+				mock(RoutingCoordinator.class),
+				new DefaultProviderSelector(new ProviderClaimRanking(mock(ProviderManager.class)))
+		);
+
+		AuthContext context = AuthContext.builder()
+				.connectionUniqueId(UUID.randomUUID())
+				.identity(new ConnectionIdentity(UUID.randomUUID(), "PlayerOne", "127.0.0.1"))
+				.intendedServer("auth")
+				.build();
+		context.setProvider(ProviderContext.of("website", null, "PlayerOne"));
+		PipelineState pipelineState = PipelineState.initial();
+		pipelineState.setPipelineType(PipelineType.AUTHENTICATION);
+		pipelineState.setScenario(context);
+
+		JourneyStage preStage = JourneyStage.builder()
+				.id(StageType.PRE.id())
+				.type(StageType.PRE)
+				.order(100)
+				.pipelineTypes(EnumSet.of(PipelineType.AUTHENTICATION))
+				.build();
+		JourneyStage providerStage = JourneyStage.builder()
+				.id(StageType.PROVIDER.id())
+				.type(StageType.PROVIDER)
+				.order(200)
+				.pipelineTypes(EnumSet.of(PipelineType.AUTHENTICATION))
+				.allowFallback(true)
+				.build();
+		Step choice = step("choice", current -> {
+			executed.add("choice");
+			return StepResult.waiting("choose");
+		});
+		Step guided = step("guided", current -> {
+			executed.add(current.getProvider().getProviderId() + ":" + current.getProvider().getMethod());
+			return StepResult.complete(current);
+		});
+		JourneyState state = new JourneyState();
+		state.setContext(context);
+		state.setPending(new JourneyStateItem(StageType.PROVIDER.id(), 0));
+		state.setExecutionPlan(new JourneyExecutionPlan(List.of(
+				new JourneyExecutionBlock("pre", JourneyExecutionPolicy.SEQUENTIAL, null,
+						List.of(new JourneyExecutionStage(preStage, List.of(journeyStep(StageType.PRE, choice, 10))))),
+				new JourneyExecutionBlock("group-provider", JourneyExecutionPolicy.FALLBACK, "website", "guided",
+						List.of(new JourneyExecutionStage(providerStage, List.of(journeyStep(StageType.PROVIDER, guided, 10)))))
+		)));
+
+		PipelineResult result = phase.execute(pipelineState, state).toCompletableFuture().join().getState().getResult();
+
+		assertEquals(PipelineStatus.COMPLETE, result.getStatus());
+		assertEquals(List.of("website:guided"), executed);
+	}
+
+	@DisplayName("A running method tells its steps which method runs")
+	@Test
+	void runningMethodIsKnownToItsSteps() {
+		List<String> executed = new ArrayList<>();
+		methodFallbackResult(executed, PipelineState.initial(), StepResult.complete(null));
+
+		assertEquals(List.of("website:quick", "end"), executed);
 	}
 
 	private PipelineResult providerFallbackResult(@NotNull List<String> executed, @NotNull StepResult... providerResults) {
-		return providerFallbackResult(executed, JourneyPolicy.PREFER, providerResults);
+		return providerFallbackResult(executed, JourneyChoice.AUTOMATIC, providerResults);
 	}
 
 	/**
-	 * Runs a seamless authentication plan of one fallback block per provider, credential first and premium second,
-	 * followed by an end block, and records which blocks ran.
+	 * Runs an authentication plan of one fallback block per provider, credential first and premium second, followed
+	 * by an end block, and records which blocks ran.
 	 */
 	private PipelineResult providerFallbackResult(
 			@NotNull List<String> executed,
-			@NotNull JourneyPolicy policy,
+			@NotNull JourneyChoice choice,
 			@NotNull StepResult... providerResults
 	) {
-		IdentityService identityService = mock(IdentityService.class);
-		when(identityService.findByConnectionUniqueId(any(UUID.class))).thenReturn(Optional.empty());
-
 		Engine settings = settings();
-		settings.getScenarios().getAuthentication().setJourneyMode(JourneyMode.SEAMLESS);
-		settings.getScenarios().getAuthentication().setJourneyPolicy(policy);
-		Messages messages = new Messages();
-		Messages.Engine engine = new Messages.Engine();
-		Messages.Engine.Journey journey = new Messages.Engine.Journey();
-		Messages.Engine.Journey.Step stepMessages = new Messages.Engine.Journey.Step();
-		stepMessages.setInteractionRequired(List.of("interaction-required"));
-		journey.setStep(stepMessages);
-		engine.setJourney(journey);
-		messages.setEngine(engine);
+		settings.getScenarios().getAuthentication().setChoice(choice);
 
 		ExecutePlanPhase phase = new ExecutePlanPhase(
-				identityService,
 				mock(EventManager.class),
 				() -> settings,
-				() -> messages,
+				Messages::new,
 				mock(ProviderManager.class),
 				providerOperations(),
 				mock(RoutingCoordinator.class),
@@ -510,7 +536,6 @@ class ExecutePlanPhaseTest {
 				.type(StageType.PROVIDER)
 				.order(200)
 				.pipelineTypes(EnumSet.of(PipelineType.AUTHENTICATION))
-				.journeyModes(EnumSet.of(JourneyMode.SEAMLESS))
 				.allowFallback(true)
 				.build();
 		JourneyStage endStage = JourneyStage.builder()
@@ -518,7 +543,6 @@ class ExecutePlanPhaseTest {
 				.type(StageType.END)
 				.order(300)
 				.pipelineTypes(EnumSet.of(PipelineType.AUTHENTICATION))
-				.journeyModes(EnumSet.of(JourneyMode.SEAMLESS))
 				.allowFallback(true)
 				.build();
 
@@ -552,54 +576,25 @@ class ExecutePlanPhaseTest {
 
 		JourneyState state = new JourneyState();
 		state.setContext(context);
-		state.setJourneyMode(JourneyMode.SEAMLESS);
 		state.setExecutionPlan(new JourneyExecutionPlan(blocks));
 
 		return phase.execute(pipelineState, state).toCompletableFuture().join().getState().getResult();
 	}
 
-	private PipelineResult seamlessWaitingResult(@NotNull JourneyPolicy policy, @NotNull StepWaitReason reason) {
-		return seamlessWaitingResult(policy, reason, JourneyExecutionPolicy.SEQUENTIAL, null);
-	}
-
-	private PipelineResult seamlessWaitingResult(
-			@NotNull JourneyPolicy policy,
-			@NotNull StepWaitReason reason,
-			@NotNull JourneyExecutionPolicy blockPolicy,
-			@Nullable String providerId
+	/**
+	 * Runs an authentication plan of one fallback block per method of the website provider, quick first and guided
+	 * second, followed by an end block, and records which methods ran.
+	 */
+	private PipelineResult methodFallbackResult(
+			@NotNull List<String> executed,
+			@NotNull PipelineState pipelineState,
+			@NotNull StepResult... methodResults
 	) {
-		return seamlessWaitingResult(policy, reason, blockPolicy, providerId, List.of("interaction-required"));
-	}
-
-	private PipelineResult seamlessWaitingResult(
-			@NotNull JourneyPolicy policy,
-			@NotNull StepWaitReason reason,
-			@NotNull JourneyExecutionPolicy blockPolicy,
-			@Nullable String providerId,
-			@NotNull List<String> interactionRequired
-	) {
-		IdentityService identityService = mock(IdentityService.class);
-		PipelineStateStore pipelineStateStore = mock(PipelineStateStore.class);
-		when(pipelineStateStore.find(any(PipelineStateReference.class))).thenReturn(Optional.empty());
-		when(identityService.findByConnectionUniqueId(any(UUID.class))).thenReturn(Optional.empty());
-
 		Engine settings = settings();
-		settings.getScenarios().getAuthentication().setJourneyMode(JourneyMode.SEAMLESS);
-		settings.getScenarios().getAuthentication().setJourneyPolicy(policy);
-		Messages messages = new Messages();
-		Messages.Engine engine = new Messages.Engine();
-		Messages.Engine.Journey journey = new Messages.Engine.Journey();
-		Messages.Engine.Journey.Step stepMessages = new Messages.Engine.Journey.Step();
-		stepMessages.setInteractionRequired(interactionRequired);
-		journey.setStep(stepMessages);
-		engine.setJourney(journey);
-		messages.setEngine(engine);
-
 		ExecutePlanPhase phase = new ExecutePlanPhase(
-				identityService,
 				mock(EventManager.class),
 				() -> settings,
-				() -> messages,
+				Messages::new,
 				mock(ProviderManager.class),
 				providerOperations(),
 				mock(RoutingCoordinator.class),
@@ -613,7 +608,6 @@ class ExecutePlanPhaseTest {
 				.identity(new ConnectionIdentity(accountUniqueId, "PlayerOne", "127.0.0.1"))
 				.intendedServer("auth")
 				.build();
-		PipelineState pipelineState = PipelineState.initial();
 		pipelineState.setPipelineType(PipelineType.AUTHENTICATION);
 		pipelineState.setScenario(context);
 
@@ -622,37 +616,47 @@ class ExecutePlanPhaseTest {
 				.type(StageType.PROVIDER)
 				.order(200)
 				.pipelineTypes(EnumSet.of(PipelineType.AUTHENTICATION))
-				.journeyModes(EnumSet.of(JourneyMode.SEAMLESS))
 				.allowFallback(true)
 				.build();
-		Step waiting = step("waits", ignored -> StepResult.waiting("prompt", reason));
 		JourneyStage endStage = JourneyStage.builder()
 				.id(StageType.END.id())
 				.type(StageType.END)
 				.order(300)
 				.pipelineTypes(EnumSet.of(PipelineType.AUTHENTICATION))
-				.journeyModes(EnumSet.of(JourneyMode.SEAMLESS))
 				.allowFallback(true)
 				.build();
-		JourneyExecutionPlan plan = new JourneyExecutionPlan(List.of(
-				new JourneyExecutionBlock(
-						"group-provider",
-						blockPolicy,
-						providerId,
-						List.of(new JourneyExecutionStage(providerStage, List.of(journeyStep(StageType.PROVIDER, waiting, 10))))
-				),
-				new JourneyExecutionBlock(
-						"group-end",
-						JourneyExecutionPolicy.SEQUENTIAL,
-						null,
-						List.of(new JourneyExecutionStage(endStage, List.of(journeyStep(StageType.END, step("end", StepResult::proceed), 10))))
-				)
+
+		List<String> methods = List.of("quick", "guided");
+		List<JourneyExecutionBlock> blocks = new ArrayList<>();
+		for (int index = 0; index < methodResults.length; index++) {
+			String method = methods.get(index);
+			StepResult methodResult = methodResults[index];
+			Step methodStep = step(method, current -> {
+				executed.add(current.getProvider().getProviderId() + ":" + current.getProvider().getMethod());
+				return methodResult.getStatus() == StepResult.StepStatus.COMPLETE ? StepResult.complete(current) : methodResult;
+			});
+			blocks.add(new JourneyExecutionBlock(
+					"group-provider",
+					JourneyExecutionPolicy.FALLBACK,
+					"website",
+					method,
+					List.of(new JourneyExecutionStage(providerStage, List.of(journeyStep(StageType.PROVIDER, methodStep, 10))))
+			));
+		}
+		Step endStep = step("end", current -> {
+			executed.add("end");
+			return StepResult.proceed(current);
+		});
+		blocks.add(new JourneyExecutionBlock(
+				"group-end",
+				JourneyExecutionPolicy.SEQUENTIAL,
+				null,
+				List.of(new JourneyExecutionStage(endStage, List.of(journeyStep(StageType.END, endStep, 10))))
 		));
 
 		JourneyState state = new JourneyState();
 		state.setContext(context);
-		state.setJourneyMode(JourneyMode.SEAMLESS);
-		state.setExecutionPlan(plan);
+		state.setExecutionPlan(new JourneyExecutionPlan(blocks));
 
 		return phase.execute(pipelineState, state).toCompletableFuture().join().getState().getResult();
 	}
@@ -670,8 +674,7 @@ class ExecutePlanPhaseTest {
 	private void configureScenario(@NotNull Engine.Scenario scenario) {
 		scenario.setPipelineTtl(Duration.ofSeconds(60));
 		scenario.setAllowResume(true);
-		scenario.setJourneyMode(JourneyMode.INTERACTIVE);
-		scenario.setJourneyPolicy(JourneyPolicy.PREFER);
+		scenario.setChoice(JourneyChoice.PROMPTED);
 	}
 
 	private ProviderOperations providerOperations() {
@@ -704,7 +707,7 @@ class ExecutePlanPhaseTest {
 			@Override
 			public @NotNull List<me.whereareiam.identica.model.provider.InternalProvider> eligibleProviders(
 					@NotNull ScenarioContext context,
-					@NotNull JourneyMode journeyMode
+					@NotNull PipelineType pipelineType
 			) {
 				return List.of();
 			}
@@ -713,7 +716,7 @@ class ExecutePlanPhaseTest {
 			public boolean isEligible(
 					@NotNull ScenarioContext context,
 					@NotNull me.whereareiam.identica.model.provider.InternalProvider provider,
-					@NotNull JourneyMode journeyMode
+					@NotNull PipelineType pipelineType
 			) {
 				return false;
 			}
@@ -748,33 +751,14 @@ class ExecutePlanPhaseTest {
 				.step(step)
 				.order(order)
 				.scenarios(EnumSet.of(PipelineType.AUTHENTICATION))
-				.journeyModes(EnumSet.of(JourneyMode.INTERACTIVE))
 				.build();
 	}
 
 	private Step step(@NotNull String name, @NotNull StepExecutor executor) {
-		return step(name, StepContextRequirement.LOGIN, executor);
-	}
-
-	private Step step(
-			@NotNull String name,
-			@NotNull StepContextRequirement contextRequirement,
-			@NotNull StepExecutor executor
-	) {
 		return new Step() {
 			@Override
 			public @NotNull String getName() {
 				return name;
-			}
-
-			@Override
-			public @NotNull java.util.Set<JourneyMode> journeyModes() {
-				return EnumSet.of(JourneyMode.INTERACTIVE);
-			}
-
-			@Override
-			public @NotNull StepContextRequirement contextRequirement() {
-				return contextRequirement;
 			}
 
 			@Override

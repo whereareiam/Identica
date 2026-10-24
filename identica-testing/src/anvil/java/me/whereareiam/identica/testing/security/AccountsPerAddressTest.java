@@ -8,7 +8,6 @@ import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -30,7 +29,7 @@ class AccountsPerAddressTest {
 	private static final String OTHER_ADDRESS = "127.0.0.2";
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, autoSelectSingleProvider = true, configure = TwoAccounts.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = TwoAccounts.class)
 	void refusesARegistrationOnceTheAddressReachedTheLimit(ScenarioContext anvil) {
 		registers(anvil, Client.offline("Alice"));
 		registers(anvil, Client.offline("Bob"));
@@ -42,7 +41,7 @@ class AccountsPerAddressTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, autoSelectSingleProvider = true, configure = TwoAccounts.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = TwoAccounts.class)
 	void letsAPlayerRegisterOnceAnAccountOfTheAddressIsDeleted(ScenarioContext anvil) {
 		registers(anvil, Client.offline("Alice"));
 		registers(anvil, Client.offline("Bob"));
@@ -53,7 +52,7 @@ class AccountsPerAddressTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, autoSelectSingleProvider = true, configure = AllowedLoopback.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = AllowedLoopback.class)
 	void neverLimitsAnAllowedAddress(ScenarioContext anvil) {
 		registers(anvil, Client.offline("Alice"));
 		registers(anvil, Client.offline("Bob"));
@@ -61,7 +60,7 @@ class AccountsPerAddressTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, autoSelectSingleProvider = true, configure = TwoAccounts.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = TwoAccounts.class)
 	void letsAPlayerOfTheAddressLogInPastTheLimit(ScenarioContext anvil) {
 		Journey alice = registers(anvil, Client.offline("Alice"));
 		registers(anvil, Client.offline("Bob"));

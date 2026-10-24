@@ -19,7 +19,6 @@ import me.whereareiam.identica.model.scheduler.*;
 import me.whereareiam.identica.service.DeliveryService;
 import me.whereareiam.identica.service.Scheduler;
 import me.whereareiam.identica.type.ScenarioResolution;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.keystone.model.SerializerContent;
 import me.whereareiam.keystone.model.SerializerOptions;
 import me.whereareiam.keystone.serializer.SerializerEngine;
@@ -100,8 +99,7 @@ class PendingPipelineKickCoordinatorTest {
 				accountUniqueId,
 				context,
 				false,
-				expiresAt,
-				JourneyMode.SEAMLESS
+				expiresAt
 		));
 		assertTrue(scheduler.hasDelayedTasks());
 
@@ -149,8 +147,7 @@ class PendingPipelineKickCoordinatorTest {
 				accountUniqueId,
 				context,
 				false,
-				System.currentTimeMillis(),
-				JourneyMode.SEAMLESS
+				System.currentTimeMillis()
 		));
 
 		scheduler.runAll();

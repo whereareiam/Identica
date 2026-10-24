@@ -7,7 +7,6 @@ import me.whereareiam.identica.event.base.Event;
 import me.whereareiam.identica.event.base.SynchronousEvent;
 import me.whereareiam.identica.event.scenario.ScenarioRequiredEvent;
 import me.whereareiam.identica.model.migration.MigrationContext;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -26,21 +25,18 @@ public class MigrationRequiredEvent implements Event, SynchronousEvent, Scenario
 	private final @NotNull MigrationContext context;
 	private final boolean resumed;
 	private final long expiresAt;
-	private final @Nullable JourneyMode journeyMode;
 
 	public MigrationRequiredEvent(
 			@NotNull MigrationContext context,
 			boolean resumed,
-			long expiresAt,
-			@Nullable JourneyMode journeyMode
+			long expiresAt
 	) {
 		this(
 				requireConnectionUniqueId(context),
 				context.getAccountUniqueId(),
 				context,
 				resumed,
-				expiresAt,
-				journeyMode
+				expiresAt
 		);
 	}
 

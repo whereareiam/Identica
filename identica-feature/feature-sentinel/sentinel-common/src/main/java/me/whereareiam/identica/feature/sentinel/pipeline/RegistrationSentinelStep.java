@@ -9,7 +9,7 @@ import me.whereareiam.identica.feature.sentinel.type.SentinelScope;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.pipeline.ScenarioContext;
-import me.whereareiam.identica.pipeline.journey.step.type.SeamlessStep;
+import me.whereareiam.identica.pipeline.journey.step.AbstractStep;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
@@ -19,7 +19,7 @@ import java.util.concurrent.CompletableFuture;
  * known and before the player is asked for anything.
  */
 @Singleton
-public class RegistrationSentinelStep extends SeamlessStep {
+public class RegistrationSentinelStep extends AbstractStep {
 	/**
 	 * Right after the username check of every registration, ahead of the provider's own steps.
 	 */

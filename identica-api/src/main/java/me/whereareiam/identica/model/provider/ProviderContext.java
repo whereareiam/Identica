@@ -26,6 +26,11 @@ public class ProviderContext {
 	private @Nullable String providerId;
 	private @Nullable String providerSubject;
 	private @NotNull String providerUsername;
+	/**
+	 * Name of the provider method that runs, or {@code null} when the provider runs without methods or the journey
+	 * has not picked one yet.
+	 */
+	private @Nullable String method;
 
 	/**
 	 * Creates the context of a running provider.

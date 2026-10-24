@@ -6,7 +6,6 @@ import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +22,7 @@ class HelpAndAvailabilityTest {
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void helpListsOnlyTheCommandsTheReaderMayRun(ScenarioContext anvil) {
 		loggedIn(anvil, "Alice")
 				.command("identica help")
@@ -35,7 +34,7 @@ class HelpAndAvailabilityTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void tellsWhetherAUsernameIsTaken(ScenarioContext anvil) {
 		Accounts.credential(anvil, "Bob", PASSWORD);
 

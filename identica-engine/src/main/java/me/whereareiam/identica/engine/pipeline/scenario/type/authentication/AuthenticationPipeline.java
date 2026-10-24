@@ -25,7 +25,6 @@ import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.pipeline.state.scenario.shared.item.IdentityMetaItem;
 import me.whereareiam.identica.type.ScenarioResolution;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.util.EventUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -112,9 +111,9 @@ public class AuthenticationPipeline extends AbstractScenarioPipeline {
 	}
 
 	@Override
-	protected void emitRequired(@NotNull ScenarioContext context, long expiresAt, @Nullable JourneyMode journeyMode) {
+	protected void emitRequired(@NotNull ScenarioContext context, long expiresAt) {
 		if (!(context instanceof AuthContext authContext)) return;
-		EventUtil.callEvent(new AuthenticationRequiredEvent(authContext, false, expiresAt, journeyMode));
+		EventUtil.callEvent(new AuthenticationRequiredEvent(authContext, false, expiresAt));
 	}
 
 	@Override

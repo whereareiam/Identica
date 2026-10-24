@@ -29,7 +29,6 @@ import me.whereareiam.identica.replication.cache.ReplicatedCache;
 import me.whereareiam.identica.type.ScenarioResolution;
 import me.whereareiam.identica.type.migration.MigrationResultStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -98,7 +97,6 @@ public class MigrationJourneys {
 		long ttlMs = scenario.pipelineTtlMillis();
 		if (ttlMs <= 0) return MigrationResultStatus.FAILED;
 
-		JourneyMode journeyMode = scenario.getJourneyMode();
 		MigrationContext context = MigrationContext.builder()
 				.connectionUniqueId(journey.getConnectionUniqueId())
 				.identity(new ConnectionIdentity(
@@ -118,7 +116,7 @@ public class MigrationJourneys {
 				journey.getInitiator(),
 				journey.getInitiatorUniqueId()
 		), ttlMs);
-		state.put(JourneyStateItem.KEY, new JourneyStateItem(journeyMode, null, 0), ttlMs);
+		state.put(JourneyStateItem.KEY, new JourneyStateItem(null, 0), ttlMs);
 
 		PipelineStateReference reference = PipelineStateReference.from(context);
 		PipelineState replaced = pipelineStateStore.find(reference).orElse(null);
@@ -136,15 +134,14 @@ public class MigrationJourneys {
 				new JourneyConnection(context.getIdentity().getConnectionUsername(), journey.getIp()),
 				ttlMs
 		).join();
-		eventManager.call(new MigrationRequiredEvent(context, false, System.currentTimeMillis() + ttlMs, journeyMode));
+		eventManager.call(new MigrationRequiredEvent(context, false, System.currentTimeMillis() + ttlMs));
 		Logger.debug(
-				"Stored migration pending connection=%s identica=%s target=%s username=%s ip=%s journeyMode=%s",
+				"Stored migration pending connection=%s identica=%s target=%s username=%s ip=%s",
 				journey.getConnectionUniqueId(),
 				journey.getAccountUniqueId(),
 				journey.getTargetProviderId(),
 				journey.getUsername(),
-				journey.getIp(),
-				journeyMode
+				journey.getIp()
 		);
 
 		return MigrationResultStatus.STARTED;

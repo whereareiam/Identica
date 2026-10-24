@@ -9,7 +9,6 @@ import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -30,7 +29,7 @@ class JoinRestrictionTest {
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = LinkedAllowed.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = LinkedAllowed.class)
 	void letsALinkedAccountLogInWhileRestricted(ScenarioContext anvil) {
 		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD);
 		Administrator.at(anvil, PROXY).restrictsJoins(Provider.CREDENTIAL);
@@ -44,7 +43,7 @@ class JoinRestrictionTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = RecognizedAllowed.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = RecognizedAllowed.class)
 	void letsARecognizedPlayerInWithoutThePasswordWhileRestricted(ScenarioContext anvil) {
 		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD);
 		Administrator.at(anvil, PROXY).restrictsJoins(Provider.CREDENTIAL);
@@ -55,7 +54,7 @@ class JoinRestrictionTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = LinkedAllowed.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = LinkedAllowed.class)
 	void refusesANewPlayerAtJoinWhileRestricted(ScenarioContext anvil) {
 		Administrator.at(anvil, PROXY).restrictsJoins(Provider.CREDENTIAL);
 
@@ -64,7 +63,7 @@ class JoinRestrictionTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = CredentialAllowsNothing.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = CredentialAllowsNothing.class)
 	void refusesALinkedAccountThroughAProviderThatAllowsNoSignal(ScenarioContext anvil) {
 		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD);
 		Administrator.at(anvil, PROXY).restrictsJoins(Provider.CREDENTIAL);
@@ -74,7 +73,7 @@ class JoinRestrictionTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = RecognizedAllowed.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = RecognizedAllowed.class)
 	void refusesAPlayerWhoIsNotRecognizedWhileRestricted(ScenarioContext anvil) {
 		Accounts.credentialByAdmin(anvil, "Bob", PASSWORD);
 		Administrator.at(anvil, PROXY).restrictsJoins(Provider.CREDENTIAL);
@@ -84,7 +83,7 @@ class JoinRestrictionTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = LinkedAllowed.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = LinkedAllowed.class)
 	void letsANewPlayerRegisterOnceTheRestrictionIsLifted(ScenarioContext anvil) {
 		Administrator administrator = Administrator.at(anvil, PROXY).restrictsJoins(Provider.CREDENTIAL);
 		Journey bob = Journey.offline(anvil, "Bob").attempt()
@@ -94,8 +93,6 @@ class JoinRestrictionTest {
 
 		bob.rejoin()
 				.on(AUTH)
-				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
-				.enroll(Provider.CREDENTIAL)
 				.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
 				.register(PASSWORD)
 				.on(LOBBY)
@@ -103,7 +100,7 @@ class JoinRestrictionTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = CredentialAllowsNothing.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = CredentialAllowsNothing.class)
 	void letsARefusedAccountLogInOnceTheRestrictionIsLifted(ScenarioContext anvil) {
 		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD);
 		Administrator administrator = Administrator.at(anvil, PROXY).restrictsJoins(Provider.CREDENTIAL);
@@ -121,13 +118,13 @@ class JoinRestrictionTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void refusesToRestrictAProviderWhoseJoinRestrictionIsNotConfigured(ScenarioContext anvil) {
 		Administrator.at(anvil, PROXY).cannotRestrictJoins(Provider.CREDENTIAL);
 
 		Journey.offline(anvil, "Bob").join()
 				.on(AUTH)
-				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody());
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt());
 	}
 
 	/**

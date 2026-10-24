@@ -22,7 +22,7 @@ import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.journey.step.StatefulStep;
 import me.whereareiam.identica.pipeline.state.PipelineState;
-import me.whereareiam.identica.pipeline.journey.step.type.InteractiveStep;
+import me.whereareiam.identica.pipeline.journey.step.AbstractStep;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -32,7 +32,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 @Singleton
-public class PremiumVerificationStep extends InteractiveStep implements StatefulStep {
+public class PremiumVerificationStep extends AbstractStep implements StatefulStep {
 	private final Provider<PremiumMessages> messagesProvider;
 	private final ProviderLinkPersistenceService providerLinkPersistenceService;
 

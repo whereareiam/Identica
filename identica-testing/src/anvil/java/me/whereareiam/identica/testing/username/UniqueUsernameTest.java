@@ -9,7 +9,7 @@ import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -33,7 +33,7 @@ class UniqueUsernameTest {
 	private static final String PASSPHRASE = "OpenSesame";
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = {Provider.CREDENTIAL, Provider.EXAMPLE})
+	@Identica(choice = JourneyChoice.PROMPTED, providers = {Provider.CREDENTIAL, Provider.EXAMPLE})
 	void refusesACredentialRegistrationOfAUsernameAnotherAccountHoldsInAnotherCase(ScenarioContext anvil) {
 		Journey.offline(anvil, "Steve").join()
 				.on(AUTH)
@@ -52,7 +52,7 @@ class UniqueUsernameTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = {Provider.CREDENTIAL, Provider.EXAMPLE})
+	@Identica(choice = JourneyChoice.PROMPTED, providers = {Provider.CREDENTIAL, Provider.EXAMPLE})
 	void refusesAConsoleRegistrationOfAUsernameAnAccountOfAnotherProviderHoldsInAnotherCase(ScenarioContext anvil) {
 		Journey steve = Journey.offline(anvil, "Steve").join()
 				.on(AUTH)
@@ -90,7 +90,7 @@ class UniqueUsernameTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, entrypoints = true)
+	@Identica(entrypoints = true)
 	void givesAPremiumOwnerTheUsernameACredentialAccountHoldsInAnotherCase(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		Journey holder = Accounts.credential(anvil, Client.offline("steve").through(Provider.CREDENTIAL.getEntrypoint()), PASSWORD);
 		SessionIdentity account = yggdrasil.register("Steve");

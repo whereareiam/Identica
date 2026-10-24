@@ -6,7 +6,7 @@ import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +27,7 @@ class AdministeredMigrationTest {
 	 * there is nothing left to cancel. Alice is told on her next join and logs in with her password as before.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE)
+	@Identica(choice = JourneyChoice.PROMPTED)
 	void tellsAPlayerWhoseMoveWasCancelledOnTheNextJoin(ScenarioContext anvil) {
 		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)

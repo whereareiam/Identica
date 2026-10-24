@@ -7,7 +7,6 @@ import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -29,7 +28,7 @@ class PasswordChangeTest {
 	private static final String NEW_PASSWORD = "Changed-456";
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void asksForTheNewPasswordOnceItIsChanged(ScenarioContext anvil) {
 		loggedIn(anvil)
 				.command("changepassword " + PASSWORD + " " + NEW_PASSWORD + " " + NEW_PASSWORD)
@@ -47,7 +46,7 @@ class PasswordChangeTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void keepsThePasswordWhenTheCurrentOneIsWrong(ScenarioContext anvil) {
 		loggedIn(anvil)
 				.command("changepassword Wrong-789 " + NEW_PASSWORD + " " + NEW_PASSWORD)
@@ -62,7 +61,7 @@ class PasswordChangeTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void refusesANewPasswordThatDiffersFromItsRepetition(ScenarioContext anvil) {
 		loggedIn(anvil)
 				.command("changepassword " + PASSWORD + " " + NEW_PASSWORD + " Other-789")
@@ -70,7 +69,7 @@ class PasswordChangeTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void offersTheRepeatArgumentInTheSyntaxWhileTheRepetitionIsRequired(ScenarioContext anvil) {
 		loggedIn(anvil)
 				.command("changepassword " + PASSWORD)
@@ -79,7 +78,7 @@ class PasswordChangeTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = WithoutRepeat.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = WithoutRepeat.class)
 	void leavesTheRepeatArgumentOutOfTheSyntaxOnceTheUsageDropsIt(ScenarioContext anvil) {
 		loggedIn(anvil)
 				.command("changepassword " + PASSWORD)
@@ -88,7 +87,7 @@ class PasswordChangeTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = WithoutRepeat.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = WithoutRepeat.class)
 	void changesThePasswordWithoutARepetitionWhenItIsNotRequired(ScenarioContext anvil) {
 		loggedIn(anvil)
 				.command("changepassword " + PASSWORD + " " + NEW_PASSWORD)
@@ -103,7 +102,7 @@ class PasswordChangeTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void refusesANewPasswordThePasswordRulesReject(ScenarioContext anvil) {
 		loggedIn(anvil)
 				.command("changepassword " + PASSWORD + " Ab1 Ab1")
@@ -111,7 +110,7 @@ class PasswordChangeTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void logsInWithThePasswordAnAdministratorSet(ScenarioContext anvil) {
 		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD);
 		Administrator.at(anvil, PROXY).setsPassword("Alice", NEW_PASSWORD);
@@ -127,7 +126,7 @@ class PasswordChangeTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void answersThatCredentialIsAlreadyThePrimaryProvider(ScenarioContext anvil) {
 		loggedIn(anvil)
 				.command("credential")

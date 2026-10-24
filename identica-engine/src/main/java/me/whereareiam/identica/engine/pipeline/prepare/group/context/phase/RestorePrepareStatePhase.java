@@ -64,7 +64,7 @@ public class RestorePrepareStatePhase implements PipelinePhase<PrepareGroupState
 		if (context.getClaimedUniqueId() == null) context.setClaimedUniqueId(previous.getClaimedUniqueId());
 		if (previous.getSelection() != null) context.setSelection(withoutProof(previous.getSelection()));
 		context.setPreferredLink(previous.getPreferredLink());
-		context.setJourneyMode(previous.getJourneyMode());
+		context.setChoice(previous.getChoice());
 		pipelineState.put(PrepareContextItem.KEY, context);
 
 		return CompletableFuture.completedFuture(PhaseResult.pass(state));

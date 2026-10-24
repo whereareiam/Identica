@@ -3,8 +3,7 @@ package me.whereareiam.identica.model.config;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
-import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
@@ -90,13 +89,9 @@ public class Engine {
 		 */
 		private boolean allowResume;
 		/**
-		 * Preferred journey mode for this scenario.
+		 * How the scenario picks among its options, each a provider method that can get it done.
 		 */
-		private @NotNull JourneyMode journeyMode;
-		/**
-		 * Policy for applying the preferred journey mode.
-		 */
-		private @NotNull JourneyPolicy journeyPolicy;
+		private @NotNull JourneyChoice choice;
 
 		/**
 		 * Returns pipeline TTL in milliseconds with validation.
@@ -141,11 +136,6 @@ public class Engine {
 	@Setter
 	@ToString
 	public static class Registration extends Scenario {
-		/**
-		 * Whether interactive registration should auto-select the only available provider.
-		 */
-		private boolean autoSelectSingleProvider;
-
 		@Override
 		protected @NotNull String pathPrefix() {
 			return "engine.scenarios.registration";

@@ -4,7 +4,6 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 import me.whereareiam.identica.pipeline.ScenarioContext;
-import me.whereareiam.identica.type.pipeline.journey.step.StepWaitReason;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -16,7 +15,6 @@ public class StepResult {
 	private final @NotNull StepStatus status;
 	private final @Nullable String message;
 	private final @Nullable ScenarioContext updatedContext;
-	private final @Nullable StepWaitReason waitReason;
 	/**
 	 * Name of an earlier step of the same stage where the journey continues once the player answers, or
 	 * {@code null} to continue at the waiting step.
@@ -35,15 +33,18 @@ public class StepResult {
 	private final @Nullable String answer;
 
 	public static @NotNull StepResult proceed(@Nullable ScenarioContext context) {
-		return new StepResult(StepStatus.CONTINUE, null, context, null, null, null, null);
+		return new StepResult(StepStatus.CONTINUE, null, context, null, null, null);
 	}
 
+	/**
+	 * Waits for the player's input. A step may wait while the player still logs in: the journey then sends the player
+	 * to the step's server and runs the step again once the player is there, so the message reaches the player.
+	 *
+	 * @param message the message to the player
+	 * @return the waiting result
+	 */
 	public static @NotNull StepResult waiting(@Nullable String message) {
-		return waiting(message, StepWaitReason.INPUT);
-	}
-
-	public static @NotNull StepResult waiting(@Nullable String message, @NotNull StepWaitReason waitReason) {
-		return new StepResult(StepStatus.WAITING, message, null, waitReason, null, null, null);
+		return new StepResult(StepStatus.WAITING, message, null, null, null, null);
 	}
 
 	/**
@@ -56,27 +57,27 @@ public class StepResult {
 	 * @return the waiting result
 	 */
 	public static @NotNull StepResult waitingAt(@NotNull String step, @Nullable String message) {
-		return new StepResult(StepStatus.WAITING, message, null, StepWaitReason.INPUT, step, null, null);
+		return new StepResult(StepStatus.WAITING, message, null, step, null, null);
 	}
 
 	public static @NotNull StepResult complete(@Nullable ScenarioContext context) {
-		return new StepResult(StepStatus.COMPLETE, null, context, null, null, null, null);
+		return new StepResult(StepStatus.COMPLETE, null, context, null, null, null);
 	}
 
 	public static @NotNull StepResult failed(@Nullable String message) {
-		return new StepResult(StepStatus.FAILED, message, null, null, null, null, null);
+		return new StepResult(StepStatus.FAILED, message, null, null, null, null);
 	}
 
 	public static @NotNull StepResult denied(@Nullable String message) {
-		return new StepResult(StepStatus.DENIED, message, null, null, null, null, null);
+		return new StepResult(StepStatus.DENIED, message, null, null, null, null);
 	}
 
 	public static @NotNull StepResult requireReconnect(@Nullable String message) {
-		return new StepResult(StepStatus.REQUIRE_RECONNECT, message, null, null, null, null, null);
+		return new StepResult(StepStatus.REQUIRE_RECONNECT, message, null, null, null, null);
 	}
 
 	public static @NotNull StepResult noPending() {
-		return new StepResult(StepStatus.NO_PENDING, null, null, null, null, null, null);
+		return new StepResult(StepStatus.NO_PENDING, null, null, null, null, null);
 	}
 
 	/**
@@ -86,7 +87,7 @@ public class StepResult {
 	 * @return the result with the prompt
 	 */
 	public @NotNull StepResult withPrompt(@NotNull String prompt) {
-		return new StepResult(status, message, updatedContext, waitReason, resumeStep, prompt, answer);
+		return new StepResult(status, message, updatedContext, resumeStep, prompt, answer);
 	}
 
 	/**
@@ -97,7 +98,7 @@ public class StepResult {
 	 * @return the result with the answer
 	 */
 	public @NotNull StepResult withAnswer(@NotNull String answer) {
-		return new StepResult(status, message, updatedContext, waitReason, resumeStep, prompt, answer);
+		return new StepResult(status, message, updatedContext, resumeStep, prompt, answer);
 	}
 
 	public enum StepStatus {

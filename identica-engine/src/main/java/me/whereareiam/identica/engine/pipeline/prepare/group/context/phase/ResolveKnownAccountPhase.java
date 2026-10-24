@@ -20,7 +20,7 @@ import me.whereareiam.identica.provider.ProviderOperations;
 import me.whereareiam.identica.provider.subject.SubjectResolution;
 import me.whereareiam.identica.provider.subject.SubjectResolveContext;
 import me.whereareiam.identica.type.PrepareStage;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -71,7 +71,7 @@ public class ResolveKnownAccountPhase implements PipelinePhase<PrepareGroupState
 	) {
 		PrepareContextItem context = pipelineState.get(PrepareContextItem.KEY).orElse(new PrepareContextItem());
 		context.setPreferredLink(resolvePreferredLink(state.getRequest().getIdentity()));
-		context.setJourneyMode(resolveJourneyMode(context.getPreferredLink()));
+		context.setChoice(resolveChoice(context.getPreferredLink()));
 		pipelineState.put(PrepareContextItem.KEY, context);
 
 		return CompletableFuture.completedFuture(PhaseResult.pass(state));
@@ -105,10 +105,10 @@ public class ResolveKnownAccountPhase implements PipelinePhase<PrepareGroupState
 	}
 
 	/**
-	 * Returns the journey mode of the scenario the connection heads to: authentication for a known account,
+	 * Returns how the scenario the connection heads to picks its option: authentication for a known account,
 	 * registration otherwise.
 	 */
-	private @Nullable JourneyMode resolveJourneyMode(@Nullable AccountProviderLink preferredLink) {
+	private @Nullable JourneyChoice resolveChoice(@Nullable AccountProviderLink preferredLink) {
 		Engine engine = engineProvider.get();
 		if (engine == null) return null;
 
@@ -116,6 +116,6 @@ public class ResolveKnownAccountPhase implements PipelinePhase<PrepareGroupState
 				? engine.getScenarios().getAuthentication()
 				: engine.getScenarios().getRegistration();
 
-		return scenario != null ? scenario.getJourneyMode() : null;
+		return scenario != null ? scenario.getChoice() : null;
 	}
 }

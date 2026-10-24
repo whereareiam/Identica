@@ -1,10 +1,10 @@
 ---
 title: engine.yml
 description: Все настройки engine.yml.
-sourceHash: 617f5087730ffe637ce7588d1058c18cd8aa587b
+sourceHash: f4840bb29560b9c7203ccd94755d7b4581998c72
 ---
 
-`engine.yml` определяет, как проходит каждый сценарий: спрашивает ли он игрока или продолжает сам и как долго хранится вход, который ждёт игрока. Подробнее — в руководствах [Как проходит вход](../../admins/guides/logins/index.mdx) и [Режимы прохождения](../../admins/guides/logins/journey-modes/index.mdx).
+`engine.yml` определяет, как проходит каждый сценарий: кто выбирает, как его пройти, — Identica или игрок, — и как долго хранится вход, который ждёт игрока. Подробнее — в руководствах [Как проходит вход](../../admins/guides/logins/index.mdx) и [Выбор провайдера](../../admins/guides/logins/provider-choice/index.mdx).
 
 ## behavior
 
@@ -32,7 +32,7 @@ sourceHash: 617f5087730ffe637ce7588d1058c18cd8aa587b
 
 ## scenarios
 
-У `authentication`, `registration` и `migration` есть все эти настройки. У `registration` есть ещё `autoSelectSingleProvider`.
+У `authentication`, `registration` и `migration` есть все эти настройки.
 
 <Setting
   name="pipelineTtl"
@@ -59,36 +59,13 @@ sourceHash: 617f5087730ffe637ce7588d1058c18cd8aa587b
 </Setting>
 
 <Setting
-  name="journeyMode"
-  takes='`"SEAMLESS"` или `"INTERACTIVE"`'
-  default='`"SEAMLESS"` для `authentication` и `registration`, `"INTERACTIVE"` для `migration`'
-  affects="то, спрашивает ли Identica игрока, например о выборе провайдера, или продолжает сама, насколько это возможно"
+  name="choice"
+  takes='`"AUTOMATIC"` или `"PROMPTED"`'
+  default='`"AUTOMATIC"`'
+  affects="то, кто выбирает, как пройти сценарий, когда это могут сделать несколько провайдеров или несколько способов одного провайдера: Identica или игрок"
 >
 
-См. [Режимы](../../admins/guides/logins/journey-modes/index.mdx#modes).
-
-</Setting>
-
-<Setting
-  name="journeyPolicy"
-  takes='`"PREFER"` или `"STRICT"`'
-  default='`"PREFER"`'
-  affects="то, может ли Identica перейти на другой режим прохождения, если настроенный не может завершить вход"
-  flag="advanced"
->
-
-При `SEAMLESS` и `STRICT` вход, которому нужен ввод игрока, отключает его с сообщением `engine.journey.step.interactionRequired`. См. [Политики](../../admins/guides/logins/journey-modes/index.mdx#policies).
-
-</Setting>
-
-<Setting
-  name="autoSelectSingleProvider"
-  takes="`true` или `false`"
-  default="`false`"
-  affects="то, выбирает ли регистрация в режиме `INTERACTIVE` единственного доступного провайдера, не спрашивая игрока"
->
-
-Только в `registration`.
+Игрока никогда не отключают из-за того, что ему нужно что-то ввести: при любом значении у него запрашивают пароль или код, если они нужны выбранному провайдеру. См. [Выбор провайдера](../../admins/guides/logins/provider-choice/index.mdx).
 
 </Setting>
 
@@ -102,19 +79,15 @@ scenarios:
   authentication:
     pipelineTtl: "5m"
     allowResume: true
-    journeyMode: "SEAMLESS"
-    journeyPolicy: "PREFER"
+    choice: "AUTOMATIC"
   registration:
     pipelineTtl: "5m"
     allowResume: true
-    journeyMode: "SEAMLESS"
-    journeyPolicy: "PREFER"
-    autoSelectSingleProvider: false
+    choice: "AUTOMATIC"
   migration:
     pipelineTtl: "5m"
     allowResume: true
-    journeyMode: "INTERACTIVE"
-    journeyPolicy: "PREFER"
+    choice: "AUTOMATIC"
 ```
   </Tab>
   <Tab value="JSON">
@@ -128,21 +101,17 @@ scenarios:
     "authentication": {
       "pipelineTtl": "5m",
       "allowResume": true,
-      "journeyMode": "SEAMLESS",
-      "journeyPolicy": "PREFER"
+      "choice": "AUTOMATIC"
     },
     "registration": {
       "pipelineTtl": "5m",
       "allowResume": true,
-      "journeyMode": "SEAMLESS",
-      "journeyPolicy": "PREFER",
-      "autoSelectSingleProvider": false
+      "choice": "AUTOMATIC"
     },
     "migration": {
       "pipelineTtl": "5m",
       "allowResume": true,
-      "journeyMode": "INTERACTIVE",
-      "journeyPolicy": "PREFER"
+      "choice": "AUTOMATIC"
     }
   }
 }

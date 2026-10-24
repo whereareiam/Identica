@@ -3,7 +3,7 @@
   "pages": [
     "index",
     "provider-selection",
-    "journey-modes",
+    "provider-choice",
     "sessions"
   ]
 }

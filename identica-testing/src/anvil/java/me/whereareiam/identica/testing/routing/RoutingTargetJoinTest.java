@@ -7,7 +7,6 @@ import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +22,7 @@ class RoutingTargetJoinTest {
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL, step = "", complete = "")
+	@Identica(providers = Provider.CREDENTIAL, step = "", complete = "")
 	void registersOnTheLobbyWithoutAnyRouting(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.on(LOBBY)
@@ -34,7 +33,7 @@ class RoutingTargetJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL, step = "", complete = "")
+	@Identica(providers = Provider.CREDENTIAL, step = "", complete = "")
 	void logsInOnTheLobbyWithoutAnyRouting(ScenarioContext anvil) {
 		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
 
@@ -47,7 +46,7 @@ class RoutingTargetJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, step = "", complete = "")
+	@Identica(step = "", complete = "")
 	void completesAPremiumRegistrationOnTheFirstServerWithoutAnyRouting(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 
@@ -58,7 +57,21 @@ class RoutingTargetJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL, complete = "")
+	@Identica(complete = "")
+	void returnsWithPremiumToTheFirstServerWithoutACompletionTarget(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+		SessionIdentity account = yggdrasil.register("Steve");
+
+		Journey.premium(anvil, account).join()
+				.on(LOBBY)
+				.leave()
+				.rejoin()
+				.on(LOBBY)
+				.bypasses(AUTH)
+				.remainsOn(LOBBY);
+	}
+
+	@Test
+	@Identica(providers = Provider.CREDENTIAL, complete = "")
 	void staysOnTheStepServerWithoutACompletionTarget(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
@@ -69,7 +82,7 @@ class RoutingTargetJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL, step = "", complete = AUTH)
+	@Identica(providers = Provider.CREDENTIAL, step = "", complete = AUTH)
 	void reachesTheCompletionTargetFromTheServerItRegisteredOn(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.on(LOBBY)
@@ -80,7 +93,7 @@ class RoutingTargetJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL, step = "")
+	@Identica(providers = Provider.CREDENTIAL, step = "")
 	void completesOnTheServerItIsAlreadyOnWhenThatIsTheCompletionTarget(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.on(LOBBY)

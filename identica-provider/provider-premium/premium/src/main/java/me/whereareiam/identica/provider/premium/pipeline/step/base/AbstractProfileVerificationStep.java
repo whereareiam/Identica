@@ -4,15 +4,14 @@ import com.google.inject.Provider;
 import me.whereareiam.identica.handshake.HandshakeStore;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
-import me.whereareiam.identica.pipeline.journey.step.type.SeamlessStep;
+import me.whereareiam.identica.pipeline.journey.step.AbstractStep;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
 import me.whereareiam.identica.provider.premium.profile.PremiumProfileSnapshot;
 import me.whereareiam.identica.provider.premium.profile.PremiumProfileStore;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-
-public abstract class AbstractProfileVerificationStep extends SeamlessStep {
+public abstract class AbstractProfileVerificationStep extends AbstractStep {
 	protected final Provider<PremiumMessages> messagesProvider;
 	protected final PremiumProfileStore profileStore;
 	protected final HandshakeStore handshakeStore;

@@ -6,7 +6,6 @@ import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -23,14 +22,14 @@ class MissingRoutingTargetJoinTest {
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL, step = MISSING, configure = RegistrationMessage.class)
+	@Identica(providers = Provider.CREDENTIAL, step = MISSING, configure = RegistrationMessage.class)
 	void registeringPlayerSeesTheRegistrationMessage(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").attempt()
 				.kickedWith(m -> m.identica().getScenarios().getRegistration().getRouting().getMissingServer());
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL, step = MISSING, configure = RegistrationMessage.class)
+	@Identica(providers = Provider.CREDENTIAL, step = MISSING, configure = RegistrationMessage.class)
 	void loggingInPlayerSeesTheSharedMessage(ScenarioContext anvil) {
 		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
 

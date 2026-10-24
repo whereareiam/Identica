@@ -1,12 +1,14 @@
 package me.whereareiam.identica.testing.recognition;
 
+import me.whereareiam.anvil.api.model.player.SessionIdentity;
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
+import me.whereareiam.anvil.environment.yggdrasil.YggdrasilMock;
 import me.whereareiam.identica.feature.recognition.config.RecognitionSettings;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.testing.journey.Journey;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +19,7 @@ import static me.whereareiam.identica.testing.environment.IdenticaNetwork.AUTH;
 import static me.whereareiam.identica.testing.environment.IdenticaNetwork.LOBBY;
 
 /**
- * A player with a Credential account returns to a network with recognition turned on. Every test player connects
+ * A player with a Credential or premium account returns to a network with recognition turned on. Every test player connects
  * from the loopback address, which recognition distrusts by default, so the networks that recognise players trust
  * every address; the default signals, username, address and virtual host, stay the same between a player's joins.
  */
@@ -27,16 +29,31 @@ class SessionRecognitionTest {
 	private static final Duration VALIDITY = Duration.ofSeconds(10);
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Recognised.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Recognised.class)
 	void letsAReturningPlayerInWithoutThePassword(ScenarioContext anvil) {
 		Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(LOBBY)
+				.bypasses(AUTH)
 				.doesNotSee(m -> m.credential().getScenario().getAuthentication().getPrompt())
 				.sees(m -> m.credential().getCompletion().getRecognition().getBody());
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = {Recognised.class, ShortValidity.class})
+	@Identica(configure = Recognised.class)
+	void letsAReturningPremiumPlayerInWithoutTheStepServer(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+		SessionIdentity account = yggdrasil.register("Steve");
+
+		Journey.premium(anvil, account).join()
+				.on(LOBBY)
+				.leave()
+				.rejoin()
+				.on(LOBBY)
+				.bypasses(AUTH)
+				.sees(m -> m.premium().getCompletion().getRecognition().getBody());
+	}
+
+	@Test
+	@Identica(providers = Provider.CREDENTIAL, configure = {Recognised.class, ShortValidity.class})
 	void asksForThePasswordAgainOnceTheValidityHasPassed(ScenarioContext anvil) {
 		Accounts.credential(anvil, "Alice", PASSWORD).waits(VALIDITY)
 				.rejoin()
@@ -48,7 +65,7 @@ class SessionRecognitionTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = RecognitionOnly.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = RecognitionOnly.class)
 	void asksForThePasswordFromAnAddressRecognitionDistrustsByDefault(ScenarioContext anvil) {
 		Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)

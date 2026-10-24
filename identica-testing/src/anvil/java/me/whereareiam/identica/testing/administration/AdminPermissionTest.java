@@ -5,7 +5,6 @@ import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -40,7 +39,7 @@ class AdminPermissionTest {
 	);
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void refusesEveryAdministratorCommandAndLeavesTheOtherAccountAlone(ScenarioContext anvil) {
 		Journey bob = Accounts.credential(anvil, "Bob", PASSWORD);
 		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
@@ -62,6 +61,6 @@ class AdminPermissionTest {
 				.playsAs("Bob");
 		Journey.offline(anvil, "Carol").join()
 				.on(AUTH)
-				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody());
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt());
 	}
 }

@@ -20,12 +20,6 @@ public final class JourneyMessages {
 			CoreDefinitions.lines("identica:stage-no-completion", messages -> messages.getEngine().getJourney().getStage().getNoCompletion());
 
 	/**
-	 * A journey that may not ask the player needed their input.
-	 */
-	public static final MessageDefinition<Messages> INTERACTION_REQUIRED =
-			CoreDefinitions.lines("identica:interaction-required", messages -> messages.getEngine().getJourney().getStep().getInteractionRequired());
-
-	/**
 	 * A journey step returned no result.
 	 */
 	public static final MessageDefinition<Messages> STEP_NO_STATUS =
@@ -39,7 +33,6 @@ public final class JourneyMessages {
 	public static @NotNull List<MessageDefinition<?>> all() {
 		return List.of(
 				STAGE_NO_COMPLETION,
-				INTERACTION_REQUIRED,
 				STEP_NO_STATUS
 		);
 	}

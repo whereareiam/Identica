@@ -155,7 +155,7 @@ class UsernameHoldsTest {
 					.identity(identity)
 					.build();
 			long expiresAt = System.currentTimeMillis() + PIPELINE_TTL.toMillis();
-			holds.take(new AuthenticationRequiredEvent(context, false, expiresAt, null), takeOver);
+			holds.take(new AuthenticationRequiredEvent(context, false, expiresAt), takeOver);
 		}
 
 		private void renew() {

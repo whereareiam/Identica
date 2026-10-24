@@ -9,7 +9,6 @@ import me.whereareiam.identica.event.pipeline.scenario.shared.ProviderSelectedEv
 import me.whereareiam.identica.event.step.StepFinishedEvent;
 import me.whereareiam.identica.event.step.StepPrepareEvent;
 import me.whereareiam.identica.event.step.StepStartedEvent;
-import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.message.JourneyMessages;
 import me.whereareiam.identica.message.ScenarioMessages;
@@ -43,10 +42,6 @@ import me.whereareiam.identica.routing.RoutingCoordinator;
 import me.whereareiam.identica.type.pipeline.PipelineStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.pipeline.journey.JourneyExecutionPolicy;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
-import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
-import me.whereareiam.identica.type.pipeline.journey.step.StepContextRequirement;
-import me.whereareiam.identica.type.pipeline.journey.step.StepWaitReason;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -59,7 +54,6 @@ import java.util.concurrent.CompletionStage;
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
-	private final IdentityService identityService;
 	private final EventManager eventManager;
 	private final Provider<Engine> engineProvider;
 	private final Provider<Messages> messagesProvider;
@@ -94,9 +88,8 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 
 		ScenarioContext context = state.getContext();
 		PipelineType pipelineType = pipelineState.getPipelineType();
-		JourneyMode journeyMode = state.getJourneyMode();
 		JourneyExecutionPlan plan = state.getExecutionPlan();
-		if (context == null || pipelineType == null || journeyMode == null) {
+		if (context == null || pipelineType == null) {
 			state.setResult(PipelineResult.failed(journeyMissingContextMessage(pipelineState)));
 			return CompletableFuture.completedFuture(PhaseResult.pass(state));
 		}
@@ -113,7 +106,7 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 			return CompletableFuture.completedFuture(PhaseResult.pass(state));
 		}
 
-		PipelineResult result = executePlan(pipelineState, context, pipelineType, journeyMode, pending, plan);
+		PipelineResult result = executePlan(pipelineState, context, pipelineType, pending, plan);
 		state.setResult(result != null ? result : PipelineResult.complete());
 		return CompletableFuture.completedFuture(PhaseResult.pass(state));
 	}
@@ -151,21 +144,16 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 			@NotNull PipelineState pipelineState,
 			@NotNull ScenarioContext context,
 			@NotNull PipelineType pipelineType,
-			@NotNull JourneyMode journeyMode,
 			@Nullable JourneyStateItem pending,
 			@NotNull JourneyExecutionPlan plan
 	) {
-		Set<String> excludedProviders = new HashSet<>(loadExcludedProviders(pipelineState));
-		// Denials issued because a step needed input, kept by identity: their text is configurable
-		// and may be empty or equal to another denial's, so it cannot tell them apart.
-		Set<PipelineResult> interactionDenials = Collections.newSetFromMap(new IdentityHashMap<>());
-		PipelineResult interactionDenial = null;
+		Exclusions exclusions = loadExclusions(pipelineState);
 
 		restart:
 		while (true) {
 			List<JourneyExecutionBlock> blocks = plan.blocks();
-			String pendingProviderId = resolvePendingProviderId(context, pending);
-			int startIndex = resolveStartIndex(blocks, pending, pendingProviderId, context);
+			PendingOption pendingOption = resolvePendingOption(context, pending);
+			int startIndex = resolveStartIndex(blocks, pending, pendingOption, context);
 
 			for (int index = startIndex; index < blocks.size(); index++) {
 				JourneyExecutionBlock block = blocks.get(index);
@@ -177,27 +165,21 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 							pipelineState,
 							context,
 							pipelineType,
-							journeyMode,
 							pending,
-							pendingProviderId,
-							region.blocks(),
-							interactionDenials
+							pendingOption,
+							region.blocks()
 					);
 					if (fallbackResult != null && fallbackResult.result != null) {
-						if (interactionDenials.contains(fallbackResult.result))
-							interactionDenial = fallbackResult.result;
+						JourneyExecutionBlock failed = fallbackResult.failedBlock;
+						if (failed != null && exclusions.exclude(failed)) {
+							recordExclusions(pipelineState, pipelineType, exclusions);
+							JourneyExecutionPlan updatedPlan = removeExcluded(plan, exclusions);
+							if (!hasProvider(updatedPlan, failed.providerId()))
+								context.setSelection(providerSelector.exclude(context.getSelection(), failed.providerId()));
 
-						String failedProviderId = normalizeProviderId(fallbackResult.failedProviderId);
-						if (failedProviderId != null && excludedProviders.add(failedProviderId)) {
-							context.setSelection(providerSelector.exclude(context.getSelection(), failedProviderId));
-							recordExcludedProviders(pipelineState, context, pipelineType, excludedProviders);
-							JourneyExecutionPlan updatedPlan = removeExcludedProviders(plan, excludedProviders);
-							// Another provider may still sign the player in without input. Once none is left, the
-							// player learns that input was the obstacle instead of continuing without a provider.
-							if (interactionDenial != null && !hasProviderBlock(updatedPlan))
-								return interactionDenial;
-
-							if (!updatedPlan.equals(plan) && !updatedPlan.blocks().isEmpty()) {
+							// Another option may still get the scenario done; once none is left, the player learns why
+							// the last one could not.
+							if (!updatedPlan.equals(plan) && hasOptionBlock(updatedPlan)) {
 								plan = updatedPlan;
 								pending = null;
 								clearProvider(context);
@@ -217,11 +199,9 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 						pipelineState,
 						context,
 						pipelineType,
-						journeyMode,
 						pending,
-						pendingProviderId,
-						block,
-						interactionDenials
+						pendingOption,
+						block
 				);
 				if (blockResult != null)
 					return blockResult;
@@ -237,11 +217,9 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 			@NotNull PipelineState pipelineState,
 			@NotNull ScenarioContext context,
 			@NotNull PipelineType pipelineType,
-			@NotNull JourneyMode journeyMode,
 			@Nullable JourneyStateItem pending,
-			@Nullable String pendingProviderId,
-			@NotNull List<JourneyExecutionBlock> blocks,
-			@NotNull Set<PipelineResult> interactionDenials
+			@Nullable PendingOption pendingOption,
+			@NotNull List<JourneyExecutionBlock> blocks
 	) {
 		boolean anySuccess = false;
 
@@ -253,11 +231,9 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 					pipelineState,
 					context,
 					pipelineType,
-					journeyMode,
 					pending,
-					pendingProviderId,
-					block,
-					interactionDenials
+					pendingOption,
+					block
 			);
 			if (blockResult == null) {
 				anySuccess = true;
@@ -273,19 +249,18 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 				break;
 			}
 
-			// A provider that refuses the player ends the journey with its own reason; trying the next provider
-			// would bypass the refusal. Only refused input is a limit of the journey mode, which another provider
-			// may not hit.
-			if (status == PipelineStatus.DENIED && !interactionDenials.contains(blockResult))
+			// A provider that refuses the player ends the journey with its own reason; trying the next option would
+			// bypass the refusal.
+			if (status == PipelineStatus.DENIED)
 				return new FallbackOutcome(blockResult, null);
 
-			if (status == PipelineStatus.FAILED
-					|| status == PipelineStatus.DENIED
-					|| status == PipelineStatus.NO_PENDING) {
-				if (pipelineType == PipelineType.MIGRATION)
+			if (status == PipelineStatus.FAILED || status == PipelineStatus.NO_PENDING) {
+				// A migration runs its target provider only: it may try the target's other methods, never another
+				// provider.
+				if (pipelineType == PipelineType.MIGRATION && block.method() == null)
 					return new FallbackOutcome(blockResult, null);
 
-				return new FallbackOutcome(blockResult, block.providerId());
+				return new FallbackOutcome(blockResult, block);
 			}
 		}
 
@@ -299,34 +274,32 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 			@NotNull PipelineState pipelineState,
 			@NotNull ScenarioContext context,
 			@NotNull PipelineType pipelineType,
-			@NotNull JourneyMode journeyMode,
 			@Nullable JourneyStateItem pending,
-			@Nullable String pendingProviderId,
-			@NotNull JourneyExecutionBlock block,
-			@NotNull Set<PipelineResult> interactionDenials
+			@Nullable PendingOption pendingOption,
+			@NotNull JourneyExecutionBlock block
 	) {
 		String effectiveProviderId = resolveEffectiveProviderId(block, context);
 		String blockProviderId = block.providerId();
 		if (blockProviderId != null && !blockProviderId.isBlank()) {
 			applyProviderContext(context, blockProviderId);
+			Objects.requireNonNull(context.getProvider()).setMethod(block.method());
 		}
 
 		InternalProvider provider = resolveProvider(effectiveProviderId);
 		if (blockProviderId != null && provider != null) {
-			eventManager.call(new ProviderSelectedEvent(context, provider, journeyMode));
+			eventManager.call(new ProviderSelectedEvent(context, provider, block.method()));
 		}
 
 		return executeStageEntries(
 				pipelineState,
 				context,
 				pipelineType,
-				journeyMode,
 				pending,
-				pendingProviderId,
+				pendingOption,
 				block.stages(),
 				effectiveProviderId,
-				provider,
-				interactionDenials
+				block.method(),
+				provider
 		);
 	}
 
@@ -340,75 +313,88 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 		context.setProvider(null);
 	}
 
-	private @NotNull Set<String> loadExcludedProviders(@NotNull PipelineState pipelineState) {
+	private @NotNull Exclusions loadExclusions(@NotNull PipelineState pipelineState) {
 		JourneyOverrideItem override = pipelineState.get(JourneyOverrideItem.KEY).orElse(null);
-		if (override == null || override.getExcludedProviders() == null || override.getExcludedProviders().isEmpty())
-			return Set.of();
+		Exclusions exclusions = new Exclusions();
+		if (override == null) return exclusions;
 
-		Set<String> normalized = new HashSet<>();
-		for (String providerId : override.getExcludedProviders()) {
-			String normalizedId = normalizeProviderId(providerId);
-			if (normalizedId != null)
-				normalized.add(normalizedId);
-		}
-		return normalized;
+		normalizeAll(override.getExcludedProviders(), exclusions.providers);
+		normalizeAll(override.getExcludedMethods(), exclusions.methods);
+		return exclusions;
 	}
 
-	private void recordExcludedProviders(
+	private void normalizeAll(@Nullable List<String> values, @NotNull Set<String> target) {
+		if (values == null) return;
+
+		for (String value : values) {
+			String normalized = normalizeProviderId(value);
+			if (normalized != null)
+				target.add(normalized);
+		}
+	}
+
+	private void recordExclusions(
 			@NotNull PipelineState pipelineState,
-			@NotNull ScenarioContext context,
 			@NotNull PipelineType pipelineType,
-			@NotNull Set<String> excludedProviders
+			@NotNull Exclusions exclusions
 	) {
 		long ttlMs = scenarioSettings(pipelineType).pipelineTtlMillis();
 		if (ttlMs <= 0)
 			return;
 
 		JourneyOverrideItem current = pipelineState.get(JourneyOverrideItem.KEY).orElse(null);
-		List<String> existing = current != null && current.getExcludedProviders() != null
-				? current.getExcludedProviders()
-				: List.of();
-
-		Set<String> merged = new HashSet<>();
-		for (String providerId : existing) {
-			String normalized = normalizeProviderId(providerId);
-			if (normalized != null)
-				merged.add(normalized);
+		Set<String> providers = new HashSet<>(exclusions.providers);
+		Set<String> methods = new HashSet<>(exclusions.methods);
+		if (current != null) {
+			normalizeAll(current.getExcludedProviders(), providers);
+			normalizeAll(current.getExcludedMethods(), methods);
 		}
-		merged.addAll(excludedProviders);
 
 		JourneyOverrideItem updated = new JourneyOverrideItem(
-				current != null ? current.getJourneyMode() : null,
 				current != null ? current.getStageId() : null,
 				current != null ? current.getStepIndex() : -1,
 				current != null && current.isClearProvider(),
 				current != null ? current.getProviderId() : null,
-				List.copyOf(merged)
+				List.copyOf(providers),
+				List.copyOf(methods)
 		);
 
 		pipelineState.put(JourneyOverrideItem.KEY, updated, ttlMs);
 	}
 
-	private @NotNull JourneyExecutionPlan removeExcludedProviders(
+	private @NotNull JourneyExecutionPlan removeExcluded(
 			@NotNull JourneyExecutionPlan plan,
-			@NotNull Set<String> excludedProviders
+			@NotNull Exclusions exclusions
 	) {
-		if (excludedProviders.isEmpty())
+		if (exclusions.isEmpty())
 			return plan;
 
 		List<JourneyExecutionBlock> filtered = new ArrayList<>();
 		for (JourneyExecutionBlock block : plan.blocks()) {
 			if (block == null) continue;
-			String providerId = normalizeProviderId(block.providerId());
-			if (providerId != null
-					&& block.policy() == JourneyExecutionPolicy.FALLBACK
-					&& excludedProviders.contains(providerId)) {
+			if (block.policy() == JourneyExecutionPolicy.FALLBACK && exclusions.excludes(block))
 				continue;
-			}
+
 			filtered.add(block);
 		}
 
 		return new JourneyExecutionPlan(filtered);
+	}
+
+	private boolean hasOptionBlock(@NotNull JourneyExecutionPlan plan) {
+		for (JourneyExecutionBlock block : plan.blocks())
+			if (block != null && block.policy() == JourneyExecutionPolicy.FALLBACK && normalizeProviderId(block.providerId()) != null)
+				return true;
+
+		return false;
+	}
+
+	private boolean hasProvider(@NotNull JourneyExecutionPlan plan, @Nullable String providerId) {
+		for (JourneyExecutionBlock block : plan.blocks())
+			if (block != null && matchesProvider(block.providerId(), providerId))
+				return true;
+
+		return false;
 	}
 
 	private @Nullable String normalizeProviderId(@Nullable String providerId) {
@@ -419,11 +405,45 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 
 	private static final class FallbackOutcome {
 		private final @Nullable PipelineResult result;
-		private final @Nullable String failedProviderId;
+		private final @Nullable JourneyExecutionBlock failedBlock;
 
-		private FallbackOutcome(@Nullable PipelineResult result, @Nullable String failedProviderId) {
+		private FallbackOutcome(@Nullable PipelineResult result, @Nullable JourneyExecutionBlock failedBlock) {
 			this.result = result;
-			this.failedProviderId = failedProviderId;
+			this.failedBlock = failedBlock;
+		}
+	}
+
+	/**
+	 * Providers and methods a journey no longer tries: a failed option of a provider with methods excludes that method,
+	 * a failed provider without methods excludes the provider.
+	 */
+	private static final class Exclusions {
+		private final Set<String> providers = new HashSet<>();
+		private final Set<String> methods = new HashSet<>();
+
+		private boolean exclude(@NotNull JourneyExecutionBlock block) {
+			String providerId = block.providerId();
+			if (providerId == null || providerId.isBlank()) return false;
+			if (block.method() == null || block.method().isBlank())
+				return providers.add(providerId.trim().toLowerCase(Locale.ROOT));
+
+			return methods.add(methodId(providerId, block.method()));
+		}
+
+		private boolean excludes(@NotNull JourneyExecutionBlock block) {
+			String providerId = block.providerId();
+			if (providerId == null || providerId.isBlank()) return false;
+			if (providers.contains(providerId.trim().toLowerCase(Locale.ROOT))) return true;
+
+			return block.method() != null && methods.contains(methodId(providerId, block.method()));
+		}
+
+		private boolean isEmpty() {
+			return providers.isEmpty() && methods.isEmpty();
+		}
+
+		private static @NotNull String methodId(@NotNull String providerId, @NotNull String method) {
+			return (providerId.trim() + ":" + method.trim()).toLowerCase(Locale.ROOT);
 		}
 	}
 
@@ -431,19 +451,20 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 			@NotNull PipelineState pipelineState,
 			@NotNull ScenarioContext context,
 			@NotNull PipelineType pipelineType,
-			@NotNull JourneyMode journeyMode,
 			@Nullable JourneyStateItem pending,
-			@Nullable String pendingProviderId,
+			@Nullable PendingOption pendingOption,
 			@NotNull List<JourneyExecutionStage> stages,
 			@Nullable String providerId,
-			@Nullable InternalProvider provider,
-			@NotNull Set<PipelineResult> interactionDenials
+			@Nullable String method,
+			@Nullable InternalProvider provider
 	) {
-		int startStageIndex = 0;
-		if (pending != null
+		boolean resumesHere = pending != null
 				&& pending.getStageId() != null
 				&& !pending.getStageId().isBlank()
-				&& (providerId == null || providerId.isBlank() || matchesProvider(pendingProviderId, providerId))) {
+				&& (providerId == null || providerId.isBlank() || matchesPendingOption(pendingOption, providerId, method));
+
+		int startStageIndex = 0;
+		if (resumesHere) {
 			for (int index = 0; index < stages.size(); index++) {
 				JourneyExecutionStage candidate = stages.get(index);
 				if (candidate == null) continue;
@@ -460,12 +481,8 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 
 			JourneyStage stage = entry.stage();
 			int startIndex = 0;
-			if (pending != null
-					&& pending.getStageId() != null
-					&& pending.getStageId().equalsIgnoreCase(stage.getId())
-					&& (providerId == null || providerId.isBlank() || matchesProvider(pendingProviderId, providerId))) {
+			if (resumesHere && pending.getStageId().equalsIgnoreCase(stage.getId()))
 				startIndex = Math.max(0, pending.getStepIndex());
-			}
 
 			boolean completedStage = false;
 			List<JourneyStep> steps = entry.steps();
@@ -475,7 +492,6 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 						pipelineState,
 						context,
 						pipelineType,
-						journeyMode,
 						stage,
 						journeyStep,
 						provider
@@ -494,14 +510,8 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 					break;
 				}
 
-				if (status == PipelineStatus.WAITING && requiresForbiddenInteraction(stepResult, pipelineType, journeyMode)) {
-					PipelineResult denial = PipelineResult.denied(journeyInteractionRequiredMessage());
-					interactionDenials.add(denial);
-					return denial;
-				}
-
 				if (status == PipelineStatus.WAITING || status == PipelineStatus.REQUIRE_RECONNECT)
-					persistPending(pipelineState, context, journeyMode, stage.getId(), resumeIndex(steps, index, stepResult));
+					persistPending(pipelineState, context, stage.getId(), resumeIndex(steps, index, stepResult));
 
 				return PipelineResult.fromStepResult(stepResult);
 			}
@@ -516,32 +526,10 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 			@NotNull PipelineState pipelineState,
 			@NotNull ScenarioContext context,
 			@NotNull PipelineType pipelineType,
-			@NotNull JourneyMode journeyMode,
 			@NotNull JourneyStage stage,
 			@NotNull JourneyStep journeyStep,
 			@Nullable InternalProvider provider
 	) {
-		if (requiresOnlinePresence(journeyStep)
-				&& !isOnline(context)) {
-			Logger.debug(
-					"Journey step waiting for online presence pipeline=%s stage=%s step=%s username=%s connection=%s",
-					pipelineType,
-					stage.getType().id(),
-					journeyStep.getStep().getName(),
-					context.getUsername(),
-					context.getConnectionUniqueId()
-			);
-			StepResult result = StepResult.waiting(null, StepWaitReason.ONLINE);
-			routingCoordinator.accept(RoutingSignal.stepFinished(
-					context,
-					pipelineType,
-					stage.getType(),
-					journeyStep.getStep(),
-					result
-			));
-			return result;
-		}
-
 		if (!journeyStep.getStep().shouldExecute(context))
 			return StepResult.proceed(context);
 
@@ -550,7 +538,6 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 				journeyStep.getStep(),
 				context,
 				pipelineType,
-				journeyMode,
 				stage.getType()
 		));
 		eventManager.call(new StepStartedEvent(
@@ -591,7 +578,7 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 	private int resolveStartIndex(
 			@NotNull List<JourneyExecutionBlock> blocks,
 			@Nullable JourneyStateItem pending,
-			@Nullable String pendingProviderId,
+			@Nullable PendingOption pendingOption,
 			@NotNull ScenarioContext context
 	) {
 		if (pending == null || pending.getStageId() == null || pending.getStageId().isBlank())
@@ -604,7 +591,7 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 
 			String effectiveProviderId = resolveEffectiveProviderId(block, context);
 			if (effectiveProviderId != null && !effectiveProviderId.isBlank()) {
-				if (!matchesProvider(pendingProviderId, effectiveProviderId))
+				if (!matchesPendingOption(pendingOption, effectiveProviderId, block.method()))
 					continue;
 			}
 
@@ -659,11 +646,9 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 	private void persistPending(
 			@NotNull PipelineState pipelineState,
 			@NotNull ScenarioContext context,
-			@NotNull JourneyMode journeyMode,
 			@NotNull String stageId,
 			int stepIndex
 	) {
-		JourneyMode resolvedJourneyMode = journeyMode;
 		String resolvedStageId = stageId;
 		int resolvedStepIndex = stepIndex;
 		boolean clearProvider = false;
@@ -671,8 +656,6 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 
 		JourneyOverrideItem override = pipelineState.get(JourneyOverrideItem.KEY).orElse(null);
 		if (override != null) {
-			if (override.getJourneyMode() != null)
-				resolvedJourneyMode = override.getJourneyMode();
 			if (override.getStageId() != null && !override.getStageId().isBlank())
 				resolvedStageId = override.getStageId();
 			if (override.getStepIndex() >= 0)
@@ -690,41 +673,8 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 
 		pipelineState.setScenario(context);
 		long ttlMs = scenarioSettings(pipelineState.getPipelineType()).pipelineTtlMillis();
-		JourneyStateItem position = new JourneyStateItem(resolvedJourneyMode, resolvedStageId, resolvedStepIndex);
+		JourneyStateItem position = new JourneyStateItem(resolvedStageId, resolvedStepIndex);
 		pipelineState.put(JourneyStateItem.KEY, position, ttlMs);
-	}
-
-	/**
-	 * A strictly seamless journey must not prompt: a waiting step that needs player input is refused instead of
-	 * silently turning the journey interactive. A merely preferred seamless mode keeps the prompt.
-	 */
-	private boolean requiresForbiddenInteraction(
-			@NotNull StepResult stepResult,
-			@NotNull PipelineType pipelineType,
-			@NotNull JourneyMode journeyMode
-	) {
-		if (journeyMode != JourneyMode.SEAMLESS) return false;
-		if (stepResult.getWaitReason() != StepWaitReason.INPUT) return false;
-
-		return scenarioSettings(pipelineType).getJourneyPolicy() == JourneyPolicy.STRICT;
-	}
-
-	private boolean hasProviderBlock(@NotNull JourneyExecutionPlan plan) {
-		for (JourneyExecutionBlock block : plan.blocks())
-			if (block != null && block.policy() == JourneyExecutionPolicy.FALLBACK && normalizeProviderId(block.providerId()) != null)
-				return true;
-
-		return false;
-	}
-
-	private boolean isOnline(@NotNull ScenarioContext context) {
-		UUID connectionId = context.getConnectionUniqueId();
-        return connectionId != null
-				&& identityService.findByConnectionUniqueId(connectionId).isPresent();
-    }
-
-	private boolean requiresOnlinePresence(@NotNull JourneyStep step) {
-		return step.getStep().contextRequirement() == StepContextRequirement.ONLINE;
 	}
 
 	private @NotNull Engine.Scenario scenarioSettings(@Nullable PipelineType pipelineType) {
@@ -735,6 +685,9 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 		return scenarios.getAuthentication();
 	}
 
+	/**
+	 * Makes a provider the one that runs. Switching to another provider forgets the method of the previous one.
+	 */
 	private void applyProviderContext(@NotNull ScenarioContext context, @NotNull String providerId) {
 		ProviderContext provider = context.getProvider();
 		String username = context.getUsername() != null ? context.getUsername() : "";
@@ -742,6 +695,8 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 			provider = ProviderContext.of(providerId, null, username);
 			context.setProvider(provider);
 		} else {
+			if (!providerId.equalsIgnoreCase(provider.getProviderId()))
+				provider.setMethod(null);
 			provider.setProviderId(providerId);
 			if (provider.getProviderUsername().isBlank())
 				provider.setProviderUsername(username);
@@ -803,7 +758,10 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 				: null;
 	}
 
-	private @Nullable String resolvePendingProviderId(
+	/**
+	 * The option a waiting journey runs: the provider of the context and its method.
+	 */
+	private @Nullable PendingOption resolvePendingOption(
 			@NotNull ScenarioContext context,
 			@Nullable JourneyStateItem pending
 	) {
@@ -815,7 +773,23 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 		String providerId = provider.getProviderId();
 		if (providerId == null || providerId.isBlank()) return null;
 
-		return providerId;
+		return new PendingOption(providerId, provider.getMethod());
+	}
+
+	/**
+	 * Tells whether a block runs the option a waiting journey continues with. A provider the player picked without
+	 * naming a method continues with its first block, the method the options put first.
+	 */
+	private boolean matchesPendingOption(
+			@Nullable PendingOption pendingOption,
+			@Nullable String providerId,
+			@Nullable String method
+	) {
+		if (pendingOption == null) return providerId == null || providerId.isBlank();
+		if (!matchesProvider(pendingOption.providerId(), providerId)) return false;
+		if (pendingOption.method() == null || pendingOption.method().isBlank()) return true;
+
+		return pendingOption.method().equalsIgnoreCase(method);
 	}
 
 	private @NotNull ScenarioContext currentScenario(
@@ -829,10 +803,6 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 
 	private @NotNull PlayerMessage journeyNoCompletionMessage() {
 		return JourneyMessages.STAGE_NO_COMPLETION.create(messagesProvider.get());
-	}
-
-	private @NotNull PlayerMessage journeyInteractionRequiredMessage() {
-		return JourneyMessages.INTERACTION_REQUIRED.create(messagesProvider.get());
 	}
 
 	private @NotNull PlayerMessage journeyStepNoStatusMessage() {
@@ -869,6 +839,9 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 	}
 
 	private record BlockRegion(@NotNull List<JourneyExecutionBlock> blocks, int endIndex) {
+	}
+
+	private record PendingOption(@NotNull String providerId, @Nullable String method) {
 	}
 
 	private static @NotNull Throwable unwrap(@NotNull Throwable failure) {

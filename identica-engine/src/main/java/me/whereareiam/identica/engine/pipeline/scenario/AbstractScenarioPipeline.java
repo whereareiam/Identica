@@ -16,7 +16,6 @@ import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.GroupOutcome;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
-import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
 import me.whereareiam.identica.pipeline.PipelineGroup;
 import me.whereareiam.identica.pipeline.PipelineRegistry;
 import me.whereareiam.identica.pipeline.ScenarioContext;
@@ -29,7 +28,6 @@ import me.whereareiam.identica.pipeline.state.exception.UnreadablePipelineStateE
 import me.whereareiam.identica.type.ScenarioResolution;
 import me.whereareiam.identica.type.pipeline.PipelineStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.util.EventUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -185,11 +183,7 @@ public abstract class AbstractScenarioPipeline {
 
 	protected abstract void onStart(@NotNull PipelineState state, boolean resumed);
 
-	protected abstract void emitRequired(
-			@NotNull ScenarioContext context,
-			long expiresAt,
-			@Nullable JourneyMode journeyMode
-	);
+	protected abstract void emitRequired(@NotNull ScenarioContext context, long expiresAt);
 
 	protected abstract void emitResolved(
 			@NotNull ScenarioContext context,
@@ -280,11 +274,7 @@ public abstract class AbstractScenarioPipeline {
 			if (!pipelineStateStore.save(reference, pipelineState, ttlMs)) return false;
 			if (resumeRequest == null) {
 				ScenarioContext context = resolveScenarioContext(pipelineState);
-				JourneyMode journeyMode = pipelineState.get(JourneyStateItem.KEY)
-						.map(JourneyStateItem::getJourneyMode)
-						.orElse(null);
-
-				if (context != null) emitRequired(context, expiresAt, journeyMode);
+				if (context != null) emitRequired(context, expiresAt);
 			}
 			return true;
 		}

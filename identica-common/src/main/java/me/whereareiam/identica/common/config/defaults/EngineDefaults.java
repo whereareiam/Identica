@@ -3,8 +3,7 @@ package me.whereareiam.identica.common.config.defaults;
 import com.google.inject.Singleton;
 import me.whereareiam.configura.merge.defaults.DefaultsProvider;
 import me.whereareiam.identica.model.config.Engine;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
-import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 
 import java.time.Duration;
 
@@ -29,8 +28,7 @@ public class EngineDefaults implements DefaultsProvider<Engine> {
 		Engine.Authentication scenario = new Engine.Authentication();
 		scenario.setPipelineTtl(Duration.ofMinutes(5));
 		scenario.setAllowResume(true);
-		scenario.setJourneyMode(JourneyMode.SEAMLESS);
-		scenario.setJourneyPolicy(JourneyPolicy.PREFER);
+		scenario.setChoice(JourneyChoice.AUTOMATIC);
 		return scenario;
 	}
 
@@ -38,9 +36,7 @@ public class EngineDefaults implements DefaultsProvider<Engine> {
 		Engine.Registration scenario = new Engine.Registration();
 		scenario.setPipelineTtl(Duration.ofMinutes(5));
 		scenario.setAllowResume(true);
-		scenario.setAutoSelectSingleProvider(false);
-		scenario.setJourneyMode(JourneyMode.SEAMLESS);
-		scenario.setJourneyPolicy(JourneyPolicy.PREFER);
+		scenario.setChoice(JourneyChoice.AUTOMATIC);
 		return scenario;
 	}
 
@@ -48,8 +44,7 @@ public class EngineDefaults implements DefaultsProvider<Engine> {
 		Engine.Migration scenario = new Engine.Migration();
 		scenario.setPipelineTtl(Duration.ofMinutes(5));
 		scenario.setAllowResume(true);
-		scenario.setJourneyMode(JourneyMode.INTERACTIVE);
-		scenario.setJourneyPolicy(JourneyPolicy.PREFER);
+		scenario.setChoice(JourneyChoice.AUTOMATIC);
 		return scenario;
 	}
 }

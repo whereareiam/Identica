@@ -8,7 +8,6 @@ import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.fixture.Authenticator;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -37,7 +36,7 @@ class TotpVerificationTest {
 	private static final Duration SHORT_TTL = Duration.ofSeconds(6);
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void asksForTheAuthenticatorCodeAfterThePasswordOnceEnrolled(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 
@@ -54,7 +53,7 @@ class TotpVerificationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void refusesAWrongAuthenticatorCodeAndAcceptsTheRightOne(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 
@@ -78,7 +77,7 @@ class TotpVerificationTest {
 	 * shown again, and the login goes on as usual.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void answersACodeTypedAtThePasswordPromptWithNothingPending(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 
@@ -97,7 +96,7 @@ class TotpVerificationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void acceptsARecoveryCodeInsteadOfTheAuthenticatorCodeOnlyOnce(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 		String recoveryCode = alice.recoveryCodes().getFirst();
@@ -123,7 +122,7 @@ class TotpVerificationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void logsInWithThePasswordAloneOnceTheAuthenticatorIsDisabled(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 
@@ -141,7 +140,7 @@ class TotpVerificationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void keepsTheAuthenticatorWhenTheCodeConfirmingItsDisablingIsWrong(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 
@@ -159,7 +158,7 @@ class TotpVerificationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void doesNotEnrollTheAuthenticatorWhenTheConfirmingCodeIsWrong(ScenarioContext anvil) {
 		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)
@@ -182,7 +181,7 @@ class TotpVerificationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void refusesAnAuthenticatorCodeUsedAtAnEarlierLoginAndAcceptsTheNextOne(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 
@@ -200,7 +199,7 @@ class TotpVerificationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void refusesTheCodeThatConfirmedTheEnrollmentAtTheFirstLogin(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 
@@ -218,7 +217,7 @@ class TotpVerificationTest {
 	 * drift, and from then on only codes after it.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void acceptsTheCodeOfAnAppWhoseClockRunsAheadOnce(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 
@@ -236,7 +235,7 @@ class TotpVerificationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void keepsTheAuthenticatorWhenAUsedCodeConfirmsItsDisabling(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 
@@ -252,7 +251,7 @@ class TotpVerificationTest {
 	 * A new authenticator starts from the code that confirmed it, as the first one did.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void refusesTheCodeThatConfirmedAReEnrolledAuthenticator(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 		Journey journey = alice.journey().command("2fa disable totp")
@@ -278,7 +277,7 @@ class TotpVerificationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = RequiredVerification.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = RequiredVerification.class)
 	void refusesALoginWithoutAMethodWhileVerificationIsRequired(ScenarioContext anvil) {
 		Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)
@@ -292,7 +291,7 @@ class TotpVerificationTest {
 	 * app's code, keeps the recovery codes and confirms she saved them. Alice ends on the lobby, logged in.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void anAdministratorResetLetsThePlayerInWithThePasswordAlone(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 		alice.journey().leave();
@@ -308,7 +307,7 @@ class TotpVerificationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void anAdministratorResetOfAnOnlinePlayerLetsThemInWithThePasswordAlone(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 
@@ -324,7 +323,7 @@ class TotpVerificationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void anAdministratorResetByUniqueIdLetsThePlayerInWithThePasswordAlone(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 		String uniqueId = alice.journey().profile().getUniqueId().toString();
@@ -341,7 +340,7 @@ class TotpVerificationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void statusShowsAMethodOnlyOnceEnrolled(ScenarioContext anvil) {
 		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)
@@ -365,7 +364,7 @@ class TotpVerificationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void cancellingAnEnrollmentLeavesTheAccountWithoutVerification(ScenarioContext anvil) {
 		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)
@@ -391,7 +390,7 @@ class TotpVerificationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = ShortEnrollment.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = ShortEnrollment.class)
 	void anEnrollmentConfirmedTooLateLeavesTheAccountWithoutVerification(ScenarioContext anvil) {
 		Journey alice = Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)
@@ -418,7 +417,7 @@ class TotpVerificationTest {
 	 * new code, which does.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = ShortChallenge.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = ShortChallenge.class)
 	void aCodeTypedAfterTheChallengeExpiredDoesNotLogIn(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 
@@ -440,7 +439,7 @@ class TotpVerificationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = TwoRecoveryCodes.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = TwoRecoveryCodes.class)
 	void usingUpEveryRecoveryCodeStillLeavesTheAuthenticator(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil, 2);
 		Journey journey = alice.journey();

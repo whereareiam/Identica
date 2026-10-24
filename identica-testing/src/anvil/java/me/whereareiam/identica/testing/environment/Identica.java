@@ -1,8 +1,7 @@
 package me.whereareiam.identica.testing.environment;
 
 import me.whereareiam.anvil.integration.junit.AnvilEnvironment;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
-import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -18,7 +17,7 @@ import java.util.function.Consumer;
  *
  * <pre>{@code
  * @Test
- * @Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+ * @Identica(choice = JourneyChoice.PROMPTED, providers = Provider.CREDENTIAL)
  * void registers(ScenarioContext anvil) {
  * }
  * }</pre>
@@ -34,14 +33,10 @@ public @interface Identica {
 	Platform platform() default Platform.VELOCITY;
 
 	/**
-	 * Journey mode of the authentication and registration scenarios.
+	 * How registration picks the provider: with {@link JourneyChoice#PROMPTED} the player chooses whenever more than one
+	 * provider can register them.
 	 */
-	JourneyMode mode() default JourneyMode.SEAMLESS;
-
-	/**
-	 * Whether the mode may fall back to the other one.
-	 */
-	JourneyPolicy policy() default JourneyPolicy.PREFER;
+	JourneyChoice choice() default JourneyChoice.AUTOMATIC;
 
 	/**
 	 * Enabled providers; every other provider is installed but disabled.
@@ -52,11 +47,6 @@ public @interface Identica {
 	 * Whether enabled providers answer on their entrypoint hosts.
 	 */
 	boolean entrypoints() default false;
-
-	/**
-	 * Whether registration skips the provider choice when exactly one provider is eligible.
-	 */
-	boolean autoSelectSingleProvider() default false;
 
 	/**
 	 * Server players are sent to while a step waits for them, or blank to leave them on the server they are on.

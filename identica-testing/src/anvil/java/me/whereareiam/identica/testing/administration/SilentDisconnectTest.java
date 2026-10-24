@@ -8,7 +8,6 @@ import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -28,7 +27,7 @@ class SilentDisconnectTest {
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = NoDisconnectMessages.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = NoDisconnectMessages.class)
 	void endingASessionDisconnectsThePlayer(ScenarioContext anvil) {
 		Journey alice = online(anvil);
 
@@ -38,7 +37,7 @@ class SilentDisconnectTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = NoDisconnectMessages.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = NoDisconnectMessages.class)
 	void clearingAnAccountDisconnectsThePlayer(ScenarioContext anvil) {
 		Journey alice = online(anvil);
 
@@ -48,7 +47,7 @@ class SilentDisconnectTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = NoDisconnectMessages.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = NoDisconnectMessages.class)
 	void deletingAnAccountDisconnectsThePlayer(ScenarioContext anvil) {
 		Journey alice = online(anvil);
 

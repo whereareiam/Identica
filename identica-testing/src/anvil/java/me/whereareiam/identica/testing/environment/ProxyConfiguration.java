@@ -1,7 +1,5 @@
 package me.whereareiam.identica.testing.environment;
 
-import me.whereareiam.identica.common.config.defaults.UsernameConflictsDefaults;
-import me.whereareiam.identica.model.config.UsernameConflicts;
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.anvil.environment.yggdrasil.YggdrasilMock;
 import me.whereareiam.configura.Config;
@@ -13,15 +11,9 @@ import me.whereareiam.identica.common.config.defaults.EngineDefaults;
 import me.whereareiam.identica.common.config.defaults.ReplicationDefaults;
 import me.whereareiam.identica.common.config.defaults.RoutingDefaults;
 import me.whereareiam.identica.common.config.defaults.SettingsDefaults;
+import me.whereareiam.identica.common.config.defaults.UsernameConflictsDefaults;
 import me.whereareiam.identica.common.config.defaults.messages.MessagesDefaults;
 import me.whereareiam.identica.common.config.defaults.provider.ProvidersDefaults;
-import me.whereareiam.identica.model.config.Engine;
-import me.whereareiam.identica.model.config.Messages;
-import me.whereareiam.identica.model.config.Commands;
-import me.whereareiam.identica.model.config.Replication;
-import me.whereareiam.identica.model.config.Routing;
-import me.whereareiam.identica.model.config.Settings;
-import me.whereareiam.identica.model.config.provider.Providers;
 import me.whereareiam.identica.feature.recognition.config.RecognitionSettings;
 import me.whereareiam.identica.feature.recognition.config.defaults.RecognitionSettingsDefaults;
 import me.whereareiam.identica.feature.restriction.join.config.JoinRestrictionSettings;
@@ -30,14 +22,21 @@ import me.whereareiam.identica.feature.sentinel.config.defaults.SentinelSettings
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelSettings;
 import me.whereareiam.identica.feature.verification.config.defaults.VerificationDefaults;
 import me.whereareiam.identica.feature.verification.model.config.VerificationSettings;
+import me.whereareiam.identica.model.config.Commands;
+import me.whereareiam.identica.model.config.Engine;
+import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.config.Replication;
+import me.whereareiam.identica.model.config.Routing;
+import me.whereareiam.identica.model.config.Settings;
+import me.whereareiam.identica.model.config.UsernameConflicts;
+import me.whereareiam.identica.model.config.provider.Providers;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptPolicy;
 import me.whereareiam.identica.provider.credential.config.CredentialCommands;
 import me.whereareiam.identica.provider.credential.config.CredentialSettings;
 import me.whereareiam.identica.provider.credential.config.defaults.CredentialCommandsDefaults;
 import me.whereareiam.identica.provider.credential.config.defaults.CredentialSettingsDefaults;
 import me.whereareiam.identica.provider.premium.config.PremiumSettings;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
-import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import me.whereareiam.identica.type.routing.RoutingRetryMode;
 
 import java.io.IOException;
@@ -88,17 +87,15 @@ public final class ProxyConfiguration {
 	ProxyConfiguration(
 			String name,
 			Platform platform,
-			JourneyMode mode,
-			JourneyPolicy policy,
+			JourneyChoice choice,
 			Set<Provider> enabled,
 			boolean entrypoints,
-			boolean autoSelectSingleProvider,
 			String step,
 			String complete,
 			YggdrasilMock yggdrasil
 	) {
 		this.name = name;
-		documents.put(ENGINE, defaultEngine(mode, policy, autoSelectSingleProvider));
+		documents.put(ENGINE, defaultEngine(choice));
 		documents.put(ROUTING, defaultRouting(step, complete));
 		documents.put(SETTINGS, defaultSettings(platform));
 		documents.put(PROVIDERS, defaultProviders(enabled, entrypoints));
@@ -344,14 +341,9 @@ public final class ProxyConfiguration {
 		return files;
 	}
 
-	private static Engine defaultEngine(JourneyMode mode, JourneyPolicy policy, boolean autoSelectSingleProvider) {
+	private static Engine defaultEngine(JourneyChoice choice) {
 		Engine engine = new EngineDefaults().supply(new Engine());
-		Engine.Scenarios scenarios = engine.getScenarios();
-		for (Engine.Scenario scenario : List.of(scenarios.getAuthentication(), scenarios.getRegistration())) {
-			scenario.setJourneyMode(mode);
-			scenario.setJourneyPolicy(policy);
-		}
-		scenarios.getRegistration().setAutoSelectSingleProvider(autoSelectSingleProvider);
+		engine.getScenarios().getRegistration().setChoice(choice);
 
 		return engine;
 	}

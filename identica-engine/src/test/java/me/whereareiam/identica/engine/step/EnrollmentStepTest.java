@@ -4,21 +4,29 @@ import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.common.config.defaults.EngineDefaults;
 import me.whereareiam.identica.common.provider.selection.DefaultProviderSelector;
 import me.whereareiam.identica.common.provider.selection.ProviderClaimRanking;
+import me.whereareiam.identica.engine.pipeline.scenario.shared.group.journey.option.JourneyOptions;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.message.ProviderChoiceMessages;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.config.provider.Providers;
+import me.whereareiam.identica.model.message.Prompt;
+import me.whereareiam.identica.model.pipeline.journey.ProviderMethod;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
 import me.whereareiam.identica.model.provider.selection.ProviderClaim;
 import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import me.whereareiam.identica.model.registration.RegistrationContext;
+import me.whereareiam.identica.pipeline.journey.registry.type.AuthenticationJourneyRegistry;
+import me.whereareiam.identica.pipeline.journey.registry.type.MigrationJourneyRegistry;
+import me.whereareiam.identica.pipeline.journey.registry.type.RegistrationJourneyRegistry;
+import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.provider.ProviderOperations;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import me.whereareiam.identica.type.provider.ProviderClaimOrigin;
 import me.whereareiam.identica.type.provider.ProviderState;
 import me.whereareiam.keystone.model.SerializerContent;
@@ -43,6 +51,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -82,6 +92,8 @@ class EnrollmentStepTest {
 	private EventManager eventManager;
 	@Mock
 	private ProviderManager providerManager;
+	@Mock(strictness = Mock.Strictness.LENIENT)
+	private RegistrationJourneyRegistry registrationJourneyRegistry;
 
 	@BeforeEach
 	void enableProviders() {
@@ -92,17 +104,13 @@ class EnrollmentStepTest {
 		));
 	}
 
-	@DisplayName("Automatically selects the only eligible provider when auto-selection is enabled")
+	@DisplayName("Picks the only option without asking")
 	@Test
-	void autoSelectsSingleProviderWhenEnabled() {
-		Engine settings = settings(true);
-		EnrollmentStep step = step(settings);
+	void picksTheOnlyOptionWithoutAsking() {
 		RegistrationContext context = context();
+		offer("alpha");
 
-		when(providerOperations.eligibleProviders(any(), eq(PipelineType.REGISTRATION), eq(JourneyMode.INTERACTIVE)))
-				.thenReturn(List.of(provider("alpha", "Alpha")));
-
-		StepResult result = step.execute(context).join();
+		StepResult result = run(step(settings(JourneyChoice.PROMPTED)), context);
 
 		assertEquals(StepResult.StepStatus.COMPLETE, result.getStatus());
 		assertNull(result.getMessage());
@@ -113,17 +121,25 @@ class EnrollmentStepTest {
 		verify(eventManager).call(any());
 	}
 
-	@DisplayName("Keeps the enrollment prompt open when auto-selection is disabled")
+	@DisplayName("Leaves the options to the journey when Identica picks")
 	@Test
-	void keepsWaitingPromptWhenAutoSelectionDisabled() {
-		Engine settings = settings(false);
-		EnrollmentStep step = step(settings);
+	void leavesTheOptionsToTheJourneyWhenAutomatic() {
 		RegistrationContext context = context();
 
-		when(providerOperations.eligibleProviders(any(), eq(PipelineType.REGISTRATION), eq(JourneyMode.INTERACTIVE)))
-				.thenReturn(List.of(provider("alpha", "Alpha")));
+		StepResult result = run(step(settings(JourneyChoice.AUTOMATIC)), context);
 
-		StepResult result = step.execute(context).join();
+		assertEquals(StepResult.StepStatus.CONTINUE, result.getStatus());
+		assertNull(context.getProvider());
+		verify(eventManager, never()).call(any());
+	}
+
+	@DisplayName("Asks the player when more than one option is available")
+	@Test
+	void asksWhenSeveralOptionsRemain() {
+		RegistrationContext context = context();
+		offer("alpha", "beta");
+
+		StepResult result = run(step(settings(JourneyChoice.PROMPTED)), context);
 
 		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
 		assertNotNull(result.getMessage());
@@ -134,24 +150,37 @@ class EnrollmentStepTest {
 		verify(eventManager).call(any());
 	}
 
-	@DisplayName("Keeps the enrollment prompt open when more than one provider is available")
+	@DisplayName("Offers each method of a provider that has several as an option of its own")
 	@Test
-	void keepsWaitingPromptWhenMultipleProvidersRemain() {
-		Engine settings = settings(true);
-		EnrollmentStep step = step(settings);
+	void offersEachMethodOfAProviderWithSeveral() {
 		RegistrationContext context = context();
+		offer("alpha", "beta");
+		when(registrationJourneyRegistry.methods("beta")).thenReturn(List.of(method("beta", "quick"), method("beta", "guided")));
 
-		when(providerOperations.eligibleProviders(any(), eq(PipelineType.REGISTRATION), eq(JourneyMode.INTERACTIVE)))
-				.thenReturn(List.of(
-						provider("alpha", "Alpha"),
-						provider("beta", "Beta")
-				));
-
-		StepResult result = step.execute(context).join();
+		StepResult result = run(step(settings(JourneyChoice.PROMPTED)), context);
 
 		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
-		assertNull(context.getProvider());
-		verify(eventManager).call(any());
+		assertTrue(result.getMessage().getPlaceholders().get("entries").contains("enroll alpha>"));
+		assertTrue(result.getMessage().getPlaceholders().get("entries").contains("enroll beta:quick>"));
+		assertTrue(result.getMessage().getPlaceholders().get("entries").contains("enroll beta:guided>"));
+		assertTrue(result.getMessage().getPrompt().getFields().getFirst().getOptions().stream()
+				.map(Prompt.Option::getValue)
+				.toList()
+				.containsAll(List.of("alpha", "beta:quick", "beta:guided")));
+	}
+
+	@DisplayName("Asks only among the methods of the provider its hostname selected")
+	@Test
+	void asksAmongTheMethodsOfTheEntrypointProvider() {
+		RegistrationContext context = context(ProviderClaim.of("beta", ProviderClaimOrigin.HOSTNAME));
+		offer("alpha", "beta");
+		when(registrationJourneyRegistry.methods("beta")).thenReturn(List.of(method("beta", "quick"), method("beta", "guided")));
+
+		StepResult result = run(step(settings(JourneyChoice.PROMPTED)), context);
+
+		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
+		assertFalse(result.getMessage().getPlaceholders().get("entries").contains("enroll alpha>"));
+		assertTrue(result.getMessage().getPlaceholders().get("entries").contains("enroll beta:quick>"));
 	}
 
 	@DisplayName("Skips the choice for an offered provider its hostname selected")
@@ -160,7 +189,7 @@ class EnrollmentStepTest {
 		RegistrationContext context = context(ProviderClaim.of("beta", ProviderClaimOrigin.HOSTNAME));
 		offer("alpha", "beta");
 
-		StepResult result = step(settings(true)).execute(context).join();
+		StepResult result = run(step(settings(JourneyChoice.PROMPTED)), context);
 
 		assertEquals(StepResult.StepStatus.COMPLETE, result.getStatus());
 		assertEquals("beta", context.getProvider().getProviderId());
@@ -175,7 +204,7 @@ class EnrollmentStepTest {
 		);
 		offer("alpha", "beta");
 
-		StepResult result = step(settings(true)).execute(context).join();
+		StepResult result = run(step(settings(JourneyChoice.PROMPTED)), context);
 
 		assertEquals(StepResult.StepStatus.COMPLETE, result.getStatus());
 		assertEquals("beta", context.getProvider().getProviderId());
@@ -187,7 +216,7 @@ class EnrollmentStepTest {
 		RegistrationContext context = context(ProviderClaim.of("gamma", ProviderClaimOrigin.HOSTNAME));
 		offer("alpha", "beta");
 
-		StepResult result = step(settings(true)).execute(context).join();
+		StepResult result = run(step(settings(JourneyChoice.PROMPTED)), context);
 
 		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
 		assertNull(context.getProvider());
@@ -202,7 +231,7 @@ class EnrollmentStepTest {
 		);
 		offer("alpha", "beta");
 
-		StepResult result = step(settings(true)).execute(context).join();
+		StepResult result = run(step(settings(JourneyChoice.PROMPTED)), context);
 
 		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
 		assertNull(context.getProvider());
@@ -212,18 +241,45 @@ class EnrollmentStepTest {
 		List<InternalProvider> providers = Arrays.stream(providerIds)
 				.map(id -> provider(id, id.toUpperCase(Locale.ROOT)))
 				.toList();
-		when(providerOperations.eligibleProviders(any(), eq(PipelineType.REGISTRATION), eq(JourneyMode.INTERACTIVE)))
+		when(providerOperations.eligibleProviders(any(), eq(PipelineType.REGISTRATION)))
 				.thenReturn(providers);
 	}
 
+	private StepResult run(EnrollmentStep step, RegistrationContext context) {
+		PipelineState state = PipelineState.initial();
+		state.setPipelineType(PipelineType.REGISTRATION);
+		state.setScenario(context);
+
+		return step.execute(context, state).join();
+	}
+
 	private EnrollmentStep step(Engine settings) {
+		DefaultProviderSelector selector = new DefaultProviderSelector(new ProviderClaimRanking(providerManager));
+		JourneyOptions options = new JourneyOptions(
+				providerOperations,
+				selector,
+				() -> mock(AuthenticationJourneyRegistry.class),
+				() -> registrationJourneyRegistry,
+				() -> mock(MigrationJourneyRegistry.class),
+				Providers::new
+		);
+
 		return new EnrollmentStep(
+				options,
 				providerOperations,
 				() -> settings,
 				this::messages,
 				eventManager,
-				new DefaultProviderSelector(new ProviderClaimRanking(providerManager))
+				selector
 		);
+	}
+
+	private ProviderMethod method(String providerId, String name) {
+		return ProviderMethod.builder()
+				.providerId(providerId)
+				.name(name)
+				.scenario(PipelineType.REGISTRATION)
+				.build();
 	}
 
 	private RegistrationContext context(ProviderClaim... claims) {
@@ -233,9 +289,9 @@ class EnrollmentStepTest {
 		return context;
 	}
 
-	private Engine settings(boolean autoSelectSingleProvider) {
+	private Engine settings(JourneyChoice choice) {
 		Engine settings = new EngineDefaults().supply(new Engine());
-		settings.getScenarios().getRegistration().setAutoSelectSingleProvider(autoSelectSingleProvider);
+		settings.getScenarios().getRegistration().setChoice(choice);
 		return settings;
 	}
 
@@ -263,8 +319,8 @@ class EnrollmentStepTest {
 		));
 		Messages.Engine.Journey.Step.Enrollment.EntryFormat entryFormat =
 				new Messages.Engine.Journey.Step.Enrollment.EntryFormat();
-		entryFormat.setFormat("   <dark_gray><click:run_command:/identica enroll {providerId}>▪ <gray>[{providerName}]:</gray> <white>{description}</click>");
-		entryFormat.setEmptyFormat("   <dark_gray><click:run_command:/identica enroll {providerId}>▪ <gray>[{providerName}]:</gray></click>");
+		entryFormat.setFormat("   <dark_gray><click:run_command:/identica enroll {optionId}>▪ <gray>[{optionName}]:</gray> <white>{description}</click>");
+		entryFormat.setEmptyFormat("   <dark_gray><click:run_command:/identica enroll {optionId}>▪ <gray>[{optionName}]:</gray></click>");
 		enrollment.setEntryFormat(entryFormat);
 		enrollment.setEmpty(List.of("empty"));
 		enrollment.setDescriptions(java.util.Map.of());

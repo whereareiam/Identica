@@ -4,15 +4,14 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
+import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.provider.eligibility.ProviderEligibilityResolver;
 import me.whereareiam.identica.provider.premium.PremiumConstants;
 import me.whereareiam.identica.provider.premium.config.PremiumSettings;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -28,11 +27,7 @@ public class PremiumEligibilityResolver implements ProviderEligibilityResolver {
 	private final @NotNull ProviderLinkPersistenceService providerLinkPersistenceService;
 
 	@Override
-	public boolean isEligible(
-			@NotNull ScenarioContext context,
-			@NotNull InternalProvider provider,
-			@NotNull JourneyMode journeyMode
-	) {
+	public boolean isEligible(@NotNull ScenarioContext context, @NotNull InternalProvider provider) {
 		ProviderDescriptor descriptor = provider.getDescriptor();
 		if (descriptor == null) return true;
 

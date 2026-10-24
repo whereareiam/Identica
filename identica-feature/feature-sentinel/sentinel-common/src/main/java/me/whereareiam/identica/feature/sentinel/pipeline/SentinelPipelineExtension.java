@@ -6,7 +6,6 @@ import me.whereareiam.identica.model.pipeline.journey.stage.step.JourneyStep;
 import me.whereareiam.identica.pipeline.extension.PipelineExtension;
 import me.whereareiam.identica.pipeline.extension.PipelineExtensionBuilder;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.StageType;
 import org.jetbrains.annotations.NotNull;
 
@@ -31,7 +30,6 @@ public class SentinelPipelineExtension implements PipelineExtension {
 				.step(registrationStep)
 				.order(registrationStep.order())
 				.scenarios(EnumSet.of(PipelineType.REGISTRATION))
-				.journeyModes(EnumSet.allOf(JourneyMode.class))
 				.build());
 	}
 }

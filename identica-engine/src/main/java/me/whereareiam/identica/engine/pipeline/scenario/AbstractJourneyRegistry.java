@@ -2,12 +2,14 @@ package me.whereareiam.identica.engine.pipeline.scenario;
 
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.pipeline.journey.JourneyPlan;
+import me.whereareiam.identica.model.pipeline.journey.ProviderMethod;
 import me.whereareiam.identica.model.pipeline.journey.stage.JourneyStage;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.JourneyStep;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.journey.registry.JourneyRegistry;
+import me.whereareiam.identica.pipeline.journey.step.Step;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.StageType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -17,6 +19,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public abstract class AbstractJourneyRegistry implements JourneyRegistry {
 	private final List<JourneyStage> stages = new CopyOnWriteArrayList<>();
 	private final List<JourneyStep> steps = new CopyOnWriteArrayList<>();
+	private final List<ProviderMethod> methods = new CopyOnWriteArrayList<>();
 
 	@Override
 	public void registerStage(@NotNull JourneyStage stage) {
@@ -50,17 +53,51 @@ public abstract class AbstractJourneyRegistry implements JourneyRegistry {
 		if (step.getStageId().isBlank() || step.getStep().getName().isBlank())
 			return;
 
-		JourneyStep normalized = normalizeJourneyModes(step);
-		boolean replaced = steps.removeIf(existing -> isDuplicate(existing, normalized));
+		boolean replaced = steps.removeIf(existing -> isDuplicate(existing, step));
 		if (replaced) {
 			Logger.warn(
 					"Journey step %s already registered for stage %s, replacing registration",
-					normalized.getStep().getName(),
-					normalized.getStageId()
+					step.getStep().getName(),
+					step.getStageId()
 			);
 		}
 
-		steps.add(normalized);
+		steps.add(step);
+	}
+
+	@Override
+	public void registerMethod(@NotNull ProviderMethod method) {
+		if (method.getProviderId().isBlank() || method.getName().isBlank())
+			return;
+
+		if (removeMethod(method.getProviderId(), method.getName()))
+			Logger.warn("Provider method %s already registered in %s, replacing registration", method.id(), registryLabel());
+
+		methods.add(method);
+		for (Step step : method.getSteps()) {
+			registerStep(JourneyStep.builder()
+					.stageId(StageType.PROVIDER.id())
+					.providerId(method.getProviderId())
+					.method(method.getName())
+					.order(step.order())
+					.scenarios(EnumSet.of(method.getScenario()))
+					.step(step)
+					.build());
+		}
+		Logger.debug("Registered provider method %s in %s", method.id(), registryLabel());
+	}
+
+	@Override
+	public boolean removeMethod(@NotNull String providerId, @NotNull String name) {
+		boolean removed = methods.removeIf(method -> method.getProviderId().equalsIgnoreCase(providerId)
+				&& method.getName().equalsIgnoreCase(name));
+		if (removed) {
+			steps.removeIf(step -> matchesProvider(step.getProviderId(), providerId)
+					&& step.isMethodSpecific()
+					&& name.equalsIgnoreCase(step.getMethod()));
+		}
+
+		return removed;
 	}
 
 	@Override
@@ -79,25 +116,31 @@ public abstract class AbstractJourneyRegistry implements JourneyRegistry {
 				return false;
 			if (!step.getStep().getName().equalsIgnoreCase(stepName))
 				return false;
-			if (!step.supports(pipelineType, JourneyMode.SEAMLESS, providerId)
-					&& !step.supports(pipelineType, JourneyMode.INTERACTIVE, providerId))
+			if (!safeScenarios(step.getScenarios()).contains(pipelineType))
 				return false;
 			return matchesProvider(step.getProviderId(), providerId);
 		});
 	}
 
 	@Override
+	public @NotNull List<ProviderMethod> methods(@NotNull String providerId) {
+		return methods.stream()
+				.filter(method -> method.getProviderId().equalsIgnoreCase(providerId))
+				.toList();
+	}
+
+	@Override
 	public @NotNull JourneyPlan resolvePlan(
 			@NotNull ScenarioContext context,
 			@NotNull PipelineType pipelineType,
-			@NotNull JourneyMode journeyMode,
-			@Nullable String providerId
+			@Nullable String providerId,
+			@Nullable String method
 	) {
 		List<JourneyStage> sortedStages = new ArrayList<>();
 		for (JourneyStage stage : stages) {
 			if (stage == null)
 				continue;
-			if (!stage.supports(pipelineType, journeyMode))
+			if (!stage.supports(pipelineType))
 				continue;
 			sortedStages.add(stage);
 		}
@@ -109,7 +152,7 @@ public abstract class AbstractJourneyRegistry implements JourneyRegistry {
 
 		List<JourneyPlan.StageEntry> entries = new ArrayList<>();
 		for (JourneyStage stage : sortedStages) {
-			List<JourneyStep> resolvedSteps = resolveStageSteps(stage, pipelineType, journeyMode, providerId);
+			List<JourneyStep> resolvedSteps = resolveStageSteps(stage, pipelineType, providerId, method);
 			entries.add(new JourneyPlan.StageEntry(stage, resolvedSteps));
 		}
 
@@ -129,8 +172,8 @@ public abstract class AbstractJourneyRegistry implements JourneyRegistry {
 	private @NotNull List<JourneyStep> resolveStageSteps(
 			@NotNull JourneyStage stage,
 			@NotNull PipelineType pipelineType,
-			@NotNull JourneyMode journeyMode,
-			@Nullable String providerId
+			@Nullable String providerId,
+			@Nullable String method
 	) {
 		Map<String, JourneyStep> selected = new LinkedHashMap<>();
 		String stageId = normalize(stage.getId());
@@ -140,12 +183,12 @@ public abstract class AbstractJourneyRegistry implements JourneyRegistry {
 				continue;
 			if (!normalize(candidate.getStageId()).equals(stageId))
 				continue;
-			if (!candidate.supports(pipelineType, journeyMode, providerId))
+			if (!candidate.supports(pipelineType, providerId, method))
 				continue;
 
 			String stepName = candidate.getStep().getName().toLowerCase(Locale.ROOT);
 			JourneyStep existing = selected.get(stepName);
-			if (existing == null || comparePriority(candidate, existing, journeyMode) > 0)
+			if (existing == null || specificity(candidate) > specificity(existing))
 				selected.put(stepName, candidate);
 		}
 
@@ -156,24 +199,18 @@ public abstract class AbstractJourneyRegistry implements JourneyRegistry {
 		return List.copyOf(resolved);
 	}
 
-	private int comparePriority(
-			@NotNull JourneyStep candidate,
-			@NotNull JourneyStep existing,
-			@NotNull JourneyMode journeyMode
-	) {
-		int candidateScore = 0;
-		if (candidate.isProviderSpecific())
-			candidateScore += 2;
-		if (candidate.isJourneyModeSpecific(journeyMode))
-			candidateScore += 1;
+	/**
+	 * Ranks registrations of one step: a provider's own before one for every provider, a method's own before one for
+	 * every method of its provider.
+	 */
+	private int specificity(@NotNull JourneyStep step) {
+		int score = 0;
+		if (step.isProviderSpecific())
+			score += 2;
+		if (step.isMethodSpecific())
+			score += 1;
 
-		int existingScore = 0;
-		if (existing.isProviderSpecific())
-			existingScore += 2;
-		if (existing.isJourneyModeSpecific(journeyMode))
-			existingScore += 1;
-
-		return Integer.compare(candidateScore, existingScore);
+		return score;
 	}
 
 	private boolean isDuplicate(@NotNull JourneyStep existing, @NotNull JourneyStep incoming) {
@@ -183,9 +220,9 @@ public abstract class AbstractJourneyRegistry implements JourneyRegistry {
 			return false;
 		if (!matchesProvider(existing.getProviderId(), incoming.getProviderId()))
 			return false;
-		if (!safeScenarios(existing.getScenarios()).equals(safeScenarios(incoming.getScenarios())))
+		if (!matchesMethod(existing.getMethod(), incoming.getMethod()))
 			return false;
-		return safeJourneyModes(existing.getJourneyModes()).equals(safeJourneyModes(incoming.getJourneyModes()));
+		return safeScenarios(existing.getScenarios()).equals(safeScenarios(incoming.getScenarios()));
 	}
 
 	private boolean matchesProvider(@Nullable String registeredProviderId, @Nullable String providerId) {
@@ -196,6 +233,12 @@ public abstract class AbstractJourneyRegistry implements JourneyRegistry {
 		return registeredProviderId.equalsIgnoreCase(providerId);
 	}
 
+	private boolean matchesMethod(@Nullable String registeredMethod, @Nullable String method) {
+		if (registeredMethod == null || registeredMethod.isBlank())
+			return method == null || method.isBlank();
+		return registeredMethod.equalsIgnoreCase(method);
+	}
+
 	private @NotNull String normalize(@NotNull String value) {
 		return value.trim().toLowerCase(Locale.ROOT);
 	}
@@ -204,26 +247,6 @@ public abstract class AbstractJourneyRegistry implements JourneyRegistry {
 		if (values == null || values.isEmpty())
 			return EnumSet.allOf(PipelineType.class);
 		return values;
-	}
-
-	private @NotNull Set<JourneyMode> safeJourneyModes(@Nullable Set<JourneyMode> values) {
-		if (values == null || values.isEmpty())
-			return EnumSet.allOf(JourneyMode.class);
-		return values;
-	}
-
-	private @NotNull JourneyStep normalizeJourneyModes(@NotNull JourneyStep step) {
-		Set<JourneyMode> journeyModes = step.getJourneyModes();
-		if (!journeyModes.isEmpty()) return step;
-
-		Set<JourneyMode> stepModes = step.getStep().journeyModes();
-		EnumSet<JourneyMode> resolved = stepModes.isEmpty()
-				? EnumSet.allOf(JourneyMode.class)
-				: EnumSet.copyOf(stepModes);
-
-		return step.toBuilder()
-				.journeyModes(resolved)
-				.build();
 	}
 
 	protected @NotNull String registryLabel() {

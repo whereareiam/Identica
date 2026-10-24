@@ -399,15 +399,6 @@ public class MessagesDefaults implements DefaultsProvider<Messages> {
 				"",
 				"<dark_gray>discord.arcadeya.com"
 		));
-		step.setInteractionRequired(List.of(
-				"<green>ɪᴅᴇɴᴛɪᴄᴀ",
-				"",
-				"<white>This server only signs players in automatically,</white>",
-				"<white>and your sign-in needs your input.</white>",
-				"<white>Please contact a server administrator.</white>",
-				"",
-				"<dark_gray>discord.arcadeya.com"
-		));
 		Messages.Engine.Journey.Step.Enrollment enrollment = new Messages.Engine.Journey.Step.Enrollment();
 		enrollment.setBody(List.of(
 				" ",
@@ -420,8 +411,8 @@ public class MessagesDefaults implements DefaultsProvider<Messages> {
 				" "
 		));
 		Messages.Engine.Journey.Step.Enrollment.EntryFormat enrollmentEntry = new Messages.Engine.Journey.Step.Enrollment.EntryFormat();
-		enrollmentEntry.setFormat("   <dark_gray><click:run_command:/identica enroll {providerId}>▪ <gray>[{providerName}]:</gray> <white>{description}</click>");
-		enrollmentEntry.setEmptyFormat("   <dark_gray><click:run_command:/identica enroll {providerId}>▪ <gray>[{providerName}]:</gray></click>");
+		enrollmentEntry.setFormat("   <dark_gray><click:run_command:/identica enroll {optionId}>▪ <gray>[{optionName}]:</gray> <white>{description}</click>");
+		enrollmentEntry.setEmptyFormat("   <dark_gray><click:run_command:/identica enroll {optionId}>▪ <gray>[{optionName}]:</gray></click>");
 		enrollment.setEntryFormat(enrollmentEntry);
 		enrollment.setEmpty(List.of(
 				"<green>ɪᴅᴇɴᴛɪᴄᴀ",

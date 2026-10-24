@@ -1,7 +1,5 @@
 package me.whereareiam.identica.feature.config.migration;
 
-import me.whereareiam.identica.common.conflict.DefaultConflictService;
-import me.whereareiam.identica.common.config.testing.DataDirectory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.Config;
@@ -12,6 +10,8 @@ import me.whereareiam.identica.Reloadable;
 import me.whereareiam.identica.common.config.migration.ConfigMigrations;
 import me.whereareiam.identica.common.config.provider.*;
 import me.whereareiam.identica.common.config.testing.DataDirectory;
+import me.whereareiam.identica.common.config.testing.EarlierConfiguration;
+import me.whereareiam.identica.common.conflict.DefaultConflictService;
 import me.whereareiam.identica.feature.recognition.config.migration.RecognitionConfigMigrations;
 import me.whereareiam.identica.feature.recognition.config.provider.RecognitionSettingsProvider;
 import me.whereareiam.identica.feature.restriction.config.migration.RestrictionConfigMigrations;
@@ -27,7 +27,6 @@ import me.whereareiam.identica.feature.verification.config.migration.Verificatio
 import me.whereareiam.identica.feature.verification.config.provider.VerificationCommandsProvider;
 import me.whereareiam.identica.feature.verification.config.provider.VerificationMessagesProvider;
 import me.whereareiam.identica.feature.verification.config.provider.VerificationSettingsProvider;
-import me.whereareiam.identica.common.config.testing.EarlierConfiguration;
 import me.whereareiam.strata.adapter.configura.StrataFeature;
 import me.whereareiam.strata.model.AppliedMigration;
 import me.whereareiam.strata.model.MigrationReport;
@@ -41,8 +40,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.Set;
 import java.util.*;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -59,7 +58,7 @@ import static org.mockito.Mockito.mock;
  */
 @DisplayName("Earlier Configuration Upgrade")
 class EarlierConfigurationUpgradeTest {
-	/** The layout of the newest development builds, which is the one this build reads. */
+	/** The layout of the newest development builds, which this build reads once its own migrations ran. */
 	private static final String CURRENT = "development-build-898aac4b";
 
 	/** Places an entry of a list may take that the current defaults leave empty. */
@@ -80,7 +79,10 @@ class EarlierConfigurationUpgradeTest {
 			Pattern.compile("^providers/conflicts:/.*"),
 			Pattern.compile("^providers/providers:/conflicts/.*"),
 			Pattern.compile("^(identity/username|providers/capabilities/authoritative-username)/messages:/pipeline/policy/(conflictDenied|entrypointRequired)(/.*)?$"),
-			Pattern.compile("^messages:/(connection|scenarios)/authentication/conflictEntrypointRequired(/.*)?$")
+			Pattern.compile("^messages:/(connection|scenarios)/authentication/conflictEntrypointRequired(/.*)?$"),
+			Pattern.compile(".*/scenarios/\\w+/(journeyMode|journeyPolicy)$"),
+			Pattern.compile("^messages:/(connection|engine)/journey/step/interactionRequired(/.*)?$"),
+			Pattern.compile("^messages:/(connection|engine)/journey/step/enrollment/entryFormat/(format|emptyFormat)$")
 	);
 
 	/**
@@ -165,8 +167,8 @@ class EarlierConfigurationUpgradeTest {
 
 		MigrationReport report = directory.migrate(FEATURES);
 
-		assertEquals(IntStream.rangeClosed(core + 1, 9).boxed().toList(), versions(report, ConfigMigrations.ID));
-		assertEquals(9, directory.tree("settings").path(StrataFeature.VERSION_KEY).asInt());
+		assertEquals(IntStream.rangeClosed(core + 1, 10).boxed().toList(), versions(report, ConfigMigrations.ID));
+		assertEquals(10, directory.tree("settings").path(StrataFeature.VERSION_KEY).asInt());
 		FEATURE_VERSIONS.forEach((stream, document) ->
 				assertEquals(2, directory.tree(document).path(StrataFeature.VERSION_KEY).asInt(), stream));
 	}
@@ -175,7 +177,9 @@ class EarlierConfigurationUpgradeTest {
 	@ParameterizedTest(name = "{0}")
 	@MethodSource("layouts")
 	void leavesNothingOutsideTheCurrentLayout(String layout, Format format) {
-		Set<String> current = normalised(copy(CURRENT, Format.YAML, dataPath.resolve("current")).values().keySet());
+		DataDirectory currentDirectory = copy(CURRENT, Format.YAML, dataPath.resolve("current"));
+		currentDirectory.migrate(FEATURES);
+		Set<String> current = normalised(currentDirectory.values().keySet());
 		Set<String> versions = FEATURE_VERSIONS.values().stream()
 				.map(document -> document + ":/" + StrataFeature.VERSION_KEY)
 				.collect(Collectors.toSet());
@@ -250,7 +254,7 @@ class EarlierConfigurationUpgradeTest {
 		}
 		MigrationReport again = directory.migrate(FEATURES);
 
-		assertEquals(IntStream.rangeClosed(2, 9).boxed().toList(), versions(again, ConfigMigrations.ID));
+		assertEquals(IntStream.rangeClosed(2, 10).boxed().toList(), versions(again, ConfigMigrations.ID));
 		for (String stream : FEATURE_VERSIONS.keySet())
 			assertEquals(List.of(2), versions(again, stream), stream);
 		assertEquals(migrated, directory.files());
@@ -298,9 +302,9 @@ class EarlierConfigurationUpgradeTest {
 		expected.put("settings:/listeners/events/com.velocitypowered.api.event.player.ServerPostConnectEvent/priority", "\"LOW\"");
 		expected.put("engine:/behavior/handshakeInstructionTtl", "\"7m\"");
 		expected.put("engine:/behavior/bridgeTtl", "\"9m\"");
-		expected.put("engine:/scenarios/authentication/journeyMode", "\"INTERACTIVE\"");
-		expected.put("engine:/scenarios/registration/autoSelectSingleProvider", "true");
-		expected.put("engine:/scenarios/migration/journeyPolicy", "\"STRICT\"");
+		expected.put("engine:/scenarios/authentication/choice", "\"AUTOMATIC\"");
+		expected.put("engine:/scenarios/registration/choice", "\"PROMPTED\"");
+		expected.put("engine:/scenarios/migration/choice", "\"AUTOMATIC\"");
 		expected.put("routing:/defaults/complete/target", "\"lobby\"");
 		expected.put("routing:/defaults/step/attempts/maxAttempts", "3");
 		expected.put("providers/providers:/behavior/attemptTtl", "\"8m\"");

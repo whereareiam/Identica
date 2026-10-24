@@ -46,14 +46,14 @@ public class EnrollCommand {
 	@Definition("enroll")
 	@Command("identica enroll <eligibility>")
 	public void enroll(
-			@NotNull Actor sender, @Argument("eligibility") String providerId) {
-		if (providerId == null || providerId.isBlank())
+			@NotNull Actor sender, @Argument("eligibility") String optionId) {
+		if (optionId == null || optionId.isBlank())
 			return;
 
 		ResumeRequest request = ResumeRequest.builder()
 				.connectionUniqueId(sender.getUniqueId())
 				.identity(sender instanceof Identity identity ? identity : null)
-				.input(state -> selectProvider(state, providerId))
+				.input(state -> selectOption(state, optionId))
 				.build();
 
 		ConnectionDecision decision = connectionCoordinator.resume(request)
@@ -75,15 +75,22 @@ public class EnrollCommand {
 	}
 
 	/**
-	 * Adds the player's choice to the selection of the pending registration, runs the chosen provider and restarts its
-	 * provider stage. The pipeline applies this to the state of the run the command resumes.
+	 * Adds the player's choice to the selection of the pending journey, runs the chosen option and restarts its
+	 * provider stage. An option is a provider's ID, followed by {@code :<method>} for a provider that offers several
+	 * methods. The pipeline applies this to the state of the run the command resumes.
 	 */
-	private void selectProvider(@NotNull PipelineState state, @NotNull String providerId) {
+	private void selectOption(@NotNull PipelineState state, @NotNull String optionId) {
 		JourneyStateItem pending = state.get(JourneyStateItem.KEY).orElse(null);
 		if (pending == null) return;
 
-		ScenarioContext context = state.getScenario(PipelineType.REGISTRATION);
+		PipelineType pipelineType = state.getPipelineType() != null ? state.getPipelineType() : PipelineType.REGISTRATION;
+
+		ScenarioContext context = state.getScenario(pipelineType);
 		if (context == null) return;
+
+		int separator = optionId.indexOf(':');
+		String providerId = separator < 0 ? optionId : optionId.substring(0, separator);
+		String method = separator < 0 ? null : optionId.substring(separator + 1);
 
 		context.setSelection(providerSelector.claim(
 				context.getSelection(),
@@ -92,26 +99,31 @@ public class EnrollCommand {
 		String username = context.getUsername() != null ? context.getUsername() : "";
 		ProviderContext provider = context.getProvider();
 		if (provider == null) {
-			context.setProvider(ProviderContext.of(providerId, null, username));
+			provider = ProviderContext.of(providerId, null, username);
+			context.setProvider(provider);
 		} else {
 			provider.setProviderId(providerId);
 			if (provider.getProviderUsername().isBlank())
 				provider.setProviderUsername(username);
 		}
+		if (provider != null)
+			provider.setMethod(method == null || method.isBlank() ? null : method);
 
 		state.setScenario(context);
-		if (state.getPipelineType() == null) {
-			state.setPipelineType(PipelineType.REGISTRATION);
-		}
+		state.setPipelineType(pipelineType);
 
-		long ttlMs = engineProvider.get().getScenarios().getRegistration().pipelineTtlMillis();
-		if (ttlMs > 0) {
-			state.put(JourneyStateItem.KEY, new JourneyStateItem(
-					pending.getJourneyMode(),
-					StageType.PROVIDER.id(),
-					0
-			), ttlMs);
-		}
+		long ttlMs = scenario(pipelineType).pipelineTtlMillis();
+		if (ttlMs > 0)
+			state.put(JourneyStateItem.KEY, new JourneyStateItem(StageType.PROVIDER.id(), 0), ttlMs);
+	}
+
+	private @NotNull Engine.Scenario scenario(@NotNull PipelineType pipelineType) {
+		Engine.Scenarios scenarios = engineProvider.get().getScenarios();
+		return switch (pipelineType) {
+			case REGISTRATION -> scenarios.getRegistration();
+			case MIGRATION -> scenarios.getMigration();
+			case AUTHENTICATION -> scenarios.getAuthentication();
+		};
 	}
 
 	private void sendMessage(@NotNull Actor sender, @Nullable PlayerMessage message) {

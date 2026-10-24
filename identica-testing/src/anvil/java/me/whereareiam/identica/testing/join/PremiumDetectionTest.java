@@ -7,7 +7,7 @@ import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -32,7 +32,7 @@ class PremiumDetectionTest {
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, configure = ClientProfileDetection.class)
+	@Identica(configure = ClientProfileDetection.class)
 	void registersAPremiumUsernameWithCredentialOnTheFirstJoin(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		yggdrasil.register("Alice");
 
@@ -49,7 +49,7 @@ class PremiumDetectionTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, configure = ClientProfileDetection.class)
+	@Identica(configure = ClientProfileDetection.class)
 	void logsThePremiumOwnerInWithoutAnyPrompt(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 
@@ -66,7 +66,7 @@ class PremiumDetectionTest {
 	 * does so is refused once and falls back to Credential on its next join, as it does without the comparison.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, configure = ClientProfileDetection.class)
+	@Identica(configure = ClientProfileDetection.class)
 	void asksForAPremiumLoginWhenTheClientClaimsThePremiumProfile(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		yggdrasil.register("Alice", offline("Alice"));
 
@@ -79,7 +79,7 @@ class PremiumDetectionTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, configure = ClientProfileDetection.class)
+	@Identica(configure = ClientProfileDetection.class)
 	void refusesAnotherClientWithTheUsernameOfALinkedPremiumAccount(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 		Journey.premium(anvil, account).join()
@@ -96,7 +96,7 @@ class PremiumDetectionTest {
 	 * same address, registers with Premium instead of continuing that registration.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, configure = ClientProfileDetection.class)
+	@Identica(configure = ClientProfileDetection.class)
 	void registersTheOwnerAfterAnOfflineClientLeftARegistration(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 		// A second client with the same username, so Anvil names it after the proxy it joins through.
@@ -111,20 +111,19 @@ class PremiumDetectionTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, configure = ClientProfileDetection.class)
-	void offersOnlyCredentialToAnOfflinePlayerWithAPremiumUsername(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+	@Identica(choice = JourneyChoice.PROMPTED, configure = ClientProfileDetection.class)
+	void registersAnOfflinePlayerWithAPremiumUsernameWithCredentialWithoutAChoice(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		yggdrasil.register("Alice");
 
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
-				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
-				.with(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getDescriptions().get("credential"))
-				.without(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getDescriptions().get("premium"));
+				.doesNotSee(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt());
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, configure = ClientProfileDetection.class)
-	void offersPremiumToItsOwnerInInteractiveMode(ScenarioContext anvil, YggdrasilMock yggdrasil) {
+	@Identica(choice = JourneyChoice.PROMPTED, configure = ClientProfileDetection.class)
+	void offersPremiumToItsOwnerWhenAsked(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 
 		Journey.premium(anvil, account).join()
@@ -138,7 +137,7 @@ class PremiumDetectionTest {
 	 * {@code recheckOnMismatch}, the new owner's different profile is looked up again and they are offered Premium.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, configure = RecheckOnMismatch.class)
+	@Identica(choice = JourneyChoice.PROMPTED, configure = RecheckOnMismatch.class)
 	void offersPremiumToTheNewOwnerOfAMovedUsernameWithRecheckOnMismatch(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity newOwner = movedUsername(anvil, yggdrasil);
 
@@ -157,7 +156,7 @@ class PremiumDetectionTest {
 		// From another address, so that the login it leaves pending is not the new owner's to continue.
 		Journey.of(anvil, Client.offline("Steve").from("127.0.0.2")).join()
 				.on(AUTH)
-				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
 				.leave();
 
 		yggdrasil.rename(previousOwner.getUniqueId(), "Steve_old");

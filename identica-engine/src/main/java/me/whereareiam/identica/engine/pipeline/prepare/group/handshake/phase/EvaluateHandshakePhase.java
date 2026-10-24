@@ -65,7 +65,7 @@ public class EvaluateHandshakePhase implements PipelinePhase<PrepareGroupState> 
 				state.getRequest().getIdentity(),
 				context.getSelection(),
 				context.getPreferredLink(),
-				context.getJourneyMode()
+				context.getChoice()
 		);
 		HandshakeDecision decision = HandshakeDecision.allow();
 		Iterable<HandshakePolicy> policies = handshakeStore.policies();

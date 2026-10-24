@@ -6,7 +6,6 @@ import me.whereareiam.anvil.environment.yggdrasil.YggdrasilMock;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -29,7 +28,7 @@ class PremiumToCredentialMigrationTest {
 	private static final Duration WINDOW = Duration.ofSeconds(5);
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS)
+	@Identica
 	void movesAPremiumAccountToCredentialAndBack(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 
@@ -70,7 +69,7 @@ class PremiumToCredentialMigrationTest {
 	 * finishes the move with it and its repetition.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS)
+	@Identica
 	void movesToCredentialAfterRepeatingThePasswordWrongly(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 
@@ -95,7 +94,7 @@ class PremiumToCredentialMigrationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS)
+	@Identica
 	void refusesAnOfflineClientUsingThePremiumNameWithoutAPendingMigration(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 		Journey.premium(anvil, account).join()
@@ -109,7 +108,7 @@ class PremiumToCredentialMigrationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS)
+	@Identica
 	void refusesAnOfflineClientUsingThePremiumNameWhileTheMigrationIsOnlyRequested(
 			ScenarioContext anvil,
 			YggdrasilMock yggdrasil
@@ -127,7 +126,7 @@ class PremiumToCredentialMigrationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS)
+	@Identica
 	void refusesAnOfflineClientUsingThePremiumNameWhileTheMigrationIsConfirmed(
 			ScenarioContext anvil,
 			YggdrasilMock yggdrasil
@@ -150,7 +149,7 @@ class PremiumToCredentialMigrationTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, configure = ShortMigrationWindow.class)
+	@Identica(configure = ShortMigrationWindow.class)
 	void signsInWithPremiumAgainOnceTheConfirmedMigrationExpired(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 

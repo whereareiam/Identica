@@ -7,7 +7,6 @@ import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.fixture.Authenticator;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -25,7 +24,7 @@ class LoginProgressTest {
 	private static final String ELSEWHERE = "127.0.0.2";
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void continuesAtTheAuthenticatorPromptFromTheSameAddress(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 		verificationPrompt(alice.journey().rejoin()).leave()
@@ -38,7 +37,7 @@ class LoginProgressTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = Authenticator.ShortPeriod.class)
 	void asksAnotherAddressForThePasswordAlthoughTheOwnerTypedIt(ScenarioContext anvil) {
 		Enrolled alice = enrolled(anvil);
 		Journey owner = verificationPrompt(alice.journey().rejoin()).leave();
@@ -58,7 +57,7 @@ class LoginProgressTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void leavesARegistrationInProgressToItsOwner(ScenarioContext anvil) {
 		Journey owner = registrationPrompt(Journey.offline(anvil, "Bob").join())
 				.command("pass " + PASSWORD)
@@ -83,7 +82,7 @@ class LoginProgressTest {
 	 * who holds the username at her prompt, able to log in.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void aRefusedSecondClientLeavesTheConnectedPlayerAtHerPrompt(ScenarioContext anvil) {
 		Journey owner = Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)

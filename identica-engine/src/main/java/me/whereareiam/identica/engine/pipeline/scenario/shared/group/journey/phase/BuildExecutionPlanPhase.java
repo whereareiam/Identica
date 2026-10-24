@@ -20,7 +20,6 @@ import me.whereareiam.identica.pipeline.journey.registry.type.RegistrationJourne
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.scenario.shared.JourneyState;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
@@ -59,14 +58,13 @@ public class BuildExecutionPlanPhase implements PipelinePhase<JourneyState> {
 
 		ScenarioContext context = state.getContext();
 		PipelineType pipelineType = pipelineState.getPipelineType();
-		JourneyMode journeyMode = state.getJourneyMode();
-		if (context == null || pipelineType == null || journeyMode == null) {
+		if (context == null || pipelineType == null) {
 			state.setResult(PipelineResult.failed(journeyMissingContextMessage(pipelineState)));
 			return CompletableFuture.completedFuture(PhaseResult.pass(state));
 		}
 
 		JourneyRegistry registry = resolveRegistry(pipelineType);
-		JourneyPlan basePlan = registry.resolvePlan(context, pipelineType, journeyMode, null);
+		JourneyPlan basePlan = registry.resolvePlan(context, pipelineType);
 		state.setExecutionPlan(JourneyExecutionPlan.from(basePlan));
 		return CompletableFuture.completedFuture(PhaseResult.pass(state));
 	}

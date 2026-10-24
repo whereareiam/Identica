@@ -4,7 +4,6 @@ import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -20,7 +19,7 @@ class LoginResumeTest {
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void continuesARegistrationAfterARejoin(ScenarioContext anvil) {
 		halfRegistered(anvil)
 				.rejoin()

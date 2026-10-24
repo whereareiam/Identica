@@ -13,7 +13,7 @@ import java.util.UUID;
  * Advance request details for in-session authentication journeys.
  *
  * <p>The advance request should include the latest connection identity so pending
- * journeyModes can re-evaluate IP-sensitive steps. When {@code identity}
+ * journeys can re-evaluate IP-sensitive steps. When {@code identity}
  * is omitted, the stored context data is reused.</p>
  */
 @Getter

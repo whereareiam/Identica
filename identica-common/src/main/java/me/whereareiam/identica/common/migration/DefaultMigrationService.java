@@ -12,7 +12,6 @@ import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.message.MigrationMessages;
 import me.whereareiam.identica.model.config.Commands;
-import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.config.provider.Providers;
 import me.whereareiam.identica.model.delivery.DeliveryPayload;
@@ -67,7 +66,6 @@ public class DefaultMigrationService implements MigrationService {
 	private final DeliveryService deliveryService;
 	private final MessageService messageService;
 
-	private final Provider<Engine> engineProvider;
 	private final Provider<Providers> providersProvider;
 	private final Provider<Commands> commandsProvider;
 	private final Provider<Messages> messagesProvider;
@@ -369,9 +367,11 @@ public class DefaultMigrationService implements MigrationService {
 						.targetProviderId(providerId)
 						.build(),
 				PipelineType.MIGRATION,
-				engineProvider.get().getScenarios().getMigration().getJourneyMode(),
-				providerId
+				providerId,
+				null
 		);
+		if (!migrationJourneyRegistry.methods(providerId).isEmpty())
+			return true;
 
 		for (JourneyPlan.StageEntry stage : plan.providerStages()) {
 			if (!stage.steps().isEmpty())

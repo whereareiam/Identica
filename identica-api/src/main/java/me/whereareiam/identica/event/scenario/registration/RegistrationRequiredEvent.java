@@ -7,7 +7,6 @@ import me.whereareiam.identica.event.base.Event;
 import me.whereareiam.identica.event.base.SynchronousEvent;
 import me.whereareiam.identica.event.scenario.ScenarioRequiredEvent;
 import me.whereareiam.identica.model.registration.RegistrationContext;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -26,21 +25,18 @@ public class RegistrationRequiredEvent implements Event, SynchronousEvent, Scena
 	private final @NotNull RegistrationContext context;
 	private final boolean resumed;
 	private final long expiresAt;
-	private final @Nullable JourneyMode journeyMode;
 
 	public RegistrationRequiredEvent(
 			@NotNull RegistrationContext context,
 			boolean resumed,
-			long expiresAt,
-			@Nullable JourneyMode journeyMode
+			long expiresAt
 	) {
 		this(
 				requireConnectionUniqueId(context),
 				context.getAccountUniqueId(),
 				context,
 				resumed,
-				expiresAt,
-				journeyMode
+				expiresAt
 		);
 	}
 

@@ -7,7 +7,7 @@ import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -28,7 +28,7 @@ class ProviderMoveExpiryTest {
 	private static final Duration CONFIRM_TTL = Duration.ofSeconds(2);
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, configure = ShortConfirmation.class)
+	@Identica(choice = JourneyChoice.PROMPTED, configure = ShortConfirmation.class)
 	void aMoveToPremiumConfirmedTooLateExpires(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		registeredWithCredential(anvil, yggdrasil)
 				.command("premium")
@@ -48,7 +48,7 @@ class ProviderMoveExpiryTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, configure = ShortConfirmation.class)
+	@Identica(choice = JourneyChoice.PROMPTED, configure = ShortConfirmation.class)
 	void aMoveBackToCredentialConfirmedTooLateExpires(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		registeredWithCredential(anvil, yggdrasil)
 				.command("premium")

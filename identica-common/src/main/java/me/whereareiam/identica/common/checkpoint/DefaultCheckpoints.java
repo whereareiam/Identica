@@ -21,6 +21,7 @@ import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.checkpoint.CheckpointRequest;
 import me.whereareiam.identica.model.checkpoint.CheckpointSelection;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.routing.RoutingIntent;
 import me.whereareiam.identica.model.routing.RoutingSignal;
 import me.whereareiam.identica.platform.adapter.PlatformCheckpointAdapter;
@@ -34,11 +35,11 @@ import me.whereareiam.identica.type.routing.reason.RoutingReason;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.EnumSet;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -109,8 +110,9 @@ public class DefaultCheckpoints implements Checkpoints, EventListener {
 				.flatMap(Optional::stream)
 				.findFirst()
 				.orElse(null);
-		Logger.debug("Checkpoint selected connection=%s step=%s reason=%s checkpoint=%s placement=%s",
-				connectionUniqueId, request.getStep().getName(), request.getResult().getWaitReason(),
+		PlayerMessage message = request.getResult().getMessage();
+		Logger.debug("Checkpoint selected connection=%s step=%s message=%s checkpoint=%s placement=%s",
+				connectionUniqueId, request.getStep().getName(), message != null ? message.getId() : null,
 				selected != null ? selected.getCheckpoint().id() : "step-server",
 				selected != null ? selected.getPlacement() : null);
 		if (selected == null) {

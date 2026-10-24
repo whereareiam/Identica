@@ -6,7 +6,6 @@ import me.whereareiam.anvil.environment.yggdrasil.YggdrasilMock;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -21,7 +20,7 @@ class PremiumOwnedUsernameTest {
 	private static final String OTHER_ADDRESS = "127.0.0.2";
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS)
+	@Identica
 	void asksAnOfflineClientForAPremiumLoginOnEveryJoin(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 		Journey.premium(anvil, account).join()
@@ -41,7 +40,7 @@ class PremiumOwnedUsernameTest {
 	 * the username had an account, and the owner still signs in with Premium.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS)
+	@Identica
 	void asksForAPremiumLoginAfterTheOwnerRegisteredARefusedUsername(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		SessionIdentity account = yggdrasil.register("Steve");
 

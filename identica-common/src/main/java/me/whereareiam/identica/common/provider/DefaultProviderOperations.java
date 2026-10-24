@@ -9,7 +9,6 @@ import me.whereareiam.identica.event.provider.ProviderEligibilityEvent;
 import me.whereareiam.identica.model.config.provider.Providers;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.pipeline.journey.JourneyPlan;
-import me.whereareiam.identica.model.pipeline.journey.stage.step.JourneyStep;
 import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
 import me.whereareiam.identica.model.provider.ResolvedEntrypoint;
@@ -25,7 +24,6 @@ import me.whereareiam.identica.provider.subject.SubjectResolution;
 import me.whereareiam.identica.provider.subject.SubjectResolveContext;
 import me.whereareiam.identica.provider.subject.SubjectResolver;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.provider.ProviderState;
 import me.whereareiam.identica.util.NetworkUtil;
 import org.jetbrains.annotations.NotNull;
@@ -175,16 +173,7 @@ public class DefaultProviderOperations implements ProviderOperations {
 	@Override
 	public @NotNull List<InternalProvider> eligibleProviders(
 			@NotNull ScenarioContext context,
-			@NotNull JourneyMode journeyMode
-	) {
-		return eligibleProviders(context, PipelineType.AUTHENTICATION, journeyMode);
-	}
-
-	@Override
-	public @NotNull List<InternalProvider> eligibleProviders(
-			@NotNull ScenarioContext context,
-			@NotNull PipelineType pipelineType,
-			@NotNull JourneyMode journeyMode
+			@NotNull PipelineType pipelineType
 	) {
 		List<InternalProvider> providers = sortedEnabledProviders();
 		if (providers.isEmpty())
@@ -193,7 +182,7 @@ public class DefaultProviderOperations implements ProviderOperations {
 		List<InternalProvider> eligible = new ArrayList<>();
 		for (InternalProvider provider : providers) {
 			if (provider == null) continue;
-			if (isEligible(context, provider, pipelineType, journeyMode))
+			if (isEligible(context, provider, pipelineType))
 				eligible.add(provider);
 		}
 
@@ -204,36 +193,28 @@ public class DefaultProviderOperations implements ProviderOperations {
 	public boolean isEligible(
 			@NotNull ScenarioContext context,
 			@NotNull InternalProvider provider,
-			@NotNull JourneyMode journeyMode
-	) {
-		return isEligible(context, provider, PipelineType.AUTHENTICATION, journeyMode);
-	}
-
-	@Override
-	public boolean isEligible(
-			@NotNull ScenarioContext context,
-			@NotNull InternalProvider provider,
-			@NotNull PipelineType pipelineType,
-			@NotNull JourneyMode journeyMode
+			@NotNull PipelineType pipelineType
 	) {
 		if (provider.getState() != ProviderState.ENABLED) return false;
 
 		ProviderDescriptor descriptor = provider.getDescriptor();
 		if (descriptor == null || isBlank(descriptor.getId())) return false;
-		if (!supportsJourney(context, provider, pipelineType, journeyMode)) return false;
-		if (!resolversAllow(context, provider, journeyMode)) return false;
+		if (!supportsScenario(context, provider, pipelineType)) return false;
+		if (!resolversAllow(context, provider)) return false;
 
-		ProviderEligibilityEvent event = new ProviderEligibilityEvent(context, provider, journeyMode);
+		ProviderEligibilityEvent event = new ProviderEligibilityEvent(context, provider);
 		eventManager.call(event);
 
 		return !event.isCancelled();
 	}
 
-	private boolean supportsJourney(
+	/**
+	 * Tells whether the provider has methods or steps in the scenario's provider stage.
+	 */
+	private boolean supportsScenario(
 			@NotNull ScenarioContext context,
 			@NotNull InternalProvider provider,
-			@NotNull PipelineType pipelineType,
-			@NotNull JourneyMode journeyMode
+			@NotNull PipelineType pipelineType
 	) {
 		JourneyRegistry journeyRegistry = pipelineType == PipelineType.REGISTRATION
 				? registrationJourneyRegistry
@@ -242,38 +223,30 @@ public class DefaultProviderOperations implements ProviderOperations {
 						: authenticationJourneyRegistry;
 
 		if (journeyRegistry == null) return false;
-		JourneyPlan plan = journeyRegistry.resolvePlan(
-				context, pipelineType, journeyMode, provider.getDescriptor().getId()
-		);
 
-		boolean hasProviderSteps = false;
+		String providerId = provider.getDescriptor().getId();
+		if (!journeyRegistry.methods(providerId).isEmpty()) return true;
+
+		JourneyPlan plan = journeyRegistry.resolvePlan(context, pipelineType, providerId, null);
 		for (JourneyPlan.StageEntry stageEntry : plan.stages()) {
 			if (stageEntry == null || !stageEntry.stage().providerStage())
 				continue;
 
-			if (stageEntry.steps().isEmpty()) continue;
-
-			hasProviderSteps = true;
-			if (journeyMode != JourneyMode.SEAMLESS) continue;
-			for (JourneyStep step : stageEntry.steps()) {
-				if (step.getJourneyModes().size() == 1 && step.getJourneyModes().contains(JourneyMode.INTERACTIVE))
-					return false;
-			}
+			if (!stageEntry.steps().isEmpty()) return true;
 		}
 
-		return hasProviderSteps;
+		return false;
 	}
 
 	private boolean resolversAllow(
 			@NotNull ScenarioContext context,
-			@NotNull InternalProvider provider,
-			@NotNull JourneyMode journeyMode
+			@NotNull InternalProvider provider
 	) {
 		Set<ProviderEligibilityResolver> resolvers = provider.getEligibilityResolvers();
 		if (resolvers == null || resolvers.isEmpty()) return true;
 
 		for (ProviderEligibilityResolver resolver : resolvers) {
-			if (!resolver.isEligible(context, provider, journeyMode)) return false;
+			if (!resolver.isEligible(context, provider)) return false;
 		}
 
 		return true;

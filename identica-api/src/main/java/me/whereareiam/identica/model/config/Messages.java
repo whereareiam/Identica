@@ -683,7 +683,6 @@ public class Messages implements MessageDocument {
 			@ToString
 			public static class Step {
 				private @NotNull List<String> noStatus;
-				private @NotNull List<String> interactionRequired;
 				private @NotNull Enrollment enrollment;
 
 				/**

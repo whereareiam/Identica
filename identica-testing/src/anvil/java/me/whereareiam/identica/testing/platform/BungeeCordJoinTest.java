@@ -10,7 +10,6 @@ import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -38,21 +37,8 @@ class BungeeCordJoinTest {
 	private static final String NOT_WHITELISTED = "You are not whitelisted on this server!";
 
 	@Test
-	@Identica(platform = Platform.BUNGEECORD, mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
-	void choosesCredentialAndRegistersInInteractiveMode(ScenarioContext anvil) {
-		Journey.offline(anvil, "Alice").join()
-				.on(AUTH)
-				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody())
-				.enroll(Provider.CREDENTIAL)
-				.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
-				.register(PASSWORD)
-				.on(LOBBY)
-				.sees(m -> m.credential().getCompletion().getRegistration().getBody());
-	}
-
-	@Test
-	@Identica(platform = Platform.BUNGEECORD, mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL)
-	void registersWithTheOnlyProviderInSeamlessMode(ScenarioContext anvil) {
+	@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL)
+	void registersWithCredential(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
 				.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
@@ -62,7 +48,18 @@ class BungeeCordJoinTest {
 	}
 
 	@Test
-	@Identica(platform = Platform.BUNGEECORD, mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL)
+	@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL)
+	void registersWithTheOnlyProviderWhenPickedAutomatically(ScenarioContext anvil) {
+		Journey.offline(anvil, "Alice").join()
+				.on(AUTH)
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt())
+				.register(PASSWORD)
+				.on(LOBBY)
+				.sees(m -> m.credential().getCompletion().getRegistration().getBody());
+	}
+
+	@Test
+	@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL)
 	void offersTheRegistrationCommandsInTheClientsCommandTree(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
@@ -72,7 +69,7 @@ class BungeeCordJoinTest {
 	}
 
 	@Test
-	@Identica(platform = Platform.BUNGEECORD, mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL)
 	void logsInWhenReturningAndAgainAfterAReconnect(ScenarioContext anvil) {
 		Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)
@@ -87,7 +84,7 @@ class BungeeCordJoinTest {
 	}
 
 	@Test
-	@Identica(platform = Platform.BUNGEECORD, mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL)
 	void keepsAPlayerWithAWrongPasswordOnTheStepServer(ScenarioContext anvil) {
 		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
 
@@ -103,7 +100,7 @@ class BungeeCordJoinTest {
 	}
 
 	@Test
-	@Identica(platform = Platform.BUNGEECORD, mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL)
 	void locksTheAccountOutAfterTheLastAllowedWrongPassword(ScenarioContext anvil) {
 		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
 
@@ -117,7 +114,7 @@ class BungeeCordJoinTest {
 	}
 
 	@Test
-	@Identica(platform = Platform.BUNGEECORD, mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL, step = "", complete = "")
+	@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL, step = "", complete = "")
 	void registersOnTheLobbyWithoutAnyRouting(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.on(LOBBY)
@@ -140,7 +137,7 @@ class BungeeCordJoinTest {
 	}
 
 	@Test
-	@Identica(platform = Platform.BUNGEECORD, mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL,
+	@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL,
 			configure = LinkedAllowed.class)
 	void refusesANewPlayerAtLoginWhileJoinsAreRestricted(ScenarioContext anvil) {
 		Administrator administrator = Administrator.at(anvil, PROXY).restrictsJoins(Provider.CREDENTIAL);
@@ -151,11 +148,11 @@ class BungeeCordJoinTest {
 
 		bob.rejoin()
 				.on(AUTH)
-				.sees(m -> m.identica().getEngine().getJourney().getStep().getEnrollment().getBody());
+				.sees(m -> m.credential().getScenario().getRegistration().getPrompt());
 	}
 
 	@Test
-	@Identica(platform = Platform.BUNGEECORD, mode = JourneyMode.SEAMLESS)
+	@Identica(platform = Platform.BUNGEECORD)
 	void asksAnOfflinePlayerWithAPremiumUsernameForAPremiumLoginFirst(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		yggdrasil.register("Alice");
 

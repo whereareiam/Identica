@@ -2,13 +2,11 @@ package me.whereareiam.identica.common.migration;
 
 import com.google.inject.Provider;
 import me.whereareiam.identica.ConnectionCoordinator;
-import me.whereareiam.identica.common.config.defaults.EngineDefaults;
 import me.whereareiam.identica.common.messaging.DefaultMessageService;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.model.config.Commands;
-import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.config.provider.Providers;
 import me.whereareiam.identica.model.identity.Account;
@@ -38,9 +36,7 @@ import me.whereareiam.identica.service.DeliveryService;
 import me.whereareiam.identica.type.migration.MigrationCancelScope;
 import me.whereareiam.identica.type.migration.MigrationResultStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.StageType;
-import me.whereareiam.identica.type.pipeline.journey.step.StepContextRequirement;
 import me.whereareiam.identica.type.provider.ProviderState;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
@@ -361,7 +357,7 @@ class DefaultMigrationServiceTest {
 	@Test
 	void startRejectsProviderWithoutMigrationJourney() {
 		when(providerManager.getProviders()).thenReturn(List.of(provider("premium")));
-		when(migrationJourneyRegistry.resolvePlan(any(MigrationContext.class), eq(PipelineType.MIGRATION), any(JourneyMode.class), eq("premium")))
+		when(migrationJourneyRegistry.resolvePlan(any(MigrationContext.class), eq(PipelineType.MIGRATION), eq("premium"), isNull()))
 				.thenReturn(emptyJourneyPlan());
 
 		DefaultMigrationService service = service();
@@ -381,7 +377,7 @@ class DefaultMigrationServiceTest {
 	@Test
 	void confirmRejectsUnavailableTargetProviderBeforeStoringPendingMigration() {
 		when(providerManager.getProviders()).thenReturn(List.of(provider("premium")), List.of());
-		when(migrationJourneyRegistry.resolvePlan(any(MigrationContext.class), eq(PipelineType.MIGRATION), any(JourneyMode.class), eq("premium")))
+		when(migrationJourneyRegistry.resolvePlan(any(MigrationContext.class), eq(PipelineType.MIGRATION), eq("premium"), isNull()))
 				.thenReturn(journeyPlanWithProviderSteps());
 		when(providerLinkPersistenceService.findByUniqueIdAndProviderId(any(UUID.class), any(String.class)))
 				.thenReturn(Optional.empty());
@@ -427,7 +423,6 @@ class DefaultMigrationServiceTest {
 					identityService,
 					deliveryService,
 					new DefaultMessageService(() -> (recipient, message) -> false, () -> null, mock(EventManager.class)),
-					this::engine,
 					providersProvider,
 					commandsProvider,
 					messagesProvider
@@ -445,7 +440,7 @@ class DefaultMigrationServiceTest {
 
 	private void mockAvailableProviders(String... providerIds) {
 		when(providerManager.getProviders()).thenReturn(Arrays.stream(providerIds).map(this::provider).toList());
-		when(migrationJourneyRegistry.resolvePlan(any(MigrationContext.class), eq(PipelineType.MIGRATION), any(JourneyMode.class), anyString()))
+		when(migrationJourneyRegistry.resolvePlan(any(MigrationContext.class), eq(PipelineType.MIGRATION), anyString(), isNull()))
 				.thenReturn(journeyPlanWithProviderSteps());
 	}
 
@@ -489,7 +484,6 @@ class DefaultMigrationServiceTest {
 				.type(StageType.PROVIDER)
 				.order(100)
 				.pipelineTypes(EnumSet.of(PipelineType.MIGRATION))
-				.journeyModes(EnumSet.allOf(JourneyMode.class))
 				.build();
 
 		return new JourneyPlan(List.of(new JourneyPlan.StageEntry(
@@ -499,7 +493,6 @@ class DefaultMigrationServiceTest {
 						.step(new TestStep("migration-step"))
 						.providerId("premium")
 						.scenarios(EnumSet.of(PipelineType.MIGRATION))
-						.journeyModes(EnumSet.of(JourneyMode.SEAMLESS))
 						.build())
 		)));
 	}
@@ -510,7 +503,6 @@ class DefaultMigrationServiceTest {
 				.type(StageType.PROVIDER)
 				.order(100)
 				.pipelineTypes(EnumSet.of(PipelineType.MIGRATION))
-				.journeyModes(EnumSet.allOf(JourneyMode.class))
 				.build();
 
 		return new JourneyPlan(List.of(new JourneyPlan.StageEntry(stage, List.of())));
@@ -526,16 +518,6 @@ class DefaultMigrationServiceTest {
 		@Override
 		public @NotNull String getName() {
 			return name;
-		}
-
-		@Override
-		public @NotNull Set<JourneyMode> journeyModes() {
-			return Set.of(JourneyMode.SEAMLESS);
-		}
-
-		@Override
-		public @NotNull StepContextRequirement contextRequirement() {
-			return StepContextRequirement.LOGIN;
 		}
 
 		@Override
@@ -555,10 +537,6 @@ class DefaultMigrationServiceTest {
 		behavior.setSessions(new Commands.Behavior.Sessions());
 		commands.setBehavior(behavior);
 		return commands;
-	}
-
-	private Engine engine() {
-		return new EngineDefaults().supply(new Engine());
 	}
 
 	private Messages messages() {

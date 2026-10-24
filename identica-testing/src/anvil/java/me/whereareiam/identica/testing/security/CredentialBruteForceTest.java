@@ -7,7 +7,6 @@ import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -28,7 +27,7 @@ class CredentialBruteForceTest {
 	private static final Duration LOCKOUT = Duration.ofSeconds(15);
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = ThreeAttempts.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = ThreeAttempts.class)
 	void warnsWithTheRemainingAttemptsBeforeTheLockout(ScenarioContext anvil) {
 		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
 
@@ -45,14 +44,14 @@ class CredentialBruteForceTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = ThreeAttempts.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = ThreeAttempts.class)
 	void refusesAPlayerWhoReturnsDuringTheLockout(ScenarioContext anvil) {
 		lockedOut(anvil).attemptAgain()
 				.kickedWith(m -> m.credential().getScenario().getAuthentication().getBruteforce().getExceeded());
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = ThreeAttempts.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = ThreeAttempts.class)
 	void acceptsTheRightPasswordOnceTheLockoutHasPassed(ScenarioContext anvil) {
 		lockedOut(anvil).waits(LOCKOUT)
 				.rejoin()
@@ -68,7 +67,7 @@ class CredentialBruteForceTest {
 	 * right password still logs them in.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = NoLockout.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = NoLockout.class)
 	void neverLocksOutWithTheLockoutTurnedOff(ScenarioContext anvil) {
 		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
 

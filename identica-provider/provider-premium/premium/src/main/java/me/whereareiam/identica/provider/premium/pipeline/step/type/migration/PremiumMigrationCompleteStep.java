@@ -3,13 +3,13 @@ package me.whereareiam.identica.provider.premium.pipeline.step.type.migration;
 import com.google.inject.Singleton;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.ScenarioContext;
-import me.whereareiam.identica.pipeline.journey.step.type.InteractiveStep;
+import me.whereareiam.identica.pipeline.journey.step.AbstractStep;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
 
 @Singleton
-public class PremiumMigrationCompleteStep extends InteractiveStep {
+public class PremiumMigrationCompleteStep extends AbstractStep {
 	public PremiumMigrationCompleteStep() {
 		super("premium-migration-complete");
 	}

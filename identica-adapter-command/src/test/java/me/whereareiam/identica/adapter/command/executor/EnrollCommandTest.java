@@ -17,7 +17,6 @@ import me.whereareiam.identica.model.registration.RegistrationContext;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.provider.selection.ProviderSelector;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.provider.ProviderClaimOrigin;
 import me.whereareiam.keystone.model.SerializerContent;
 import me.whereareiam.keystone.serializer.SerializerEngine;
@@ -95,7 +94,7 @@ class EnrollCommandTest {
 		PipelineState state = PipelineState.initial();
 		state.setPipelineType(PipelineType.REGISTRATION);
 		state.setScenario(context);
-		state.put(JourneyStateItem.KEY, new JourneyStateItem(JourneyMode.INTERACTIVE, "enrollment", 0));
+		state.put(JourneyStateItem.KEY, new JourneyStateItem("enrollment", 0));
 		request.getValue().getInput().applyTo(state);
 
 		verify(selector).claim(any(), eq(List.of(ProviderClaim.of("alpha", ProviderClaimOrigin.PLAYER_CHOICE))));

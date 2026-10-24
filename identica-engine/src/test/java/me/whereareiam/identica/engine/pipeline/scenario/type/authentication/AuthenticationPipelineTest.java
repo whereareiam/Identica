@@ -78,7 +78,7 @@ class AuthenticationPipelineTest {
 				.accountUniqueId(UUID.randomUUID())
 				.identity(new ConnectionIdentity(connectionId, "PlayerOne", "127.0.0.1"))
 				.build());
-		stored.put(JourneyStateItem.KEY, new JourneyStateItem(null, null, 0), 60_000L);
+		stored.put(JourneyStateItem.KEY, new JourneyStateItem(null, 0), 60_000L);
 
 		PipelineStateStore store = mock(PipelineStateStore.class);
 		when(store.find(any(PipelineStateReference.class))).thenReturn(Optional.of(stored));
@@ -108,7 +108,7 @@ class AuthenticationPipelineTest {
 				.accountUniqueId(UUID.randomUUID())
 				.identity(new ConnectionIdentity(connectionId, "PlayerOne", "127.0.0.1"))
 				.build());
-		stored.put(JourneyStateItem.KEY, new JourneyStateItem(null, null, 0), 60_000L);
+		stored.put(JourneyStateItem.KEY, new JourneyStateItem(null, 0), 60_000L);
 
 		PipelineStateStore store = mock(PipelineStateStore.class);
 		when(store.find(any(PipelineStateReference.class))).thenReturn(Optional.of(stored));
@@ -250,7 +250,7 @@ class AuthenticationPipelineTest {
 	}
 
 	private static JourneyOverrideItem chosenStage() {
-		return new JourneyOverrideItem(null, "chosen", 0, false, null, List.of());
+		return new JourneyOverrideItem("chosen", 0, false, null, List.of(), List.of());
 	}
 
 	@Getter

@@ -4,7 +4,7 @@ import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareContextItem;
 import me.whereareiam.identica.pipeline.state.exception.UnreadablePipelineStateException;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -24,10 +24,10 @@ class PipelineStateTest {
 		PipelineState state = PipelineState.initial();
 		PrepareContextItem context = state.getOrCreate(PrepareContextItem.KEY, PrepareContextItem::new);
 
-		context.setJourneyMode(JourneyMode.INTERACTIVE);
+		context.setChoice(JourneyChoice.PROMPTED);
 
 		assertSame(context, state.get(PrepareContextItem.KEY).orElseThrow());
-		assertEquals(JourneyMode.INTERACTIVE, state.get(PrepareContextItem.KEY).orElseThrow().getJourneyMode());
+		assertEquals(JourneyChoice.PROMPTED, state.get(PrepareContextItem.KEY).orElseThrow().getChoice());
 	}
 
 	@DisplayName("Never saves the values of run keys")
@@ -35,7 +35,7 @@ class PipelineStateTest {
 	void storeLeavesRunValuesOut() {
 		PipelineState state = PipelineState.initial();
 		state.put(PrepareContextItem.KEY, new PrepareContextItem());
-		state.put(JourneyStateItem.KEY, new JourneyStateItem(JourneyMode.SEAMLESS, "provider", 1));
+		state.put(JourneyStateItem.KEY, new JourneyStateItem("provider", 1));
 
 		StoredPipelineState stored = state.store();
 
@@ -49,13 +49,12 @@ class PipelineStateTest {
 	void restoresPersistedValues() {
 		PipelineState state = PipelineState.initial();
 		state.setPipelineType(PipelineType.AUTHENTICATION);
-		state.put(JourneyStateItem.KEY, new JourneyStateItem(JourneyMode.SEAMLESS, "provider", 1));
+		state.put(JourneyStateItem.KEY, new JourneyStateItem("provider", 1));
 
 		PipelineState restored = PipelineState.restore(state.store());
 		JourneyStateItem position = restored.get(JourneyStateItem.KEY).orElseThrow();
 
 		assertEquals(PipelineType.AUTHENTICATION, restored.getPipelineType());
-		assertEquals(JourneyMode.SEAMLESS, position.getJourneyMode());
 		assertEquals("provider", position.getStageId());
 		assertEquals(1, position.getStepIndex());
 	}
@@ -79,7 +78,7 @@ class PipelineStateTest {
 	@Test
 	void storeKeepsValuesItHasNotRead() {
 		PipelineState state = PipelineState.initial();
-		state.put(JourneyStateItem.KEY, new JourneyStateItem(JourneyMode.SEAMLESS, "provider", 1));
+		state.put(JourneyStateItem.KEY, new JourneyStateItem("provider", 1));
 
 		PipelineState restored = PipelineState.restore(PipelineState.restore(state.store()).store());
 

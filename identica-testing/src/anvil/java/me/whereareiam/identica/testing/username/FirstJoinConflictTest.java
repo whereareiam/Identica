@@ -15,7 +15,6 @@ import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
 import me.whereareiam.identica.type.identity.username.UsernameHolderOnline;
 import me.whereareiam.identica.type.identity.username.UsernameRenameTooLong;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -38,7 +37,7 @@ class FirstJoinConflictTest {
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, entrypoints = true)
+	@Identica(entrypoints = true)
 	void givesTheOwnerTheUsernameAndRenamesTheCredentialAccount(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		Journey holder = Accounts.credential(anvil, credentialClient("Steve"), PASSWORD);
 		SessionIdentity account = yggdrasil.register("Steve");
@@ -62,7 +61,7 @@ class FirstJoinConflictTest {
 	 * temporary name and under the name itself once the holder has left.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, entrypoints = true)
+	@Identica(entrypoints = true)
 	void letsAnOnlineHolderKeepPlayingAndGivesTheOwnerATemporaryName(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		Journey holder = Accounts.credential(anvil, credentialClient("Steve"), PASSWORD)
 				.rejoin()
@@ -93,7 +92,7 @@ class FirstJoinConflictTest {
 	 * so the owner plays this session under a temporary name and under the name from the next join on.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, entrypoints = true, configure = KickHolder.class)
+	@Identica(entrypoints = true, configure = KickHolder.class)
 	void disconnectsAnOnlineHolderWhenTheRuleSaysSo(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		Journey holder = Accounts.credential(anvil, credentialClient("Steve"), PASSWORD)
 				.rejoin()
@@ -118,7 +117,7 @@ class FirstJoinConflictTest {
 	 * A renamed username longer than Minecraft's 16 characters is shortened by default.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, entrypoints = true)
+	@Identica(entrypoints = true)
 	void shortensARenamedUsernameToSixteenCharacters(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		Journey holder = Accounts.credential(anvil, credentialClient("Christopherson"), PASSWORD);
 		SessionIdentity account = yggdrasil.register("Christopherson");
@@ -138,7 +137,7 @@ class FirstJoinConflictTest {
 	 * With shortening turned off, a renamed username that does not fit refuses the owner, and the holder keeps it.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, entrypoints = true, configure = RefuseLongNames.class)
+	@Identica(entrypoints = true, configure = RefuseLongNames.class)
 	void refusesTheOwnerWhenTheRenamedUsernameWouldBeTooLong(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		Journey holder = Accounts.credential(anvil, credentialClient("Christopherson"), PASSWORD);
 		SessionIdentity account = yggdrasil.register("Christopherson");
@@ -157,7 +156,7 @@ class FirstJoinConflictTest {
 	 * A rule naming both providers is more specific than the default rules naming guarantees, and wins.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, entrypoints = true, configure = RefuseBetweenProviders.class)
+	@Identica(entrypoints = true, configure = RefuseBetweenProviders.class)
 	void letsARuleNamingProvidersOverrideTheDefaults(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		Journey holder = Accounts.credential(anvil, credentialClient("Steve"), PASSWORD);
 		SessionIdentity account = yggdrasil.register("Steve");

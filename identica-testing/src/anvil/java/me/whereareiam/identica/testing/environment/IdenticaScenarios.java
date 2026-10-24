@@ -25,8 +25,8 @@ public final class IdenticaScenarios implements AnvilScenarioFactory<Identica> {
 
 		// Each network has its own stand-in for Mojang; the test receives it to register premium accounts.
 		YggdrasilMock yggdrasil = resources.own(YggdrasilMock.start());
-		ProxyConfiguration proxy = new ProxyConfiguration(IdenticaNetwork.PROXY, identica.platform(), identica.mode(), identica.policy(), enabled, identica.entrypoints(),
-				identica.autoSelectSingleProvider(), identica.step(), identica.complete(), yggdrasil);
+		ProxyConfiguration proxy = new ProxyConfiguration(IdenticaNetwork.PROXY, identica.platform(), identica.choice(), enabled, identica.entrypoints(),
+				identica.step(), identica.complete(), yggdrasil);
 		proxy.put("persistence.yml", identica.database().persistence(resources));
 		for (Class<? extends Consumer<ProxyConfiguration>> change : identica.configure())
 			instantiate(change).accept(proxy);
@@ -49,9 +49,8 @@ public final class IdenticaScenarios implements AnvilScenarioFactory<Identica> {
 		String providers = enabled.stream().map(Provider::getId).collect(Collectors.joining("+"));
 		// Only a network on another platform than the default names it.
 		String network = identica.platform() == Platform.VELOCITY ? "identica" : "identica-" + identica.platform().name();
-		return String.join("-", network, identica.mode().name(), identica.policy().name(), providers,
+		return String.join("-", network, identica.choice().name(), providers,
 				identica.entrypoints() ? "entrypoints" : "direct",
-				identica.autoSelectSingleProvider() ? "autoselect" : "choice",
 				routing(identica.step(), identica.complete()),
 				identica.database().name(),
 				identica.addon() ? "addon" : "",

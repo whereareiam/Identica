@@ -8,7 +8,7 @@ import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import me.whereareiam.identica.pipeline.state.StateKey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -40,9 +40,9 @@ public class PrepareContextItem {
 	 */
 	private @Nullable AccountProviderLink preferredLink;
 	/**
-	 * Journey mode of the scenario the connection heads to, resolved for the handshake.
+	 * How the scenario the connection heads to picks its option, resolved for the handshake.
 	 */
-	private @Nullable JourneyMode journeyMode;
+	private @Nullable JourneyChoice choice;
 	/**
 	 * Decision of the handshake policies, once the handshake was evaluated.
 	 */

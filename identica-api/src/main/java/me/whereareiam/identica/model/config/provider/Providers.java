@@ -1,13 +1,11 @@
 package me.whereareiam.identica.model.config.provider;
 
-import lombok.Getter;
-import lombok.AccessLevel;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.JsonNode;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import me.whereareiam.configura.annotation.PreserveUnknownFields;
@@ -15,13 +13,16 @@ import me.whereareiam.configura.annotation.merge.Merge;
 import me.whereareiam.configura.feature.extension.api.annotation.ExtendableDocument;
 import me.whereareiam.configura.type.merge.MissingEntries;
 import me.whereareiam.configura.type.merge.WhenAbsent;
+import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.session.SessionConcurrencyPolicy;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Provider configuration settings.
@@ -95,10 +96,46 @@ public class Providers {
 		 * Entries must use the format {@code host} or {@code host:port}.
 		 */
 		private @NotNull List<String> entrypoints = new ArrayList<>();
+		/**
+		 * Methods of the provider each scenario offers, by name and in the order they are tried, or {@code null} for
+		 * all of them in the provider's own order.
+		 */
+		@Merge(absent = WhenAbsent.LEAVE_ABSENT)
+		private @Nullable Methods methods;
 
 		/**
 		 * Provider-specific session behavior settings.
 		 */
+		/**
+		 * The provider methods each scenario offers. A scenario left out offers all methods in the provider's order;
+		 * a listed scenario offers only the methods it names, in the order it names them.
+		 */
+		@Getter
+		@Setter
+		@ToString
+		public static class Methods {
+			@Merge(absent = WhenAbsent.LEAVE_ABSENT)
+			private @Nullable List<String> authentication;
+			@Merge(absent = WhenAbsent.LEAVE_ABSENT)
+			private @Nullable List<String> registration;
+			@Merge(absent = WhenAbsent.LEAVE_ABSENT)
+			private @Nullable List<String> migration;
+
+			/**
+			 * Returns the methods a scenario offers.
+			 *
+			 * @param scenario scenario
+			 * @return method names in their order, or {@code null} for all methods in the provider's order
+			 */
+			public @Nullable List<String> of(@NotNull PipelineType scenario) {
+				return switch (scenario) {
+					case AUTHENTICATION -> authentication;
+					case REGISTRATION -> registration;
+					case MIGRATION -> migration;
+				};
+			}
+		}
+
 		@Getter
 		@Setter
 		@ToString

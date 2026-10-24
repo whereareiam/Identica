@@ -165,7 +165,7 @@ class ScenarioPipelineTest {
 	private static PipelineState pendingState() {
 		PipelineState state = PipelineState.initial();
 		state.setPipelineType(PipelineType.AUTHENTICATION);
-		state.put(JourneyStateItem.KEY, new JourneyStateItem(null, null, 0), 60_000L);
+		state.put(JourneyStateItem.KEY, new JourneyStateItem(null, 0), 60_000L);
 		return state;
 	}
 

@@ -6,7 +6,6 @@ import me.whereareiam.anvil.environment.yggdrasil.YggdrasilMock;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -24,7 +23,7 @@ class PremiumUsernameHeldByCredentialTest {
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS)
+	@Identica
 	void keepsLoggingTheCredentialAccountInWithItsPassword(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		// The offline client is named after the proxy, so the premium owner's client may use the username.
 		Journey holder = Accounts.credential(anvil, "Steve", PASSWORD, PROXY);
@@ -39,7 +38,7 @@ class PremiumUsernameHeldByCredentialTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS)
+	@Identica
 	void asksThePremiumOwnerForThePasswordOfTheAccountHoldingTheUsername(ScenarioContext anvil, YggdrasilMock yggdrasil) {
 		Accounts.credential(anvil, "Steve", PASSWORD, PROXY);
 		SessionIdentity owner = yggdrasil.register("Steve");

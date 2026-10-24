@@ -336,7 +336,7 @@ class ResolvePendingMigrationAccountPhaseTest {
 				MigrationInitiator.USER,
 				connectionUniqueId
 		), ttlMillis);
-		pendingState.put(JourneyStateItem.KEY, new JourneyStateItem(null, null, 0), ttlMillis);
+		pendingState.put(JourneyStateItem.KEY, new JourneyStateItem(null, 0), ttlMillis);
 		return pendingState;
 	}
 

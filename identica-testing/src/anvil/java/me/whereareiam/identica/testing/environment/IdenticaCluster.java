@@ -12,9 +12,9 @@ import java.util.function.Consumer;
 /**
  * Starts a fresh network of two Identica proxies around a test. Both proxies share one database, the
  * {@code auth} and {@code lobby} servers, and, when replicating, one Redis; with {@link #ownStepServers()} proxy B
- * has an {@code auth-b} server of its own instead of {@code auth}. Credential is the only provider and
- * journeys are interactive. The proxies, the database and Redis are new in every test; the two servers keep
- * running and serve one test after another. The database and Redis run in containers, so the test is skipped
+ * has an {@code auth-b} server of its own instead of {@code auth}. Credential is the only provider, so registration
+ * asks for nothing but the password. The proxies, the database and Redis are new in every test; the two servers
+ * keep running and serve one test after another. The database and Redis run in containers, so the test is skipped
  * without Docker. The {@code cluster} tag puts every such test in the {@code cluster} suite, which
  * {@code anvilClusterTest} runs.
  *

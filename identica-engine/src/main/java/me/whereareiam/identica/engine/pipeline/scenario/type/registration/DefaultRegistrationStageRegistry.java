@@ -9,7 +9,6 @@ import me.whereareiam.identica.model.pipeline.journey.stage.JourneyStage;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.JourneyStep;
 import me.whereareiam.identica.pipeline.journey.registry.type.RegistrationJourneyRegistry;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.pipeline.journey.StageType;
 
 import java.util.EnumSet;
@@ -23,7 +22,6 @@ public class DefaultRegistrationStageRegistry extends AbstractJourneyRegistry im
 				.step(enrollmentStep)
 				.order(enrollmentStep.order())
 				.scenarios(EnumSet.of(PipelineType.REGISTRATION))
-				.journeyModes(EnumSet.of(JourneyMode.INTERACTIVE))
 				.build());
 
 		// Part of every provider's registration, ahead of its own steps.
@@ -32,7 +30,6 @@ public class DefaultRegistrationStageRegistry extends AbstractJourneyRegistry im
 				.step(usernameAvailabilityStep)
 				.order(usernameAvailabilityStep.order())
 				.scenarios(EnumSet.of(PipelineType.REGISTRATION))
-				.journeyModes(EnumSet.allOf(JourneyMode.class))
 				.build());
 
 		PipelineType pipelineType = PipelineType.REGISTRATION;
@@ -41,7 +38,6 @@ public class DefaultRegistrationStageRegistry extends AbstractJourneyRegistry im
 				.type(StageType.PRE)
 				.order(100)
 				.pipelineTypes(EnumSet.of(pipelineType))
-				.journeyModes(EnumSet.allOf(JourneyMode.class))
 				.allowFallback(true)
 				.build());
 
@@ -50,7 +46,6 @@ public class DefaultRegistrationStageRegistry extends AbstractJourneyRegistry im
 				.type(StageType.PROVIDER)
 				.order(200)
 				.pipelineTypes(EnumSet.of(pipelineType))
-				.journeyModes(EnumSet.allOf(JourneyMode.class))
 				.requireCompletion(true)
 				.allowFallback(true)
 				.build());
@@ -60,7 +55,6 @@ public class DefaultRegistrationStageRegistry extends AbstractJourneyRegistry im
 				.type(StageType.END)
 				.order(300)
 				.pipelineTypes(EnumSet.of(pipelineType))
-				.journeyModes(EnumSet.allOf(JourneyMode.class))
 				.allowFallback(true)
 				.build());
 	}

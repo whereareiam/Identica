@@ -3,12 +3,12 @@ package me.whereareiam.identica.engine.step;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import me.whereareiam.identica.identity.username.UsernameAssigner;
-import me.whereareiam.identica.model.identity.username.UsernameAssignment;
 import me.whereareiam.identica.model.identity.username.UsernameArrival;
+import me.whereareiam.identica.model.identity.username.UsernameAssignment;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.pipeline.ScenarioContext;
-import me.whereareiam.identica.pipeline.journey.step.type.SeamlessStep;
+import me.whereareiam.identica.pipeline.journey.step.AbstractStep;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
@@ -18,7 +18,7 @@ import java.util.concurrent.CompletableFuture;
  * picked the provider on this connection only gets here once the provider is known.
  */
 @Singleton
-public class UsernameAvailabilityStep extends SeamlessStep {
+public class UsernameAvailabilityStep extends AbstractStep {
 	private static final int ORDER = -100;
 
 	private final UsernameAssigner assigner;

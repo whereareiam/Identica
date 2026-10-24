@@ -11,7 +11,7 @@ import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Administrator;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -37,7 +37,7 @@ class ConfigurationReloadTest {
 	private static final String CREDENTIAL_SETTINGS = "providers/Credential/settings.yml";
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(choice = JourneyChoice.PROMPTED, providers = {Provider.CREDENTIAL, Provider.EXAMPLE})
 	void showsAChangedCoreMessageAfterAReload(ScenarioContext anvil) {
 		ProxyConfiguration.editGenerated(anvil, MESSAGES, Messages.class, messages ->
 				messages.getEngine().getJourney().getStep().getEnrollment().setBody(List.of("<white>Choose how you sign in:</white>")));
@@ -49,10 +49,10 @@ class ConfigurationReloadTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(choice = JourneyChoice.PROMPTED, providers = {Provider.CREDENTIAL, Provider.EXAMPLE})
 	void appliesAChangedCoreSettingAfterAReload(ScenarioContext anvil) {
 		ProxyConfiguration.editGenerated(anvil, ENGINE, Engine.class, engine ->
-				engine.getScenarios().getRegistration().setAutoSelectSingleProvider(true));
+				engine.getScenarios().getRegistration().setChoice(JourneyChoice.AUTOMATIC));
 		Administrator.at(anvil, PROXY).reloads();
 
 		Journey.offline(anvil, "Alice").join()
@@ -61,7 +61,7 @@ class ConfigurationReloadTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void showsAChangedProviderMessageAfterAReload(ScenarioContext anvil) {
 		ProxyConfiguration.editGenerated(anvil, CREDENTIAL_MESSAGES, CredentialMessages.class, messages ->
 				messages.getScenario().getRegistration().setPrompt(List.of("<white>Pick a password and type it after /pass.</white>")));
@@ -73,7 +73,7 @@ class ConfigurationReloadTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void appliesAChangedProviderSettingAfterAReload(ScenarioContext anvil) {
 		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
 		ProxyConfiguration.editGenerated(anvil, CREDENTIAL_SETTINGS, CredentialSettings.class, settings ->
@@ -90,7 +90,7 @@ class ConfigurationReloadTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void appliesChangesWhilePlayersAreOnline(ScenarioContext anvil) {
 		Accounts.credential(anvil, "Alice", PASSWORD).rejoin()
 				.on(AUTH)
@@ -115,7 +115,7 @@ class ConfigurationReloadTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = TwoAttempts.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = TwoAttempts.class)
 	void keepsTheSettingsInUseWhenTheChangedFileCannotBeRead(ScenarioContext anvil) {
 		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
 		ProxyConfiguration.corruptGenerated(anvil, CREDENTIAL_SETTINGS, "scenario: [\n");

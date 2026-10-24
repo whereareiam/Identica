@@ -2,12 +2,12 @@ package me.whereareiam.identica.provider.credential.pipeline.step.base;
 
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.pipeline.ScenarioContext;
-import me.whereareiam.identica.pipeline.journey.step.type.InteractiveStep;
+import me.whereareiam.identica.pipeline.journey.step.AbstractStep;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
 
-public abstract class AbstractCredentialStep extends InteractiveStep {
+public abstract class AbstractCredentialStep extends AbstractStep {
 	protected AbstractCredentialStep(@NotNull String name) {
 		super(name);
 	}

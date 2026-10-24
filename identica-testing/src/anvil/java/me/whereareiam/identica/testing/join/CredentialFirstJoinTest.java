@@ -2,10 +2,9 @@ package me.whereareiam.identica.testing.join;
 
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
 import me.whereareiam.identica.testing.environment.Identica;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
-import me.whereareiam.identica.type.pipeline.journey.JourneyPolicy;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.journey.Journey;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -20,14 +19,14 @@ class CredentialFirstJoinTest {
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL)
-	void choosesCredentialAndRegistersInInteractiveMode(ScenarioContext anvil) {
+	@Identica(choice = JourneyChoice.PROMPTED, providers = {Provider.CREDENTIAL, Provider.EXAMPLE})
+	void choosesCredentialAndRegistersWhenAsked(ScenarioContext anvil) {
 		registersAfterChoosingTheProvider(anvil);
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL)
-	void selectsTheOnlyProviderItselfInSeamlessMode(ScenarioContext anvil) {
+	@Identica(providers = Provider.CREDENTIAL)
+	void selectsTheOnlyProviderItselfWhenPickedAutomatically(ScenarioContext anvil) {
 		registersWithoutChoosingTheProvider(anvil);
 	}
 
@@ -36,7 +35,7 @@ class CredentialFirstJoinTest {
 	 * her journey. The password waits for that run instead of finding nothing pending.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void registersWithAPasswordTypedBeforeThePrompt(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.command("pass " + PASSWORD)
@@ -52,7 +51,7 @@ class CredentialFirstJoinTest {
 	 * and its repetition.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void registersAfterRepeatingThePasswordWrongly(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
@@ -69,7 +68,7 @@ class CredentialFirstJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL)
+	@Identica(providers = Provider.CREDENTIAL)
 	void offersTheRegistrationCommandsInTheClientsCommandTree(ScenarioContext anvil) {
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
@@ -79,15 +78,8 @@ class CredentialFirstJoinTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.SEAMLESS, policy = JourneyPolicy.STRICT, providers = Provider.CREDENTIAL)
-	void refusesAPlayerWhoWouldHaveToTypeInStrictSeamlessMode(ScenarioContext anvil) {
-		Journey.offline(anvil, "Alice").attempt()
-				.kickedWith(m -> m.identica().getEngine().getJourney().getStep().getInteractionRequired());
-	}
-
-	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, autoSelectSingleProvider = true)
-	void skipsTheProviderChoiceWhenTheSingleProviderIsSelectedAutomatically(ScenarioContext anvil) {
+	@Identica(choice = JourneyChoice.PROMPTED, providers = Provider.CREDENTIAL)
+	void skipsTheChoiceWhenOnlyOneProviderCanRegister(ScenarioContext anvil) {
 		registersWithoutChoosingTheProvider(anvil);
 	}
 

@@ -30,7 +30,6 @@ public class AuthenticationPipelineRegistry extends AbstractPipelineGroupRegistr
 			PolicyGroup policyGroup,
 			SessionGroup sessionGroup,
 			LoadContextPhase loadContextPhase,
-			ResolveJourneyModePhase resolveJourneyModePhase,
 			BuildExecutionPlanPhase buildExecutionPlanPhase,
 			ApplyRulesPhase applyRulesPhase,
 			ExecutePlanPhase executePlanPhase,
@@ -48,8 +47,7 @@ public class AuthenticationPipelineRegistry extends AbstractPipelineGroupRegistr
 		register(finalizeGroup);
 
 		registerPhase(journeyGroup.id(), loadContextPhase, PhasePlacement.first());
-		registerPhase(journeyGroup.id(), resolveJourneyModePhase, PhasePlacement.after(loadContextPhase.id()));
-		registerPhase(journeyGroup.id(), buildExecutionPlanPhase, PhasePlacement.after(resolveJourneyModePhase.id()));
+		registerPhase(journeyGroup.id(), buildExecutionPlanPhase, PhasePlacement.after(loadContextPhase.id()));
 		registerPhase(journeyGroup.id(), applyRulesPhase, PhasePlacement.after(buildExecutionPlanPhase.id()));
 		registerPhase(journeyGroup.id(), executePlanPhase, PhasePlacement.last());
 

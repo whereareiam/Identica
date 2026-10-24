@@ -17,7 +17,7 @@ import me.whereareiam.identica.provider.premium.config.PremiumMessages;
 import me.whereareiam.identica.provider.premium.handshake.PremiumHandshakeAttributes;
 import me.whereareiam.identica.provider.premium.resolver.PremiumDetector;
 import me.whereareiam.identica.provider.selection.ProviderSelector;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
+import me.whereareiam.identica.type.pipeline.journey.JourneyChoice;
 import me.whereareiam.identica.type.provider.ProviderClaimOrigin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -43,7 +43,7 @@ public class PremiumHandshakePolicy implements ProviderScopedHandshakePolicy {
 	 * Decides whether the connection needs a premium login. A username whose account prefers premium always needs one.
 	 * Any other client that was already asked for one and did not give it falls back to the other providers. Otherwise
 	 * a selection that Premium won with its hostname or a stronger claim asks for one, a known account follows its preferred provider, and an unknown username
-	 * of a seamless journey is asked for one when it is detected as premium.
+	 * is asked for one when it is detected as premium, unless the player picks the provider after joining.
 	 */
 	@Override
 	public CompletionStage<HandshakeDecision> evaluate(HandshakeRequest request) {
@@ -82,7 +82,7 @@ public class PremiumHandshakePolicy implements ProviderScopedHandshakePolicy {
 			);
 			return allow();
 		}
-		if (request.getJourneyMode() == JourneyMode.INTERACTIVE) return allow();
+		if (request.getChoice() == JourneyChoice.PROMPTED) return allow();
 
 		return detector.detect(username, claimedUniqueId).thenApply(detection -> {
 			Logger.debug(

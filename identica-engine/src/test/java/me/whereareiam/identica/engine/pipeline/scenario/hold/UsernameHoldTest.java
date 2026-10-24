@@ -288,7 +288,7 @@ class UsernameHoldTest {
 	}
 
 	private static AuthenticationRequiredEvent required(AuthContext context) {
-		return new AuthenticationRequiredEvent(context, false, System.currentTimeMillis() + 60_000L, null);
+		return new AuthenticationRequiredEvent(context, false, System.currentTimeMillis() + 60_000L);
 	}
 
 	private static AuthenticationRequiredEvent required(ConnectionRequest request) {

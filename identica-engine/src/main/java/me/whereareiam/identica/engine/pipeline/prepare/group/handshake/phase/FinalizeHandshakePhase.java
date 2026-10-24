@@ -65,7 +65,7 @@ public class FinalizeHandshakePhase implements PipelinePhase<PrepareGroupState> 
 						request.getIdentity(),
 						context.getSelection(),
 						context.getPreferredLink(),
-						context.getJourneyMode()
+						context.getChoice()
 				),
 				decision
 		);

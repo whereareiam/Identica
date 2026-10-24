@@ -9,13 +9,13 @@ import me.whereareiam.identica.feature.recognition.store.RecognizedConnectionSto
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.pipeline.ScenarioContext;
-import me.whereareiam.identica.pipeline.journey.step.type.InteractiveStep;
+import me.whereareiam.identica.pipeline.journey.step.AbstractStep;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
 
 @Singleton
-public class PremiumRecognitionStep extends InteractiveStep {
+public class PremiumRecognitionStep extends AbstractStep {
 	private final @NotNull FeatureRegistry features;
 	private final @NotNull Injector injector;
 

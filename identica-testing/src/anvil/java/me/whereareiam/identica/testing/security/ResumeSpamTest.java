@@ -7,7 +7,6 @@ import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -29,20 +28,20 @@ class ResumeSpamTest {
 	private static final Duration LOCKOUT = Duration.ofSeconds(15);
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = FewResumes.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = FewResumes.class)
 	void disconnectsAPlayerWhoKeepsSendingInput(ScenarioContext anvil) {
 		flooded(anvil);
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = FewResumes.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = FewResumes.class)
 	void refusesAPlayerWhoReturnsDuringTheLockout(ScenarioContext anvil) {
 		flooded(anvil).attemptAgain()
 				.kickedWith(m -> m.sentinel().getResumeSpam().getDenied());
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = FewResumes.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = FewResumes.class)
 	void letsThePlayerLogInOnceTheLockoutHasPassed(ScenarioContext anvil) {
 		flooded(anvil).waits(LOCKOUT)
 				.rejoin()
@@ -57,7 +56,7 @@ class ResumeSpamTest {
 	 * With the lockout turned off, sending more input than the sentinel allows never disconnects the player.
 	 */
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = NoLockout.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = NoLockout.class)
 	void neverDisconnectsWithTheLockoutTurnedOff(ScenarioContext anvil) {
 		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
 

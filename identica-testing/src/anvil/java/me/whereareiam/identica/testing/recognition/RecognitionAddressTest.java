@@ -8,7 +8,6 @@ import me.whereareiam.identica.testing.environment.ProxyConfiguration;
 import me.whereareiam.identica.testing.fixture.Accounts;
 import me.whereareiam.identica.testing.journey.Client;
 import me.whereareiam.identica.testing.journey.Journey;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -31,7 +30,7 @@ class RecognitionAddressTest {
 	private static final String UNTRUSTED = "127.0.0.4";
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = TrustedLoopback.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = TrustedLoopback.class)
 	void recognisesAPlayerReturningFromTheSameAddress(ScenarioContext anvil) {
 		Accounts.credential(anvil, Client.offline("Alice").from(HOME), PASSWORD).rejoin()
 				.on(LOBBY)
@@ -39,7 +38,7 @@ class RecognitionAddressTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = TrustedLoopback.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = TrustedLoopback.class)
 	void asksForThePasswordFromAnotherAddress(ScenarioContext anvil) {
 		Accounts.credential(anvil, Client.offline("Alice").from(HOME), PASSWORD);
 
@@ -52,7 +51,7 @@ class RecognitionAddressTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = TrustedLoopback.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = TrustedLoopback.class)
 	void asksForThePasswordThroughAnotherHostname(ScenarioContext anvil) {
 		Accounts.credential(anvil, Client.offline("Alice").from(HOME), PASSWORD);
 
@@ -62,7 +61,7 @@ class RecognitionAddressTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = OneUntrustedAddress.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = OneUntrustedAddress.class)
 	void neverRecognisesAPlayerFromAnUntrustedAddress(ScenarioContext anvil) {
 		Accounts.credential(anvil, Client.offline("Alice").from(UNTRUSTED), PASSWORD).rejoin()
 				.on(AUTH)
@@ -70,7 +69,7 @@ class RecognitionAddressTest {
 	}
 
 	@Test
-	@Identica(mode = JourneyMode.INTERACTIVE, providers = Provider.CREDENTIAL, configure = OneUntrustedAddress.class)
+	@Identica(providers = Provider.CREDENTIAL, configure = OneUntrustedAddress.class)
 	void recognisesAPlayerFromAnAddressOffTheUntrustedList(ScenarioContext anvil) {
 		Accounts.credential(anvil, Client.offline("Alice").from(HOME), PASSWORD).rejoin()
 				.on(LOBBY)

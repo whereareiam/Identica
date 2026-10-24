@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.ToString;
 import me.whereareiam.identica.pipeline.journey.step.Step;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -20,26 +19,33 @@ public class JourneyStep {
 	private final @NotNull Step step;
 	private final int order;
 	private final @NotNull Set<PipelineType> scenarios;
-	private final @NotNull Set<JourneyMode> journeyModes;
 	private final @Nullable String providerId;
+	/**
+	 * Name of the provider method the step belongs to, or {@code null} for a step every method of its provider runs.
+	 */
+	private final @Nullable String method;
 
+	/**
+	 * Tells whether the step runs in a scenario for a provider method.
+	 *
+	 * @param pipelineType scenario
+	 * @param targetProviderId provider that runs, or {@code null} for the steps of no provider
+	 * @param targetMethod name of the method that runs, or {@code null} when the provider runs without one
+	 * @return {@code true} when the step runs
+	 */
 	public boolean supports(
 			@NotNull PipelineType pipelineType,
-			@NotNull JourneyMode journeyMode,
-			@Nullable String targetProviderId
+			@Nullable String targetProviderId,
+			@Nullable String targetMethod
 	) {
 		Set<PipelineType> supportedScenarios = scenarios.isEmpty()
 				? EnumSet.allOf(PipelineType.class)
 				: scenarios;
 		if (!supportedScenarios.contains(pipelineType)) return false;
-
-		Set<JourneyMode> supportedJourneyModes = journeyModes.isEmpty()
-				? EnumSet.allOf(JourneyMode.class)
-				: journeyModes;
-		if (!supportedJourneyModes.contains(journeyMode)) return false;
 		if (providerId == null || providerId.isBlank()) return true;
+		if (!providerId.equalsIgnoreCase(targetProviderId)) return false;
 
-		return providerId.equalsIgnoreCase(targetProviderId);
+		return method == null || method.isBlank() || method.equalsIgnoreCase(targetMethod);
 	}
 
 	public int resolvedOrder() {
@@ -47,11 +53,11 @@ public class JourneyStep {
 		return step.order();
 	}
 
-	public boolean isJourneyModeSpecific(@NotNull JourneyMode journeyMode) {
-        return journeyModes.size() == 1 && journeyModes.contains(journeyMode);
-	}
-
 	public boolean isProviderSpecific() {
 		return providerId != null && !providerId.isBlank();
+	}
+
+	public boolean isMethodSpecific() {
+		return method != null && !method.isBlank();
 	}
 }

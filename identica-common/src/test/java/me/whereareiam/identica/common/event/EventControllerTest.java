@@ -1,9 +1,9 @@
 package me.whereareiam.identica.common.event;
 
 import me.whereareiam.identica.event.EventListener;
-import me.whereareiam.identica.event.lifecycle.IdenticaShutdownEvent;
 import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.event.base.SynchronousEvent;
+import me.whereareiam.identica.event.lifecycle.IdenticaShutdownEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentStartedEvent;
 import me.whereareiam.identica.event.scenario.ScenarioRequiredEvent;
@@ -25,7 +25,6 @@ import me.whereareiam.identica.model.routing.attempt.RoutingAttemptState;
 import me.whereareiam.identica.type.ScenarioResolution;
 import me.whereareiam.identica.type.event.EventOrder;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import me.whereareiam.identica.type.routing.reason.RoutingReason;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -89,24 +88,21 @@ class EventControllerTest {
 				accountId,
 				authContext(connectionId, accountId),
 				false,
-				System.currentTimeMillis() + 1_000L,
-				JourneyMode.SEAMLESS
+				System.currentTimeMillis() + 1_000L
 		));
 		eventController.call(new RegistrationRequiredEvent(
 				connectionId,
 				accountId,
 				registrationContext(connectionId, accountId),
 				false,
-				System.currentTimeMillis() + 1_000L,
-				JourneyMode.INTERACTIVE
+				System.currentTimeMillis() + 1_000L
 		));
 		eventController.call(new MigrationRequiredEvent(
 				connectionId,
 				accountId,
 				migrationContext(connectionId, accountId),
 				false,
-				System.currentTimeMillis() + 1_000L,
-				JourneyMode.SEAMLESS
+				System.currentTimeMillis() + 1_000L
 		));
 
 		assertEquals(3, listener.requiredEvents.get());

@@ -2,7 +2,6 @@ package me.whereareiam.identica.event.scenario;
 
 import me.whereareiam.identica.event.base.Event;
 import me.whereareiam.identica.pipeline.ScenarioContext;
-import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -47,11 +46,4 @@ public interface ScenarioRequiredEvent extends Event {
 	 * @return expiration timestamp in milliseconds since epoch
 	 */
 	long getExpiresAt();
-
-	/**
-	 * Returns the resolved journey mode for the held scenario when available.
-	 *
-	 * @return journey mode or {@code null}
-	 */
-	@Nullable JourneyMode getJourneyMode();
 }

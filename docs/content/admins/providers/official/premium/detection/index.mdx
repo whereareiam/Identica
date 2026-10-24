@@ -3,7 +3,7 @@ title: Premium detection
 description: How Premium decides who owns a premium account, and how to spare offline players a failed login.
 ---
 
-A player Premium treats as the owner of their username's premium account is asked for a premium login: in a `SEAMLESS` journey right when they connect, in an `INTERACTIVE` journey when they choose Premium, which is then only offered to them. Every other player continues with the next provider, such as Credential.
+A player Premium treats as the owner of their username's premium account is asked for a premium login: right when they connect when Identica picks the provider, or when they choose Premium when the registration's `choice` is `PROMPTED`, which then only offers Premium to them. Every other player continues with the next provider, such as Credential.
 
 Usernames already linked to an account follow that account: a username linked to Premium is always asked for a premium login, a username linked to another provider never is. Detection decides for the rest.
 
@@ -31,7 +31,7 @@ detection:
 
 With only `LOOKUP`, an offline player who uses a premium username is asked for a premium login on their first join. Their client cannot complete it and is disconnected with an invalid-session message; their next join from the same address within [`attemptTtl`](../../../../../configuration/providers/index.mdx#attemptttl) continues with the next provider, unless the username has been linked to Premium since.
 
-With `CLIENT_PROFILE` first, that player continues with the next provider on their first join, and an `INTERACTIVE` journey does not offer them Premium.
+With `CLIENT_PROFILE` first, that player continues with the next provider on their first join, and a registration that asks the player does not offer them Premium.
 
 `CLIENT_PROFILE` also protects usernames linked to Premium: a client that sends another profile id than the linked one is refused with `verification.ownedUsername` from Premium's `messages.yml`, unless the username now belongs to the profile that client sent.
 

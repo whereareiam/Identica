@@ -81,13 +81,57 @@ public CompletableFuture<StepResult> execute(ScenarioContext context, PipelineSt
 }
 ```
 
-A `PipelineExtension` registers the step with `builder.registerStep(providerId, StageType.PROVIDER, mode, step)` for both journey modes.
+A step runs as early as it can, while the player still logs in, so the first run of this step finds no attempt and asks. The journey then sends the player to the step's server and runs the step again there, so the prompt reaches the player, and again whenever the player answers. A step never declares whether it talks to the player: what it returns says so on each run. A step that only decides from the login and stored data, such as recognising a returning player, finishes before the proxy picks the player's first server.
 
 Both messages carry the prompt `example:passphrase`, which names the field the player fills and the command that answers it. Identica shows them in chat; their IDs, `example:passphrase` and `example:passphrase-invalid`, let an addon show them another way, such as a dialog.
 
 A waiting journey continues at the step that waits. When the player's next answer belongs to an earlier step of the same stage, such as a new password after its repetition did not match, return `StepResult.waitingAt(step, message)` with that step's name: the journey continues there once the player answers. A name the stage does not run before the waiting step keeps the journey where it waits.
 
 The command hands the attempt to the pending journey with `ConnectionCoordinator.advance(...)` and shows the answer when the journey keeps waiting. It does not look for the pending journey itself: the pipeline does that in the connection's turn, after every earlier run of the connection has finished, so a passphrase typed before its prompt waits for the run that shows the prompt. When nothing is pending, the decision is `NO_PENDING` and the command shows its own message. An input that only fits some pending journeys overrides `PipelineInput.accepts(...)`; a declined input ends the same way. Mark the command with `@AvailableWhilePending`, so addons that hold back commands until a player has authenticated let it through.
+
+## Methods
+
+A method is one way your provider offers to get a scenario done. Identica does not know what a method does: it offers the methods of every eligible provider as options, picks one or lets the player pick (the scenario's [`choice`](../../../configuration/engine/index.mdx#choice)), and runs its steps. The example provider offers one method, the passphrase, for registration and authentication:
+
+```java
+@Override
+public void apply(PipelineExtensionBuilder builder) {
+    for (PipelineType scenario : List.of(PipelineType.AUTHENTICATION, PipelineType.REGISTRATION))
+        builder.registerMethod(ProviderMethod.builder()
+                .providerId(ExampleProvider.ID)
+                .name("passphrase")
+                .scenario(scenario)
+                .step(passphraseStep)
+                .build());
+}
+```
+
+A provider with several ways registers one method per way, in the order it prefers them, and gives each a `label` for the player's choice. A method that only fits some players sets an `availability`, which Identica asks before offering or trying it:
+
+```java
+builder.registerMethod(ProviderMethod.builder()
+        .providerId("website")
+        .name("quick")
+        .scenario(PipelineType.MIGRATION)
+        .availability(context -> accounts.exists(context.getUsername()))
+        .step(lookupStep)
+        .build());
+builder.registerMethod(ProviderMethod.builder()
+        .providerId("website")
+        .name("guided")
+        .scenario(PipelineType.MIGRATION)
+        .label(() -> messages.get().getGuidedLabel())
+        .step(lookupStep)
+        .step(setupStep)
+        .build());
+```
+
+- Steps a provider registers with `builder.registerStep(...)` and no method, such as a validation step, run in each of its methods, ordered with the method's own steps by their `order()`.
+- A provider that registers no method for a scenario runs all its steps there as one option.
+- A step that fails when its method cannot get the scenario done lets the journey try the next option: the next method of the same provider, then the next provider. A denial ends the journey.
+- The method that runs is `ScenarioContext.getProvider().getMethod()`, and `ProviderSelectedEvent` names it.
+- Admins may leave out or reorder methods per scenario with [`methods`](../../../configuration/providers/index.mdx#methods) in your provider's entry; document your method names for them.
+- The player picks a method as `<provider>:<method>`, such as `/identica enroll website:guided`. A provider with one option is picked by its ID alone.
 
 ## Claiming connections
 

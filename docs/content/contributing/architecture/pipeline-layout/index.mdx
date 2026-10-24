@@ -40,6 +40,6 @@ In a feature, under `<feature package>.pipeline`:
 
 - There is no top-level `pipeline/scenario/base/` package. Code that every scenario shares belongs in `scenario/shared/`.
 - A `base` package under `pipeline/` contains only abstract classes.
-- In providers and features, a class that implements `PipelineExtension` or `PipelinePhase`, or extends `InteractiveStep` or `SeamlessStep`, lives under `pipeline/`.
+- In providers and features, a class that implements `PipelineExtension` or `PipelinePhase`, or implements `Step`, lives under `pipeline/`.
 
 A violation fails the build with the offending file paths.

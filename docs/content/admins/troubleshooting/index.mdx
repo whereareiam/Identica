@@ -34,7 +34,7 @@ Start with the proxy console: Identica names what went wrong there. For more det
 
 <Accordions type="multiple">
   <Accordion title="New players are disconnected with an invalid-session message on their first join">
-    The player uses a username that belongs to a premium account but joins from an offline client, and the registration scenario is `SEAMLESS`, so Premium asks for a premium login the client cannot complete. Their next join continues with Credential. Set the registration scenario to `INTERACTIVE`, or add Premium's `CLIENT_PROFILE` detection. See [Journey modes](../guides/logins/journey-modes/index.mdx).
+    The player uses a username that belongs to a premium account but joins from an offline client, and the registration's `choice` is `AUTOMATIC`, so Premium asks for a premium login the client cannot complete. Their next join continues with Credential. Set the registration's `choice` to `PROMPTED`, or add Premium's `CLIENT_PROFILE` detection. See [Provider choice](../guides/logins/provider-choice/index.mdx).
   </Accordion>
   <Accordion title='Players are disconnected with "No target server available for routing"'>
     A routing target names a server that does not exist in the proxy's configuration. Check `routing.yml`, including the scenario entries; the generated targets `auth` and `survival` are examples. See [Routing players](../guides/network/routing/index.mdx).

@@ -130,6 +130,25 @@ A `host` entry matches the hostname on any port; `host:port` only on that port. 
 </Setting>
 
 <Setting
+  name="methods"
+  takes="an object with an `authentication`, `registration` or `migration` list of method names"
+  default="absent"
+  affects="which of the provider's methods each scenario offers, and in which order"
+  flag="advanced"
+>
+
+Only for a provider that offers several ways to get a scenario done, such as a quick check and a guided setup; its own documentation names them. A scenario left out offers all of them in the provider's order. A listed scenario offers only the methods it names, in that order:
+
+```yaml
+methods:
+  migration: ["guided", "quick"]
+```
+
+With [`choice: "AUTOMATIC"`](../engine/index.mdx#choice) the first method that can finish the login is used; with `"PROMPTED"` the player sees each listed method as an option. See [Provider choice](../../admins/guides/logins/provider-choice/index.mdx#a-providers-methods).
+
+</Setting>
+
+<Setting
   name="session.concurrencyPolicy"
   takes='`"REPLACE_EXISTING"` or `"REJECT_NEW"`'
   default="absent"

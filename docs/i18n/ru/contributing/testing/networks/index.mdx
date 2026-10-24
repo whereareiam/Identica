@@ -1,7 +1,7 @@
 ---
 title: Сети
 description: Прохождения через несколько прокси и на BungeeCord.
-sourceHash: f324c8915565078eb013fd2537143b2c7736b290
+sourceHash: 5353bfc2ea869c47ad996191cf904eefa315a1a2
 ---
 
 ## Несколько прокси [#several-proxies]
@@ -34,8 +34,8 @@ void disconnectsAPlayerWhoseAccountIsDeletedOnTheOtherProxy(ScenarioContext anvi
 
 ```java
 @Test
-@Identica(platform = Platform.BUNGEECORD, mode = JourneyMode.SEAMLESS, providers = Provider.CREDENTIAL)
-void registersWithTheOnlyProviderInSeamlessMode(ScenarioContext anvil) {
+@Identica(platform = Platform.BUNGEECORD, providers = Provider.CREDENTIAL)
+void registersWithCredential(ScenarioContext anvil) {
 	Journey.offline(anvil, "Alice").join()
 			.on(AUTH)
 			.sees(m -> m.credential().getScenario().getRegistration().getPrompt())

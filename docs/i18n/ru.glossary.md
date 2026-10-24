@@ -11,7 +11,7 @@ How the Russian documentation under `docs/i18n/ru/` names things. Follow it so p
 
 ## Never translate
 
-- Code, inline code, code blocks, config keys and values (`journeyMode`, `INTERACTIVE`, `"10m"`), commands (`/identica admin reload`), file and folder names, permissions, placeholders (`{username}`), class and method names.
+- Code, inline code, code blocks, config keys and values (`choice`, `AUTOMATIC`, `"10m"`), commands (`/identica admin reload`), file and folder names, permissions, placeholders (`{username}`), class and method names.
 - Link targets and component props that are identifiers (`<Tab value="YAML">`, `<Badge type="warning">`, `<Callout type="error">`).
 - Provider names when they name the provider: Credential, Premium. Write «провайдер Credential», «провайдер Premium».
 
@@ -88,10 +88,9 @@ Setting flags are badges; translate their text, keep `type`:
 | first boot | первый запуск | |
 | pipeline | конвейер | Keep `pipelineTtl` and other keys as code. |
 | journey | прохождение | The player's path through a scenario. |
-| journey mode | режим прохождения | |
-| journey policy | политика прохождения | |
-| seamless | бесшовный | Value stays `SEAMLESS`. |
-| interactive | интерактивный | Value stays `INTERACTIVE`. |
+| provider choice | выбор провайдера | Who picks the option: Identica (`AUTOMATIC`) or the player (`PROMPTED`). Values stay as they are. |
+| option | вариант | A provider, or one of its methods, that can get a scenario done. |
+| method (of a provider) | способ | A provider's own way to get a scenario done, such as a quick check or a guided setup. |
 | scenario | сценарий | authentication, registration and migration scenarios. |
 | step | шаг | |
 | prompt | запрос | What the player is asked to enter. |

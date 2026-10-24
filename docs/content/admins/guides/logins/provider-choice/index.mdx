@@ -1,0 +1,63 @@
+---
+title: Provider choice
+description: Let Identica pick how a player logs in, or let the player choose.
+---
+
+A scenario can often get done in more than one way. Each enabled provider is one option, and a provider can offer several methods of its own, such as a quick check and a guided setup. `choice` in each scenario of `engine.yml` decides who picks among the options: Identica or the player.
+
+| Scenario | Default |
+| --- | --- |
+| authentication | `AUTOMATIC` |
+| registration | `AUTOMATIC` |
+| migration | `AUTOMATIC` |
+
+Whatever the choice, a player is never disconnected for having to type something. When the picked provider needs a password or an authenticator code, the player is asked for it.
+
+## Choices
+
+<Tabs items={["AUTOMATIC", "PROMPTED"]}>
+  <Tab value="AUTOMATIC">
+    Identica picks. The provider that [selection](../provider-selection/index.mdx) ranks first goes first: the one whose hostname the player joined through, the one linked to their account, then the one with the highest priority. A provider's methods follow their order. When an option cannot finish the login, the next one is tried. The player is only asked what the picked provider needs.
+
+    This suits networks whose providers can tell players apart on their own. Its catch is the first join of an offline player with a premium username: the higher-priority Premium provider asks for a premium login right at the handshake, before the player sees anything. The client cannot complete it and is disconnected with an invalid-session message, which can look as if the server only accepts premium accounts. The next join from the same address within [`attemptTtl`](../../../../configuration/providers/index.mdx#attemptttl) continues with the next provider.
+
+    Premium's [`CLIENT_PROFILE` detection](../../../providers/official/premium/detection/index.mdx) avoids this for clients on 1.19.1 or newer.
+  </Tab>
+  <Tab value="PROMPTED">
+    The player sees the options and picks one, by clicking it or with `/identica enroll <option>`. A new player who joins from an offline client with a premium username chooses the provider instead of being asked for a premium login first: the premium check at the handshake is skipped for a username without an account when the registration scenario is `PROMPTED`.
+
+    The player is not asked when there is nothing to choose:
+
+    - only one option is left, such as with one provider that can register them,
+    - the player joined through a provider's [hostname](../provider-selection/index.mdx#hostnames), or their account is linked to a provider, and that provider has one option. With several, the player chooses only among its methods.
+  </Tab>
+</Tabs>
+
+```yaml
+scenarios:
+  registration:
+    choice: "PROMPTED"
+```
+
+In a migration the administrator who starts it picks the provider, so `PROMPTED` only lets the player choose among that provider's methods.
+
+## A provider's methods
+
+Some providers offer several methods for a scenario; their own documentation names them. Each method is an option of its own: with `PROMPTED` the player sees it next to the provider's name and picks it as `<provider>:<method>`, such as `/identica enroll website:guided`.
+
+`methods` in the provider's entry of `providers/providers.yml` leaves out methods or changes their order, per scenario:
+
+```yaml
+providers:
+  - id: "website"
+    methods:
+      migration: ["guided", "quick"]
+```
+
+See [`methods`](../../../../configuration/providers/index.mdx#methods).
+
+## What the player sees
+
+The options are listed with `engine.journey.step.enrollment` from `messages.yml`. Its `entryFormat` names each option with `{optionName}` and the answer with `{optionId}`; `descriptions` may describe an option by its ID, such as `website:guided`, or every option of a provider by the provider's ID.
+
+See [`engine.yml`](../../../../configuration/engine/index.mdx) for every scenario setting.

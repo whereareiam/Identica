@@ -115,7 +115,7 @@ public class ActionBarRenderer implements PartRenderer<ActionBarPart> {
 ```
 
 - `PartRendering.unsupported()` tells Identica the player's client cannot show the part, such as a dialog on a client that is too old. Identica then tries the type's `fallbacks` in order, each with its `defaultPart`, the part the type builds from the message alone. A dialog type that falls back to chat names `ChatPart.TYPE`.
-- `PartRendering.shown(close)` hands Identica what takes the part down, such as removing a boss bar. Identica calls it when the player is told the next message and when they leave, so a part never outlives the message it belongs to.
+- `PartRendering.shown(close)` hands Identica what takes the part down, such as removing a boss bar. Identica calls it when the player is told the next message, once that message's parts are shown, and when they leave, so a part never outlives the message it belongs to and a dialog that asks again replaces itself without closing first. Take down only what that rendering showed.
 
 A renderer that fails is logged; the message's other parts are shown anyway.
 

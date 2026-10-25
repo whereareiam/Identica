@@ -190,6 +190,26 @@ class DefaultMessageServiceTest {
 		assertEquals(2, closed.get());
 	}
 
+	@DisplayName("Takes the previous message's parts down only after the next message's parts are shown")
+	@Test
+	void closesAfterShowingTheNext() {
+		List<String> events = new ArrayList<>();
+		service.registerPartType(PartType.<TestPart>builder()
+				.id("dialog")
+				.partClass(TestPart.class)
+				.renderer((part, message, recipient) -> {
+					events.add("show " + message.getText());
+					return PartRendering.shown(() -> events.add("close " + message.getText()));
+				})
+				.build());
+		service.present(GREETING.getId(), Presentation.builder().part(new TestPart("dialog", "")).build());
+
+		service.send(identity, GREETING.create("first"));
+		service.send(identity, GREETING.create("second"));
+
+		assertEquals(List.of("show first", "show second", "close first"), events);
+	}
+
 	@DisplayName("Keeps showing the message when one of its parts fails")
 	@Test
 	void survivesAFailingRenderer() {

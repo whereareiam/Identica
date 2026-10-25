@@ -34,7 +34,9 @@ public final class PartRendering {
 
 	/**
 	 * The part was shown and stays until Identica closes it: when its message is answered, replaced by the next
-	 * message to the player, or its journey ends.
+	 * message to the player, or its journey ends. Identica closes it only after the next message's parts are shown,
+	 * so a part that shows again, such as a dialog asking again, replaces itself; the close takes down only what this
+	 * rendering showed.
 	 *
 	 * @param close takes the part down
 	 * @return the rendering

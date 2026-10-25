@@ -146,7 +146,7 @@ public class DefaultMessageService implements MessageService, EventListener {
 		if (message.isEmpty()) return;
 
 		UUID connectionUniqueId = recipient.getConnectionUniqueId();
-		if (connectionUniqueId != null) close(connectionUniqueId);
+		List<PartRendering.Close> previous = connectionUniqueId != null ? shown.remove(connectionUniqueId) : null;
 
 		Map<String, MessagePart> parts = parts(message);
 		List<PartRendering.Close> closes = new ArrayList<>();
@@ -155,6 +155,8 @@ public class DefaultMessageService implements MessageService, EventListener {
 
 		if (connectionUniqueId != null && !closes.isEmpty())
 			shown.put(connectionUniqueId, closes);
+		// The previous message's parts go only now, so a part shown again, such as a dialog, replaces itself.
+		closeAll(connectionUniqueId, previous);
 	}
 
 	@Override
@@ -171,7 +173,10 @@ public class DefaultMessageService implements MessageService, EventListener {
 
 	@Override
 	public void close(@NotNull UUID connectionUniqueId) {
-		List<PartRendering.Close> closes = shown.remove(connectionUniqueId);
+		closeAll(connectionUniqueId, shown.remove(connectionUniqueId));
+	}
+
+	private void closeAll(@Nullable UUID connectionUniqueId, @Nullable List<PartRendering.Close> closes) {
 		if (closes == null) return;
 
 		for (PartRendering.Close close : closes) {

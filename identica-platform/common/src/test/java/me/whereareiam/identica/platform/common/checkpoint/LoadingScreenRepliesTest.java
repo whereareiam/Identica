@@ -28,7 +28,7 @@ class LoadingScreenRepliesTest {
 	private final DeliveryService deliveryService = mock(DeliveryService.class);
 	private final LoadingScreenReplies replies = new LoadingScreenReplies(deliveryService);
 
-	@DisplayName("Defers a reply to a held player until their client joined a server")
+	@DisplayName("Defers the chat to a held player until their client joined a server")
 	@Test
 	void defersRepliesWhileHeld() {
 		replies.held(ALICE);
@@ -41,6 +41,7 @@ class LoadingScreenRepliesTest {
 		assertEquals(DeliverySemantics.ONCE, queued.getValue().getSemantics());
 		assertEquals(ALICE, queued.getValue().getTarget().getConnectionUniqueId());
 		assertEquals("<red>Wrong password", queued.getValue().getPayload().getMessage().getText());
+		assertTrue(queued.getValue().getPayload().isChatOnly());
 	}
 
 	@DisplayName("Sends replies directly to a player who is not held, or no longer")

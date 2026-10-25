@@ -95,8 +95,8 @@ public interface MessageService {
 	@NotNull Registration presentPrompt(@NotNull String promptId, @NotNull Presentation presentation);
 
 	/**
-	 * Shows a message to a player in all of its parts. While the player cannot see messages yet, such as on the
-	 * loading screen, it waits until they can.
+	 * Shows a message to a player in all of its parts. While the player cannot see chat yet, such as on the
+	 * loading screen, its chat waits until they can; its other parts, such as a dialog, are shown.
 	 *
 	 * @param recipient the player
 	 * @param message the message; an empty message shows nothing

@@ -61,7 +61,7 @@ A refused login, a disconnect reason or a migration's kick message is a `PlayerM
 CredentialMessageDefinitions.BRUTEFORCE_EXCEEDED.create(messages, Map.of("seconds", "30"));
 ```
 
-A command answers through `messageService.send(identity, message)`. A command that extends `IdentityCommand` does so with `sendMessage(sender, message)`, which also answers the console with the chat text. While a platform holds the player on the loading screen, where the client shows no chat, Identica keeps the message back until the player has joined a server.
+A command answers through `messageService.send(identity, message)`. A command that extends `IdentityCommand` does so with `sendMessage(sender, message)`, which also answers the console with the chat text. While a platform holds the player on the loading screen, where the client shows no chat, Identica keeps the message's chat back until the player has joined a server; its other parts, such as a dialog, are shown right away.
 
 Two messages can be told as one with `append`, such as a warning below a wrong password. The result keeps the first message's ID and prompt. A step that tells a message of its own while asking for something else, such as a broken password rule while it asks for a new password, gives it its prompt with `withPrompt(prompt)`.
 

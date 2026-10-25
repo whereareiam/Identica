@@ -4,7 +4,7 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.identity.actor.Identity;
-import me.whereareiam.identica.message.MessageGate;
+import me.whereareiam.identica.message.ChatGate;
 import me.whereareiam.identica.model.delivery.DeliveryPayload;
 import me.whereareiam.identica.model.delivery.DeliveryRequest;
 import me.whereareiam.identica.model.delivery.DeliveryTarget;
@@ -19,12 +19,13 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * The messages to players a platform holds on the loading screen, where the client shows no chat. While a player is
- * held, a message waits as a delivery, which Identica shows once the player's client joined a server's world.
+ * The chat a platform holds back on the loading screen, where the client shows no chat. While a player is held, a
+ * message's chat waits as a delivery, which Identica shows once the player's client joined a server's world; its
+ * other parts, such as a dialog, are shown right away.
  */
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
-public class LoadingScreenReplies implements MessageGate {
+public class LoadingScreenReplies implements ChatGate {
 	private final DeliveryService deliveryService;
 	private final Set<UUID> held = ConcurrentHashMap.newKeySet();
 
@@ -47,11 +48,11 @@ public class LoadingScreenReplies implements MessageGate {
 	}
 
 	/**
-	 * Holds a message to a held player back until their client joined a server's world.
+	 * Holds a message's chat to a held player back until their client joined a server's world.
 	 *
 	 * @param recipient the player
-	 * @param message the message
-	 * @return whether the player is held, so that the message waits; a player who is not held is shown it directly
+	 * @param message the message as chat
+	 * @return whether the player is held, so that the chat waits; a player who is not held is shown it directly
 	 */
 	@Override
 	public boolean hold(@NotNull Identity recipient, @NotNull PlayerMessage message) {
@@ -67,6 +68,7 @@ public class LoadingScreenReplies implements MessageGate {
 						.build())
 				.payload(DeliveryPayload.builder()
 						.message(message)
+						.chatOnly(true)
 						.build())
 				.semantics(DeliverySemantics.ONCE)
 				.createdAt(now)

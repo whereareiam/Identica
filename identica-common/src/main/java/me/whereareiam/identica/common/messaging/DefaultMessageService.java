@@ -12,7 +12,7 @@ import me.whereareiam.identica.event.identity.IdentityDetachedEvent;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.message.IdenticaMessages;
-import me.whereareiam.identica.message.MessageGate;
+import me.whereareiam.identica.message.ChatGate;
 import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.message.PartRenderer;
 import me.whereareiam.identica.model.message.*;
@@ -34,8 +34,8 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @Singleton
 public class DefaultMessageService implements MessageService, EventListener {
-	private final Provider<MessageGate> gate;
 	private final Provider<CommandService> commands;
+	private final ChatPartRenderer chat;
 
 	private final Map<String, MessageDefinition<?>> definitions = Collections.synchronizedMap(new LinkedHashMap<>());
 	private final Map<String, PartType<?>> partTypes = new ConcurrentHashMap<>();
@@ -47,16 +47,16 @@ public class DefaultMessageService implements MessageService, EventListener {
 
 	@Inject
 	public DefaultMessageService(
-			@NotNull Provider<MessageGate> gate,
+			@NotNull Provider<ChatGate> gate,
 			@NotNull Provider<CommandService> commands,
 			@NotNull EventManager eventManager
 	) {
-		this.gate = gate;
 		this.commands = commands;
+		this.chat = new ChatPartRenderer(gate);
 		registerPartType(PartType.<ChatPart>builder()
 				.id(ChatPart.TYPE)
 				.partClass(ChatPart.class)
-				.renderer(new ChatPartRenderer())
+				.renderer(chat)
 				.defaultPart(message -> ChatPart.ofMessage())
 				.build());
 		register(IdenticaMessages.all());
@@ -130,19 +130,6 @@ public class DefaultMessageService implements MessageService, EventListener {
 	@Override
 	public void send(@NotNull Identity recipient, @NotNull PlayerMessage message) {
 		if (message.isEmpty()) return;
-		if (gate.get().hold(recipient, message)) return;
-
-		show(recipient, message);
-	}
-
-	/**
-	 * Shows a message now, without asking the gate, such as one a player held on the loading screen can see at last.
-	 *
-	 * @param recipient the player
-	 * @param message the message
-	 */
-	public void show(@NotNull Identity recipient, @NotNull PlayerMessage message) {
-		if (message.isEmpty()) return;
 
 		UUID connectionUniqueId = recipient.getConnectionUniqueId();
 		List<PartRendering.Close> previous = connectionUniqueId != null ? shown.remove(connectionUniqueId) : null;
@@ -156,6 +143,17 @@ public class DefaultMessageService implements MessageService, EventListener {
 			shown.put(connectionUniqueId, closes);
 		// The previous message's parts go only now, so a part shown again, such as a dialog, replaces itself.
 		closeAll(connectionUniqueId, previous);
+	}
+
+	/**
+	 * Shows a message's chat now, without asking the gate, such as chat a player held on the loading screen can see at
+	 * last; the message's other parts were shown when it was sent.
+	 *
+	 * @param recipient the player
+	 * @param message the message as chat
+	 */
+	public void showChat(@NotNull Identity recipient, @NotNull PlayerMessage message) {
+		chat.show(message, recipient);
 	}
 
 	@Override

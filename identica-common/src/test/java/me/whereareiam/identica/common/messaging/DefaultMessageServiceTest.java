@@ -5,7 +5,7 @@ import me.whereareiam.identica.command.CommandService;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.identity.IdentityDetachedEvent;
 import me.whereareiam.identica.identity.actor.Identity;
-import me.whereareiam.identica.message.MessageGate;
+import me.whereareiam.identica.message.ChatGate;
 import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.message.*;
 import me.whereareiam.keystone.model.SerializerContent;
@@ -39,7 +39,7 @@ class DefaultMessageServiceTest {
 	private final Identity identity = mock(Identity.class);
 	private final CommandService commands = mock(CommandService.class);
 	private final List<String> shown = new ArrayList<>();
-	private MessageGate gate = (recipient, message) -> false;
+	private ChatGate gate = (recipient, message) -> false;
 	private DefaultMessageService service;
 
 	@BeforeAll
@@ -78,14 +78,34 @@ class DefaultMessageServiceTest {
 		verify(identity, never()).sendMessage(any(Component.class));
 	}
 
-	@DisplayName("Leaves a message the gate holds back to the gate")
+	@DisplayName("Leaves only the chat the gate holds back to the gate and shows the message's other parts")
 	@Test
-	void leavesAHeldMessageToTheGate() {
-		gate = (recipient, message) -> true;
+	void leavesHeldChatToTheGate() {
+		List<PlayerMessage> held = new ArrayList<>();
+		gate = (recipient, message) -> held.add(message);
+		service.registerPartType(recordingType("dialog"));
+		service.present(GREETING.getId(), Presentation.builder()
+				.part(new TestPart("dialog", "Log in"))
+				.part(new ChatPart("Chat text"))
+				.build());
 
 		service.send(identity, GREETING.create("Welcome"));
 
 		verify(identity, never()).sendMessage(any(Component.class));
+		assertEquals(List.of("dialog:Log in"), shown);
+		assertEquals("Chat text", held.getFirst().getText());
+	}
+
+	@DisplayName("Shows a message's chat alone, as a chat the gate held back is shown later")
+	@Test
+	void showsChatAlone() {
+		service.registerPartType(recordingType("dialog"));
+		service.present(GREETING.getId(), Presentation.builder().part(new TestPart("dialog", "Log in")).build());
+
+		service.showChat(identity, GREETING.create("Welcome, {player}", Map.of("player", "Alice")));
+
+		verify(identity).sendMessage(Component.text("Welcome, Alice"));
+		assertTrue(shown.isEmpty());
 	}
 
 	@DisplayName("Adds a presentation's part next to chat")

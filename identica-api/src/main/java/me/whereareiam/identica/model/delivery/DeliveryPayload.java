@@ -17,6 +17,11 @@ public class DeliveryPayload {
 	 * Message shown once the player can see it, through {@code MessageService}.
 	 */
 	private @Nullable PlayerMessage message;
+	/**
+	 * Whether only the message's chat waits, because its other parts were shown when it was sent, such as chat held
+	 * back on the loading screen while a dialog showed the message.
+	 */
+	private boolean chatOnly;
 	private @Nullable CompletionPayload completion;
 
 	public boolean isEmpty() {

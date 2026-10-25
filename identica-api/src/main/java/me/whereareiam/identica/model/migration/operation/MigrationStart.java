@@ -3,6 +3,7 @@ package me.whereareiam.identica.model.migration.operation;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.type.migration.MigrationInitiator;
 import org.jetbrains.annotations.Nullable;
 
@@ -17,7 +18,7 @@ public class MigrationStart {
 	private @Nullable String targetProviderId;
 	private @Nullable String username;
 	private @Nullable String ip;
-	private @Nullable String kickMessage;
+	private @Nullable PlayerMessage kickMessage;
 	private @Nullable MigrationInitiator initiator;
 	private @Nullable UUID initiatorUniqueId;
 }

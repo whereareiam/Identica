@@ -2,6 +2,7 @@ package me.whereareiam.identica.model.pipeline;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.type.pipeline.PipelineStatus;
@@ -14,13 +15,16 @@ import org.jetbrains.annotations.Nullable;
 public final class PipelineResult {
 	private final @Nullable PipelineState state;
 	private final @NotNull PipelineStatus status;
-	private final @Nullable String message;
+	/**
+	 * What the player is told, or {@code null} for nothing.
+	 */
+	private final @Nullable PlayerMessage message;
 
 	public static @NotNull PipelineResult continueWith() {
 		return new PipelineResult(null, PipelineStatus.CONTINUE, null);
 	}
 
-	public static @NotNull PipelineResult waiting(@Nullable String message) {
+	public static @NotNull PipelineResult waiting(@Nullable PlayerMessage message) {
 		return new PipelineResult(null, PipelineStatus.WAITING, message);
 	}
 
@@ -28,15 +32,15 @@ public final class PipelineResult {
 		return new PipelineResult(null, PipelineStatus.COMPLETE, null);
 	}
 
-	public static @NotNull PipelineResult failed(@Nullable String message) {
+	public static @NotNull PipelineResult failed(@Nullable PlayerMessage message) {
 		return new PipelineResult(null, PipelineStatus.FAILED, message);
 	}
 
-	public static @NotNull PipelineResult denied(@Nullable String message) {
+	public static @NotNull PipelineResult denied(@Nullable PlayerMessage message) {
 		return new PipelineResult(null, PipelineStatus.DENIED, message);
 	}
 
-	public static @NotNull PipelineResult requireReconnect(@Nullable String message) {
+	public static @NotNull PipelineResult requireReconnect(@Nullable PlayerMessage message) {
 		return new PipelineResult(null, PipelineStatus.REQUIRE_RECONNECT, message);
 	}
 

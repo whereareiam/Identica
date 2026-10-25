@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import org.jetbrains.annotations.Nullable;
 
 @Getter
@@ -12,8 +13,8 @@ import org.jetbrains.annotations.Nullable;
 @AllArgsConstructor
 public class AuthenticationAttemptDecision {
 	private boolean deny;
-	private @Nullable String denyMessage;
-	private @Nullable String warningMessage;
+	private @Nullable PlayerMessage denyMessage;
+	private @Nullable PlayerMessage warningMessage;
 
 	public static AuthenticationAttemptDecision allow() {
 		return new AuthenticationAttemptDecision(false, null, null);

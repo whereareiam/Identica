@@ -7,6 +7,7 @@ import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.routing.RoutingTargetMissingEvent;
 import me.whereareiam.identica.listener.DynamicListener;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.routing.RoutingIntent;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptDecision;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptReport;
@@ -27,6 +28,7 @@ public class ServerConnectListener implements DynamicListener<ServerConnectEvent
 	private final ProxyServer proxyServer;
 	private final RoutingAttemptService routingAttemptService;
 	private final EventManager eventManager;
+	private final MessageService messageService;
 
 	@Override
 	public void onEvent(ServerConnectEvent event) {
@@ -61,7 +63,7 @@ public class ServerConnectListener implements DynamicListener<ServerConnectEvent
 			);
 			eventManager.call(missingEvent);
 			if (missingEvent.isDisconnect() && missingEvent.getMessage() != null)
-				event.getPlayer().disconnect(BaseComponentMapper.map(missingEvent.getMessage()));
+				event.getPlayer().disconnect(BaseComponentMapper.map(messageService.disconnectReason(null, missingEvent.getMessage())));
 
 			routingAttemptService.record(RoutingAttemptReport.failed(
 					connectionId,

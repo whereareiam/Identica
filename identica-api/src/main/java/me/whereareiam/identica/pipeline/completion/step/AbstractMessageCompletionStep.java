@@ -2,18 +2,18 @@ package me.whereareiam.identica.pipeline.completion.step;
 
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.identity.actor.Identity;
+import me.whereareiam.identica.message.MessageService;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.completion.CompletionContext;
-import me.whereareiam.keystone.model.SerializerContent;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
- * Base completion step that renders configured completion titles and messages through the shared serializer.
+ * Base completion step that shows the player a configured title and its completion message.
  */
 public abstract class AbstractMessageCompletionStep extends AbstractCompletionStep {
 	protected AbstractMessageCompletionStep(@NotNull String name) {
@@ -31,17 +31,24 @@ public abstract class AbstractMessageCompletionStep extends AbstractCompletionSt
 		return new TitleContent(title, subtitle);
 	}
 
-	@SuppressWarnings("unused")
-	protected @Nullable String message(@NotNull CompletionContext context) {
+	/**
+	 * Returns the message that tells the player their journey completed, or {@code null} to tell nothing. The step
+	 * sends it through {@link MessageService} with {@link #placeholders(CompletionContext)} as defaults for the
+	 * values it does not set itself.
+	 *
+	 * @param context completion context containing the resolved identity and provider details
+	 * @return the message, or {@code null}
+	 */
+	protected @Nullable PlayerMessage message(@NotNull CompletionContext context) {
 		return null;
 	}
 
-	protected @Nullable List<String> messageLines(@NotNull CompletionContext context) {
-		String message = message(context);
-		return message != null
-				? List.of(message)
-				: null;
-	}
+	/**
+	 * Returns the service that shows the completion message.
+	 *
+	 * @return the message service
+	 */
+	protected abstract @NotNull MessageService messageService();
 
 	protected @NotNull Map<String, String> placeholders(@NotNull CompletionContext context) {
 		Map<String, String> placeholders = new HashMap<>();
@@ -56,7 +63,7 @@ public abstract class AbstractMessageCompletionStep extends AbstractCompletionSt
 	}
 
 	/**
-	 * Executes this completion step by rendering its optional title and message body for the active identity.
+	 * Executes this completion step by showing its optional title and message to the active identity.
 	 *
 	 * @param context completion context containing the resolved identity and provider details
 	 */
@@ -66,7 +73,7 @@ public abstract class AbstractMessageCompletionStep extends AbstractCompletionSt
 		Map<String, String> placeholders = placeholders(context);
 
 		sendTitle(identity, title(context), placeholders);
-		sendBody(identity, messageLines(context), placeholders);
+		sendMessage(identity, message(context), placeholders);
 	}
 
 	private void sendTitle(
@@ -89,23 +96,16 @@ public abstract class AbstractMessageCompletionStep extends AbstractCompletionSt
 		identity.sendTitle(net.kyori.adventure.title.Title.title(titleComponent, subtitleComponent));
 	}
 
-	private void sendBody(
+	private void sendMessage(
 			@NotNull Identity identity,
-			@Nullable List<String> bodyLines,
+			@Nullable PlayerMessage message,
 			@NotNull Map<String, String> placeholders
 	) {
-		if (bodyLines == null || bodyLines.isEmpty()) return;
+		if (message == null || message.isEmpty()) return;
 
-		SerializerContent content = SerializerContent.builder()
-				.receiver(identity)
-				.scope(Serializer.SCOPE)
-				.placeholders(placeholders)
-				.message(String.join("\n", bodyLines.stream()
-						.map(line -> line == null ? "" : line)
-						.toList()))
-				.build();
-
-		identity.sendMessage(Serializer.serialize(content));
+		Map<String, String> merged = new HashMap<>(placeholders);
+		merged.putAll(message.getPlaceholders());
+		messageService().send(identity, message.toBuilder().placeholders(merged).build());
 	}
 
 	private static @Nullable String renderTitle(

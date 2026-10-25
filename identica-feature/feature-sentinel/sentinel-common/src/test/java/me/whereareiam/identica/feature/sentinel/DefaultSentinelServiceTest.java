@@ -8,6 +8,7 @@ import me.whereareiam.identica.feature.sentinel.model.SentinelQuotaUsage;
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelSettings;
 import me.whereareiam.identica.feature.sentinel.type.SentinelMode;
 import me.whereareiam.identica.feature.sentinel.type.SentinelScope;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.replication.ReplicationSystem;
 import me.whereareiam.identica.replication.cache.ReplicatedCache;
 import me.whereareiam.identica.replication.cache.base.ReplicationCacheBuilder;
@@ -104,7 +105,7 @@ class DefaultSentinelServiceTest {
 		policy.setMaxAttempts(1);
 		SentinelPolicy.Lockout lockout = new SentinelPolicy.Lockout();
 		lockout.setDuration(Duration.ofSeconds(30));
-		lockout.setMessageSupplier((context, seconds) -> message);
+		lockout.setMessageSupplier((context, seconds) -> message(message));
 		policy.setLockout(lockout);
 
 		SentinelRegistry<SentinelDefinition> registry = new SentinelRegistry<>();
@@ -124,7 +125,7 @@ class DefaultSentinelServiceTest {
 
 		assertTrue(decision.isLimited());
 		assertTrue(decision.isDeny());
-		assertEquals(message, decision.getMessage());
+		assertEquals(message, decision.getMessage().getText());
 	}
 
 	@DisplayName("Refuses a connection whose usage reached a quota's limit, with the quota's message and the time left")
@@ -137,7 +138,7 @@ class DefaultSentinelServiceTest {
 
 		assertTrue(decision.isLimited());
 		assertTrue(decision.isDeny());
-		assertEquals("limit 3 used 3", decision.getMessage());
+		assertEquals("limit 3 used 3", decision.getMessage().getText());
 		assertTrue(decision.getRemainingSeconds() > 25 && decision.getRemainingSeconds() <= 30);
 	}
 
@@ -195,7 +196,7 @@ class DefaultSentinelServiceTest {
 				SentinelQuotaPolicy policy = new SentinelQuotaPolicy();
 				policy.setEnabled(true);
 				policy.setLimit(limit);
-				policy.setMessageSupplier((ignored, current) -> "limit " + limit + " used " + current.getUsed());
+				policy.setMessageSupplier((ignored, current) -> message("limit " + limit + " used " + current.getUsed()));
 				return policy;
 			}
 
@@ -228,5 +229,9 @@ class DefaultSentinelServiceTest {
 				return policy;
 			}
 		};
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

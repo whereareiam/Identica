@@ -6,8 +6,8 @@ import lombok.Setter;
 import lombok.ToString;
 import me.whereareiam.identica.event.base.SynchronousEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentEvent;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.routing.RoutingIntent;
-import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -25,5 +25,8 @@ public class RoutingTargetMissingEvent implements RoutingIntentEvent, Synchronou
 	private final @Nullable String username;
 	private final @NotNull RoutingIntent intent;
 	private boolean disconnect;
-	private @Nullable Component message;
+	/**
+	 * Why the player is disconnected, or {@code null} to let Identica name the missing server.
+	 */
+	private @Nullable PlayerMessage message;
 }

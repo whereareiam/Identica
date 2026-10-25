@@ -7,11 +7,13 @@ import lombok.NoArgsConstructor;
 import me.whereareiam.identica.command.CommandService;
 import me.whereareiam.identica.example.provider.command.ExamplePassphraseCommand;
 import me.whereareiam.identica.example.provider.pipeline.ExamplePipelineExtension;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.CommandDefinition;
 import me.whereareiam.identica.pipeline.extension.PipelineExtensionRegistry;
 import me.whereareiam.identica.provider.IdenticaProvider;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,6 +36,9 @@ public class ExampleProvider extends IdenticaProvider {
 	private PipelineExtensionRegistry pipelineExtensionRegistry;
 	private ExamplePipelineExtension pipelineExtension;
 	private ExamplePassphraseCommand passphraseCommand;
+	private MessageService messageService;
+
+	private final List<MessageService.Registration> messageRegistrations = new ArrayList<>();
 
 	@Override
 	public @NotNull List<Module> modules() {
@@ -42,6 +47,7 @@ public class ExampleProvider extends IdenticaProvider {
 
 	@Override
 	public void onEnable() {
+		messageRegistrations.add(messageService.register(ExampleMessageDefinitions.all()));
 		pipelineExtensionRegistry.register(pipelineExtension);
 		commandService.registerCommandInstances(Map.of(PASSPHRASE_COMMAND, passphraseDefinition()), passphraseCommand);
 	}
@@ -50,6 +56,8 @@ public class ExampleProvider extends IdenticaProvider {
 	public void onDisable() {
 		commandService.unregisterCommands(Set.of(PASSPHRASE_COMMAND));
 		pipelineExtensionRegistry.unregister(pipelineExtension.id());
+		messageRegistrations.forEach(MessageService.Registration::remove);
+		messageRegistrations.clear();
 	}
 
 	/**

@@ -7,15 +7,15 @@ import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.annotation.Argument;
 import me.whereareiam.identica.annotation.Command;
 import me.whereareiam.identica.annotation.Definition;
+import me.whereareiam.identica.identity.account.AccountService;
+import me.whereareiam.identica.model.identity.Account;
+import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
+import me.whereareiam.identica.model.identity.provider.AccountProviderProfile;
+import me.whereareiam.identica.model.identity.username.UsernameWriteResult;
+import me.whereareiam.identica.model.message.MessageDefinition;
 import me.whereareiam.identica.persistence.AccountReservationPersistenceService;
 import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.persistence.provider.ProviderProfilePersistenceService;
-import me.whereareiam.identica.identity.account.AccountService;
-import me.whereareiam.identica.model.identity.Account;
-import me.whereareiam.identica.model.identity.username.UsernameWriteResult;
-import me.whereareiam.identica.type.identity.AccountUsernameSource;
-import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
-import me.whereareiam.identica.model.identity.provider.AccountProviderProfile;
 import me.whereareiam.identica.provider.credential.CredentialConstants;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
@@ -25,6 +25,7 @@ import me.whereareiam.identica.provider.credential.model.CredentialAccount;
 import me.whereareiam.identica.provider.credential.resolver.CredentialSubjectResolver;
 import me.whereareiam.identica.provider.credential.type.PasswordChangeReason;
 import me.whereareiam.identica.provider.credential.util.PasswordRules;
+import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import me.whereareiam.identica.util.UniqueIdGenerator;
 import me.whereareiam.keystone.Actor;
 import me.whereareiam.keystone.model.SerializerContent;
@@ -76,9 +77,9 @@ public class ManagementCommand {
 			return;
 		}
 
-		String error = passwordPolicy.validate(password);
-		if (error != null && !error.isBlank()) {
-			sendMessage(sender, error);
+		MessageDefinition<CredentialMessages> violation = passwordPolicy.check(password);
+		if (violation != null) {
+			sendMessage(sender, violation.create(messagesProvider.get()).getText());
 			return;
 		}
 
@@ -126,9 +127,9 @@ public class ManagementCommand {
 			return;
 		}
 
-		String error = passwordPolicy.validate(password);
-		if (error != null && !error.isBlank()) {
-			sendMessage(sender, error);
+		MessageDefinition<CredentialMessages> violation = passwordPolicy.check(password);
+		if (violation != null) {
+			sendMessage(sender, violation.create(messagesProvider.get()).getText());
 			return;
 		}
 

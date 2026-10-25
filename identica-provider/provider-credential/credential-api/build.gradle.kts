@@ -3,7 +3,9 @@ plugins {
 }
 
 dependencies {
+    compileOnly(projects.featureVerificationApi)
     compileOnly(projects.identicaApi)
 
+    testImplementation(projects.featureVerificationApi)
     testImplementation(projects.identicaApi)
 }

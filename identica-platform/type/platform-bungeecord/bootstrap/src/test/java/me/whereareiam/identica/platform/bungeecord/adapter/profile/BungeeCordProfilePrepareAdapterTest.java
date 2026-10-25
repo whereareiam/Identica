@@ -3,12 +3,15 @@ package me.whereareiam.identica.platform.bungeecord.adapter.profile;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.Serializer;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
 import me.whereareiam.identica.pipeline.prepare.PrepareStateStore;
 import me.whereareiam.identica.platform.bungeecord.adapter.MiniMessageSerializerEngine;
 import me.whereareiam.identica.platform.common.stage.login.PreparedRefusal;
 import me.whereareiam.identica.platform.common.stage.profile.ProfileRewriteProcessor;
+import me.whereareiam.keystone.model.SerializerContent;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.connection.PendingConnection;
 import net.md_5.bungee.api.event.LoginEvent;
@@ -54,7 +57,7 @@ class BungeeCordProfilePrepareAdapterTest {
 	void refusedProfileCancelsTheLogin() {
 		LoginEvent event = loginEvent();
 
-		adapter(PrepareDecision.deny("<red>Joining is restricted")).apply(event);
+		adapter(PrepareDecision.deny(message("<red>Joining is restricted"))).apply(event);
 
 		assertTrue(event.isCancelled());
 		assertEquals("Joining is restricted", event.getReason().toPlainText());
@@ -78,7 +81,7 @@ class BungeeCordProfilePrepareAdapterTest {
 		return new BungeeCordProfilePrepareAdapter(new ProfileRewriteProcessor(
 				connectionCoordinator,
 				store,
-				new PreparedRefusal(store, Messages::new)
+				new PreparedRefusal(store, Messages::new, messageService())
 		));
 	}
 
@@ -96,4 +99,22 @@ class BungeeCordProfilePrepareAdapterTest {
 		private final UUID uniqueId;
 		private final UUID rewriteId;
 	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
+	}
+
+	private static MessageService messageService() {
+		MessageService messageService = mock(MessageService.class);
+		when(messageService.disconnectReason(any(), any())).thenAnswer(call -> {
+			PlayerMessage message = call.getArgument(1);
+			return Serializer.serialize(SerializerContent.builder()
+					.message(message.getText())
+					.placeholders(message.getPlaceholders())
+					.build());
+		});
+
+		return messageService;
+	}
+
 }

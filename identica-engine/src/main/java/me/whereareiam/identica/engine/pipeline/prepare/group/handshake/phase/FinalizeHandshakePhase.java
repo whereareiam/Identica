@@ -6,9 +6,11 @@ import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.handshake.HandshakeDecisionEvent;
+import me.whereareiam.identica.message.ConnectionMessages;
 import me.whereareiam.identica.model.auth.handshake.HandshakeDecision;
 import me.whereareiam.identica.model.auth.handshake.HandshakeRequest;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareContextItem;
 import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
@@ -73,13 +75,9 @@ public class FinalizeHandshakePhase implements PipelinePhase<PrepareGroupState> 
 			resolved = decision;
 		HandshakeDecision.Status status = resolved.getStatus();
 		if (status == HandshakeDecision.Status.DENY) {
-			String message = resolved.getMessage();
-			if (message == null || message.isBlank()) {
-				resolved = HandshakeDecision.deny(String.join("\n", messagesProvider.get()
-							.getEngine()
-							.getPrepare()
-							.getHandshakeDenied()));
-			}
+			PlayerMessage message = resolved.getMessage();
+			if (message == null || message.isEmpty())
+				resolved = HandshakeDecision.deny(ConnectionMessages.HANDSHAKE_DENIED.create(messagesProvider.get()));
 			context.setHandshake(resolved);
 			pipelineState.put(PrepareContextItem.KEY, context);
 			pipelineState.put(PrepareDecision.KEY, PrepareDecision.deny(

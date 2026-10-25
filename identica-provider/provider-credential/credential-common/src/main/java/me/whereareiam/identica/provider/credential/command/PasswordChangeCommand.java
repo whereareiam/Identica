@@ -8,9 +8,13 @@ import me.whereareiam.identica.annotation.Command;
 import me.whereareiam.identica.annotation.Definition;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.SessionConnection;
+import me.whereareiam.identica.model.message.MessageDefinition;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.provider.credential.CredentialConstants;
+import me.whereareiam.identica.provider.credential.CredentialMessageDefinitions;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.config.CredentialSettings;
@@ -34,6 +38,7 @@ public class PasswordChangeCommand {
 	private final CredentialAccountService credentialService;
 	private final CryptographyService cryptographyService;
 	private final PasswordRules passwordPolicy;
+	private final MessageService messageService;
 
 	@Definition("change-password")
 	@Command("changepassword <current> <new> [repeat]")
@@ -46,21 +51,21 @@ public class PasswordChangeCommand {
 		if (!(sender instanceof Identity identity))
 			return;
 
-		CredentialMessages.ChangePassword messages = messagesProvider.get().getChangePassword();
+		CredentialMessages messages = messagesProvider.get();
 		Session session = sessionService.findByConnection(identity.getAccountUniqueId(), SessionConnection.of(identity.getUniqueId())).join().orElse(null);
 		if (session == null) {
-			sendMessage(identity, messages.getNotLoggedIn());
+			sendMessage(identity, CredentialMessageDefinitions.CHANGE_PASSWORD_NOT_LOGGED_IN.create(messages));
 			return;
 		}
 
 		if (next == null || isRepeatMismatch(next, repeat)) {
-			sendMessage(identity, messages.getMismatch());
+			sendMessage(identity, CredentialMessageDefinitions.CHANGE_PASSWORD_MISMATCH.create(messages));
 			return;
 		}
 
-		String error = passwordPolicy.validate(next);
-		if (error != null && !error.isBlank()) {
-			sendMessage(identity, error);
+		MessageDefinition<CredentialMessages> violation = passwordPolicy.check(next);
+		if (violation != null) {
+			sendMessage(identity, violation.create(messages));
 			return;
 		}
 
@@ -75,12 +80,12 @@ public class PasswordChangeCommand {
 				? credentialService.find(providerSubject).orElse(null)
 				: null;
 		if (credential == null) {
-			sendMessage(identity, messagesProvider.get().getScenario().getAuthentication().getStatus().getNotRegistered());
+			sendMessage(identity, CredentialMessageDefinitions.NOT_REGISTERED.create(messages));
 			return;
 		}
 
 		if (!cryptographyService.verify(credential, current)) {
-			sendMessage(identity, messages.getInvalidCurrent());
+			sendMessage(identity, CredentialMessageDefinitions.CHANGE_PASSWORD_INVALID_CURRENT.create(messages));
 			return;
 		}
 
@@ -93,7 +98,7 @@ public class PasswordChangeCommand {
 					PasswordChangeReason.CHANGE
 			);
 		}
-		sendMessage(identity, messages.getSuccess());
+		sendMessage(identity, CredentialMessageDefinitions.CHANGE_PASSWORD_SUCCESS.create(messages));
 	}
 
 	private boolean isRepeatMismatch(@NotNull String next, String repeat) {
@@ -112,10 +117,10 @@ public class PasswordChangeCommand {
 		return changePassword == null || changePassword.isRequireRepeat();
 	}
 
-	private void sendMessage(@NotNull Identity identity, String message) {
-		if (message == null || message.isBlank())
-			return;
-		identity.send(message);
+	private void sendMessage(@NotNull Identity identity, @NotNull PlayerMessage message) {
+		if (message.isEmpty()) return;
+
+		messageService.send(identity, message);
 	}
 
 	private String resolveProviderSubject(String username) {

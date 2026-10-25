@@ -2,6 +2,8 @@ package me.whereareiam.identica.provider.credential.pipeline.step.base;
 
 import com.google.inject.Provider;
 import me.whereareiam.identica.model.config.Engine;
+import me.whereareiam.identica.model.message.MessageDefinition;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.state.PipelineState;
@@ -69,15 +71,17 @@ public abstract class AbstractCredentialSetupStep extends AbstractCredentialStat
 		if (!requireRepeat && pending != null) clearRegisterState(state);
 
 		var input = consumeRegistrationAttempt(state);
-		if (input == null) return CompletableFuture.completedFuture(StepResult.waiting(registerPrompt(messages)));
-		if (input.isConfirm()) return CompletableFuture.completedFuture(StepResult.waiting(noPendingMessage(messages)));
+		if (input == null)
+			return CompletableFuture.completedFuture(StepResult.waiting(registerPrompt(messages)));
+		if (input.isConfirm())
+			return CompletableFuture.completedFuture(StepResult.waiting(noPendingMessage(messages)));
 
-		String error = passwordPolicy.validate(input.getPassword());
-		if (error != null && !error.isBlank())
-			return CompletableFuture.completedFuture(StepResult.waiting(error));
+		MessageDefinition<CredentialMessages> violation = passwordPolicy.check(input.getPassword());
+		if (violation != null)
+			return CompletableFuture.completedFuture(StepResult.waiting(violation.create(messages).withPrompt(registerPrompt(messages).getPrompt())));
 
 		PasswordCandidate candidate = cryptographyService.hash(input.getPassword());
-		if (candidate == null) return CompletableFuture.completedFuture(StepResult.failed(""));
+		if (candidate == null) return CompletableFuture.completedFuture(StepResult.failed(null));
 
 		if (requireRepeat) {
 			storeRegisterState(state, new CredentialRegisterStateItem(
@@ -93,7 +97,7 @@ public abstract class AbstractCredentialSetupStep extends AbstractCredentialStat
 				candidate.getHashingMethod(),
 				PasswordChangeReason.REGISTER
 		).isEmpty()) {
-			return CompletableFuture.completedFuture(StepResult.failed(""));
+			return CompletableFuture.completedFuture(StepResult.failed(null));
 		}
 
 		return CompletableFuture.completedFuture(StepResult.complete(context));
@@ -106,9 +110,9 @@ public abstract class AbstractCredentialSetupStep extends AbstractCredentialStat
 			@Nullable CredentialAccount credential
 	);
 
-	protected abstract @NotNull String disabledMessage(@NotNull CredentialMessages messages);
+	protected abstract @NotNull PlayerMessage disabledMessage(@NotNull CredentialMessages messages);
 
-	protected abstract @NotNull String registerPrompt(@NotNull CredentialMessages messages);
+	protected abstract @NotNull PlayerMessage registerPrompt(@NotNull CredentialMessages messages);
 
-	protected abstract @NotNull String noPendingMessage(@NotNull CredentialMessages messages);
+	protected abstract @NotNull PlayerMessage noPendingMessage(@NotNull CredentialMessages messages);
 }

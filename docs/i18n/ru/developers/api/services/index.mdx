@@ -1,7 +1,7 @@
 ---
 title: Сервисы
 description: Сервисы API Identica и как найти сервисы функций.
-sourceHash: 8fcce7f2cb9e6a5d01810109a3dbd69e5d6e1554
+sourceHash: 527ff1234794b0211e95538a0bfa95c99cc14fe5
 ---
 
 Все сервисы доступны через `IdenticaAPI`, полученный, как описано на странице [Начало работы](../index.mdx).
@@ -64,6 +64,7 @@ if (features.isEnabled(providerId, "verification")) {
 - `getSessionService()` — поиск, получение списка, открытие и закрытие сессий;
 - `getAccountService()` — поиск аккаунтов и операции их жизненного цикла;
 - `getIdentityService()` — идентичности игроков на этом прокси;
+- `getMessageService()` — сообщения Identica игрокам и их показ не только в чате, см. [Сообщения игрокам](../../extending/messages/index.mdx);
 - `getReplicationSystem()` — если вы сознательно интегрируетесь с реплицируемыми кэшами или каналами Identica;
 - `getEventManager()` — регистрация и вызов событий Identica;
 - `getPendingScenarioService()` — нужно ли игроку ещё пройти аутентификацию, регистрацию или миграцию;

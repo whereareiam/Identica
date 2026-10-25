@@ -2,8 +2,14 @@ package me.whereareiam.identica.feature.restriction.join.pipeline.phase.base;
 
 import com.google.inject.Provider;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.Serializer;
+import me.whereareiam.identica.feature.restriction.RestrictionService;
+import me.whereareiam.identica.feature.restriction.join.JoinRestrictionMessageDefinitions;
+import me.whereareiam.identica.feature.restriction.join.JoinRestrictionType;
+import me.whereareiam.identica.feature.restriction.join.config.JoinRestrictionMessages;
 import me.whereareiam.identica.feature.restriction.join.config.JoinRestrictionSettings;
+import me.whereareiam.identica.feature.restriction.model.RestrictionDecision;
+import me.whereareiam.identica.feature.restriction.model.RestrictionEvaluationRequest;
+import me.whereareiam.identica.feature.restriction.type.RestrictionSignal;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
@@ -13,12 +19,6 @@ import me.whereareiam.identica.pipeline.state.AbstractGroupState;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.scenario.shared.item.IdentityMetaItem;
 import me.whereareiam.identica.provider.ProviderOperations;
-import me.whereareiam.identica.feature.restriction.RestrictionService;
-import me.whereareiam.identica.feature.restriction.join.JoinRestrictionType;
-import me.whereareiam.identica.feature.restriction.join.config.JoinRestrictionMessages;
-import me.whereareiam.identica.feature.restriction.model.RestrictionDecision;
-import me.whereareiam.identica.feature.restriction.model.RestrictionEvaluationRequest;
-import me.whereareiam.identica.feature.restriction.type.RestrictionSignal;
 import me.whereareiam.identica.type.pipeline.PipelineStatus;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -66,14 +66,11 @@ public abstract class AbstractEnforceJoinRestrictionPhase<C extends ScenarioCont
 		if (decision.isAllowed()) return CompletableFuture.completedFuture(PhaseResult.pass(state));
 
 		String providerName = providerOperations.displayProviderName(provider.getProviderId());
-		state.setResult(PipelineResult.denied(Serializer.render(
-				String.join("\n", messagesProvider.get().getDenied()),
-				Map.of(
-						"providerId", provider.getProviderId(),
-						"providerName", providerName != null ? providerName : provider.getProviderId(),
-						"allow", describeAllow(decision.getAllow())
-				)
-		)));
+		state.setResult(PipelineResult.denied(JoinRestrictionMessageDefinitions.DENIED.create(messagesProvider.get(), Map.of(
+				"providerId", provider.getProviderId(),
+				"providerName", providerName != null ? providerName : provider.getProviderId(),
+				"allow", describeAllow(decision.getAllow())
+		))));
 		return CompletableFuture.completedFuture(PhaseResult.pass(state));
 	}
 

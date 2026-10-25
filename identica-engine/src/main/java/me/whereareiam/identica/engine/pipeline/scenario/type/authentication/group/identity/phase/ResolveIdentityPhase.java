@@ -4,15 +4,17 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.persistence.AccountPersistenceService;
-import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
+import me.whereareiam.identica.message.ScenarioMessages;
 import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.identity.Account;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
+import me.whereareiam.identica.persistence.AccountPersistenceService;
+import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.pipeline.PipelinePhase;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.scenario.type.authentication.IdentityState;
@@ -103,8 +105,8 @@ public class ResolveIdentityPhase implements PipelinePhase<IdentityState> {
 		return CompletableFuture.completedFuture(PhaseResult.pass(state));
 	}
 
-	private @NotNull String authenticationFailedMessage() {
-		return String.join("\n", messagesProvider.get().getScenarios().getAuthentication().getAuthenticationFailed());
+	private @NotNull PlayerMessage authenticationFailedMessage() {
+		return ScenarioMessages.of(PipelineType.AUTHENTICATION).getFailed().create(messagesProvider.get());
 	}
 
 	private boolean isBlank(@Nullable String value) {

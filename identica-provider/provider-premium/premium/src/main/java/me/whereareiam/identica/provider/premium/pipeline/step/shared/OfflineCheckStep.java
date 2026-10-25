@@ -10,6 +10,7 @@ import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.provider.ProviderAttemptStore;
 import me.whereareiam.identica.provider.premium.PremiumConstants;
+import me.whereareiam.identica.provider.premium.PremiumMessageDefinitions;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
 import me.whereareiam.identica.provider.premium.pipeline.step.base.AbstractProfileVerificationStep;
 import me.whereareiam.identica.provider.premium.policy.PremiumHandshakeInstructions;
@@ -46,7 +47,6 @@ public class OfflineCheckStep extends AbstractProfileVerificationStep {
 
 	@Override
 	public @NotNull CompletableFuture<StepResult> execute(@NotNull ScenarioContext context) {
-		PremiumMessages.Verification verification = verification();
 		String username = context.getUsername();
 		String ip = context.getIp();
 		if (username == null || username.isBlank() || ip == null || ip.isBlank())
@@ -68,7 +68,7 @@ public class OfflineCheckStep extends AbstractProfileVerificationStep {
 						providerSubject,
 						offlineUuid
 				);
-				return CompletableFuture.completedFuture(requireReconnect(verification, username, ip));
+				return CompletableFuture.completedFuture(requireReconnect(username, ip));
 			}
 
 			clearHandshakeAttempt(username, ip);
@@ -80,7 +80,7 @@ public class OfflineCheckStep extends AbstractProfileVerificationStep {
 					providerSubject,
 					offlineUuid
 			);
-			return CompletableFuture.completedFuture(StepResult.failed(""));
+			return CompletableFuture.completedFuture(StepResult.failed(null));
 		}
 		Logger.debug(
 				"Premium offline verification accepted online session username=%s ip=%s subject=%s offline=%s",
@@ -94,13 +94,12 @@ public class OfflineCheckStep extends AbstractProfileVerificationStep {
 	}
 
 	private StepResult requireReconnect(
-			PremiumMessages.Verification verification,
 			String username,
 			String ip
 	) {
 		instructions.forceOnline(username, ip);
 
-		return StepResult.requireReconnect(joinLines(verification.getRejoin()));
+		return StepResult.requireReconnect(PremiumMessageDefinitions.REJOIN.create(messagesProvider.get()));
 	}
 
 	private boolean hasHandshakeAttempt(@NotNull String username, @NotNull String ip) {

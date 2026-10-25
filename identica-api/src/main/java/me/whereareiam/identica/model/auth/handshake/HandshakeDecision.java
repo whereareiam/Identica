@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 import me.whereareiam.identica.model.HandshakeAttributeKey;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
@@ -27,7 +28,10 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class HandshakeDecision {
 	private final Status status;
-	private final String message;
+	/**
+	 * Why the connection is refused, or {@code null} for the default reason.
+	 */
+	private final PlayerMessage message;
 	private final String reason;
 	private final Map<String, String> attributes;
 
@@ -46,7 +50,7 @@ public class HandshakeDecision {
 	 * @param message message shown to the player
 	 * @return deny decision without attributes
 	 */
-	public static HandshakeDecision deny(String message) {
+	public static HandshakeDecision deny(PlayerMessage message) {
 		return new HandshakeDecision(Status.DENY, message, null, Map.of());
 	}
 

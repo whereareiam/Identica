@@ -5,6 +5,7 @@ import me.whereareiam.identica.feature.sentinel.SentinelService;
 import me.whereareiam.identica.feature.sentinel.model.SentinelContext;
 import me.whereareiam.identica.feature.sentinel.model.SentinelDecision;
 import me.whereareiam.identica.feature.sentinel.type.SentinelScope;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.pipeline.ScenarioContext;
@@ -31,12 +32,12 @@ class RegistrationSentinelStepTest {
 	@Test
 	void refusesALimitedRegistration() {
 		when(sentinels.evaluate(eq(SentinelScope.REGISTRATION), any()))
-				.thenReturn(Optional.of(SentinelDecision.exceeded(mock(SentinelQuota.class), 0L, "Too many accounts")));
+				.thenReturn(Optional.of(SentinelDecision.exceeded(mock(SentinelQuota.class), 0L, message("Too many accounts"))));
 
 		StepResult result = step.execute(context).join();
 
 		assertEquals(StepResult.StepStatus.DENIED, result.getStatus());
-		assertEquals("Too many accounts", result.getMessage());
+		assertEquals("Too many accounts", result.getMessage().getText());
 	}
 
 	@DisplayName("Lets the registration go on and asks with the provider and address of the connection")
@@ -62,5 +63,9 @@ class RegistrationSentinelStepTest {
 		when(context.getIp()).thenReturn("203.0.113.10");
 		when(context.getUsername()).thenReturn("Alice");
 		return context;
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

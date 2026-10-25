@@ -38,6 +38,7 @@ import me.whereareiam.identica.feature.restriction.join.config.provider.JoinRest
 import me.whereareiam.identica.feature.restriction.registry.RestrictionSignalRegistry;
 import me.whereareiam.identica.feature.restriction.registry.type.RestrictionTypeRegistry;
 import me.whereareiam.identica.feature.restriction.registry.type.RestrictionTypeResolverRegistry;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.config.Replication;
 import me.whereareiam.identica.model.config.provider.Providers;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
@@ -108,6 +109,7 @@ class RecognitionJoinCompositionTest {
 				bind(Replication.class).toInstance(new Replication());
 				bind(ReplicationSystem.class).toInstance(mock(ReplicationSystem.class, RETURNS_DEEP_STUBS));
 				bind(CommandService.class).toInstance(commands);
+				bind(MessageService.class).toInstance(mock(MessageService.class, RETURNS_DEEP_STUBS));
 				bind(RecognitionSettingsProvider.class).toInstance(recognitionSettings);
 				bind(RecognitionProvidersProvider.class).toInstance(recognitionProviders);
 				bind(RestrictionSettingsProvider.class).toInstance(restrictionSettings);

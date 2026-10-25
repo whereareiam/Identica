@@ -7,9 +7,12 @@ import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.pipeline.scenario.registration.EnrollmentOptionsEvent;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.message.ProviderChoiceMessages;
 import me.whereareiam.identica.model.auth.EnrollmentEntry;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
+import me.whereareiam.identica.model.message.Prompt;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.model.provider.ProviderContext;
@@ -62,14 +65,15 @@ public class EnrollmentStep extends InteractiveStep {
 				PipelineType.REGISTRATION,
 				JourneyMode.INTERACTIVE
 		);
-		Messages.Engine.Journey.Step.Enrollment enrollment = messagesProvider.get()
+		Messages messages = messagesProvider.get();
+		Messages.Engine.Journey.Step.Enrollment enrollment = messages
 				.getEngine()
 				.getJourney()
 				.getStep()
 				.getEnrollment();
 
 		if (providers.isEmpty())
-			return CompletableFuture.completedFuture(StepResult.failed(joinLines(enrollment.getEmpty())));
+			return CompletableFuture.completedFuture(StepResult.failed(ProviderChoiceMessages.EMPTY.create(messages)));
 
 		List<EnrollmentEntry> entries = buildEntries(enrollment, providers);
 		EnrollmentOptionsEvent optionsEvent = new EnrollmentOptionsEvent(context, entries);
@@ -77,7 +81,7 @@ public class EnrollmentStep extends InteractiveStep {
 		entries = optionsEvent.getEntries();
 
 		if (entries.isEmpty())
-			return CompletableFuture.completedFuture(StepResult.failed(joinLines(enrollment.getEmpty())));
+			return CompletableFuture.completedFuture(StepResult.failed(ProviderChoiceMessages.EMPTY.create(messages)));
 
 		ProviderClaim selected = selectedThroughEntrypoint(context, entries);
 		if (selected != null) {
@@ -94,8 +98,7 @@ public class EnrollmentStep extends InteractiveStep {
 			return CompletableFuture.completedFuture(StepResult.complete(context));
 		}
 
-		String message = buildMessage(enrollment, entries);
-		return CompletableFuture.completedFuture(StepResult.waiting(message));
+		return CompletableFuture.completedFuture(StepResult.waiting(buildMessage(messages, enrollment, entries)));
 	}
 
 	private boolean shouldAutoSelectSingleProvider() {
@@ -183,34 +186,28 @@ public class EnrollmentStep extends InteractiveStep {
 		return List.of();
 	}
 
-	private String buildMessage(
+	/**
+	 * Builds the provider choice: the configured body with the rendered entries as its {@code entries} placeholder,
+	 * and a prompt whose choice field lists the offered providers.
+	 */
+	private @NotNull PlayerMessage buildMessage(
+			Messages messages,
 			Messages.Engine.Journey.Step.Enrollment enrollment,
 			List<EnrollmentEntry> entries
 	) {
 		SerializerOptions.PlaceholderFormat format = Serializer.getEngine().getPlaceholderFormat();
 		List<String> renderedEntries = renderEntries(enrollment.getEntryFormat(), entries, format);
+		List<Prompt.Option> options = entries.stream()
+				.map(entry -> new Prompt.Option(entry.getProviderId(), entry.getProviderName()))
+				.toList();
 
-		List<String> lines = new ArrayList<>();
-		List<String> body = enrollment.getBody();
-		String entriesToken = format.format("entries");
-		boolean inserted = false;
-
-		if (!body.isEmpty()) {
-			for (String line : body) {
-				if (line != null && line.contains(entriesToken)) {
-					lines.addAll(renderedEntries);
-					inserted = true;
-					continue;
-				}
-				if (line != null)
-					lines.add(line);
-			}
-		}
-
-		if (!inserted)
-			lines.addAll(renderedEntries);
-
-		return String.join("\n", lines);
+		PlayerMessage message = ProviderChoiceMessages.CHOICE.create(messages, Map.of("entries", String.join("\n", renderedEntries)));
+		return message.toBuilder()
+				.prompt(ProviderChoiceMessages.PROMPT.toBuilder()
+						.clearFields()
+						.field(Prompt.Field.choice("option", options))
+						.build())
+				.build();
 	}
 
 	private List<String> renderEntries(
@@ -256,7 +253,4 @@ public class EnrollmentStep extends InteractiveStep {
 		return result;
 	}
 
-	private String joinLines(List<String> lines) {
-		return String.join("\n", lines);
-	}
 }

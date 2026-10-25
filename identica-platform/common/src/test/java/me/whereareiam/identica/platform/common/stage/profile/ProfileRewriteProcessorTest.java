@@ -3,11 +3,14 @@ package me.whereareiam.identica.platform.common.stage.profile;
 import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
+import me.whereareiam.identica.message.MessageService;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
-import me.whereareiam.identica.platform.common.stage.login.PreparedRefusal;
-import me.whereareiam.identica.platform.common.stage.TextSerializerEngine;
-import me.whereareiam.identica.platform.common.stage.PrepareDenialMessages;
 import me.whereareiam.identica.platform.common.stage.InMemoryPrepareStateStore;
+import me.whereareiam.identica.platform.common.stage.PrepareDenialMessages;
+import me.whereareiam.identica.platform.common.stage.TextSerializerEngine;
+import me.whereareiam.identica.platform.common.stage.login.PreparedRefusal;
+import me.whereareiam.keystone.model.SerializerContent;
 import net.kyori.adventure.text.Component;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -42,7 +45,7 @@ class ProfileRewriteProcessorTest {
 	@DisplayName("Refuses a denied profile and stores the denial under the observed UUID and connection key")
 	@Test
 	void deniedProfileIsRefusedAndStored() {
-		PrepareDecision denied = PrepareDecision.deny("denied");
+		PrepareDecision denied = PrepareDecision.deny(message("denied"));
 
 		ProfileOutcome outcome = process(CompletableFuture.completedFuture(denied));
 
@@ -55,7 +58,7 @@ class ProfileRewriteProcessorTest {
 	@DisplayName("Refuses a denial without text with the prepare denial message")
 	@Test
 	void deniedProfileWithoutTextIsRefusedWithPrepareDenialMessage() {
-		ProfileOutcome outcome = process(CompletableFuture.completedFuture(PrepareDecision.deny(" ")));
+		ProfileOutcome outcome = process(CompletableFuture.completedFuture(PrepareDecision.deny(message(" "))));
 
 		assertEquals(new ProfileOutcome.Refused(Component.text("refused\ncontact us")), outcome);
 	}
@@ -73,7 +76,7 @@ class ProfileRewriteProcessorTest {
 	@DisplayName("Reports a failed run and forgets a refusal stored by an earlier attempt")
 	@Test
 	void failedRunForgetsEarlierDecision() {
-		store.put(observedUniqueId, identity.connectionKey(), PrepareDecision.deny("earlier"));
+		store.put(observedUniqueId, identity.connectionKey(), PrepareDecision.deny(message("earlier")));
 		IllegalStateException failure = new IllegalStateException("prepare failed");
 
 		ProfileOutcome outcome = process(CompletableFuture.failedFuture(failure));
@@ -87,7 +90,7 @@ class ProfileRewriteProcessorTest {
 	@DisplayName("Keeps this attempt's handshake decision after a failed run, so the login keeps its provider context")
 	@Test
 	void failedRunKeepsHandshakeDecision() {
-		store.put(observedUniqueId, identity.connectionKey(), PrepareDecision.deny("earlier"));
+		store.put(observedUniqueId, identity.connectionKey(), PrepareDecision.deny(message("earlier")));
 		PrepareDecision handshake = PrepareDecision.allow();
 		store.put(identity.connectionKey(), handshake);
 
@@ -115,11 +118,29 @@ class ProfileRewriteProcessorTest {
 		ProfileRewriteProcessor processor = new ProfileRewriteProcessor(
 				connectionCoordinator,
 				store,
-				new PreparedRefusal(store, PrepareDenialMessages::messages)
+				new PreparedRefusal(store, PrepareDenialMessages::messages, messageService())
 		);
 
 		return processor.process(new ProfileRewriteProcessor.Request(identity, observedUniqueId, identity.getUsername()), applied::set)
 				.toCompletableFuture()
 				.join();
 	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
+	}
+
+	private static MessageService messageService() {
+		MessageService messageService = mock(MessageService.class);
+		when(messageService.disconnectReason(any(), any())).thenAnswer(call -> {
+			PlayerMessage message = call.getArgument(1);
+			return Serializer.serialize(SerializerContent.builder()
+					.message(message.getText())
+					.placeholders(message.getPlaceholders())
+					.build());
+		});
+
+		return messageService;
+	}
+
 }

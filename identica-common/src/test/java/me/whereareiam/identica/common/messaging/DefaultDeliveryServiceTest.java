@@ -1,5 +1,6 @@
 package me.whereareiam.identica.common.messaging;
 
+import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.model.delivery.DeliveryDispatchContext;
 import me.whereareiam.identica.model.delivery.DeliveryPayload;
@@ -32,7 +33,8 @@ class DefaultDeliveryServiceTest {
 		DeliveryStore deliveryStore = mock(DeliveryStore.class);
 		DefaultDeliveryService service = new DefaultDeliveryService(
 				deliveryStore,
-				mock(PipelineStateStore.class)
+				mock(PipelineStateStore.class),
+				new DefaultMessageService(() -> (recipient, message) -> false, () -> null, mock(EventManager.class))
 		);
 		TestIdentity identity = new TestIdentity(UUID.randomUUID(), UUID.randomUUID(), "PlayerOne");
 		DeliveryRequest request = DeliveryRequest.builder()

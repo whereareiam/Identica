@@ -10,13 +10,14 @@ import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.routing.RoutingTargetMissingEvent;
 import me.whereareiam.identica.listener.DynamicListener;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.message.MessageService;
+import me.whereareiam.identica.model.routing.RoutingIntent;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptDecision;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptReport;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptRequest;
-import me.whereareiam.identica.model.routing.RoutingIntent;
-import me.whereareiam.identica.type.routing.reason.RoutingAttemptFailureReason;
 import me.whereareiam.identica.routing.RoutingAttemptService;
 import me.whereareiam.identica.type.routing.RoutingAttemptTrigger;
+import me.whereareiam.identica.type.routing.reason.RoutingAttemptFailureReason;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -27,6 +28,7 @@ public class ServerPreConnectListener implements DynamicListener<ServerPreConnec
 	private final ProxyServer proxyServer;
 	private final RoutingAttemptService routingAttemptService;
 	private final EventManager eventManager;
+	private final MessageService messageService;
 
 	@Override
 	public void onEvent(ServerPreConnectEvent event) {
@@ -85,7 +87,7 @@ public class ServerPreConnectListener implements DynamicListener<ServerPreConnec
 			);
 			eventManager.call(missingEvent);
 			if (missingEvent.isDisconnect() && missingEvent.getMessage() != null)
-				event.getPlayer().disconnect(missingEvent.getMessage());
+				event.getPlayer().disconnect(messageService.disconnectReason(null, missingEvent.getMessage()));
 
 			routingAttemptService.record(RoutingAttemptReport.failed(
 					connectionId,

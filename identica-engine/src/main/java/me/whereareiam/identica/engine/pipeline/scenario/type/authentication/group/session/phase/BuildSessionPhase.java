@@ -4,10 +4,12 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.identica.message.SessionMessages;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.SessionConnection;
 import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
@@ -93,8 +95,8 @@ public class BuildSessionPhase implements PipelinePhase<SessionState> {
 		return authContext != null ? authContext.getProvider() : null;
 	}
 
-	private @NotNull String sessionBuildFailedMessage() {
-		return String.join("\n", messagesProvider.get().getScenarios().getAuthentication().getSessionBuildFailed());
+	private @NotNull PlayerMessage sessionBuildFailedMessage() {
+		return SessionMessages.BUILD_FAILED.create(messagesProvider.get());
 	}
 
 	private @Nullable AuthContext resolveAuthContext(@NotNull PipelineState source) {

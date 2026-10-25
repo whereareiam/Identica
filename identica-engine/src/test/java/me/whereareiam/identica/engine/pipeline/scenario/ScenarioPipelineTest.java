@@ -8,6 +8,8 @@ import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.request.AdvanceRequest;
 import me.whereareiam.identica.model.auth.request.ConnectionRequest;
 import me.whereareiam.identica.model.auth.request.ResumeRequest;
+import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
 import me.whereareiam.identica.pipeline.state.PipelineInput;
@@ -55,7 +57,8 @@ class ScenarioPipelineTest {
 			registry,
 			new ConnectionRuns(),
 			store,
-			mock(EventManager.class)
+			mock(EventManager.class),
+			Messages::new
 	);
 	private final UUID connection = UUID.randomUUID();
 
@@ -64,7 +67,7 @@ class ScenarioPipelineTest {
 		when(runner.type()).thenReturn(PipelineType.AUTHENTICATION);
 		when(registry.selectForResume(any())).thenReturn(runner);
 		when(registry.selectForAdvance(any())).thenReturn(runner);
-		when(decisions.resolveDecision(any(), any(), any())).thenReturn(ConnectionDecision.waiting("prompt"));
+		when(decisions.resolveDecision(any(), any(), any())).thenReturn(ConnectionDecision.waiting(message("prompt")));
 	}
 
 	@DisplayName("Asks for a command's input only after the run holding the state has finished, with the state it saved")
@@ -74,7 +77,7 @@ class ScenarioPipelineTest {
 		when(runner.execute(isNull(), any(ResumeRequest.class))).thenReturn(resumed);
 		when(store.find(any(PipelineStateReference.class))).thenReturn(Optional.empty());
 		RecordingInput input = new RecordingInput(true);
-		when(runner.executeAdvance(any())).thenReturn(CompletableFuture.completedFuture(PipelineResult.waiting("prompt")));
+		when(runner.executeAdvance(any())).thenReturn(CompletableFuture.completedFuture(PipelineResult.waiting(message("prompt"))));
 
 		pipeline.resume(resumeRequest());
 		CompletableFuture<ConnectionDecision> advanced = pipeline.advance(advanceRequest(input)).toCompletableFuture();
@@ -85,7 +88,7 @@ class ScenarioPipelineTest {
 
 		PipelineState saved = pendingState();
 		when(store.find(any(PipelineStateReference.class))).thenReturn(Optional.of(saved));
-		resumed.complete(PipelineResult.waiting("prompt"));
+		resumed.complete(PipelineResult.waiting(message("prompt")));
 
 		assertEquals(List.of(saved), input.asked);
 		assertEquals(ConnectionDecision.Status.WAIT, advanced.join().getStatus());
@@ -126,7 +129,7 @@ class ScenarioPipelineTest {
 	@DisplayName("Refuses a connection whose username another login holds, without looking for or starting a scenario")
 	@Test
 	void heldUsernameStartsNoScenario() {
-		ConnectionDecision refused = ConnectionDecision.deny("held");
+		ConnectionDecision refused = ConnectionDecision.deny(message("held"));
 		when(usernameHold.enter(any())).thenReturn(refused);
 
 		ConnectionDecision decision = pipeline.process(ConnectionRequest.builder()
@@ -185,5 +188,9 @@ class ScenarioPipelineTest {
 		public void applyTo(@NotNull PipelineState state) {
 			applied = true;
 		}
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

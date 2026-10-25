@@ -5,16 +5,19 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.feature.FeatureRegistry;
+import me.whereareiam.identica.feature.sentinel.SentinelDefinition;
 import me.whereareiam.identica.feature.sentinel.model.SentinelContext;
 import me.whereareiam.identica.feature.sentinel.model.SentinelPolicy;
-import me.whereareiam.identica.provider.credential.CredentialConstants;
-import me.whereareiam.identica.provider.credential.config.CredentialMessages;
-import me.whereareiam.identica.provider.credential.config.CredentialSettings;
-import me.whereareiam.identica.feature.sentinel.SentinelDefinition;
 import me.whereareiam.identica.feature.sentinel.type.SentinelMode;
 import me.whereareiam.identica.feature.sentinel.type.SentinelScope;
+import me.whereareiam.identica.model.message.PlayerMessage;
+import me.whereareiam.identica.provider.credential.CredentialConstants;
+import me.whereareiam.identica.provider.credential.CredentialMessageDefinitions;
+import me.whereareiam.identica.provider.credential.config.CredentialMessages;
+import me.whereareiam.identica.provider.credential.config.CredentialSettings;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
+import java.util.Map;
 
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
@@ -96,39 +99,21 @@ public class BruteForceSentinelDefinition implements SentinelDefinition {
 		return policy;
 	}
 
-	private String buildLockoutMessage(long remainingSeconds) {
+	private @Nullable PlayerMessage buildLockoutMessage(long remainingSeconds) {
 		CredentialMessages messages = messagesProvider.get();
-		if (messages == null || messages.getScenario().getAuthentication().getBruteforce() == null) return "";
+		if (messages == null || messages.getScenario().getAuthentication().getBruteforce() == null) return null;
 
-		List<String> lines = messages.getScenario().getAuthentication().getBruteforce().getExceeded();
-		if (lines == null || lines.isEmpty()) return "";
-
-		String seconds = String.valueOf(Math.max(0L, remainingSeconds));
-		StringBuilder builder = new StringBuilder();
-		for (int i = 0; i < lines.size(); i++) {
-			String line = lines.get(i) == null ? "" : lines.get(i);
-			if (i > 0) builder.append("\n");
-			builder.append(line.replace("{seconds}", seconds));
-		}
-
-		return builder.toString();
+		return CredentialMessageDefinitions.BRUTEFORCE_EXCEEDED.create(messages, Map.of(
+				"seconds", String.valueOf(Math.max(0L, remainingSeconds))
+		));
 	}
 
-	private String buildWarningMessage(int remainingAttempts) {
+	private @Nullable PlayerMessage buildWarningMessage(int remainingAttempts) {
 		CredentialMessages messages = messagesProvider.get();
-		if (messages == null || messages.getScenario().getAuthentication().getBruteforce() == null) return "";
+		if (messages == null || messages.getScenario().getAuthentication().getBruteforce() == null) return null;
 
-		List<String> lines = messages.getScenario().getAuthentication().getBruteforce().getRemaining();
-		if (lines == null || lines.isEmpty()) return "";
-
-		String remaining = String.valueOf(Math.max(0, remainingAttempts));
-		StringBuilder builder = new StringBuilder();
-		for (int i = 0; i < lines.size(); i++) {
-			String line = lines.get(i) == null ? "" : lines.get(i);
-			if (i > 0) builder.append("\n");
-			builder.append(line.replace("{remaining}", remaining));
-		}
-
-		return builder.toString();
+		return CredentialMessageDefinitions.BRUTEFORCE_REMAINING.create(messages, Map.of(
+				"remaining", String.valueOf(Math.max(0, remainingAttempts))
+		));
 	}
 }

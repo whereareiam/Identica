@@ -64,7 +64,7 @@ class ClearCommandTest {
 		verify(accounts, never()).delete(any());
 		assertEquals(alice, request.getValue().getAccount());
 		assertTrue(request.getValue().isDisconnect());
-		assertEquals("cleared", request.getValue().getDisconnectMessage());
+		assertEquals("cleared", request.getValue().getDisconnectMessage().getText());
 		assertEquals("admin-clear", request.getValue().getReason());
 		assertEquals(List.of("confirm", "success"), admin.received);
 	}

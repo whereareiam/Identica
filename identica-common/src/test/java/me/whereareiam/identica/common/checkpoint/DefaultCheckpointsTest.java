@@ -10,10 +10,11 @@ import me.whereareiam.identica.event.routing.intent.RoutingIntentClearedEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentStartedEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentUpdatedEvent;
 import me.whereareiam.identica.event.scenario.ScenarioResolvedEvent;
-import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.identity.actor.Identity;
+import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.checkpoint.CheckpointRequest;
 import me.whereareiam.identica.model.checkpoint.CheckpointSelection;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.routing.RoutingEndpoint;
 import me.whereareiam.identica.model.routing.RoutingIntent;
@@ -37,8 +38,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -314,7 +315,7 @@ class DefaultCheckpointsTest {
 		Step step = mock(Step.class);
 		when(step.getName()).thenReturn("password-authentication-password");
 		return new CheckpointRequest(ALICE, mock(ScenarioContext.class), PipelineType.AUTHENTICATION, StageType.PROVIDER, step,
-				StepResult.waiting(""));
+				StepResult.waiting(message("")));
 	}
 
 	private static ServerJoinedEvent joined(String server) {
@@ -438,5 +439,9 @@ class DefaultCheckpointsTest {
 		public @NotNull CompletionStage<Void> released() {
 			return released;
 		}
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

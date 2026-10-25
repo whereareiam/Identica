@@ -4,30 +4,32 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.persistence.AccountPersistenceService;
-import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.scenario.migration.MigrationResolvedEvent;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.message.MigrationMessages;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.delivery.DeliveryPayload;
 import me.whereareiam.identica.model.delivery.DeliveryRequest;
 import me.whereareiam.identica.model.delivery.DeliveryTarget;
 import me.whereareiam.identica.model.identity.Account;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.migration.MigrationContext;
 import me.whereareiam.identica.model.pipeline.migration.MigrationPendingState;
 import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareAccountCandidateItem;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareContextItem;
 import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
+import me.whereareiam.identica.model.provider.selection.ProviderClaim;
+import me.whereareiam.identica.model.provider.selection.ProviderSelection;
+import me.whereareiam.identica.persistence.AccountPersistenceService;
+import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.pipeline.PipelinePhase;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.PipelineStateReference;
 import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.pipeline.state.prepare.PrepareGroupState;
-import me.whereareiam.identica.model.provider.selection.ProviderClaim;
-import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import me.whereareiam.identica.provider.selection.ProviderSelector;
 import me.whereareiam.identica.service.DeliveryService;
 import me.whereareiam.identica.type.ScenarioResolution;
@@ -181,8 +183,8 @@ public class ResolvePendingMigrationAccountPhase implements PipelinePhase<Prepar
 			@NotNull ProviderSelection selection
 	) {
 		UUID cancelledAccountUniqueId = migration.getAccountUniqueId();
-		String notice = String.join("\n", messagesProvider.get().getScenarios().getMigration().getCancelled());
-		if (cancelledAccountUniqueId != null && !notice.isBlank()) {
+		PlayerMessage notice = MigrationMessages.CANCELLED.create(messagesProvider.get());
+		if (cancelledAccountUniqueId != null && !notice.isEmpty()) {
 			long now = System.currentTimeMillis();
 			deliveryService.queue(DeliveryRequest.builder()
 					.id(UUID.randomUUID())
@@ -191,7 +193,7 @@ public class ResolvePendingMigrationAccountPhase implements PipelinePhase<Prepar
 							.accountUniqueId(cancelledAccountUniqueId)
 							.build())
 					.payload(DeliveryPayload.builder()
-							.chatMessage(notice)
+							.message(notice)
 							.build())
 					.semantics(DeliverySemantics.ONCE)
 					.createdAt(now)

@@ -1,16 +1,19 @@
 package me.whereareiam.identica.engine.connection;
 
 import com.google.inject.Inject;
+import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.engine.pipeline.scenario.ScenarioRegistry;
 import me.whereareiam.identica.engine.pipeline.scenario.AbstractScenarioPipeline;
+import me.whereareiam.identica.engine.pipeline.scenario.ScenarioRegistry;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.connection.ConnectionDecisionEvent;
 import me.whereareiam.identica.event.pipeline.attempt.PipelineAttemptFinishedEvent;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.message.ScenarioMessages;
 import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
+import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.routing.RoutingSignal;
 import me.whereareiam.identica.pipeline.ScenarioContext;
@@ -25,6 +28,7 @@ public class ConnectionDecisionResolver {
 	private final ScenarioRegistry scenarioRegistry;
 	private final EventManager eventManager;
 	private final RoutingCoordinator routingCoordinator;
+	private final Provider<Messages> messagesProvider;
 
 	public @NotNull ConnectionDecision resolveDecision(
 			@Nullable PipelineResult result,
@@ -34,11 +38,11 @@ public class ConnectionDecisionResolver {
 		AbstractScenarioPipeline runner = scenarioRegistry.resolve(pipelineType);
 		if (error != null) {
 			Logger.severe("Connection journeyMode failed %s", error);
-			return failureDecision(runner);
+			return failureDecision(runner, pipelineType);
 		}
 
 		if (result == null)
-			return failureDecision(runner);
+			return failureDecision(runner, pipelineType);
 
 		ScenarioContext scenarioContext = resolveScenarioContext(result, runner);
 		if (scenarioContext != null) {
@@ -48,7 +52,7 @@ public class ConnectionDecisionResolver {
 
 		ConnectionDecision decision = runner != null
 				? runner.mapDecision(result)
-				: ConnectionDecision.deny("Connection failed");
+				: ConnectionDecision.deny(ScenarioMessages.of(pipelineType).getFailed().create(messagesProvider.get()));
 		if (!(scenarioContext instanceof AuthContext authContext))
 			return decision;
 
@@ -67,10 +71,10 @@ public class ConnectionDecisionResolver {
 		return runner.resolveContext(result);
 	}
 
-	private @NotNull ConnectionDecision failureDecision(@Nullable AbstractScenarioPipeline runner) {
-		if (runner == null) {
-			return ConnectionDecision.deny("Connection failed");
-		}
+	private @NotNull ConnectionDecision failureDecision(@Nullable AbstractScenarioPipeline runner, @NotNull PipelineType pipelineType) {
+		if (runner == null)
+			return ConnectionDecision.deny(ScenarioMessages.of(pipelineType).getFailed().create(messagesProvider.get()));
+
 		return runner.failureDecision();
 	}
 }

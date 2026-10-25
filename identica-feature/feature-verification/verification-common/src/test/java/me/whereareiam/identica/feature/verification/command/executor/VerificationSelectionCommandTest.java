@@ -6,6 +6,7 @@ import me.whereareiam.identica.feature.verification.config.VerificationMessages;
 import me.whereareiam.identica.feature.verification.model.enrollment.VerificationEnrollment;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.SessionConnection;
 import me.whereareiam.identica.model.config.Messages;
@@ -51,7 +52,8 @@ class VerificationSelectionCommandTest {
 				verification,
 				renderer,
 				challenges,
-				sessions
+				sessions,
+				mock(MessageService.class)
 		).disable(identity, "totp");
 
 		verify(challenges).putPendingDisable(eq(accountUniqueId), argThat(pending -> "totp".equals(pending.getMethodId())));

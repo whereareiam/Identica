@@ -3,6 +3,7 @@ package me.whereareiam.identica.model.identity;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -23,10 +24,9 @@ public class AccountOperationRequest {
 	 */
 	private final boolean disconnect;
 	/**
-	 * Reason shown to a player who is disconnected; empty for a disconnect without one.
+	 * Reason shown to a player who is disconnected, or {@code null} for a disconnect without one.
 	 */
-	@Builder.Default
-	private final @NotNull String disconnectMessage = "";
+	private final @Nullable PlayerMessage disconnectMessage;
 	/**
 	 * Optional reason for audit or downstream listeners.
 	 */

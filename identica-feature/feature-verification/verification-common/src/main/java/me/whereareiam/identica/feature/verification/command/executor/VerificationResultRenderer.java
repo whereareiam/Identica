@@ -1,10 +1,10 @@
 package me.whereareiam.identica.feature.verification.command.executor;
 
-import me.whereareiam.identica.identity.actor.Identity;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import me.whereareiam.identica.Serializer;
+import me.whereareiam.identica.feature.verification.VerificationMessageDefinitions;
 import me.whereareiam.identica.feature.verification.VerificationRegistry;
 import me.whereareiam.identica.feature.verification.config.VerificationMessages;
 import me.whereareiam.identica.feature.verification.model.VerificationDisableResult;
@@ -14,9 +14,12 @@ import me.whereareiam.identica.feature.verification.model.selection.Verification
 import me.whereareiam.identica.feature.verification.type.status.VerificationDisableStatus;
 import me.whereareiam.identica.feature.verification.type.status.VerificationEnrollmentStatus;
 import me.whereareiam.identica.feature.verification.type.status.VerificationSelectionStatus;
+import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.message.MessageService;
+import me.whereareiam.identica.model.message.MessageDefinition;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.keystone.Actor;
-import me.whereareiam.keystone.model.SerializerContent;
 import me.whereareiam.keystone.model.SerializerOptions;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -29,14 +32,17 @@ import java.util.*;
 public class VerificationResultRenderer {
 	private final Provider<VerificationMessages> messagesProvider;
 	private final VerificationRegistry verificationRegistry;
+	private final MessageService messageService;
 
 	@Inject
 	public VerificationResultRenderer(
 			Provider<VerificationMessages> messagesProvider,
-			VerificationRegistry verificationRegistry
+			VerificationRegistry verificationRegistry,
+			MessageService messageService
 	) {
 		this.messagesProvider = messagesProvider;
 		this.verificationRegistry = verificationRegistry;
+		this.messageService = messageService;
 	}
 
 	public void presentEnrollmentResult(@NotNull Actor sender, @NotNull VerificationEnrollmentResult result) {
@@ -49,18 +55,18 @@ public class VerificationResultRenderer {
 		switch (status) {
 			case STARTED -> sendEnrollmentDisplay(sender, result);
 			case ACTIVATED -> {
-				sendMessage(sender, confirmMessages.getEnabled(), methodPlaceholders(result.getMethodId()));
+				send(sender, VerificationMessageDefinitions.CONFIRM_ENABLED, methodPlaceholders(result.getMethodId()));
 				if (result.getAutoSelectedProviderId() != null && !result.getAutoSelectedProviderId().isBlank()) {
 					Map<String, String> placeholders = new HashMap<>(methodPlaceholders(result.getMethodId()));
 					placeholders.put("provider", Objects.toString(result.getAutoSelectedProviderId(), ""));
-					sendMessage(sender, confirmMessages.getAutoSelected(), placeholders);
+					send(sender, VerificationMessageDefinitions.CONFIRM_AUTO_SELECTED, placeholders);
 				}
 			}
-			case NO_PENDING -> sendMessage(sender, confirmMessages.getNoPending(), Map.of());
-			case UNKNOWN_METHOD -> sendMessage(sender, enrollMessages.getUnknownMethod(), methodPlaceholders(result.getMethodId()));
-			case ALREADY_ENROLLED -> sendMessage(sender, enrollMessages.getAlreadyEnrolled(), methodPlaceholders(result.getMethodId()));
-			case METHOD_UNAVAILABLE -> sendMessage(sender, confirmMessages.getMethodUnavailable(), methodAndProviderPlaceholders(result.getMethodId(), result.getProviderId()));
-			case NOT_ALLOWED -> sendMessage(sender, messages.getNotAllowed(), Map.of());
+			case NO_PENDING -> send(sender, VerificationMessageDefinitions.CONFIRM_NO_PENDING, Map.of());
+			case UNKNOWN_METHOD -> send(sender, VerificationMessageDefinitions.ENROLL_UNKNOWN_METHOD, methodPlaceholders(result.getMethodId()));
+			case ALREADY_ENROLLED -> send(sender, VerificationMessageDefinitions.ENROLL_ALREADY_ENROLLED, methodPlaceholders(result.getMethodId()));
+			case METHOD_UNAVAILABLE -> send(sender, VerificationMessageDefinitions.CONFIRM_METHOD_UNAVAILABLE, methodAndProviderPlaceholders(result.getMethodId(), result.getProviderId()));
+			case NOT_ALLOWED -> send(sender, VerificationMessageDefinitions.NOT_ALLOWED, Map.of());
 			case WAITING -> {
 				if (result.getRecoveryCodes() != null && !result.getRecoveryCodes().isEmpty()) {
 					sendRecoveryCodes(sender, result.getRecoveryCodes());
@@ -68,7 +74,7 @@ public class VerificationResultRenderer {
 					sendEnrollmentDisplay(sender, result);
 				}
 			}
-			case INVALID -> sendMessage(sender, confirmMessages.getInvalidCode(), Map.of());
+			case INVALID -> send(sender, VerificationMessageDefinitions.CONFIRM_INVALID_CODE, Map.of());
 		}
 	}
 
@@ -79,14 +85,14 @@ public class VerificationResultRenderer {
 		if (status == null) return;
 
 		switch (status) {
-			case UPDATED -> sendMessage(sender, useMessages.getUpdated(), methodAndProviderPlaceholders(result.getMethodId(), result.getProviderId()));
-			case ALREADY_SELECTED -> sendMessage(sender, useMessages.getAlreadySelected(), methodAndProviderPlaceholders(result.getMethodId(), result.getProviderId()));
-			case PROVIDER_NOT_FOUND -> sendMessage(sender, useMessages.getProviderNotFound(), Map.of("provider", Objects.toString(result.getProviderId(), "")));
-			case PROVIDER_UNSUPPORTED -> sendMessage(sender, useMessages.getProviderUnsupported(), Map.of("provider", Objects.toString(result.getProviderId(), "")));
-			case PROVIDER_VERIFICATION_DISABLED -> sendMessage(sender, useMessages.getProviderVerificationDisabled(), Map.of("provider", Objects.toString(result.getProviderId(), "")));
-			case METHOD_NOT_ENROLLED -> sendMessage(sender, useMessages.getMethodNotEnrolled(), methodPlaceholders(result.getMethodId()));
-			case METHOD_DISABLED_FOR_PROVIDER -> sendMessage(sender, useMessages.getMethodDisabledForProvider(), methodAndProviderPlaceholders(result.getMethodId(), result.getProviderId()));
-			case NOT_ALLOWED -> sendMessage(sender, messages.getNotAllowed(), Map.of());
+			case UPDATED -> send(sender, VerificationMessageDefinitions.USE_UPDATED, methodAndProviderPlaceholders(result.getMethodId(), result.getProviderId()));
+			case ALREADY_SELECTED -> send(sender, VerificationMessageDefinitions.USE_ALREADY_SELECTED, methodAndProviderPlaceholders(result.getMethodId(), result.getProviderId()));
+			case PROVIDER_NOT_FOUND -> send(sender, VerificationMessageDefinitions.USE_PROVIDER_NOT_FOUND, Map.of("provider", Objects.toString(result.getProviderId(), "")));
+			case PROVIDER_UNSUPPORTED -> send(sender, VerificationMessageDefinitions.USE_PROVIDER_UNSUPPORTED, Map.of("provider", Objects.toString(result.getProviderId(), "")));
+			case PROVIDER_VERIFICATION_DISABLED -> send(sender, VerificationMessageDefinitions.USE_PROVIDER_VERIFICATION_DISABLED, Map.of("provider", Objects.toString(result.getProviderId(), "")));
+			case METHOD_NOT_ENROLLED -> send(sender, VerificationMessageDefinitions.USE_METHOD_NOT_ENROLLED, methodPlaceholders(result.getMethodId()));
+			case METHOD_DISABLED_FOR_PROVIDER -> send(sender, VerificationMessageDefinitions.USE_METHOD_DISABLED_FOR_PROVIDER, methodAndProviderPlaceholders(result.getMethodId(), result.getProviderId()));
+			case NOT_ALLOWED -> send(sender, VerificationMessageDefinitions.NOT_ALLOWED, Map.of());
 		}
 	}
 
@@ -96,13 +102,13 @@ public class VerificationResultRenderer {
 		if (status == null) return;
 
 		switch (status) {
-			case DISABLED -> sendMessage(sender, disableMessages.getDisabled(), methodPlaceholders(result.getMethodId()));
-			case METHOD_NOT_ENROLLED -> sendMessage(sender, disableMessages.getMethodNotEnrolled(), methodPlaceholders(result.getMethodId()));
+			case DISABLED -> send(sender, VerificationMessageDefinitions.DISABLE_DISABLED, methodPlaceholders(result.getMethodId()));
+			case METHOD_NOT_ENROLLED -> send(sender, VerificationMessageDefinitions.DISABLE_METHOD_NOT_ENROLLED, methodPlaceholders(result.getMethodId()));
 		}
 	}
 
 	public void presentDisablePrompt(@NotNull Actor sender, @Nullable String methodId) {
-		sendMessage(sender, verificationMessages().getDisable().getProtectedPrompt(), methodPlaceholders(methodId));
+		send(sender, VerificationMessageDefinitions.DISABLE_PROTECTED_PROMPT, methodPlaceholders(methodId));
 	}
 
 	private void sendRecoveryCodes(@NotNull Actor sender, @Nullable List<String> recoveryCodes) {
@@ -113,12 +119,12 @@ public class VerificationResultRenderer {
 		String codes = String.join("\n", entries);
 		String token = placeholderFormat().format("entries");
 		if (messages.getBody().stream().anyMatch(line -> line != null && line.contains(token))) {
-			sendLines(sender, messages.getBody(), Map.of("entries", codes));
+			send(sender, VerificationMessageDefinitions.RECOVERY_CODES, Map.of("entries", codes));
 			return;
 		}
 
-		sendLines(sender, messages.getBody(), Map.of());
-		sendMessage(sender, codes, Map.of());
+		send(sender, VerificationMessageDefinitions.RECOVERY_CODES, Map.of());
+		send(sender, VerificationMessageDefinitions.RECOVERY_CODES.create(messagesProvider.get()).toBuilder().text(codes).build());
 	}
 
 	private List<String> buildRecoveryCodeLines(
@@ -177,13 +183,9 @@ public class VerificationResultRenderer {
 		VerificationProcessDisplay display = result.getDisplay();
 		if (display != null) {
 			// A display whose text was emptied shows nothing; the enrollment itself is unaffected.
-			List<String> lines = display.getLines();
-			if (lines != null && !lines.isEmpty()) {
-				sendLines(sender, lines, placeholders);
-				return;
-			}
-
-			sendMessage(sender, display.getMessage(), placeholders);
+			PlayerMessage message = display.getMessage();
+			if (message != null)
+				send(sender, message.toBuilder().placeholders(merged(message.getPlaceholders(), placeholders)).build());
 			return;
 		}
 
@@ -194,23 +196,29 @@ public class VerificationResultRenderer {
 		throw new IllegalStateException("Verification method " + methodId + " did not provide enrollment display");
 	}
 
-	private void sendLines(@NotNull Actor sender, @Nullable List<String> lines, @NotNull Map<String, String> placeholders) {
-		if (lines == null || lines.isEmpty()) return;
-		sendMessage(sender, String.join("\n", lines), placeholders);
+	private void send(
+			@NotNull Actor sender,
+			@NotNull MessageDefinition<VerificationMessages> definition,
+			@NotNull Map<String, String> placeholders
+	) {
+		send(sender, definition.create(messagesProvider.get(), placeholders));
 	}
 
-	private void sendMessage(@NotNull Actor sender, @Nullable String message, @NotNull Map<String, String> placeholders) {
-		if (message == null || message.isBlank()) return;
+	private void send(@NotNull Actor sender, @NotNull PlayerMessage message) {
+		if (message.isEmpty()) return;
 		if (sender instanceof Identity identity) {
-			identity.send(message, placeholders);
+			messageService.send(identity, message);
 			return;
 		}
 
-		sender.sendMessage(Serializer.serialize(SerializerContent.builder()
-				.receiver(sender)
-				.message(message)
-				.placeholders(placeholders)
-				.build()));
+		sender.sendMessage(Serializer.serialize(sender, message.getText(), message.getPlaceholders()));
+	}
+
+	private static @NotNull Map<String, String> merged(@NotNull Map<String, String> first, @NotNull Map<String, String> second) {
+		Map<String, String> merged = new LinkedHashMap<>(first);
+		merged.putAll(second);
+
+		return merged;
 	}
 
 	private Map<String, String> methodPlaceholders(@Nullable String methodId) {

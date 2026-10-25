@@ -4,8 +4,10 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import me.whereareiam.identica.model.config.Engine;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.ScenarioContext;
+import me.whereareiam.identica.provider.credential.CredentialMessageDefinitions;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.config.CredentialSettings;
@@ -62,17 +64,17 @@ public class CredentialRegistrationStep extends AbstractCredentialSetupStep {
 	}
 
 	@Override
-	protected @NotNull String disabledMessage(@NotNull CredentialMessages messages) {
-		return messages.getScenario().getRegistration().getStatus().getDisabled();
+	protected @NotNull PlayerMessage disabledMessage(@NotNull CredentialMessages messages) {
+		return CredentialMessageDefinitions.REGISTRATION_DISABLED.create(messages);
 	}
 
 	@Override
-	protected @NotNull String registerPrompt(@NotNull CredentialMessages messages) {
-		return joinLines(messages.getScenario().getRegistration().getPrompt());
+	protected @NotNull PlayerMessage registerPrompt(@NotNull CredentialMessages messages) {
+		return CredentialMessageDefinitions.NEW_PASSWORD.create(messages);
 	}
 
 	@Override
-	protected @NotNull String noPendingMessage(@NotNull CredentialMessages messages) {
-		return messages.getScenario().getRegistration().getStatus().getNoPending();
+	protected @NotNull PlayerMessage noPendingMessage(@NotNull CredentialMessages messages) {
+		return CredentialMessageDefinitions.NO_NEW_PASSWORD.create(messages);
 	}
 }

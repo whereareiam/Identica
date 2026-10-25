@@ -4,18 +4,22 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
-import me.whereareiam.identica.persistence.provider.ProviderProfilePersistenceService;
+import me.whereareiam.identica.message.AccountMessages;
+import me.whereareiam.identica.message.ScenarioMessages;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.identity.Account;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.identity.provider.AccountProviderProfile;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
+import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
+import me.whereareiam.identica.persistence.provider.ProviderProfilePersistenceService;
 import me.whereareiam.identica.pipeline.PipelinePhase;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.scenario.type.registration.IdentityState;
 import me.whereareiam.identica.type.pipeline.PipelineStatus;
+import me.whereareiam.identica.type.pipeline.PipelineType;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
@@ -86,15 +90,11 @@ public class LinkProviderPhase implements PipelinePhase<IdentityState> {
 		return CompletableFuture.completedFuture(PhaseResult.pass(state));
 	}
 
-	private @NotNull String accountAlreadyExistsMessage() {
-		return String.join("\n", messagesProvider.get().getScenarios().getRegistration().getAccountAlreadyExists());
+	private @NotNull PlayerMessage accountAlreadyExistsMessage() {
+		return AccountMessages.ALREADY_EXISTS.create(messagesProvider.get());
 	}
 
-	private @NotNull String providerLinkMissingMessage() {
-		return String.join("\n", messagesProvider.get()
-				.getScenarios()
-				.getRegistration()
-				.getErrors()
-				.getIdentity().getProvider().getLinkMissing());
+	private @NotNull PlayerMessage providerLinkMissingMessage() {
+		return ScenarioMessages.of(PipelineType.REGISTRATION).getProviderLinkMissing().create(messagesProvider.get());
 	}
 }

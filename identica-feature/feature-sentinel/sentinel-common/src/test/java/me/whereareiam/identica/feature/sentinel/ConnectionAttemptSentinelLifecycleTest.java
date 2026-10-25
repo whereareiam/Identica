@@ -2,10 +2,11 @@ package me.whereareiam.identica.feature.sentinel;
 
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.connection.attempt.ConnectionResumeAttemptEvent;
-import me.whereareiam.identica.model.auth.ConnectionDecision;
-import me.whereareiam.identica.feature.sentinel.model.SentinelDecision;
 import me.whereareiam.identica.feature.sentinel.SentinelService;
+import me.whereareiam.identica.feature.sentinel.model.SentinelDecision;
 import me.whereareiam.identica.feature.sentinel.type.SentinelScope;
+import me.whereareiam.identica.model.auth.ConnectionDecision;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +28,7 @@ class ConnectionAttemptSentinelLifecycleTest {
 		SentinelService sentinelService = mock(SentinelService.class);
 		EventManager eventManager = mock(EventManager.class);
 		when(sentinelService.evaluate(eq(SentinelScope.RESUME), any()))
-				.thenReturn(Optional.of(SentinelDecision.limited(null, 30, "blocked")));
+				.thenReturn(Optional.of(SentinelDecision.limited(null, 30, message("blocked"))));
 
 		ConnectionAttemptSentinelLifecycle lifecycle = new ConnectionAttemptSentinelLifecycle(sentinelService, mock(me.whereareiam.identica.pipeline.state.PipelineStateStore.class));
 		ConnectionResumeAttemptEvent event = new ConnectionResumeAttemptEvent(
@@ -41,6 +42,10 @@ class ConnectionAttemptSentinelLifecycleTest {
 
 		assertNotNull(event.getDecision());
 		assertEquals(ConnectionDecision.Status.DENY, event.getDecision().getStatus());
-		assertEquals("blocked", event.getDecision().getMessage());
+		assertEquals("blocked", event.getDecision().getMessage().getText());
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

@@ -4,6 +4,7 @@ import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.identity.username.UsernameAssigner;
 import me.whereareiam.identica.model.identity.username.UsernameArrival;
 import me.whereareiam.identica.model.identity.username.UsernameAssignment;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.model.registration.RegistrationContext;
@@ -32,12 +33,12 @@ class UsernameAvailabilityStepTest {
 	@Test
 	@DisplayName("Refuses a registration the username conflict rules refuse, with their message")
 	void refusesARefusedUsername() {
-		when(assigner.preview(any())).thenReturn(UsernameAssignment.refuse("taken alice"));
+		when(assigner.preview(any())).thenReturn(UsernameAssignment.refuse(message("taken alice")));
 
 		StepResult result = step.execute(context("alice", "chosen")).join();
 
 		assertEquals(StepResult.StepStatus.DENIED, result.getStatus());
-		assertEquals("taken alice", result.getMessage());
+		assertEquals("taken alice", result.getMessage().getText());
 	}
 
 	@Test
@@ -82,5 +83,9 @@ class UsernameAvailabilityStepTest {
 				.build());
 
 		return context;
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

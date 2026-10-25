@@ -1,8 +1,10 @@
 package me.whereareiam.identica.platform.common.decision;
 
 import me.whereareiam.identica.Serializer;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.keystone.Actor;
 import me.whereareiam.keystone.model.SerializerContent;
 import me.whereareiam.keystone.model.SerializerOptions;
@@ -21,7 +23,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @DisplayName("Connection Decision Applier")
 class ConnectionDecisionApplierTest {
@@ -57,12 +61,13 @@ class ConnectionDecisionApplierTest {
 	void waitDecisionSendsActorMessage() {
 		ConnectionDecisionApplier applier = new ConnectionDecisionApplier(
 				this::messages,
-				mock(ConnectionDecisionDeliveryCoordinator.class)
+				mock(ConnectionDecisionDeliveryCoordinator.class),
+				messageService()
 		);
 		TestActor actor = new TestActor();
 		TestTarget target = new TestTarget();
 
-		applier.apply(ConnectionDecision.waiting("wait-message"), actor, target);
+		applier.apply(ConnectionDecision.waiting(message("wait-message")), actor, target);
 
 		assertNotNull(actor.lastMessage.get());
 		assertNull(target.denied.get());
@@ -74,12 +79,13 @@ class ConnectionDecisionApplierTest {
 	void denyDecisionUsesTarget() {
 		ConnectionDecisionApplier applier = new ConnectionDecisionApplier(
 				this::messages,
-				mock(ConnectionDecisionDeliveryCoordinator.class)
+				mock(ConnectionDecisionDeliveryCoordinator.class),
+				messageService()
 		);
 		TestActor actor = new TestActor();
 		TestTarget target = new TestTarget();
 
-		applier.apply(ConnectionDecision.deny("denied"), actor, target);
+		applier.apply(ConnectionDecision.deny(message("denied")), actor, target);
 
 		assertNotNull(target.denied.get());
 	}
@@ -89,12 +95,13 @@ class ConnectionDecisionApplierTest {
 	void reconnectDecisionUsesTarget() {
 		ConnectionDecisionApplier applier = new ConnectionDecisionApplier(
 				this::messages,
-				mock(ConnectionDecisionDeliveryCoordinator.class)
+				mock(ConnectionDecisionDeliveryCoordinator.class),
+				messageService()
 		);
 		TestActor actor = new TestActor();
 		TestTarget target = new TestTarget();
 
-		applier.apply(ConnectionDecision.requireReconnect("reconnect"), actor, target);
+		applier.apply(ConnectionDecision.requireReconnect(message("reconnect")), actor, target);
 
 		assertNotNull(target.reconnect.get());
 	}
@@ -104,11 +111,12 @@ class ConnectionDecisionApplierTest {
 	void denialsAreAppliedWithoutAnyText() {
 		ConnectionDecisionApplier applier = new ConnectionDecisionApplier(
 				() -> messages(List.of()),
-				mock(ConnectionDecisionDeliveryCoordinator.class)
+				mock(ConnectionDecisionDeliveryCoordinator.class),
+				messageService()
 		);
 		TestTarget target = new TestTarget();
 
-		applier.apply(ConnectionDecision.deny(""), new TestActor(), target);
+		applier.apply(ConnectionDecision.deny(message("")), new TestActor(), target);
 		applier.apply(ConnectionDecision.requireReconnect(null), new TestActor(), target);
 
 		assertNotNull(target.denied.get());
@@ -177,4 +185,22 @@ class ConnectionDecisionApplierTest {
 			return Audience.empty();
 		}
 	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
+	}
+
+	private static MessageService messageService() {
+		MessageService messageService = mock(MessageService.class);
+		when(messageService.disconnectReason(any(), any())).thenAnswer(call -> {
+			PlayerMessage message = call.getArgument(1);
+			return Serializer.serialize(SerializerContent.builder()
+					.message(message.getText())
+					.placeholders(message.getPlaceholders())
+					.build());
+		});
+
+		return messageService;
+	}
+
 }

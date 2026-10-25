@@ -10,18 +10,19 @@ import me.whereareiam.identica.annotation.Argument;
 import me.whereareiam.identica.annotation.Command;
 import me.whereareiam.identica.annotation.Definition;
 import me.whereareiam.identica.annotation.Suggestions;
-import me.whereareiam.identica.persistence.AccountPersistenceService;
-import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
-import me.whereareiam.identica.persistence.provider.ProviderProfilePersistenceService;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.identity.Account;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.migration.operation.MigrationCancel;
 import me.whereareiam.identica.model.migration.operation.MigrationResult;
 import me.whereareiam.identica.model.migration.operation.MigrationStart;
 import me.whereareiam.identica.model.provider.InternalProvider;
+import me.whereareiam.identica.persistence.AccountPersistenceService;
+import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
+import me.whereareiam.identica.persistence.provider.ProviderProfilePersistenceService;
 import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.service.MigrationService;
 import me.whereareiam.identica.type.migration.MigrationCancelScope;
@@ -129,9 +130,9 @@ public class MigrationCommand {
 		}
 
 		if (result.getStatus() == MigrationResultStatus.PRECHECK_DENIED) {
-			String message = result.getMessage();
-			if (message != null && !message.isBlank()) {
-				sendMessage(sender, message, Map.of());
+			PlayerMessage message = result.getMessage();
+			if (message != null && !message.isEmpty()) {
+				sendMessage(sender, message.getText(), message.getPlaceholders());
 				return;
 			}
 		}

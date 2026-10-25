@@ -3,8 +3,8 @@ package me.whereareiam.identica.common.migration;
 import com.google.inject.Provider;
 import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.common.config.defaults.EngineDefaults;
-import me.whereareiam.identica.persistence.AccountPersistenceService;
-import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
+import me.whereareiam.identica.common.messaging.DefaultMessageService;
+import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.model.config.Commands;
@@ -13,6 +13,7 @@ import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.config.provider.Providers;
 import me.whereareiam.identica.model.identity.Account;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.migration.MigrationContext;
 import me.whereareiam.identica.model.migration.MigrationJourney;
 import me.whereareiam.identica.model.migration.PendingMigration;
@@ -27,13 +28,14 @@ import me.whereareiam.identica.model.pipeline.journey.stage.step.JourneyStep;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.InternalProvider;
 import me.whereareiam.identica.model.provider.ProviderDescriptor;
+import me.whereareiam.identica.persistence.AccountPersistenceService;
+import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.journey.registry.type.MigrationJourneyRegistry;
 import me.whereareiam.identica.pipeline.journey.step.Step;
 import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.service.DeliveryService;
 import me.whereareiam.identica.type.migration.MigrationCancelScope;
-import me.whereareiam.identica.type.migration.MigrationInitiator;
 import me.whereareiam.identica.type.migration.MigrationResultStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
@@ -125,7 +127,7 @@ class DefaultMigrationServiceTest {
 				.build());
 
 		assertEquals(MigrationResultStatus.PRECHECK_DENIED, result.getStatus());
-		assertEquals("locked", result.getMessage());
+		assertEquals("locked", result.getMessage().getText());
 	}
 
 	@DisplayName("Stores account and connection identifiers in separate pending-migration fields")
@@ -230,7 +232,7 @@ class DefaultMigrationServiceTest {
 
 		MigrationResult confirmed = service.confirm(MigrationConfirm.builder()
 				.connectionUniqueId(connectionUniqueId)
-				.kickMessage("rejoin")
+				.kickMessage(message("rejoin"))
 				.build());
 
 		assertEquals(MigrationResultStatus.STARTED, confirmed.getStatus());
@@ -265,7 +267,7 @@ class DefaultMigrationServiceTest {
 
 		MigrationResult confirmed = service.confirm(MigrationConfirm.builder()
 				.connectionUniqueId(connectionUniqueId)
-				.kickMessage("rejoin")
+				.kickMessage(message("rejoin"))
 				.build());
 
 		assertEquals(MigrationResultStatus.STARTED, confirmed.getStatus());
@@ -292,7 +294,7 @@ class DefaultMigrationServiceTest {
 
 		assertEquals(MigrationResultStatus.CANCELLED, result.getStatus());
 		verify(deliveryService).queue(argThat(request ->
-				accountUniqueId.equals(request.getTarget().getAccountUniqueId()) && request.getPayload().getChatMessage() != null
+				accountUniqueId.equals(request.getTarget().getAccountUniqueId()) && "identica:migration/cancelled".equals(request.getPayload().getMessage().getId())
 		));
 	}
 
@@ -398,7 +400,7 @@ class DefaultMigrationServiceTest {
 
 		MigrationResult confirmed = service.confirm(MigrationConfirm.builder()
 				.connectionUniqueId(connectionUniqueId)
-				.kickMessage("rejoin")
+				.kickMessage(message("rejoin"))
 				.build());
 
 		assertEquals(MigrationResultStatus.PROVIDER_UNAVAILABLE, confirmed.getStatus());
@@ -424,11 +426,12 @@ class DefaultMigrationServiceTest {
 					sessionService,
 					identityService,
 					deliveryService,
+					new DefaultMessageService(() -> (recipient, message) -> false, () -> null, mock(EventManager.class)),
 					this::engine,
 					providersProvider,
 					commandsProvider,
-				messagesProvider
-		);
+					messagesProvider
+			);
 	}
 
 	private static PendingMigration startedJourney(UUID connectionUniqueId, UUID accountUniqueId) {
@@ -566,5 +569,9 @@ class DefaultMigrationServiceTest {
 		scenarios.setMigration(migration);
 		messages.setScenarios(scenarios);
 		return messages;
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

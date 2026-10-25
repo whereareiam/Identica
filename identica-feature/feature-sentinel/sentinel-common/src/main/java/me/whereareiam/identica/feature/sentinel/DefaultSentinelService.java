@@ -6,21 +6,22 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import me.whereareiam.identica.Registry;
-import me.whereareiam.identica.feature.sentinel.model.config.SentinelSettings;
-import me.whereareiam.identica.logging.Logger;
-import me.whereareiam.identica.model.replication.ReplicationType;
+import me.whereareiam.identica.feature.sentinel.SentinelDefinition;
+import me.whereareiam.identica.feature.sentinel.SentinelService;
 import me.whereareiam.identica.feature.sentinel.model.SentinelContext;
 import me.whereareiam.identica.feature.sentinel.model.SentinelDecision;
-import me.whereareiam.identica.feature.sentinel.type.SentinelKey;
 import me.whereareiam.identica.feature.sentinel.model.SentinelPolicy;
 import me.whereareiam.identica.feature.sentinel.model.SentinelQuotaPolicy;
 import me.whereareiam.identica.feature.sentinel.model.SentinelQuotaUsage;
-import me.whereareiam.identica.replication.ReplicationSystem;
-import me.whereareiam.identica.replication.cache.ReplicatedCache;
-import me.whereareiam.identica.feature.sentinel.SentinelDefinition;
-import me.whereareiam.identica.feature.sentinel.SentinelService;
+import me.whereareiam.identica.feature.sentinel.model.config.SentinelSettings;
+import me.whereareiam.identica.feature.sentinel.type.SentinelKey;
 import me.whereareiam.identica.feature.sentinel.type.SentinelMode;
 import me.whereareiam.identica.feature.sentinel.type.SentinelScope;
+import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.model.message.PlayerMessage;
+import me.whereareiam.identica.model.replication.ReplicationType;
+import me.whereareiam.identica.replication.ReplicationSystem;
+import me.whereareiam.identica.replication.cache.ReplicatedCache;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Locale;
@@ -162,9 +163,9 @@ public class DefaultSentinelService implements SentinelService {
 
 		long remainingMs = usage.getFreesAt() - System.currentTimeMillis();
 		long remainingSeconds = usage.getFreesAt() > 0 ? Math.max(0L, (remainingMs + 999) / 1000) : 0L;
-		String message = policy.getMessageSupplier() != null ? policy.getMessageSupplier().apply(ctx, usage) : null;
+		PlayerMessage message = policy.getMessageSupplier() != null ? policy.getMessageSupplier().apply(ctx, usage) : null;
 
-		return SentinelDecision.exceeded(quota, remainingSeconds, message == null ? "" : message);
+		return SentinelDecision.exceeded(quota, remainingSeconds, message);
 	}
 
 	private SentinelDecision checkAttempt(
@@ -234,11 +235,11 @@ public class DefaultSentinelService implements SentinelService {
 
 		if (lockout.getMessageSupplier() != null) {
 			// The supplier only words the denial; a lockout without text still denies.
-			String message = lockout.getMessageSupplier().apply(ctx, remainingSeconds);
-			return SentinelDecision.limited(definition, remainingSeconds, message == null ? "" : message, true);
+			PlayerMessage message = lockout.getMessageSupplier().apply(ctx, remainingSeconds);
+			return SentinelDecision.limited(definition, remainingSeconds, message, true);
 		}
 
-		SentinelDecision decision = SentinelDecision.limited(definition, remainingSeconds, "", false);
+		SentinelDecision decision = SentinelDecision.limited(definition, remainingSeconds, null, false);
 		if (runCustomAction && lockout.getCustomAction() != null)
 			lockout.getCustomAction().accept(ctx, decision);
 
@@ -271,8 +272,8 @@ public class DefaultSentinelService implements SentinelService {
 
 		int remainingAttempts = Math.max(0, maxAttempts - attempts);
 		if (warning.getMessageSupplier() != null) {
-			String warningMessage = warning.getMessageSupplier().apply(ctx, remainingAttempts);
-			if (warningMessage == null || warningMessage.isBlank())
+			PlayerMessage warningMessage = warning.getMessageSupplier().apply(ctx, remainingAttempts);
+			if (warningMessage == null || warningMessage.isEmpty())
 				return SentinelDecision.allowed(definition);
 
 			return SentinelDecision.allowed(definition, remainingAttempts, warningMessage);

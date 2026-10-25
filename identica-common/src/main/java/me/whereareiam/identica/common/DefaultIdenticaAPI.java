@@ -19,6 +19,7 @@ import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.account.AccountService;
 import me.whereareiam.identica.identity.account.RegistrationAccountService;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.pipeline.PendingScenarioService;
 import me.whereareiam.identica.pipeline.extension.PipelineExtensionRegistry;
 import me.whereareiam.identica.provider.ProviderManager;
@@ -112,6 +113,11 @@ public class DefaultIdenticaAPI implements IdenticaAPI {
 	@Override
 	public @NotNull ConfigCatalog getConfigCatalog() {
 		return injector.getInstance(ConfigCatalog.class);
+	}
+
+	@Override
+	public @NotNull MessageService getMessageService() {
+		return injector.getInstance(MessageService.class);
 	}
 
 	@Override

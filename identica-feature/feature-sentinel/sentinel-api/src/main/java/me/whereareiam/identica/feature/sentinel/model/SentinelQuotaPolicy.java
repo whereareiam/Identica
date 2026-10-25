@@ -3,6 +3,7 @@ package me.whereareiam.identica.feature.sentinel.model;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -21,9 +22,9 @@ public class SentinelQuotaPolicy {
 	 */
 	private int limit;
 	/**
-	 * Words the refusal from the connection and its usage; {@code null} or a blank result refuses without text.
+	 * Words the refusal from the connection and its usage; {@code null} or an empty message refuses without text.
 	 */
-	private @Nullable BiFunction<SentinelContext, SentinelQuotaUsage, String> messageSupplier;
+	private @Nullable BiFunction<SentinelContext, SentinelQuotaUsage, PlayerMessage> messageSupplier;
 
 	/**
 	 * Returns whether the quota limits anything.

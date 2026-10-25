@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 import me.whereareiam.identica.feature.sentinel.SentinelDefinition;
 import me.whereareiam.identica.feature.sentinel.SentinelQuota;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -18,9 +19,9 @@ public class SentinelDecision {
 	private final boolean limited;
 	private final boolean deny;
 	private final long remainingSeconds;
-	private final @Nullable String message;
+	private final @Nullable PlayerMessage message;
 	private final int remainingAttempts;
-	private final @Nullable String warningMessage;
+	private final @Nullable PlayerMessage warningMessage;
 	private final @Nullable SentinelDefinition definition;
 	private final @Nullable SentinelQuota quota;
 
@@ -35,7 +36,7 @@ public class SentinelDecision {
 	public static @NotNull SentinelDecision limited(
 			@Nullable SentinelDefinition definition,
 			long remainingSeconds,
-			@Nullable String message
+			@Nullable PlayerMessage message
 	) {
 		return new SentinelDecision(true, true, remainingSeconds, message, 0, null, definition, null);
 	}
@@ -52,7 +53,7 @@ public class SentinelDecision {
 	public static @NotNull SentinelDecision limited(
 			@Nullable SentinelDefinition definition,
 			long remainingSeconds,
-			@Nullable String message,
+			@Nullable PlayerMessage message,
 			boolean deny
 	) {
 		return new SentinelDecision(true, deny, remainingSeconds, message, 0, null, definition, null);
@@ -79,7 +80,7 @@ public class SentinelDecision {
 	public static @NotNull SentinelDecision allowed(
 			@Nullable SentinelDefinition definition,
 			int remainingAttempts,
-			@Nullable String warningMessage
+			@Nullable PlayerMessage warningMessage
 	) {
 		return new SentinelDecision(false, false, 0L, null, remainingAttempts, warningMessage, definition, null);
 	}
@@ -96,7 +97,7 @@ public class SentinelDecision {
 	public static @NotNull SentinelDecision exceeded(
 			@NotNull SentinelQuota quota,
 			long remainingSeconds,
-			@Nullable String message
+			@Nullable PlayerMessage message
 	) {
 		return new SentinelDecision(true, true, remainingSeconds, message, 0, null, null, quota);
 	}

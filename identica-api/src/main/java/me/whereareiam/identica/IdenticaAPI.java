@@ -10,6 +10,7 @@ import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.account.AccountService;
 import me.whereareiam.identica.identity.account.RegistrationAccountService;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.pipeline.PendingScenarioService;
 import me.whereareiam.identica.pipeline.extension.PipelineExtensionRegistry;
 import me.whereareiam.identica.provider.ProviderManager;
@@ -199,6 +200,14 @@ public interface IdenticaAPI {
 	 * @return config catalog
 	 */
 	@NotNull ConfigCatalog getConfigCatalog();
+
+	/**
+	 * Returns the service that shows players Identica's messages, where addons register other ways of showing them,
+	 * such as dialogs.
+	 *
+	 * @return message service
+	 */
+	@NotNull MessageService getMessageService();
 
 	/**
 	 * Returns the service that tells whether a connection still has to authenticate, register or migrate.

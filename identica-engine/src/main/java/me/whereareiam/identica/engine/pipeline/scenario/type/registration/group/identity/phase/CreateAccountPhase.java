@@ -5,10 +5,10 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.identity.username.UsernameAssigner;
-import me.whereareiam.identica.persistence.AccountPersistenceService;
-import me.whereareiam.identica.persistence.AccountReservationPersistenceService;
-import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.message.AccountMessages;
+import me.whereareiam.identica.message.ScenarioMessages;
+import me.whereareiam.identica.message.UsernameConflictMessages;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.config.UsernameMessages;
 import me.whereareiam.identica.model.identity.Account;
@@ -16,13 +16,17 @@ import me.whereareiam.identica.model.identity.provider.AccountProviderProfile;
 import me.whereareiam.identica.model.identity.username.UsernameArrival;
 import me.whereareiam.identica.model.identity.username.UsernameAssignment;
 import me.whereareiam.identica.model.identity.username.UsernameWriteResult;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
 import me.whereareiam.identica.model.registration.RegistrationContext;
+import me.whereareiam.identica.persistence.AccountPersistenceService;
+import me.whereareiam.identica.persistence.AccountReservationPersistenceService;
 import me.whereareiam.identica.pipeline.PipelinePhase;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.scenario.type.registration.IdentityState;
 import me.whereareiam.identica.type.pipeline.PipelineStatus;
+import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.util.UniqueIdGenerator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -143,22 +147,16 @@ public class CreateAccountPhase implements PipelinePhase<IdentityState> {
 		return new Creation(null, takenMessage(profile.getProviderUsername()));
 	}
 
-	private @NotNull String takenMessage(@NotNull String username) {
-		String lines = String.join("\n", usernameMessagesProvider.get().getPipeline().getPolicy().getTaken());
-
-		return Serializer.render(lines, Map.of("username", username));
+	private @NotNull PlayerMessage takenMessage(@NotNull String username) {
+		return UsernameConflictMessages.TAKEN.create(usernameMessagesProvider.get(), Map.of("username", username));
 	}
 
-	private @NotNull String accountAlreadyExistsMessage() {
-		return String.join("\n", messagesProvider.get().getScenarios().getRegistration().getAccountAlreadyExists());
+	private @NotNull PlayerMessage accountAlreadyExistsMessage() {
+		return AccountMessages.ALREADY_EXISTS.create(messagesProvider.get());
 	}
 
-	private @NotNull String accountCreationMissingMessage() {
-		return String.join("\n", messagesProvider.get()
-				.getScenarios()
-				.getRegistration()
-				.getErrors()
-				.getPolicy().getAccountCreationMissing());
+	private @NotNull PlayerMessage accountCreationMissingMessage() {
+		return ScenarioMessages.of(PipelineType.REGISTRATION).getAccountCreationMissing().create(messagesProvider.get());
 	}
 
 	private void deleteReservation(@NotNull String username) {
@@ -179,6 +177,6 @@ public class CreateAccountPhase implements PipelinePhase<IdentityState> {
 		);
 	}
 
-	private record Creation(@Nullable Account account, @Nullable String refusal) {
+	private record Creation(@Nullable Account account, @Nullable PlayerMessage refusal) {
 	}
 }

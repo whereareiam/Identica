@@ -19,6 +19,7 @@ import me.whereareiam.identica.model.SessionConnection;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.config.Settings;
 import me.whereareiam.identica.model.config.provider.Providers;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.type.session.SessionConcurrencyPolicy;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -85,7 +86,7 @@ class DefaultSessionServiceTest {
 		SessionClosedEvent received = alpha.closed();
 		assertEquals(earlier.getSessionId(), received.getSession().getSessionId());
 		assertTrue(received.getRequest().isDisconnect());
-		assertEquals(KICK, received.getRequest().getDisconnectMessage());
+		assertEquals(KICK, received.getRequest().getDisconnectMessage().getText());
 		assertEquals("alpha", received.getRequest().getConnection().getServerId());
 		assertEquals(connection, received.getRequest().getConnection().getConnectionUniqueId());
 		assertEquals(List.of(later.getSessionId()), ids(alpha.store.findByAccount(account).join()));
@@ -213,14 +214,14 @@ class DefaultSessionServiceTest {
 		beta.service.close(SessionCloseRequest.builder()
 				.uniqueId(account)
 				.disconnect(true)
-				.disconnectMessage("ended")
+				.disconnectMessage(message("ended"))
 				.build()).join();
 
 		assertTrue(alpha.store.findByAccount(account).join().isEmpty());
 		assertEquals(2, alpha.closes.size());
 		assertEquals(Set.of(first.getConnection().getConnectionUniqueId(), second.getConnection().getConnectionUniqueId()), connections(alpha.closes));
 		assertTrue(alpha.closes.stream().allMatch(close -> close.getRequest().isDisconnect()
-				&& "ended".equals(close.getRequest().getDisconnectMessage())));
+				&& "ended".equals(close.getRequest().getDisconnectMessage().getText())));
 		assertEquals(2, alpha.closes.stream().map(SessionClosedEvent::getReplicationEventId).distinct().count());
 	}
 
@@ -230,7 +231,7 @@ class DefaultSessionServiceTest {
 		alpha.service.close(SessionCloseRequest.builder()
 				.uniqueId(account)
 				.disconnect(true)
-				.disconnectMessage("ended")
+				.disconnectMessage(message("ended"))
 				.build()).join();
 
 		assertNull(beta.closed().getSession());
@@ -446,5 +447,9 @@ class DefaultSessionServiceTest {
 		engine.setConcurrentLoginKick(List.of(KICK));
 		messages.setEngine(engine);
 		return messages;
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

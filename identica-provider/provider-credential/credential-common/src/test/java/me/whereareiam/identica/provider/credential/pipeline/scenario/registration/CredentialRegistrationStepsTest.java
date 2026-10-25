@@ -6,6 +6,7 @@ import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.model.registration.RegistrationContext;
 import me.whereareiam.identica.pipeline.state.PipelineState;
+import me.whereareiam.identica.provider.credential.CredentialMessageDefinitions;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.config.CredentialSettings;
@@ -100,7 +101,30 @@ class CredentialRegistrationStepsTest {
 
 		assertEquals(StepResult.StepStatus.WAITING, confirmation.getStatus());
 		assertEquals(CredentialRegistrationStep.NAME, confirmation.getResumeStep());
+		assertEquals(CredentialMessageDefinitions.NEW_PASSWORD_PROMPT.getId(), confirmation.getMessage().getPrompt().getId());
+		assertEquals(CredentialMessageDefinitions.PASSWORDS_DIFFER.getId(), confirmation.getMessage().getId());
 		assertTrue(state.get(CredentialRegisterStateItem.KEY).isEmpty(), "the step forgets the first password");
+	}
+
+	@DisplayName("A new password that breaks a rule is asked for again, naming the rule")
+	@Test
+	void aPasswordThatBreaksARuleIsAskedForAgain() {
+		RegistrationContext context = RegistrationContext.builder()
+				.identity(new ConnectionIdentity("whereareiam", "127.0.0.1"))
+				.build();
+		context.setProvider(ProviderContext.of("credential", "subject", "whereareiam"));
+		PipelineState state = PipelineState.initial();
+		when(accountService.find("subject")).thenReturn(Optional.empty());
+		when(passwordRules.check("short")).thenReturn(CredentialMessageDefinitions.PASSWORD_TOO_SHORT);
+
+		state.put(CredentialRegistrationAttempt.KEY, new CredentialRegistrationAttempt("short", false), TTL);
+		StepResult result = new CredentialRegistrationStep(this::messages, this::credentialSettings, this::settings, accountService,
+				cryptographyService, passwordRules).execute(context, state).join();
+
+		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
+		assertEquals(messages().getPassword().getTooShort(), result.getMessage().getText());
+		assertEquals(CredentialMessageDefinitions.NEW_PASSWORD_PROMPT.getId(), result.getMessage().getPrompt().getId());
+		assertEquals(CredentialMessageDefinitions.PASSWORD_TOO_SHORT.getId(), result.getMessage().getId());
 	}
 
 	private CredentialMessages messages() {

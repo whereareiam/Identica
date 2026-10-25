@@ -7,15 +7,15 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.util.GameProfile;
 import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.Serializer;
-import me.whereareiam.identica.platform.common.checkpoint.LoadingScreenReplies;
-import me.whereareiam.identica.platform.velocity.checkpoint.VelocityCheckpointAdapter;
 import me.whereareiam.identica.common.prepare.DefaultPrepareStateStore;
 import me.whereareiam.identica.common.replication.DefaultReplicationSystem;
 import me.whereareiam.identica.identity.IdentityService;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.request.ConnectionRequest;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.platform.common.decision.ConnectionDecisionApplier;
@@ -24,6 +24,7 @@ import me.whereareiam.identica.platform.common.stage.login.LoginDecisionProcesso
 import me.whereareiam.identica.platform.common.stage.login.PreparedRefusal;
 import me.whereareiam.identica.platform.common.stage.profile.ProfileRewriteProcessor;
 import me.whereareiam.identica.platform.velocity.adapter.profile.VelocityProfileRewriteAdapter;
+import me.whereareiam.identica.platform.velocity.checkpoint.VelocityCheckpointAdapter;
 import me.whereareiam.identica.replication.ReplicationAdapter;
 import me.whereareiam.keystone.model.SerializerContent;
 import me.whereareiam.keystone.model.SerializerOptions;
@@ -99,7 +100,7 @@ class VelocityProfileThenLoginTest {
 		ReplicationAdapter replication = mock(ReplicationAdapter.class);
 		when(replication.isAvailable()).thenReturn(false);
 		store = new DefaultPrepareStateStore(new DefaultReplicationSystem(replication), VelocityProfileThenLoginTest::engine);
-		PreparedRefusal refusal = new PreparedRefusal(store, VelocityProfileThenLoginTest::messages);
+		PreparedRefusal refusal = new PreparedRefusal(store, VelocityProfileThenLoginTest::messages, messageService());
 
 		profileAdapter = new VelocityProfileRewriteAdapter(new ProfileRewriteProcessor(connectionCoordinator, store, refusal));
 		loginAdapter = new VelocityLoginDecisionAdapter(new LoginDecisionProcessor(
@@ -109,16 +110,17 @@ class VelocityProfileThenLoginTest {
 				refusal,
 				new ConnectionDecisionApplier(
 						VelocityProfileThenLoginTest::messages,
-						mock(ConnectionDecisionDeliveryCoordinator.class)
+						mock(ConnectionDecisionDeliveryCoordinator.class),
+						messageService()
 				)
-		), mock(LoadingScreenReplies.class), mock(VelocityCheckpointAdapter.class));
+		), mock(VelocityCheckpointAdapter.class));
 		when(connectionCoordinator.process(any())).thenReturn(CompletableFuture.completedFuture(ConnectionDecision.allow()));
 	}
 
 	@DisplayName("Refuses the login of a connection whose profile was refused, before Identica's flow starts")
 	@Test
 	void refusedProfileRefusesTheLogin() {
-		when(connectionCoordinator.prepare(any())).thenReturn(CompletableFuture.completedFuture(PrepareDecision.deny("restricted")));
+		when(connectionCoordinator.prepare(any())).thenReturn(CompletableFuture.completedFuture(PrepareDecision.deny(message("restricted"))));
 		GameProfile profile = GameProfile.forOfflinePlayer("Bob");
 
 		profileAdapter.apply(profileRequest(profile));
@@ -147,7 +149,7 @@ class VelocityProfileThenLoginTest {
 	@DisplayName("Finds the refusal by connection key when the login's unique ID differs from the profile's")
 	@Test
 	void refusalIsFoundByConnectionKey() {
-		when(connectionCoordinator.prepare(any())).thenReturn(CompletableFuture.completedFuture(PrepareDecision.deny("restricted")));
+		when(connectionCoordinator.prepare(any())).thenReturn(CompletableFuture.completedFuture(PrepareDecision.deny(message("restricted"))));
 		GameProfile profile = GameProfile.forOfflinePlayer("Bob");
 
 		profileAdapter.apply(profileRequest(profile));
@@ -162,7 +164,7 @@ class VelocityProfileThenLoginTest {
 	@Test
 	void allowedRetryLogsIn() {
 		when(connectionCoordinator.prepare(any()))
-				.thenReturn(CompletableFuture.completedFuture(PrepareDecision.deny("restricted")))
+				.thenReturn(CompletableFuture.completedFuture(PrepareDecision.deny(message("restricted"))))
 				.thenReturn(CompletableFuture.completedFuture(PrepareDecision.allow()));
 		GameProfile profile = GameProfile.forOfflinePlayer("Bob");
 
@@ -180,7 +182,7 @@ class VelocityProfileThenLoginTest {
 	@Test
 	void failedProfileRunForgetsEarlierRefusal() {
 		when(connectionCoordinator.prepare(any()))
-				.thenReturn(CompletableFuture.completedFuture(PrepareDecision.deny("restricted")))
+				.thenReturn(CompletableFuture.completedFuture(PrepareDecision.deny(message("restricted"))))
 				.thenReturn(CompletableFuture.failedFuture(new IllegalStateException("prepare failed")));
 		GameProfile profile = GameProfile.forOfflinePlayer("Bob");
 
@@ -198,7 +200,7 @@ class VelocityProfileThenLoginTest {
 	void failedProfileRunKeepsHandshakeProvider() {
 		ProviderContext provider = ProviderContext.of("credential", "bob", "Bob");
 		when(connectionCoordinator.prepare(any()))
-				.thenReturn(CompletableFuture.completedFuture(PrepareDecision.deny("restricted")))
+				.thenReturn(CompletableFuture.completedFuture(PrepareDecision.deny(message("restricted"))))
 				.thenReturn(CompletableFuture.failedFuture(new IllegalStateException("prepare failed")));
 		GameProfile profile = GameProfile.forOfflinePlayer("Bob");
 
@@ -251,4 +253,22 @@ class VelocityProfileThenLoginTest {
 		messages.setEngine(engine);
 		return messages;
 	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
+	}
+
+	private static MessageService messageService() {
+		MessageService messageService = mock(MessageService.class);
+		when(messageService.disconnectReason(any(), any())).thenAnswer(call -> {
+			PlayerMessage message = call.getArgument(1);
+			return Serializer.serialize(SerializerContent.builder()
+					.message(message.getText())
+					.placeholders(message.getPlaceholders())
+					.build());
+		});
+
+		return messageService;
+	}
+
 }

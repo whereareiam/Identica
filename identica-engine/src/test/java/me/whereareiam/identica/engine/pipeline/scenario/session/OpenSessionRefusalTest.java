@@ -34,7 +34,7 @@ class OpenSessionRefusalTest {
 		PipelineResult result = refused(List.of("This account is already logged in.", "Log out first."));
 
 		assertEquals(PipelineStatus.DENIED, result.getStatus());
-		assertEquals("This account is already logged in.\nLog out first.", result.getMessage());
+		assertEquals("This account is already logged in.\nLog out first.", result.getMessage().getText());
 		verify(eventManager, never()).call(any(SessionOpenedEvent.class));
 	}
 

@@ -4,6 +4,7 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.ToString;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -20,7 +21,7 @@ public class UsernameAssignment {
 	/**
 	 * Why the account is refused, or {@code null} when it is not.
 	 */
-	private final @Nullable String message;
+	private final @Nullable PlayerMessage message;
 
 	/**
 	 * The username the account keeps, or {@code null} when it is refused.
@@ -60,7 +61,7 @@ public class UsernameAssignment {
 	 * @param message why the account is refused
 	 * @return refusal
 	 */
-	public static @NotNull UsernameAssignment refuse(@NotNull String message) {
+	public static @NotNull UsernameAssignment refuse(@NotNull PlayerMessage message) {
 		return new UsernameAssignment(true, message, null, null, null);
 	}
 }

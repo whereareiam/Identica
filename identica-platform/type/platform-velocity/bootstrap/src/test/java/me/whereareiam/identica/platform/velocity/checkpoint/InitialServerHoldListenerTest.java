@@ -9,7 +9,9 @@ import com.velocitypowered.api.scheduler.ScheduledTask;
 import me.whereareiam.identica.checkpoint.Checkpoint;
 import me.whereareiam.identica.checkpoint.Checkpoints;
 import me.whereareiam.identica.checkpoint.HeldConnection;
+import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.model.checkpoint.CheckpointSelection;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.platform.common.checkpoint.LoadingScreenReplies;
 import me.whereareiam.identica.platform.velocity.adapter.auth.VelocityResumeDecisionAdapter;
 import me.whereareiam.identica.service.DeliveryService;
@@ -74,14 +76,14 @@ class InitialServerHoldListenerTest {
 		HeldConnection arrived = arrived();
 		assertEquals(ALICE, arrived.getConnectionUniqueId());
 		verify(keepAlive).keepAlive(player);
-		assertTrue(replies.defer(ALICE, "Wrong password"));
+		assertTrue(replies.hold(alice(), message("Wrong password")));
 
 		arrived.release("lobby");
 
 		assertTrue(arrived.released().toCompletableFuture().isDone());
 		assertEquals(Optional.of(lobby), event.getInitialServer());
 		verify(keepingAlive).cancel();
-		assertFalse(replies.defer(ALICE, "Welcome"));
+		assertFalse(replies.hold(alice(), message("Welcome")));
 	}
 
 	@DisplayName("Chooses no server for a player who left while held")
@@ -122,5 +124,16 @@ class InitialServerHoldListenerTest {
 		Checkpoint checkpoint = mock(Checkpoint.class);
 		when(checkpoint.id()).thenReturn("loading-screen");
 		return new CheckpointSelection(checkpoint, placement);
+	}
+
+	private static Identity alice() {
+		Identity alice = mock(Identity.class);
+		when(alice.getConnectionUniqueId()).thenReturn(ALICE);
+
+		return alice;
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

@@ -4,16 +4,19 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.persistence.AccountPersistenceService;
-import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
+import me.whereareiam.identica.message.AccountMessages;
+import me.whereareiam.identica.message.ScenarioMessages;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.identity.Account;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.ScenarioTransitionItem;
 import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.model.registration.RegistrationContext;
+import me.whereareiam.identica.persistence.AccountPersistenceService;
+import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.pipeline.PipelinePhase;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.scenario.type.registration.IdentityState;
@@ -21,7 +24,6 @@ import me.whereareiam.identica.type.pipeline.PipelineStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -108,19 +110,12 @@ public class EnsureNewAccountPhase implements PipelinePhase<IdentityState> {
 		return CompletableFuture.completedFuture(PhaseResult.pass(state));
 	}
 
-	private @NotNull String ensureNewAccountMissingMessage() {
-		return joinMessage(messagesProvider.get()
-				.getScenarios()
-				.getRegistration()
-				.getErrors()
-				.getPolicy().getEnsureNewAccountMissing());
+	private @NotNull PlayerMessage ensureNewAccountMissingMessage() {
+		return ScenarioMessages.of(PipelineType.REGISTRATION).getEnsureNewAccountMissing().create(messagesProvider.get());
 	}
 
-	private @NotNull String accountAlreadyExistsMessage() {
-		return joinMessage(messagesProvider.get().getScenarios().getRegistration().getAccountAlreadyExists());
+	private @NotNull PlayerMessage accountAlreadyExistsMessage() {
+		return AccountMessages.ALREADY_EXISTS.create(messagesProvider.get());
 	}
 
-	private @NotNull String joinMessage(@NotNull List<String> lines) {
-		return String.join("\n", lines);
-	}
 }

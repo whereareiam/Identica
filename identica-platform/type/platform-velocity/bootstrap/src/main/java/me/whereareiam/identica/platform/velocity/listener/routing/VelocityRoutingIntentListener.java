@@ -14,13 +14,14 @@ import me.whereareiam.identica.event.routing.intent.RoutingIntentRetryEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentStartedEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentUpdatedEvent;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.routing.RoutingIntent;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptDecision;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptReport;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptRequest;
 import me.whereareiam.identica.routing.RoutingAttemptService;
-import me.whereareiam.identica.type.routing.reason.RoutingAttemptFailureReason;
 import me.whereareiam.identica.type.routing.RoutingAttemptTrigger;
+import me.whereareiam.identica.type.routing.reason.RoutingAttemptFailureReason;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
@@ -30,16 +31,19 @@ public class VelocityRoutingIntentListener implements EventListener {
 	private final ProxyServer proxyServer;
 	private final RoutingAttemptService routingAttemptService;
 	private final EventManager eventManager;
+	private final MessageService messageService;
 
 	@Inject
 	public VelocityRoutingIntentListener(
 			@NotNull ProxyServer proxyServer,
 			@NotNull RoutingAttemptService routingAttemptService,
-			@NotNull EventManager eventManager
+			@NotNull EventManager eventManager,
+			@NotNull MessageService messageService
 	) {
 		this.proxyServer = proxyServer;
 		this.routingAttemptService = routingAttemptService;
 		this.eventManager = eventManager;
+		this.messageService = messageService;
 		eventManager.register(this);
 	}
 
@@ -118,7 +122,7 @@ public class VelocityRoutingIntentListener implements EventListener {
 			);
 			eventManager.call(missingEvent);
 			if (missingEvent.isDisconnect() && missingEvent.getMessage() != null)
-				player.disconnect(missingEvent.getMessage());
+				player.disconnect(messageService.disconnectReason(null, missingEvent.getMessage()));
 
 			routingAttemptService.record(RoutingAttemptReport.failed(
 					player.getUniqueId(),

@@ -1,18 +1,13 @@
 package me.whereareiam.identica.common.identity.username;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import me.whereareiam.identica.common.conflict.ConflictOutcomeSettings;
-import me.whereareiam.identica.common.identity.username.outcome.RenameHolderOutcome;
-import me.whereareiam.identica.model.conflict.ConflictRuleOutcome;
-import me.whereareiam.identica.model.identity.username.UsernameConflictDecision;
-import me.whereareiam.identica.model.identity.username.UsernameHolderRename;
-import me.whereareiam.identica.type.conflict.ConflictSide;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.common.config.provider.UsernameConflictsProvider;
+import me.whereareiam.identica.common.conflict.ConflictOutcomeSettings;
+import me.whereareiam.identica.common.identity.username.outcome.RenameHolderOutcome;
 import me.whereareiam.identica.conflict.ConflictOutcome;
 import me.whereareiam.identica.conflict.ConflictService;
 import me.whereareiam.identica.event.EventManager;
@@ -22,10 +17,12 @@ import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.identity.username.UsernameAssigner;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.message.UsernameConflictMessages;
 import me.whereareiam.identica.model.SessionCloseRequest;
 import me.whereareiam.identica.model.config.UsernameConflicts;
 import me.whereareiam.identica.model.config.UsernameMessages;
 import me.whereareiam.identica.model.conflict.ConflictParty;
+import me.whereareiam.identica.model.conflict.ConflictRuleOutcome;
 import me.whereareiam.identica.model.conflict.ConflictSituation;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.identity.username.AccountUsername;
@@ -33,7 +30,9 @@ import me.whereareiam.identica.model.identity.username.AccountUsernameHistoryEnt
 import me.whereareiam.identica.model.identity.username.UsernameArrival;
 import me.whereareiam.identica.model.identity.username.UsernameAssignment;
 import me.whereareiam.identica.model.identity.username.UsernameConflict;
+import me.whereareiam.identica.model.identity.username.UsernameConflictDecision;
 import me.whereareiam.identica.model.identity.username.UsernameConflictRule;
+import me.whereareiam.identica.model.identity.username.UsernameHolderRename;
 import me.whereareiam.identica.model.identity.username.UsernameRename;
 import me.whereareiam.identica.model.identity.username.UsernameWriteResult;
 import me.whereareiam.identica.model.provider.InternalProvider;
@@ -41,6 +40,7 @@ import me.whereareiam.identica.model.provider.ProviderDescriptor;
 import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.persistence.username.AccountUsernamePersistenceService;
 import me.whereareiam.identica.provider.ProviderManager;
+import me.whereareiam.identica.type.conflict.ConflictSide;
 import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import me.whereareiam.identica.type.identity.username.UsernameConflictTrigger;
 import me.whereareiam.identica.type.identity.username.UsernameHolderOnline;
@@ -340,9 +340,7 @@ public class DefaultUsernameAssigner implements UsernameAssigner {
 	}
 
 	private @NotNull UsernameAssignment refuse(@NotNull String username) {
-		String lines = String.join("\n", messages.get().getPipeline().getPolicy().getTaken());
-
-		return UsernameAssignment.refuse(Serializer.render(lines, Map.of("username", username)));
+		return UsernameAssignment.refuse(UsernameConflictMessages.TAKEN.create(messages.get(), Map.of("username", username)));
 	}
 
 	private static @Nullable AccountUsernameHistoryEntry change(
@@ -393,11 +391,10 @@ public class DefaultUsernameAssigner implements UsernameAssigner {
 	}
 
 	private void disconnect(@NotNull AccountUsernameHistoryEntry change) {
-		String lines = String.join("\n", messages.get().getPipeline().getPolicy().getHolderReplaced());
 		sessions.close(SessionCloseRequest.builder()
 				.uniqueId(change.getUniqueId())
 				.disconnect(true)
-				.disconnectMessage(Serializer.render(lines, Map.of(
+				.disconnectMessage(UsernameConflictMessages.HOLDER_REPLACED.create(messages.get(), Map.of(
 						"username", change.getOldUsername(),
 						"renamed", change.getNewUsername()
 				)))

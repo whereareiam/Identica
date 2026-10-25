@@ -1,6 +1,7 @@
 package me.whereareiam.identica.engine.pipeline.scenario.hold;
 
 import me.whereareiam.identica.Serializer;
+import me.whereareiam.identica.common.messaging.DefaultMessageService;
 import me.whereareiam.identica.common.replication.DefaultReplicationSystem;
 import me.whereareiam.identica.common.replication.lease.DefaultLeaseKeeper;
 import me.whereareiam.identica.event.EventManager;
@@ -12,6 +13,7 @@ import me.whereareiam.identica.event.scenario.authentication.AuthenticationRequi
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.identity.actor.Identity;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.SessionConnection;
 import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
@@ -63,6 +65,9 @@ import static org.mockito.Mockito.when;
  */
 @DisplayName("Username Hold")
 class UsernameHoldTest {
+	private static final MessageService MESSAGE_SERVICE =
+			new DefaultMessageService(() -> (recipient, message) -> false, () -> null, mock(EventManager.class));
+
 	private static final String OWNER_ADDRESS = "127.0.0.1";
 	private static final String OTHER_ADDRESS = "127.0.0.2";
 
@@ -113,6 +118,7 @@ class UsernameHoldTest {
 				pendingOfB,
 				eventsOfB,
 				UsernameHoldTest::messages,
+				MESSAGE_SERVICE,
 				() -> replication("proxy-b")
 		);
 	}
@@ -131,7 +137,7 @@ class UsernameHoldTest {
 		ConnectionDecision decision = holdOfB.enter(request(OTHER_ADDRESS, ProviderSelection.empty()));
 
 		assertEquals(ConnectionDecision.Status.DENY, decision.getStatus());
-		assertEquals("held", decision.getMessage());
+		assertEquals("held", decision.getMessage().getText());
 		ArgumentCaptor<Event> fired = ArgumentCaptor.forClass(Event.class);
 		verify(eventsOfB).call(fired.capture());
 		UsernameHeldEvent refused = assertInstanceOf(UsernameHeldEvent.class, fired.getValue());

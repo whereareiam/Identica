@@ -4,6 +4,7 @@ import me.whereareiam.identica.feature.sentinel.model.SentinelContext;
 import me.whereareiam.identica.feature.sentinel.model.SentinelPolicy;
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelMessages;
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelSettings;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -45,7 +46,9 @@ class ContestedConnectionSentinelDefinitionTest {
 		SentinelPolicy policy = definition.policy(SentinelContext.builder().ip("203.0.113.10").build());
 
 		assertTrue(policy.isActive());
-		assertEquals("Wait 12s.", policy.getLockout().getMessageSupplier().apply(null, 12L));
+		PlayerMessage message = policy.getLockout().getMessageSupplier().apply(null, 12L);
+		assertEquals("Wait {seconds}s.", message.getText());
+		assertEquals("12", message.getPlaceholders().get("seconds"));
 	}
 
 	@DisplayName("Takes no part while the sentinel feature is turned off")

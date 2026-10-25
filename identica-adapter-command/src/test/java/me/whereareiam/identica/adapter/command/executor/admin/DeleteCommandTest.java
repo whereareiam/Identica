@@ -78,7 +78,7 @@ class DeleteCommandTest {
 		verify(accounts).delete(request.capture());
 		assertEquals(alice, request.getValue().getAccount());
 		assertTrue(request.getValue().isDisconnect());
-		assertEquals("deleted\nby an administrator", request.getValue().getDisconnectMessage());
+		assertEquals("deleted\nby an administrator", request.getValue().getDisconnectMessage().getText());
 		assertEquals("admin-delete", request.getValue().getReason());
 		assertEquals(List.of("confirm", "success"), admin.received);
 	}

@@ -3,7 +3,9 @@ package me.whereareiam.identica.provider.credential.command;
 import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.identity.actor.Identity;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.keystone.model.SerializerContent;
 import me.whereareiam.keystone.serializer.SerializerEngine;
@@ -44,11 +46,11 @@ class PasswordCommandDenialTest {
 
 	static Stream<ConnectionDecision> denials() {
 		return Stream.of(
-				ConnectionDecision.deny(""),
+				ConnectionDecision.deny(message("")),
 				ConnectionDecision.deny(null),
-				ConnectionDecision.deny("Wrong password"),
-				ConnectionDecision.requireReconnect(""),
-				ConnectionDecision.requireReconnect("Join again")
+				ConnectionDecision.deny(message("Wrong password")),
+				ConnectionDecision.requireReconnect(message("")),
+				ConnectionDecision.requireReconnect(message("Join again"))
 		);
 	}
 
@@ -58,9 +60,9 @@ class PasswordCommandDenialTest {
 	void loginDisconnectsOnDenial(ConnectionDecision decision) {
 		when(coordinator.advance(any())).thenReturn(CompletableFuture.completedFuture(decision));
 
-		new LoginCommand(coordinator, CredentialMessages::new).login(identity, "secret");
+		new LoginCommand(coordinator, CredentialMessages::new, messageService()).login(identity, "secret");
 
-		verify(identity).disconnect(Component.text(decision.getMessage() == null ? "" : decision.getMessage()));
+		verify(identity).disconnect(decision.getMessage() == null ? Component.empty() : Component.text(decision.getMessage().getText()));
 	}
 
 	@DisplayName("/pass and /passconfirm disconnect on a denial with or without a reason")
@@ -68,11 +70,23 @@ class PasswordCommandDenialTest {
 	@MethodSource("denials")
 	void passDisconnectsOnDenial(ConnectionDecision decision) {
 		when(coordinator.advance(any())).thenReturn(CompletableFuture.completedFuture(decision));
-		PassCommand command = new PassCommand(coordinator, CredentialMessages::new);
+		PassCommand command = new PassCommand(coordinator, CredentialMessages::new, messageService());
 
 		command.pass(identity, "secret");
 		command.passConfirm(identity, "secret");
 
-		verify(identity, times(2)).disconnect(Component.text(decision.getMessage() == null ? "" : decision.getMessage()));
+		verify(identity, times(2)).disconnect(decision.getMessage() == null ? Component.empty() : Component.text(decision.getMessage().getText()));
+	}
+
+	private static MessageService messageService() {
+		MessageService messageService = mock(MessageService.class);
+		when(messageService.disconnectReason(any(), any()))
+				.thenAnswer(call -> Component.text(call.getArgument(1, PlayerMessage.class).getText()));
+
+		return messageService;
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

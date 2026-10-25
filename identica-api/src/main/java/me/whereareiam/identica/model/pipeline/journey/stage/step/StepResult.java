@@ -3,6 +3,7 @@ package me.whereareiam.identica.model.pipeline.journey.stage.step;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.type.pipeline.journey.step.StepWaitReason;
 import org.jetbrains.annotations.NotNull;
@@ -14,7 +15,11 @@ import org.jetbrains.annotations.Nullable;
 @SuppressWarnings("unused")
 public class StepResult {
 	private final @NotNull StepStatus status;
-	private final @Nullable String message;
+	/**
+	 * What the player is told, or {@code null} for nothing. A waiting step's message usually carries a prompt, what it
+	 * asks the player for.
+	 */
+	private final @Nullable PlayerMessage message;
 	private final @Nullable ScenarioContext updatedContext;
 	private final @Nullable StepWaitReason waitReason;
 	/**
@@ -27,11 +32,17 @@ public class StepResult {
 		return new StepResult(StepStatus.CONTINUE, null, context, null, null);
 	}
 
-	public static @NotNull StepResult waiting(@Nullable String message) {
+	/**
+	 * Waits for the player's input.
+	 *
+	 * @param message what the player is asked, usually a message with a prompt
+	 * @return the waiting result
+	 */
+	public static @NotNull StepResult waiting(@Nullable PlayerMessage message) {
 		return waiting(message, StepWaitReason.INPUT);
 	}
 
-	public static @NotNull StepResult waiting(@Nullable String message, @NotNull StepWaitReason waitReason) {
+	public static @NotNull StepResult waiting(@Nullable PlayerMessage message, @NotNull StepWaitReason waitReason) {
 		return new StepResult(StepStatus.WAITING, message, null, waitReason, null);
 	}
 
@@ -41,10 +52,10 @@ public class StepResult {
 	 * not match. A step the stage does not run before the waiting one leaves the journey at the waiting step.
 	 *
 	 * @param step the name of the step where the journey continues
-	 * @param message the message to the player
+	 * @param message what the player is asked
 	 * @return the waiting result
 	 */
-	public static @NotNull StepResult waitingAt(@NotNull String step, @Nullable String message) {
+	public static @NotNull StepResult waitingAt(@NotNull String step, @Nullable PlayerMessage message) {
 		return new StepResult(StepStatus.WAITING, message, null, StepWaitReason.INPUT, step);
 	}
 
@@ -52,15 +63,15 @@ public class StepResult {
 		return new StepResult(StepStatus.COMPLETE, null, context, null, null);
 	}
 
-	public static @NotNull StepResult failed(@Nullable String message) {
+	public static @NotNull StepResult failed(@Nullable PlayerMessage message) {
 		return new StepResult(StepStatus.FAILED, message, null, null, null);
 	}
 
-	public static @NotNull StepResult denied(@Nullable String message) {
+	public static @NotNull StepResult denied(@Nullable PlayerMessage message) {
 		return new StepResult(StepStatus.DENIED, message, null, null, null);
 	}
 
-	public static @NotNull StepResult requireReconnect(@Nullable String message) {
+	public static @NotNull StepResult requireReconnect(@Nullable PlayerMessage message) {
 		return new StepResult(StepStatus.REQUIRE_RECONNECT, message, null, null, null);
 	}
 

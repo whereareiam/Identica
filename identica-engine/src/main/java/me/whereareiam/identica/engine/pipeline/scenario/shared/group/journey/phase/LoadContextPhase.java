@@ -4,7 +4,9 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.identica.message.ScenarioMessages;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
 import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
@@ -59,11 +61,7 @@ public class LoadContextPhase implements PipelinePhase<JourneyState> {
 		return CompletableFuture.completedFuture(PhaseResult.pass(state));
 	}
 
-	private @NotNull String failureMessage(@Nullable PipelineType pipelineType) {
-		Messages.Scenarios scenarios = messagesProvider.get().getScenarios();
-		if (pipelineType == PipelineType.REGISTRATION) return String.join("\n", scenarios.getRegistration().getRegistrationFailed());
-		if (pipelineType == PipelineType.MIGRATION) return String.join("\n", scenarios.getMigration().getMigrationFailed());
-
-		return String.join("\n", scenarios.getAuthentication().getAuthenticationFailed());
+	private @NotNull PlayerMessage failureMessage(@Nullable PipelineType pipelineType) {
+		return ScenarioMessages.of(pipelineType != null ? pipelineType : PipelineType.AUTHENTICATION).getFailed().create(messagesProvider.get());
 	}
 }

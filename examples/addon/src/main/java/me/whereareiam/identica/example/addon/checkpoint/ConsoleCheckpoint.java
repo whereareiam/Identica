@@ -7,10 +7,12 @@ import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.event.step.StepFinishedEvent;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.checkpoint.CheckpointRequest;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.type.checkpoint.CheckpointPlacement;
 import me.whereareiam.identica.type.pipeline.journey.step.StepWaitReason;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Locale;
@@ -111,7 +113,8 @@ public final class ConsoleCheckpoint implements Checkpoint, EventListener {
 				.map(stop -> stop.answer(command));
 	}
 
-	private void asks(String name, String step, String message) {
-		console.accept("Example checkpoint asks " + name + " for " + step + (message == null || message.isBlank() ? "" : ": " + message));
+	private void asks(String name, String step, @Nullable PlayerMessage message) {
+		String text = message == null ? "" : message.getText();
+		console.accept("Example checkpoint asks " + name + " for " + step + (text.isBlank() ? "" : ": " + text));
 	}
 }

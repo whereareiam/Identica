@@ -3,6 +3,7 @@ package me.whereareiam.identica.example.provider.pipeline.step;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
+import me.whereareiam.identica.example.provider.ExampleMessageDefinitions;
 import me.whereareiam.identica.example.provider.config.ExampleMessages;
 import me.whereareiam.identica.example.provider.config.ExampleSettings;
 import me.whereareiam.identica.example.provider.pipeline.ExamplePassphraseAttempt;
@@ -34,11 +35,12 @@ public class ExamplePassphraseStep extends InteractiveStep implements StatefulSt
 	@Override
 	public @NotNull CompletableFuture<StepResult> execute(@NotNull ScenarioContext context, @NotNull PipelineState state) {
 		ExamplePassphraseAttempt attempt = state.get(ExamplePassphraseAttempt.KEY).orElse(null);
-		if (attempt == null) return CompletableFuture.completedFuture(StepResult.waiting(messages.get().getPrompt()));
+		if (attempt == null)
+			return CompletableFuture.completedFuture(StepResult.waiting(ExampleMessageDefinitions.PASSPHRASE.create(messages.get())));
 
 		state.remove(ExamplePassphraseAttempt.KEY);
 		if (!settings.get().getPassphrase().equals(attempt.getPassphrase()))
-			return CompletableFuture.completedFuture(StepResult.waiting(messages.get().getInvalid()));
+			return CompletableFuture.completedFuture(StepResult.waiting(ExampleMessageDefinitions.PASSPHRASE_INVALID.create(messages.get())));
 
 		return CompletableFuture.completedFuture(StepResult.complete(context));
 	}

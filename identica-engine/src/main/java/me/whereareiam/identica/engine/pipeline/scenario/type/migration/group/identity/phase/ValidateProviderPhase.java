@@ -5,8 +5,10 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.message.ScenarioMessages;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.identity.provider.AccountProviderProfile;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.migration.MigrationContext;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
@@ -18,7 +20,6 @@ import me.whereareiam.identica.type.pipeline.PipelineStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -109,17 +110,10 @@ public class ValidateProviderPhase implements PipelinePhase<IdentityState> {
 		return CompletableFuture.completedFuture(PhaseResult.pass(state));
 	}
 
-	private @NotNull String providerValidationMissingMessage() {
-		return joinMessage(messagesProvider.get()
-				.getScenarios()
-				.getMigration()
-				.getErrors()
-				.getIdentity().getProvider().getValidationMissing());
+	private @NotNull PlayerMessage providerValidationMissingMessage() {
+		return ScenarioMessages.of(PipelineType.MIGRATION).getProviderValidationMissing().create(messagesProvider.get());
 	}
 
-	private @NotNull String joinMessage(@NotNull List<String> lines) {
-		return String.join("\n", lines);
-	}
 
 	private boolean isBlank(String value) {
 		return value == null || value.isBlank();

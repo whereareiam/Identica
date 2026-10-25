@@ -5,11 +5,11 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.ConnectionCoordinator;
-import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.annotation.Argument;
 import me.whereareiam.identica.annotation.AvailableWhilePending;
 import me.whereareiam.identica.annotation.Command;
 import me.whereareiam.identica.annotation.Definition;
+import me.whereareiam.identica.feature.verification.VerificationMessageDefinitions;
 import me.whereareiam.identica.feature.verification.VerificationService;
 import me.whereareiam.identica.feature.verification.challenge.VerificationChallengeStore;
 import me.whereareiam.identica.feature.verification.command.ProtectedActionCommand;
@@ -18,15 +18,18 @@ import me.whereareiam.identica.feature.verification.model.VerificationDisablePen
 import me.whereareiam.identica.feature.verification.model.resolution.VerificationCodeAttempt;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.message.MessageService;
+import me.whereareiam.identica.message.SessionMessages;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.request.AdvanceRequest;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.MessageDefinition;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.state.PipelineInput;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.keystone.Actor;
-import me.whereareiam.keystone.model.SerializerContent;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -45,6 +48,7 @@ public class VerificationConfirmCommand extends ProtectedActionCommand<Void> {
 	private final ConnectionCoordinator connectionCoordinator;
 	private final VerificationResultRenderer resultRenderer;
 	private final SessionService sessionService;
+	private final MessageService messageService;
 
 	@Inject
 	public VerificationConfirmCommand(
@@ -54,7 +58,8 @@ public class VerificationConfirmCommand extends ProtectedActionCommand<Void> {
 			VerificationChallengeStore challengeStore,
 			ConnectionCoordinator connectionCoordinator,
 			VerificationResultRenderer resultRenderer,
-			SessionService sessionService
+			SessionService sessionService,
+			MessageService messageService
 	) {
 		super(verificationService);
 		this.coreMessagesProvider = coreMessagesProvider;
@@ -64,6 +69,7 @@ public class VerificationConfirmCommand extends ProtectedActionCommand<Void> {
 		this.connectionCoordinator = connectionCoordinator;
 		this.resultRenderer = resultRenderer;
 		this.sessionService = sessionService;
+		this.messageService = messageService;
 	}
 
 	@Override
@@ -72,15 +78,20 @@ public class VerificationConfirmCommand extends ProtectedActionCommand<Void> {
 	}
 
 	@Override
-	protected @Nullable String currentSessionRequiredMessage() {
-		return coreMessagesProvider.get().getCommands().getCurrentSessionRequired();
+	protected @Nullable PlayerMessage currentSessionRequiredMessage() {
+		return SessionMessages.CURRENT_SESSION_REQUIRED.create(coreMessagesProvider.get());
+	}
+
+	@Override
+	protected @NotNull MessageService messageService() {
+		return messageService;
 	}
 
 	@AvailableWhilePending
 	@Definition("verification-confirm")
 	@Command("2fa confirm <input>")
 	public void confirm(@NotNull Actor sender, @Argument("input") String input) {
-		Identity identity = requireIdentity(sender, verificationMessages().getPlayerOnly());
+		Identity identity = requireIdentity(sender, VerificationMessageDefinitions.PLAYER_ONLY.create(messagesProvider.get()));
 		if (identity == null) return;
 
 		if (submitProtectedAction(identity, input))
@@ -98,13 +109,13 @@ public class VerificationConfirmCommand extends ProtectedActionCommand<Void> {
 
 		StepUpResult result = confirmStepUp(accountUniqueId, input, "disable-method");
 		switch (result.getStatus()) {
-			case INVALID_CODE -> sendMessage(identity, verificationMessages().getConfirm().getInvalidCode(), Map.of());
-			case CURRENT_SESSION_REQUIRED -> sendMessage(identity, verificationMessages().getConfirm().getProtectedActionSessionRequired(), Map.of());
-			case SELECTION_REQUIRED -> sendMessage(identity, verificationMessages().getConfirm().getProtectedActionSelectionRequired(), Map.of());
+			case INVALID_CODE -> send(identity, VerificationMessageDefinitions.CONFIRM_INVALID_CODE, Map.of());
+			case CURRENT_SESSION_REQUIRED -> send(identity, VerificationMessageDefinitions.CONFIRM_SESSION_REQUIRED, Map.of());
+			case SELECTION_REQUIRED -> send(identity, VerificationMessageDefinitions.CONFIRM_SELECTION_REQUIRED, Map.of());
 			case VERIFIED -> {
 				challengeStore.clearPendingDisable(accountUniqueId);
 				if (pendingDisable.getMethodId().isBlank()) {
-					sendMessage(identity, verificationMessages().getConfirm().getNoPending(), Map.of());
+					send(identity, VerificationMessageDefinitions.CONFIRM_NO_PENDING, Map.of());
 				} else {
 					resultRenderer.presentDisableResult(identity, verificationService.disableMethod(accountUniqueId, pendingDisable.getMethodId()));
 				}
@@ -131,37 +142,27 @@ public class VerificationConfirmCommand extends ProtectedActionCommand<Void> {
 		if (decision == null || decision.getStatus() == null) return;
 
 		switch (decision.getStatus()) {
-			case WAIT -> sendMessage(identity, decision.getMessage(), Map.of());
+			case WAIT -> sendMessage(identity, decision.getMessage());
 			case DENY, REQUIRE_RECONNECT -> disconnect(identity, decision.getMessage());
-			case NO_PENDING -> sendMessage(identity, verificationMessages().getConfirm().getNoPending(), Map.of());
+			case NO_PENDING -> send(identity, VerificationMessageDefinitions.CONFIRM_NO_PENDING, Map.of());
 			default -> {
 			}
 		}
 	}
 
-	private VerificationMessages.Commands verificationMessages() {
-		return messagesProvider.get().getCommands();
-	}
-
-	private void sendMessage(@NotNull Actor sender, @Nullable String message, @NotNull Map<String, String> placeholders) {
-		if (message == null || message.isBlank()) return;
-		if (sender instanceof Identity identity) {
-			identity.send(message, placeholders);
-			return;
-		}
-
-		sender.sendMessage(Serializer.serialize(SerializerContent.builder()
-				.receiver(sender)
-				.message(message)
-				.placeholders(placeholders)
-				.build()));
+	private void send(
+			@NotNull Actor sender,
+			@NotNull MessageDefinition<VerificationMessages> definition,
+			@NotNull Map<String, String> placeholders
+	) {
+		sendMessage(sender, definition.create(messagesProvider.get(), placeholders));
 	}
 
 	/** A denial disconnects whether or not it comes with a reason to show. */
-	private void disconnect(@NotNull Actor sender, @Nullable String message) {
-		Component component = Serializer.serialize(sender, message == null ? "" : message);
-		if (sender instanceof Identity identity)
-			identity.disconnect(component);
+	private void disconnect(@NotNull Actor sender, @Nullable PlayerMessage message) {
+		if (!(sender instanceof Identity identity)) return;
+
+		identity.disconnect(message != null ? messageService.disconnectReason(identity, message) : Component.empty());
 	}
 
 	/**

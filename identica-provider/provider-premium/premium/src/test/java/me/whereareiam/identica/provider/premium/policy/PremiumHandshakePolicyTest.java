@@ -255,7 +255,8 @@ class PremiumHandshakePolicyTest {
 		HandshakeDecision decision = evaluate(request(UUID.randomUUID(), null, link("premium", linked), JourneyMode.SEAMLESS));
 
 		assertEquals(HandshakeDecision.Status.DENY, decision.getStatus());
-		assertTrue(decision.getMessage().contains("This username belongs to a premium account."));
+		assertEquals("premium:owned-username", decision.getMessage().getId());
+		assertTrue(decision.getMessage().getText().contains("This username belongs to a premium account."));
 	}
 
 	@DisplayName("Asks the owner of a linked username for a premium login")

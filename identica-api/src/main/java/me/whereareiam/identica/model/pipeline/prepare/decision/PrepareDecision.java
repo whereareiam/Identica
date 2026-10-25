@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.ToString;
 import me.whereareiam.identica.model.auth.handshake.HandshakeDecision;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareContextItem;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.model.provider.selection.ProviderSelection;
@@ -67,7 +68,7 @@ public class PrepareDecision {
 	 */
 	private final @Nullable JourneyMode journeyMode;
 
-	private final @Nullable String denialMessage;
+	private final @Nullable PlayerMessage denialMessage;
 	private final @NotNull Status status;
 
 	/**
@@ -96,7 +97,7 @@ public class PrepareDecision {
 	 * @param message denial message
 	 * @return deny decision
 	 */
-	public static @NotNull PrepareDecision deny(@Nullable String message) {
+	public static @NotNull PrepareDecision deny(@Nullable PlayerMessage message) {
 		return PrepareDecision.builder()
 				.status(Status.DENY)
 				.denialMessage(message)
@@ -131,7 +132,7 @@ public class PrepareDecision {
 	 * @return deny decision
 	 */
 	public static @NotNull PrepareDecision deny(
-			@Nullable String message,
+			@Nullable PlayerMessage message,
 			@Nullable PrepareContextItem context,
 			@Nullable UUID accountUniqueId,
 			@Nullable String effectiveUsername

@@ -3,6 +3,7 @@ package me.whereareiam.identica.provider.credential.pipeline.step.type.authentic
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import me.whereareiam.identica.feature.FeatureRegistry;
+import me.whereareiam.identica.feature.verification.VerificationMessageDefinitions;
 import me.whereareiam.identica.feature.verification.VerificationService;
 import me.whereareiam.identica.feature.verification.config.VerificationMessages;
 import me.whereareiam.identica.feature.verification.model.resolution.VerificationCodeAttempt;
@@ -57,6 +58,7 @@ class CredentialAuthenticationVerificationStepTest {
 		StepResult result = step().execute(context(), PipelineState.initial()).join();
 
 		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
+		assertEquals(VerificationMessageDefinitions.CODE_PROMPT.getId(), result.getMessage().getPrompt().getId());
 		verify(verification).resolveVerification(argThat(request -> accountId.equals(request.getUniqueId())
 				&& "credential".equals(request.getProviderId()) && "authentication".equals(request.getPurpose())
 				&& request.getCode() == null));
@@ -82,7 +84,9 @@ class CredentialAuthenticationVerificationStepTest {
 		StepResult result = step().execute(context(), stateWithCode()).join();
 
 		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
-		assertEquals(INVALID_CODE, result.getMessage());
+		assertEquals(INVALID_CODE, result.getMessage().getText());
+		assertEquals(VerificationMessageDefinitions.CODE_PROMPT.getId(), result.getMessage().getPrompt().getId());
+		assertEquals(VerificationMessageDefinitions.CODE_INVALID.getId(), result.getMessage().getId());
 	}
 
 	@Test
@@ -92,7 +96,8 @@ class CredentialAuthenticationVerificationStepTest {
 		StepResult result = step().execute(context(), stateWithCode()).join();
 
 		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
-		assertEquals(NO_PENDING, result.getMessage());
+		assertEquals(NO_PENDING, result.getMessage().getText());
+		assertEquals(VerificationMessageDefinitions.CODE_NO_CHALLENGE.getId(), result.getMessage().getId());
 	}
 
 	private CredentialAuthenticationVerificationStep step() {

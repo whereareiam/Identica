@@ -8,6 +8,7 @@ import me.whereareiam.identica.annotation.Argument;
 import me.whereareiam.identica.annotation.Command;
 import me.whereareiam.identica.annotation.Definition;
 import me.whereareiam.identica.annotation.Suggestions;
+import me.whereareiam.identica.feature.verification.VerificationMessageDefinitions;
 import me.whereareiam.identica.feature.verification.VerificationService;
 import me.whereareiam.identica.feature.verification.challenge.VerificationChallengeStore;
 import me.whereareiam.identica.feature.verification.command.ProtectedActionCommand;
@@ -17,8 +18,11 @@ import me.whereareiam.identica.feature.verification.model.VerificationDisablePen
 import me.whereareiam.identica.feature.verification.model.resolution.VerificationResolutionRequest;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.message.MessageService;
+import me.whereareiam.identica.message.SessionMessages;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.keystone.Actor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -31,6 +35,7 @@ public class VerificationSelectionCommand extends ProtectedActionCommand<Void> {
 	private final VerificationResultRenderer resultRenderer;
 	private final VerificationChallengeStore challengeStore;
 	private final SessionService sessionService;
+	private final MessageService messageService;
 
 	@Inject
 	public VerificationSelectionCommand(
@@ -39,7 +44,8 @@ public class VerificationSelectionCommand extends ProtectedActionCommand<Void> {
 			VerificationService verificationService,
 			VerificationResultRenderer resultRenderer,
 			VerificationChallengeStore challengeStore,
-			SessionService sessionService
+			SessionService sessionService,
+			MessageService messageService
 	) {
 		super(verificationService);
 		this.coreMessagesProvider = coreMessagesProvider;
@@ -48,6 +54,7 @@ public class VerificationSelectionCommand extends ProtectedActionCommand<Void> {
 		this.resultRenderer = resultRenderer;
 		this.challengeStore = challengeStore;
 		this.sessionService = sessionService;
+		this.messageService = messageService;
 	}
 
 	@Override
@@ -56,8 +63,13 @@ public class VerificationSelectionCommand extends ProtectedActionCommand<Void> {
 	}
 
 	@Override
-	protected @Nullable String currentSessionRequiredMessage() {
-		return coreMessagesProvider.get().getCommands().getCurrentSessionRequired();
+	protected @Nullable PlayerMessage currentSessionRequiredMessage() {
+		return SessionMessages.CURRENT_SESSION_REQUIRED.create(coreMessagesProvider.get());
+	}
+
+	@Override
+	protected @NotNull MessageService messageService() {
+		return messageService;
 	}
 
 	@Definition("verification-use")
@@ -67,7 +79,7 @@ public class VerificationSelectionCommand extends ProtectedActionCommand<Void> {
 			@Argument("provider") @Suggestions(ProviderIdSuggestions.KEY) String providerId,
 			@Argument("method") @Suggestions(VerificationMethodSuggestions.KEY) String methodId
 	) {
-		Identity identity = requireIdentity(sender, messagesProvider.get().getCommands().getPlayerOnly());
+		Identity identity = requireIdentity(sender, VerificationMessageDefinitions.PLAYER_ONLY.create(messagesProvider.get()));
 		if (identity == null) return;
 		if (requireCurrentSession(identity) == null) return;
 		var accountUniqueId = requireAccountUniqueId(identity);
@@ -82,7 +94,7 @@ public class VerificationSelectionCommand extends ProtectedActionCommand<Void> {
 			@NotNull Actor sender,
 			@Argument("method") @Suggestions(VerificationMethodSuggestions.KEY) String methodId
 	) {
-		Identity identity = requireIdentity(sender, messagesProvider.get().getCommands().getPlayerOnly());
+		Identity identity = requireIdentity(sender, VerificationMessageDefinitions.PLAYER_ONLY.create(messagesProvider.get()));
 		if (identity == null) return;
 		Session session = requireCurrentSession(identity);
 		if (session == null) return;

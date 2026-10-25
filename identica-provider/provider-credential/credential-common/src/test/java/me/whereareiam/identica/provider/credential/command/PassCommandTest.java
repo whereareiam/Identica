@@ -3,8 +3,10 @@ package me.whereareiam.identica.provider.credential.command;
 import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.identity.actor.Identity;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.request.AdvanceRequest;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.config.defaults.CredentialMessagesDefaults;
@@ -25,8 +27,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
@@ -39,7 +39,8 @@ class PassCommandTest {
 	private final CredentialMessages messages = new CredentialMessagesDefaults().supply(new CredentialMessages());
 	private final ConnectionCoordinator coordinator = mock(ConnectionCoordinator.class);
 	private final Identity identity = mock(Identity.class);
-	private final PassCommand command = new PassCommand(coordinator, () -> messages);
+	private final MessageService messageService = mock(MessageService.class);
+	private final PassCommand command = new PassCommand(coordinator, () -> messages, messageService);
 
 	@BeforeAll
 	static void initializeSerializer() {
@@ -52,22 +53,20 @@ class PassCommandTest {
 	@BeforeEach
 	void connectedPlayer() {
 		when(identity.getConnectionUniqueId()).thenReturn(UUID.randomUUID());
-		doCallRealMethod().when(identity).send(anyString());
-		doCallRealMethod().when(identity).send(anyString(), anyMap());
 	}
 
 	@DisplayName("Hands a password typed before its prompt to the pipeline instead of looking for the journey itself")
 	@Test
 	void handsThePasswordToThePipeline() {
-		when(coordinator.advance(any())).thenReturn(CompletableFuture.completedFuture(ConnectionDecision.waiting("Repeat it")));
+		when(coordinator.advance(any())).thenReturn(CompletableFuture.completedFuture(ConnectionDecision.waiting(message("Repeat it"))));
 
 		command.pass(identity, "secret");
 
 		CredentialRegistrationAttempt attempt = attempt(advanced());
 		assertEquals("secret", attempt.getPassword());
 		assertFalse(attempt.isConfirm());
-		verify(identity).sendMessage(Component.text("Repeat it"));
-		verify(identity, never()).sendMessage(Component.text(noPending()));
+		verify(messageService).send(eq(identity), argThat(message -> "Repeat it".equals(message.getText())));
+		verify(messageService, never()).send(eq(identity), argThat(message -> noPending().equals(message.getText())));
 	}
 
 	@DisplayName("Hands a repeated password typed before its prompt to the pipeline instead of looking for the journey itself")
@@ -78,7 +77,7 @@ class PassCommandTest {
 		command.passConfirm(identity, "secret");
 
 		assertTrue(attempt(advanced()).isConfirm());
-		verify(identity, never()).sendMessage(any(Component.class));
+		verify(messageService, never()).send(any(), any());
 	}
 
 	@DisplayName("Shows the no-pending message when the pipeline finds no journey")
@@ -89,7 +88,7 @@ class PassCommandTest {
 		command.pass(identity, "secret");
 		command.passConfirm(identity, "secret");
 
-		verify(identity, times(2)).sendMessage(Component.text(noPending()));
+		verify(messageService, times(2)).send(eq(identity), argThat(message -> noPending().equals(message.getText())));
 	}
 
 	private AdvanceRequest advanced() {
@@ -106,5 +105,9 @@ class PassCommandTest {
 
 	private String noPending() {
 		return messages.getScenario().getRegistration().getStatus().getNoPending();
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

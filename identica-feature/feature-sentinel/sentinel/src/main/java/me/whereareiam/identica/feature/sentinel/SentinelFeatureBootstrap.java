@@ -9,6 +9,7 @@ import me.whereareiam.identica.Reloadable;
 import me.whereareiam.identica.config.ConfigProvider;
 import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.EventManager;
+import me.whereareiam.identica.feature.FeatureContext;
 import me.whereareiam.identica.feature.IdenticaFeature;
 import me.whereareiam.identica.feature.sentinel.config.provider.SentinelMessagesProvider;
 import me.whereareiam.identica.feature.sentinel.config.provider.SentinelSettingsProvider;
@@ -16,7 +17,7 @@ import me.whereareiam.identica.feature.sentinel.pipeline.SentinelPipelineExtensi
 import me.whereareiam.identica.feature.sentinel.type.AccountsPerAddressSentinelQuota;
 import me.whereareiam.identica.feature.sentinel.type.ContestedConnectionSentinelDefinition;
 import me.whereareiam.identica.feature.sentinel.type.ResumeSpamSentinelDefinition;
-import me.whereareiam.identica.feature.FeatureContext;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.pipeline.extension.PipelineExtensionRegistry;
 import org.jetbrains.annotations.NotNull;
 
@@ -62,6 +63,8 @@ public final class SentinelFeatureBootstrap implements IdenticaFeature {
 		AccountsPerAddressSentinelQuota accountsPerAddress = injector.getInstance(AccountsPerAddressSentinelQuota.class);
 		quotas.register(accountsPerAddress);
 		accountsPerAddress.warnIfUncounted();
+		MessageService.Registration messages = injector.getInstance(MessageService.class).register(SentinelMessageDefinitions.all());
+		shutdownActions.push(messages::remove);
 		PipelineExtensionRegistry pipelines = injector.getInstance(PipelineExtensionRegistry.class);
 		SentinelPipelineExtension extension = injector.getInstance(SentinelPipelineExtension.class);
 		shutdownActions.push(() -> pipelines.unregister(extension.id()));

@@ -1,0 +1,132 @@
+---
+title: Сообщения игрокам
+description: Как определить сообщения, которые ваш провайдер или функция показывает игрокам, и показывать любое сообщение не только в чате, например диалогом или в строке действий.
+sourceHash: 1afa07f06be288e5b2766c13be72e2ba0baad34e
+---
+
+Всё, что Identica сообщает игроку, проходит через один сервис — `MessageService`: что запрашивает шаг, почему он запрашивает снова, почему вход отклонён, чем закончилась команда. У каждого сообщения есть постоянный идентификатор, поэтому аддон может показать его по-другому, например диалогом или в строке действий, не зная, кто его отправляет. Сама Identica показывает каждое сообщение в чате.
+
+## Сообщение [#a-message]
+
+Сообщение один раз определяет его владелец — в коде:
+
+```java
+public static final Prompt PASSPHRASE_PROMPT = Prompt.builder()
+        .id("example:passphrase")
+        .field(Prompt.Field.of("passphrase", Prompt.FieldType.SECRET))
+        .command(ExampleProvider.PASSPHRASE_COMMAND)
+        .build();
+
+public static final MessageDefinition<ExampleMessages> PASSPHRASE_INVALID = MessageDefinition.<ExampleMessages>builder()
+        .id("example:passphrase-invalid")
+        .text(ExampleMessages::getInvalid)
+        .prompt(PASSPHRASE_PROMPT)
+        .build();
+```
+
+- `id` называет сообщение — `<владелец>:<имя>` в нижнем регистре. Не меняйте его после выпуска: на него опираются аддоны.
+- `text` читает настроенный текст из документа сообщений владельца. Администраторы по-прежнему правят текст там, а перезагрузка действует сразу, потому что сообщение создаётся из текущего состояния документа.
+- `placeholder(...)` называет плейсхолдеры, которые может содержать текст, чтобы инструменты могли их перечислить.
+- `prompt` описывает, что сообщение запрашивает: поля, которые заполняет игрок, и ключ команды, которая на них отвечает. Давайте одинаковый запрос всем сообщениям, которые запрашивают одно и то же, например пароль, запрошенный впервые и повторно после неверного. У сообщения, которое ничего не запрашивает, запроса нет.
+
+В `examples/provider` из репозитория определения собраны в `ExampleMessageDefinitions`. Собственные определения Identica сгруппированы по темам, например `SessionMessages` или `ProviderChoiceMessages`, и `IdenticaMessages.all()` перечисляет их все. У каждого официального провайдера и каждой функции есть свои, например `CredentialMessageDefinitions` или `VerificationMessageDefinitions`.
+
+Регистрируйте определения при запуске провайдера или функции и снимайте при остановке, чтобы `MessageService.definitions()` перечислял все существующие сообщения:
+
+```java
+private final List<MessageService.Registration> messageRegistrations = new ArrayList<>();
+
+@Override
+public void onEnable() {
+    messageRegistrations.add(messageService.register(ExampleMessageDefinitions.all()));
+}
+
+@Override
+public void onDisable() {
+    messageRegistrations.forEach(MessageService.Registration::remove);
+    messageRegistrations.clear();
+}
+```
+
+## Отправка сообщения [#telling-it]
+
+Создайте сообщение из документа и передайте его дальше. Шаг возвращает его вместе со своим результатом, а Identica его показывает:
+
+```java
+return StepResult.waiting(ExampleMessageDefinitions.PASSPHRASE_INVALID.create(messages.get()));
+```
+
+Отказ во входе, причина отключения или сообщение при кике во время миграции точно так же являются `PlayerMessage`. Значения плейсхолдеров передаются вместе с сообщением, а не подставляются в его текст заранее:
+
+```java
+CredentialMessageDefinitions.BRUTEFORCE_EXCEEDED.create(messages, Map.of("seconds", "30"));
+```
+
+Команда отвечает через `messageService.send(identity, message)`. Команда, которая наследует `IdentityCommand`, делает это через `sendMessage(sender, message)` — так она отвечает и консоли текстом для чата. Пока платформа держит игрока на экране загрузки, где клиент не показывает чат, Identica откладывает сообщение, пока игрок не зайдёт на сервер.
+
+Два сообщения можно показать как одно с помощью `append`, например предупреждение под неверным паролем. Результат сохраняет идентификатор и запрос первого сообщения. Шаг, который показывает собственное сообщение, пока запрашивает что-то другое, например нарушенное правило пароля, пока запрашивает новый пароль, передаёт ему свой запрос через `withPrompt(prompt)`.
+
+## Другой способ показа [#showing-a-message-another-way]
+
+Сообщение показывается частями. Чат — единственная часть, которую знает Identica; остальные добавляет аддон. Чтобы показывать сообщение `credential:password-invalid` в строке действий рядом с чатом, аддон один раз регистрирует тип части и представляет сообщение с ней:
+
+```java
+MessageService messages = identica.getMessageService();
+
+messages.registerPartType(PartType.<ActionBarPart>builder()
+        .id("actionbar")
+        .partClass(ActionBarPart.class)
+        .renderer(new ActionBarRenderer())
+        .build());
+
+messages.present("credential:password-invalid", Presentation.builder()
+        .part(new ActionBarPart("<red>Wrong password"))
+        .build());
+```
+
+Представление может и убирать части по типу, например `.removed(ChatPart.TYPE)`, чтобы показывать диалог вместо чата. Каждый вызов возвращает `Registration`; снимите его, когда аддон выключается.
+
+Если несколько представлений задают сообщению часть одного типа, побеждает то, у которого `priority` выше, а среди равных — зарегистрированное позже. Оставляйте приоритет `0` для того, что аддон делает по умолчанию, и задавайте более высокий тому, что администратор настроил в аддоне, чтобы выбор сервера побеждал общий.
+
+## Свой тип части [#writing-a-part-type]
+
+Часть — это небольшой класс-значение, который называет свой тип:
+
+```java
+public record ActionBarPart(String text) implements MessagePart {
+    public static final String TYPE = "actionbar";
+
+    @Override
+    public String type() {
+        return TYPE;
+    }
+}
+```
+
+Его отрисовщик показывает часть одному игроку и сообщает, получилось ли:
+
+```java
+public class ActionBarRenderer implements PartRenderer<ActionBarPart> {
+    @Override
+    public PartRendering render(ActionBarPart part, PlayerMessage message, Identity recipient) {
+        recipient.getAudience().sendActionBar(Serializer.serialize(recipient, part.text(), message.getPlaceholders()));
+        return PartRendering.shown();
+    }
+}
+```
+
+- `PartRendering.unsupported()` сообщает Identica, что клиент игрока не может показать часть, например диалог на слишком старом клиенте. Тогда Identica по порядку пробует запасные типы из `fallbacks`, каждый со своей `defaultPart` — частью, которую тип строит только по сообщению. Тип диалога, который при неудаче переходит на чат, указывает `ChatPart.TYPE`.
+- `PartRendering.shown(close)` передаёт Identica то, что убирает часть, например снимает боссбар. Identica вызывает это, когда игроку показывается следующее сообщение и когда он уходит, поэтому часть никогда не переживает своё сообщение.
+
+Ошибка отрисовщика записывается в лог; остальные части сообщения всё равно показываются.
+
+## Ответ на запрос [#answering-a-prompt]
+
+Запрос сообщения говорит, что заполняет игрок и какая команда на это отвечает. Тип части, который сам задаёт вопрос, например диалог, собирает значения и выполняет команду от имени игрока через платформу. `messageService.answer(prompt, values)` строит строку команды без косой черты из настроенного псевдонима команды, поэтому переименованная команда продолжает работать:
+
+```java
+Optional<String> line = messageService.answer(message.getPrompt(), Map.of("password", typed));
+// such as "login hunter2"; empty when the command is not registered
+```
+
+Поля типа `CHOICE` перечисляют свои варианты, например провайдеров, из которых выбирает игрок, — каждый со значением, которое принимает команда, и подписью для показа.

@@ -6,8 +6,10 @@ import com.google.inject.Singleton;
 import me.whereareiam.identica.engine.pipeline.scenario.shared.group.session.phase.base.AbstractOpenSessionPhase;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.message.ScenarioMessages;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.registration.RegistrationContext;
 import me.whereareiam.identica.pipeline.state.scenario.type.registration.SessionState;
 import me.whereareiam.identica.type.pipeline.PipelineType;
@@ -35,8 +37,8 @@ public class OpenSessionPhase extends AbstractOpenSessionPhase<RegistrationConte
 	}
 
 	@Override
-	protected @NotNull String failedMessage(@NotNull Messages messages) {
-		return joinMessage(messages.getScenarios().getRegistration().getRegistrationFailed());
+	protected @NotNull PlayerMessage failedMessage(@NotNull Messages messages) {
+		return ScenarioMessages.of(PipelineType.REGISTRATION).getFailed().create(messages);
 	}
 
 	@Override
@@ -49,7 +51,4 @@ public class OpenSessionPhase extends AbstractOpenSessionPhase<RegistrationConte
 		return state.getSession();
 	}
 
-	private @NotNull String joinMessage(@NotNull java.util.List<String> lines) {
-		return String.join("\n", lines);
-	}
 }

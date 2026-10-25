@@ -11,8 +11,11 @@ import me.whereareiam.identica.event.step.StepPrepareEvent;
 import me.whereareiam.identica.event.step.StepStartedEvent;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.message.JourneyMessages;
+import me.whereareiam.identica.message.ScenarioMessages;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.ScenarioTransitionItem;
 import me.whereareiam.identica.model.pipeline.journey.JourneyOverrideItem;
@@ -528,7 +531,7 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 					context.getUsername(),
 					context.getConnectionUniqueId()
 			);
-			StepResult result = StepResult.waiting("", StepWaitReason.ONLINE);
+			StepResult result = StepResult.waiting(null, StepWaitReason.ONLINE);
 			routingCoordinator.accept(RoutingSignal.stepFinished(
 					context,
 					pipelineType,
@@ -824,55 +827,28 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 		return current != null ? current : fallback;
 	}
 
-	private @NotNull String journeyNoCompletionMessage() {
-		return String.join("\n", messagesProvider.get()
-				.getEngine()
-				.getJourney()
-				.getStage()
-				.getNoCompletion());
+	private @NotNull PlayerMessage journeyNoCompletionMessage() {
+		return JourneyMessages.STAGE_NO_COMPLETION.create(messagesProvider.get());
 	}
 
-	private @NotNull String journeyInteractionRequiredMessage() {
-		return String.join("\n", messagesProvider.get()
-				.getEngine()
-				.getJourney()
-				.getStep()
-				.getInteractionRequired());
+	private @NotNull PlayerMessage journeyInteractionRequiredMessage() {
+		return JourneyMessages.INTERACTION_REQUIRED.create(messagesProvider.get());
 	}
 
-	private @NotNull String journeyStepNoStatusMessage() {
-		return String.join("\n", messagesProvider.get()
-				.getEngine()
-				.getJourney()
-				.getStep()
-				.getNoStatus());
+	private @NotNull PlayerMessage journeyStepNoStatusMessage() {
+		return JourneyMessages.STEP_NO_STATUS.create(messagesProvider.get());
 	}
 
-	private @NotNull String journeyMissingContextMessage(@NotNull PipelineState pipelineState) {
-		Messages.Scenarios.Scenario.Errors errors = resolveScenarioErrors(pipelineState);
-		return String.join("\n", errors.getJourney().getMissingContext());
+	private @NotNull PlayerMessage journeyMissingContextMessage(@NotNull PipelineState pipelineState) {
+		return ScenarioMessages.of(scenarioOf(pipelineState)).getJourneyMissingContext().create(messagesProvider.get());
 	}
 
-	private @NotNull String journeyMissingPlanMessage(@NotNull PipelineState pipelineState) {
-		Messages.Scenarios.Scenario.Errors errors = resolveScenarioErrors(pipelineState);
-		return String.join("\n", errors.getJourney().getMissingPlan());
+	private @NotNull PlayerMessage journeyMissingPlanMessage(@NotNull PipelineState pipelineState) {
+		return ScenarioMessages.of(scenarioOf(pipelineState)).getJourneyMissingPlan().create(messagesProvider.get());
 	}
 
-	private @NotNull Messages.Scenarios.Scenario.Errors resolveScenarioErrors(@NotNull PipelineState pipelineState) {
-		PipelineType pipelineType = pipelineState.getPipelineType();
-		Messages.Scenarios scenarios = messagesProvider.get().getScenarios();
-		if (pipelineType == PipelineType.REGISTRATION) return scenarios.getRegistration().getErrors();
-		if (pipelineType == PipelineType.MIGRATION) return scenarios.getMigration().getErrors();
-
-		return scenarios.getAuthentication().getErrors();
-	}
-
-	private @NotNull String failureMessage(@Nullable PipelineType pipelineType) {
-		Messages.Scenarios scenarios = messagesProvider.get().getScenarios();
-		if (pipelineType == PipelineType.REGISTRATION) return String.join("\n", scenarios.getRegistration().getRegistrationFailed());
-		if (pipelineType == PipelineType.MIGRATION) return String.join("\n", scenarios.getMigration().getMigrationFailed());
-
-		return String.join("\n", scenarios.getAuthentication().getAuthenticationFailed());
+	private @NotNull PlayerMessage failureMessage(@Nullable PipelineType pipelineType) {
+		return ScenarioMessages.of(pipelineType != null ? pipelineType : PipelineType.AUTHENTICATION).getFailed().create(messagesProvider.get());
 	}
 
 	private @Nullable InternalProvider resolveProvider(@Nullable String providerId) {
@@ -897,5 +873,9 @@ public class ExecutePlanPhase implements PipelinePhase<JourneyState> {
 
 	private static @NotNull Throwable unwrap(@NotNull Throwable failure) {
 		return failure instanceof CompletionException && failure.getCause() != null ? failure.getCause() : failure;
+	}
+
+	private static @NotNull PipelineType scenarioOf(@NotNull PipelineState pipelineState) {
+		return pipelineState.getPipelineType() != null ? pipelineState.getPipelineType() : PipelineType.AUTHENTICATION;
 	}
 }

@@ -4,12 +4,12 @@ import com.google.inject.Inject;
 import com.google.inject.Module;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.pipeline.completion.extension.CompletionExtensionRegistry;
 import me.whereareiam.identica.pipeline.extension.PipelineExtensionRegistry;
 import me.whereareiam.identica.provider.IdenticaProvider;
 import me.whereareiam.identica.provider.ProviderPlatformExtension;
 import me.whereareiam.identica.provider.premium.command.CommandRegistrar;
-import me.whereareiam.identica.provider.premium.resolver.PremiumDetector;
 import me.whereareiam.identica.provider.premium.completion.PremiumCompletionExtension;
 import me.whereareiam.identica.provider.premium.completion.PremiumCompletionStep;
 import me.whereareiam.identica.provider.premium.pipeline.PremiumPipelineExtension;
@@ -21,9 +21,11 @@ import me.whereareiam.identica.provider.premium.pipeline.step.type.authenticatio
 import me.whereareiam.identica.provider.premium.pipeline.step.type.migration.PremiumMigrationCompleteStep;
 import me.whereareiam.identica.provider.premium.platform.bungeecord.PremiumBungeeCordExtension;
 import me.whereareiam.identica.provider.premium.platform.velocity.PremiumVelocityExtension;
+import me.whereareiam.identica.provider.premium.resolver.PremiumDetector;
 import me.whereareiam.identica.type.provider.ProviderGuarantee;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -35,6 +37,7 @@ public class PremiumProvider extends IdenticaProvider {
 	private PipelineExtensionRegistry pipelineExtensionRegistry;
 	private CompletionExtensionRegistry completionExtensionRegistry;
 	private PremiumDetector detector;
+	private MessageService messageService;
 
 	// Steps
 	private ProfilePresenceStep profilePresenceStep;
@@ -44,6 +47,8 @@ public class PremiumProvider extends IdenticaProvider {
 	private PremiumRecognitionStep premiumRecognitionStep;
 	private PremiumVerificationStep premiumVerificationStep;
 	private PremiumCompletionStep premiumCompletionStep;
+
+	private final List<MessageService.Registration> messageRegistrations = new ArrayList<>();
 
 	@Override
 	public @NotNull List<Module> modules() {
@@ -71,6 +76,7 @@ public class PremiumProvider extends IdenticaProvider {
 	@Override
 	public void onEnable() {
 		detector.warnAboutUnreachableMethods();
+		messageRegistrations.add(messageService.register(PremiumMessageDefinitions.all()));
 		commandRegistrar.registerCommands();
 		pipelineExtensionRegistry.register(new PremiumPipelineExtension(
 				descriptor.getId(),
@@ -94,5 +100,7 @@ public class PremiumProvider extends IdenticaProvider {
 		if (platformExtension != null) platformExtension.onDisable();
 		pipelineExtensionRegistry.unregister(PremiumPipelineExtension.extensionIdFor(descriptor.getId()));
 		completionExtensionRegistry.unregister(PremiumCompletionExtension.extensionIdFor(descriptor.getId()));
+		messageRegistrations.forEach(MessageService.Registration::remove);
+		messageRegistrations.clear();
 	}
 }

@@ -3,7 +3,9 @@ package me.whereareiam.identica.feature.verification;
 import me.whereareiam.identica.feature.verification.command.ProtectedActionCommand;
 import me.whereareiam.identica.feature.verification.model.enrollment.VerificationEnrollment;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.Session;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -49,6 +51,7 @@ class ProtectedActionCommandTest {
 		}
 		boolean requires(UUID id) { return requiresStepUp(id); }
 		@Override protected @NotNull SessionService sessionService() { return sessions; }
-		@Override protected @Nullable String currentSessionRequiredMessage() { return null; }
+		@Override protected @Nullable PlayerMessage currentSessionRequiredMessage() { return null; }
+		@Override protected @NotNull MessageService messageService() { return mock(MessageService.class); }
 	}
 }

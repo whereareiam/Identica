@@ -7,10 +7,10 @@ import lombok.RequiredArgsConstructor;
 import me.whereareiam.commandant.Pagination;
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.annotation.*;
-import me.whereareiam.identica.persistence.AccountPersistenceService;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.message.SessionMessages;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.SessionCloseRequest;
 import me.whereareiam.identica.model.SessionConnection;
@@ -18,6 +18,7 @@ import me.whereareiam.identica.model.config.Commands;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.config.type.DateTimePattern;
 import me.whereareiam.identica.model.identity.Account;
+import me.whereareiam.identica.persistence.AccountPersistenceService;
 import me.whereareiam.identica.util.UniqueIdUtil;
 import me.whereareiam.keystone.Actor;
 import me.whereareiam.keystone.model.SerializerOptions;
@@ -198,7 +199,7 @@ public class SessionsCommand {
 		sessionService.close(SessionCloseRequest.builder()
 				.uniqueId(resolvedSession.getUniqueId())
 				.disconnect(true)
-				.disconnectMessage(String.join("\n", endMessages.getDisconnect()))
+				.disconnectMessage(SessionMessages.ENDED.create(messagesProvider.get()))
 				.build()).join();
 
 		String username = resolveUsername(resolvedSession, unknown);

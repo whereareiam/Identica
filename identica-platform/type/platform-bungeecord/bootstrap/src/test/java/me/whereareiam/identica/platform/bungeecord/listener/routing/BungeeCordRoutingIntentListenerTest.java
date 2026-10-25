@@ -1,9 +1,12 @@
 package me.whereareiam.identica.platform.bungeecord.listener.routing;
 
+import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.connection.ServerJoinedEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentStartedEvent;
 import me.whereareiam.identica.identity.actor.Identity;
+import me.whereareiam.identica.message.MessageService;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.routing.RoutingEndpoint;
 import me.whereareiam.identica.model.routing.RoutingIntent;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptDecision;
@@ -11,6 +14,7 @@ import me.whereareiam.identica.model.routing.attempt.RoutingAttemptPolicy;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptState;
 import me.whereareiam.identica.routing.RoutingAttemptService;
 import me.whereareiam.identica.type.routing.reason.RoutingReason;
+import me.whereareiam.keystone.model.SerializerContent;
 import net.md_5.bungee.api.ProxyConfig;
 import net.md_5.bungee.api.ProxyServer;
 import net.md_5.bungee.api.ServerConnectRequest;
@@ -40,7 +44,7 @@ class BungeeCordRoutingIntentListenerTest {
 	private final ProxiedPlayer player = mock(ProxiedPlayer.class);
 	private final RoutingIntent toAuth = new RoutingIntent(UUID.randomUUID(), ALICE, new RoutingEndpoint("auth"),
 			RoutingReason.COMPLETION, RoutingAttemptPolicy.defaultCompletion(), new RoutingAttemptState(), null, null, null, null, 0L);
-	private final BungeeCordRoutingIntentListener listener = new BungeeCordRoutingIntentListener(proxy, attempts, mock(EventManager.class));
+	private final BungeeCordRoutingIntentListener listener = new BungeeCordRoutingIntentListener(proxy, attempts, mock(EventManager.class), messageService());
 
 	/**
 	 * Builds a connect request with BungeeCord's configured timeout, which the running proxy provides.
@@ -108,4 +112,18 @@ class BungeeCordRoutingIntentListenerTest {
 		when(identity.getConnectionUniqueId()).thenReturn(ALICE);
 		return new ServerJoinedEvent(identity, "lobby");
 	}
+
+	private static MessageService messageService() {
+		MessageService messageService = mock(MessageService.class);
+		when(messageService.disconnectReason(any(), any())).thenAnswer(call -> {
+			PlayerMessage message = call.getArgument(1);
+			return Serializer.serialize(SerializerContent.builder()
+					.message(message.getText())
+					.placeholders(message.getPlaceholders())
+					.build());
+		});
+
+		return messageService;
+	}
+
 }

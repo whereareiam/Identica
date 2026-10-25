@@ -13,7 +13,6 @@ import net.kyori.adventure.platform.bungeecord.BungeeAudiences;
 import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import org.incendo.cloud.SenderMapper;
-import me.whereareiam.identica.platform.common.checkpoint.LoadingScreenReplies;
 import org.jetbrains.annotations.NotNull;
 
 @Singleton
@@ -21,7 +20,6 @@ import org.jetbrains.annotations.NotNull;
 public class CommandSourceMapper implements SenderMapper<CommandSender, Actor> {
 	private final IdentityService identityService;
 	private final BungeeAudiences audiences;
-	private final LoadingScreenReplies replies;
 
 	@Override
 	public @NotNull Actor map(@NotNull CommandSender source) {
@@ -30,7 +28,7 @@ public class CommandSourceMapper implements SenderMapper<CommandSender, Actor> {
 			Identity identity = identityService.findByConnectionUniqueId(player.getUniqueId()).orElse(null);
 			if (identity != null) return identity;
 
-			BungeeCordCommandPlayer created = new BungeeCordCommandPlayer(player, audience, replies);
+			BungeeCordCommandPlayer created = new BungeeCordCommandPlayer(player, audience);
 			identityService.attach(player.getUniqueId(), null, created);
 			return created;
 		}

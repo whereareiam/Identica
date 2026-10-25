@@ -5,14 +5,15 @@ import com.google.inject.Singleton;
 import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.base.IdenticEvent;
+import me.whereareiam.identica.feature.sentinel.SentinelService;
 import me.whereareiam.identica.feature.sentinel.model.SentinelContext;
 import me.whereareiam.identica.feature.sentinel.model.SentinelDecision;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.provider.credential.CredentialConstants;
 import me.whereareiam.identica.provider.credential.event.authentication.AuthenticationAttemptDecision;
 import me.whereareiam.identica.provider.credential.event.authentication.AuthenticationAttemptFailedEvent;
 import me.whereareiam.identica.provider.credential.event.authentication.AuthenticationAttemptSucceededEvent;
 import me.whereareiam.identica.provider.credential.model.authentication.AuthenticationAttemptContext;
-import me.whereareiam.identica.feature.sentinel.SentinelService;
 import org.jetbrains.annotations.NotNull;
 
 @Singleton
@@ -72,8 +73,8 @@ public class BruteForceSentinelLifecycle implements EventListener {
 		if (decision == null) return AuthenticationAttemptDecision.allow();
 
 		boolean deny = decision.isLimited() && decision.isDeny();
-		String denyMessage = deny ? decision.getMessage() : null;
-		String warningMessage = decision.getWarningMessage();
+		PlayerMessage denyMessage = deny ? decision.getMessage() : null;
+		PlayerMessage warningMessage = decision.getWarningMessage();
 		return new AuthenticationAttemptDecision(deny, denyMessage, warningMessage);
 	}
 }

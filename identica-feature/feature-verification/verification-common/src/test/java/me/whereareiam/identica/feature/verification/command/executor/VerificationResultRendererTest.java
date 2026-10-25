@@ -10,6 +10,8 @@ import me.whereareiam.identica.feature.verification.model.process.VerificationPr
 import me.whereareiam.identica.feature.verification.process.VerificationChallengeProcess;
 import me.whereareiam.identica.feature.verification.process.VerificationEnrollmentProcess;
 import me.whereareiam.identica.feature.verification.type.status.VerificationEnrollmentStatus;
+import me.whereareiam.identica.message.MessageService;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.keystone.Actor;
 import me.whereareiam.keystone.model.SerializerContent;
 import me.whereareiam.keystone.model.SerializerOptions;
@@ -29,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
 
 @DisplayName("Verification Result Renderer")
 class VerificationResultRendererTest {
@@ -69,17 +72,16 @@ class VerificationResultRendererTest {
 	@Test
 	@DisplayName("Uses method-owned enrollment display lines")
 	void usesMethodOwnedEnrollmentDisplayLines() {
-		VerificationResultRenderer presenter = new VerificationResultRenderer(this::messages, registry());
+		VerificationResultRenderer presenter = new VerificationResultRenderer(this::messages, registry(), mock(MessageService.class));
 		TestActor actor = new TestActor();
 
 		presenter.presentEnrollmentResult(actor, VerificationEnrollmentResult.builder()
 				.status(VerificationEnrollmentStatus.STARTED)
 				.methodId("mail")
 				.display(VerificationProcessDisplay.builder()
-						.lines(List.of(
-								"Verification started for {methodDisplayName}",
-								"Code sent to {maskedEmail}"
-						))
+						.message(PlayerMessage.builder()
+								.text("Verification started for {methodDisplayName}\nCode sent to {maskedEmail}")
+								.build())
 						.placeholders(Map.of("maskedEmail", "j***@example.com"))
 						.build())
 				.build());
@@ -90,7 +92,7 @@ class VerificationResultRendererTest {
 	@Test
 	@DisplayName("Fails fast when enrollment display is missing")
 	void failsFastWhenEnrollmentDisplayMissing() {
-		VerificationResultRenderer presenter = new VerificationResultRenderer(this::messages, registry());
+		VerificationResultRenderer presenter = new VerificationResultRenderer(this::messages, registry(), mock(MessageService.class));
 
 		IllegalStateException error = assertThrows(IllegalStateException.class, () ->
 				presenter.presentEnrollmentResult(new TestActor(), VerificationEnrollmentResult.builder()
@@ -105,13 +107,13 @@ class VerificationResultRendererTest {
 	@Test
 	@DisplayName("Shows nothing and does not fail when the enrollment display has no text")
 	void emptiedEnrollmentDisplayShowsNothing() {
-		VerificationResultRenderer presenter = new VerificationResultRenderer(this::messages, registry());
+		VerificationResultRenderer presenter = new VerificationResultRenderer(this::messages, registry(), mock(MessageService.class));
 		TestActor actor = new TestActor();
 
 		assertDoesNotThrow(() -> presenter.presentEnrollmentResult(actor, VerificationEnrollmentResult.builder()
 				.status(VerificationEnrollmentStatus.STARTED)
 				.methodId("totp")
-				.display(VerificationProcessDisplay.builder().lines(List.of()).build())
+				.display(VerificationProcessDisplay.builder().message(PlayerMessage.builder().build()).build())
 				.build()));
 
 		assertNull(actor.lastMessage());
@@ -125,7 +127,7 @@ class VerificationResultRendererTest {
 		messages.getCommands().getConfirm().getRecoveryCodes().setLayout(VerificationMessages.Commands.Confirm.RecoveryCodes.Layout.SINGLE_COLUMN);
 		TestActor actor = new TestActor();
 
-		new VerificationResultRenderer(() -> messages, registry()).presentEnrollmentResult(actor, recoveryCodes());
+		new VerificationResultRenderer(() -> messages, registry(), mock(MessageService.class)).presentEnrollmentResult(actor, recoveryCodes());
 
 		assertEquals("Your codes:\nAAAA\nBBBB", actor.lastMessage());
 	}
@@ -138,7 +140,7 @@ class VerificationResultRendererTest {
 		messages.getCommands().getConfirm().getRecoveryCodes().setLayout(VerificationMessages.Commands.Confirm.RecoveryCodes.Layout.SINGLE_COLUMN);
 		TestActor actor = new TestActor();
 
-		new VerificationResultRenderer(() -> messages, registry()).presentEnrollmentResult(actor, recoveryCodes());
+		new VerificationResultRenderer(() -> messages, registry(), mock(MessageService.class)).presentEnrollmentResult(actor, recoveryCodes());
 
 		assertEquals("AAAA\nBBBB", actor.lastMessage());
 	}
@@ -151,7 +153,7 @@ class VerificationResultRendererTest {
 		messages.getCommands().getConfirm().getRecoveryCodes().setLayout(VerificationMessages.Commands.Confirm.RecoveryCodes.Layout.SINGLE_COLUMN);
 		TestActor actor = new TestActor();
 
-		new VerificationResultRenderer(() -> messages, registry()).presentEnrollmentResult(actor, recoveryCodes());
+		new VerificationResultRenderer(() -> messages, registry(), mock(MessageService.class)).presentEnrollmentResult(actor, recoveryCodes());
 
 		assertEquals("AAAA\nBBBB", actor.lastMessage());
 	}

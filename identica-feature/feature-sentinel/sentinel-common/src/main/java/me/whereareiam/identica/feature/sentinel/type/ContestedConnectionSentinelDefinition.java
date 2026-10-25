@@ -5,11 +5,15 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.feature.sentinel.SentinelDefinition;
+import me.whereareiam.identica.feature.sentinel.SentinelMessageDefinitions;
 import me.whereareiam.identica.feature.sentinel.model.SentinelContext;
 import me.whereareiam.identica.feature.sentinel.model.SentinelPolicy;
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelMessages;
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelSettings;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.Map;
 
 /**
  * Throttles an address that keeps connecting under usernames other connections are logging in under. Each refused
@@ -66,9 +70,8 @@ public class ContestedConnectionSentinelDefinition implements SentinelDefinition
 		return new SentinelKey(ip == null || ip.isBlank() ? null : ip.trim());
 	}
 
-	private @NotNull String message(long remainingSeconds) {
-		String seconds = String.valueOf(Math.max(0L, remainingSeconds));
-		return String.join("\n", messagesProvider.get().getContestedConnection().getDenied())
-				.replace("{seconds}", seconds);
+	private @NotNull PlayerMessage message(long remainingSeconds) {
+		return SentinelMessageDefinitions.CONTESTED_CONNECTION.create(messagesProvider.get(),
+				Map.of("seconds", String.valueOf(Math.max(0L, remainingSeconds))));
 	}
 }

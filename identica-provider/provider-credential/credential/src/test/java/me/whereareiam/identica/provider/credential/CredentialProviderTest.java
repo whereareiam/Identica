@@ -10,6 +10,7 @@ import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.feature.FeatureRegistry;
 import me.whereareiam.identica.feature.sentinel.SentinelDefinition;
 import me.whereareiam.identica.feature.sentinel.SentinelService;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.provider.dependency.ProviderLibrary;
 import me.whereareiam.identica.pipeline.completion.extension.CompletionExtensionRegistry;
 import me.whereareiam.identica.pipeline.extension.PipelineExtensionRegistry;
@@ -82,8 +83,16 @@ class CredentialProviderTest {
 				mock(CompletionExtensionRegistry.class),
 				mock(CredentialPipelineExtension.class),
 				mock(CredentialCompletionExtension.class),
+				messageService(),
 				features,
 				injector
 		);
+	}
+
+	private static MessageService messageService() {
+		MessageService messageService = mock(MessageService.class);
+		when(messageService.register(any())).thenReturn(mock(MessageService.Registration.class));
+
+		return messageService;
 	}
 }

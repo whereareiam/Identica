@@ -3,6 +3,7 @@ package me.whereareiam.identica.feature.verification.type.totp.step;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
+import me.whereareiam.identica.feature.verification.VerificationMessageDefinitions;
 import me.whereareiam.identica.feature.verification.config.VerificationMessages;
 import me.whereareiam.identica.feature.verification.model.config.VerificationSettings;
 import me.whereareiam.identica.feature.verification.model.interaction.CodeVerificationInteraction;
@@ -89,7 +90,7 @@ public class TotpSetupStep implements VerificationProcessStep<CodeVerificationIn
 				.status(VerificationProcessStatus.WAITING)
 				.state(state)
 				.display(VerificationProcessDisplay.builder()
-						.lines(messagesProvider.get().getMethods().getTotp().getPending())
+						.message(VerificationMessageDefinitions.TOTP_PENDING.create(messagesProvider.get()))
 						.placeholders(placeholders)
 						.build())
 				.transition(VerificationProcessTransition.advance())

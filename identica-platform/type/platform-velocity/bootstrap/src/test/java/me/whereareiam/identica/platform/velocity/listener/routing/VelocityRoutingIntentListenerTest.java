@@ -6,8 +6,11 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import com.velocitypowered.api.proxy.server.ServerInfo;
+import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentRetryEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentStartedEvent;
+import me.whereareiam.identica.message.MessageService;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.routing.RoutingEndpoint;
 import me.whereareiam.identica.model.routing.RoutingIntent;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptDecision;
@@ -16,10 +19,11 @@ import me.whereareiam.identica.model.routing.attempt.RoutingAttemptReport;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptState;
 import me.whereareiam.identica.routing.RoutingAttemptService;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import me.whereareiam.identica.type.routing.reason.RoutingAttemptFailureReason;
 import me.whereareiam.identica.type.routing.RoutingAttemptTrigger;
 import me.whereareiam.identica.type.routing.RoutingRetryMode;
+import me.whereareiam.identica.type.routing.reason.RoutingAttemptFailureReason;
 import me.whereareiam.identica.type.routing.reason.RoutingReason;
+import me.whereareiam.keystone.model.SerializerContent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -45,7 +49,7 @@ class VelocityRoutingIntentListenerTest {
 		ProxyServer proxyServer = mock(ProxyServer.class);
 		RoutingAttemptService routingAttemptService = mock(RoutingAttemptService.class);
 		me.whereareiam.identica.common.event.EventController eventController = new me.whereareiam.identica.common.event.EventController();
-		new VelocityRoutingIntentListener(proxyServer, routingAttemptService, eventController);
+		new VelocityRoutingIntentListener(proxyServer, routingAttemptService, eventController, messageService());
 
 		RoutingIntent intent = intent();
 		Player player = player(intent.getConnectionUniqueId(), "auth");
@@ -78,7 +82,7 @@ class VelocityRoutingIntentListenerTest {
 		ProxyServer proxyServer = mock(ProxyServer.class);
 		RoutingAttemptService routingAttemptService = mock(RoutingAttemptService.class);
 		me.whereareiam.identica.common.event.EventController eventController = new me.whereareiam.identica.common.event.EventController();
-		new VelocityRoutingIntentListener(proxyServer, routingAttemptService, eventController);
+		new VelocityRoutingIntentListener(proxyServer, routingAttemptService, eventController, messageService());
 
 		RoutingIntent intent = intent();
 		Player player = player(intent.getConnectionUniqueId(), "auth");
@@ -110,7 +114,7 @@ class VelocityRoutingIntentListenerTest {
 		ProxyServer proxyServer = mock(ProxyServer.class);
 		RoutingAttemptService routingAttemptService = mock(RoutingAttemptService.class);
 		me.whereareiam.identica.common.event.EventController eventController = new me.whereareiam.identica.common.event.EventController();
-		new VelocityRoutingIntentListener(proxyServer, routingAttemptService, eventController);
+		new VelocityRoutingIntentListener(proxyServer, routingAttemptService, eventController, messageService());
 
 		RoutingIntent intent = intent(RoutingAttemptPolicy.defaultCompletion());
 		Player player = player(intent.getConnectionUniqueId(), "auth");
@@ -141,7 +145,7 @@ class VelocityRoutingIntentListenerTest {
 		ProxyServer proxyServer = mock(ProxyServer.class);
 		RoutingAttemptService routingAttemptService = mock(RoutingAttemptService.class);
 		me.whereareiam.identica.common.event.EventController eventController = new me.whereareiam.identica.common.event.EventController();
-		new VelocityRoutingIntentListener(proxyServer, routingAttemptService, eventController);
+		new VelocityRoutingIntentListener(proxyServer, routingAttemptService, eventController, messageService());
 
 		RoutingAttemptPolicy untilReached = new RoutingAttemptPolicy();
 		untilReached.setMode(RoutingRetryMode.UNTIL_REACHED);
@@ -202,4 +206,18 @@ class VelocityRoutingIntentListenerTest {
 		when(info.getName()).thenReturn(name);
 		return server;
 	}
+
+	private static MessageService messageService() {
+		MessageService messageService = mock(MessageService.class);
+		when(messageService.disconnectReason(any(), any())).thenAnswer(call -> {
+			PlayerMessage message = call.getArgument(1);
+			return Serializer.serialize(SerializerContent.builder()
+					.message(message.getText())
+					.placeholders(message.getPlaceholders())
+					.build());
+		});
+
+		return messageService;
+	}
+
 }

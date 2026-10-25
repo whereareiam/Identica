@@ -4,8 +4,8 @@ import com.google.inject.Inject;
 import com.google.inject.Injector;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
-import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.feature.FeatureRegistry;
+import me.whereareiam.identica.feature.verification.VerificationMessageDefinitions;
 import me.whereareiam.identica.feature.verification.VerificationService;
 import me.whereareiam.identica.feature.verification.config.VerificationMessages;
 import me.whereareiam.identica.feature.verification.model.resolution.VerificationCodeAttempt;
@@ -15,17 +15,19 @@ import me.whereareiam.identica.feature.verification.type.status.VerificationChal
 import me.whereareiam.identica.feature.verification.type.status.VerificationResolutionStatus;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
+import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.journey.step.StatefulStep;
-import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.journey.step.type.InteractiveStep;
+import me.whereareiam.identica.pipeline.state.PipelineState;
+import me.whereareiam.identica.provider.premium.PremiumMessageDefinitions;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -98,29 +100,28 @@ public class PremiumVerificationStep extends InteractiveStep implements Stateful
 				result.isRequired()
 		);
 
-		PremiumMessages.Verification.Authentication messages = messagesProvider.get().getVerification().getAuthentication();
-		return CompletableFuture.completedFuture(toStepResult(result, context, messages));
+		return CompletableFuture.completedFuture(toStepResult(result, context, messagesProvider.get()));
 	}
 
 	private StepResult toStepResult(
 			@NotNull VerificationResolutionResult result,
 			@NotNull ScenarioContext context,
-			PremiumMessages.Verification.@NotNull Authentication messages
+			@NotNull PremiumMessages messages
 	) {
 		VerificationResolutionStatus status = result.getStatus();
 		if (status == VerificationResolutionStatus.SATISFIED || status == VerificationResolutionStatus.SKIPPED)
 			return StepResult.complete(context);
 		if (status == VerificationResolutionStatus.WAITING)
-			return StepResult.waiting(joinLines(messages.getPrompt()));
+			return StepResult.waiting(PremiumMessageDefinitions.VERIFICATION_CODE.create(messages));
 		if (status == VerificationResolutionStatus.REJECTED)
 			return StepResult.waiting(rejectionMessage(result));
 
 		if (status == VerificationResolutionStatus.DENIED)
 			return StepResult.denied(result.getMethodId() == null
-					? messages.getRequired()
-					: messages.getUnavailable());
+					? PremiumMessageDefinitions.VERIFICATION_REQUIRED.create(messages)
+					: PremiumMessageDefinitions.VERIFICATION_UNAVAILABLE.create(messages));
 
-		return StepResult.failed("");
+		return StepResult.failed(null);
 	}
 
 	/**
@@ -135,18 +136,14 @@ public class PremiumVerificationStep extends InteractiveStep implements Stateful
 	}
 
 	/**
-	 * Answers a code the challenge did not take with the confirm command's messages: a wrong code is invalid, and a
-	 * code without a challenge to take it finds nothing pending.
+	 * Asks again for a code the challenge did not take: a wrong code is invalid, and a code without a challenge to
+	 * take it finds nothing pending.
 	 */
-	private @NotNull String rejectionMessage(@NotNull VerificationResolutionResult result) {
-		VerificationMessages.Commands.Confirm messages = injector.getInstance(VerificationMessages.class).getCommands().getConfirm();
-		if (result.getRejection() == VerificationChallengeStatus.INVALID) return messages.getInvalidCode();
+	private @NotNull PlayerMessage rejectionMessage(@NotNull VerificationResolutionResult result) {
+		VerificationMessages messages = injector.getInstance(VerificationMessages.class);
+		if (result.getRejection() == VerificationChallengeStatus.INVALID)
+			return VerificationMessageDefinitions.CODE_INVALID.create(messages);
 
-		return messages.getNoPending();
-	}
-
-	private static @NotNull String joinLines(@Nullable List<String> lines) {
-		if (lines == null || lines.isEmpty()) return "";
-		return String.join("\n", lines);
+		return VerificationMessageDefinitions.CODE_NO_CHALLENGE.create(messages);
 	}
 }

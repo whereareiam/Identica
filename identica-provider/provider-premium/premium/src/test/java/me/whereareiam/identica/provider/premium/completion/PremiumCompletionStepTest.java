@@ -6,6 +6,7 @@ import com.google.inject.Provider;
 import me.whereareiam.identica.feature.FeatureRegistry;
 import me.whereareiam.identica.feature.recognition.store.RecognizedConnectionStore;
 import me.whereareiam.identica.identity.actor.Identity;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.pipeline.completion.CompletionContext;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
@@ -128,15 +129,15 @@ class PremiumCompletionStepTest {
 				Provider<PremiumMessages> messagesProvider,
 				RecognizedConnectionStore recognizedConnectionStore
 		) {
-			super(messagesProvider, features(true), injector(recognizedConnectionStore));
+			super(messagesProvider, mock(MessageService.class), features(true), injector(recognizedConnectionStore));
 		}
 
 		private InspectablePremiumCompletionStep(Provider<PremiumMessages> messagesProvider, FeatureRegistry features, Injector injector) {
-			super(messagesProvider, features, injector);
+			super(messagesProvider, mock(MessageService.class), features, injector);
 		}
 
 		private List<String> lines(CompletionContext context) {
-			return messageLines(context);
+			return List.of(message(context).getText().split("\n", -1));
 		}
 	}
 

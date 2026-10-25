@@ -7,6 +7,7 @@ import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.annotation.Command;
 import me.whereareiam.identica.annotation.Definition;
 import me.whereareiam.identica.command.SessionBoundCommand;
+import me.whereareiam.identica.feature.verification.VerificationMessageDefinitions;
 import me.whereareiam.identica.feature.verification.VerificationRegistry;
 import me.whereareiam.identica.feature.verification.VerificationService;
 import me.whereareiam.identica.feature.verification.config.VerificationMessages;
@@ -14,10 +15,13 @@ import me.whereareiam.identica.feature.verification.model.enrollment.Verificatio
 import me.whereareiam.identica.feature.verification.model.selection.VerificationSelection;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.message.MessageService;
+import me.whereareiam.identica.message.SessionMessages;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.config.type.DateTimePattern;
+import me.whereareiam.identica.model.message.MessageDefinition;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.keystone.Actor;
-import me.whereareiam.keystone.model.SerializerContent;
 import me.whereareiam.keystone.model.SerializerOptions;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -36,6 +40,7 @@ public class VerificationCommand extends SessionBoundCommand {
 	private final VerificationService verificationService;
 	private final VerificationRegistry verificationRegistry;
 	private final SessionService sessionService;
+	private final MessageService messageService;
 
 	@Inject
 	public VerificationCommand(
@@ -43,13 +48,15 @@ public class VerificationCommand extends SessionBoundCommand {
 			Provider<VerificationMessages> messagesProvider,
 			VerificationService verificationService,
 			VerificationRegistry verificationRegistry,
-			SessionService sessionService
+			SessionService sessionService,
+			MessageService messageService
 	) {
 		this.coreMessagesProvider = coreMessagesProvider;
 		this.messagesProvider = messagesProvider;
 		this.verificationService = verificationService;
 		this.verificationRegistry = verificationRegistry;
 		this.sessionService = sessionService;
+		this.messageService = messageService;
 	}
 
 	@Override
@@ -58,8 +65,13 @@ public class VerificationCommand extends SessionBoundCommand {
 	}
 
 	@Override
-	protected @Nullable String currentSessionRequiredMessage() {
-		return coreMessagesProvider.get().getCommands().getCurrentSessionRequired();
+	protected @Nullable PlayerMessage currentSessionRequiredMessage() {
+		return SessionMessages.CURRENT_SESSION_REQUIRED.create(coreMessagesProvider.get());
+	}
+
+	@Override
+	protected @NotNull MessageService messageService() {
+		return messageService;
 	}
 
 	@Definition("verification")
@@ -71,7 +83,7 @@ public class VerificationCommand extends SessionBoundCommand {
 	@Definition("verification-status")
 	@Command("2fa status")
 	public void status(@NotNull Actor sender) {
-		Identity identity = requireIdentity(sender, verificationMessages().getPlayerOnly());
+		Identity identity = requireIdentity(sender, VerificationMessageDefinitions.PLAYER_ONLY.create(messagesProvider.get()));
 		if (identity == null) return;
 		if (requireCurrentSession(identity) == null) return;
 		var accountUniqueId = requireAccountUniqueId(identity);
@@ -89,7 +101,7 @@ public class VerificationCommand extends SessionBoundCommand {
 				"enrollments", String.join("\n", enrollmentLines),
 				"selections", String.join("\n", selectionLines)
 		);
-		sendLines(sender, statusMessages.getBody(), placeholders);
+		send(sender, VerificationMessageDefinitions.STATUS, placeholders);
 	}
 
 	private List<String> buildEnrollmentLines(
@@ -143,23 +155,12 @@ public class VerificationCommand extends SessionBoundCommand {
 		return Serializer.getEngine().getPlaceholderFormat();
 	}
 
-	private void sendLines(@NotNull Actor sender, @Nullable List<String> lines, @NotNull Map<String, String> placeholders) {
-		if (lines == null || lines.isEmpty()) return;
-		sendMessage(sender, String.join("\n", lines), placeholders);
-	}
-
-	private void sendMessage(@NotNull Actor sender, @Nullable String message, @NotNull Map<String, String> placeholders) {
-		if (message == null || message.isBlank()) return;
-		if (sender instanceof Identity identity) {
-			identity.send(message, placeholders);
-			return;
-		}
-
-		sender.sendMessage(Serializer.serialize(SerializerContent.builder()
-				.receiver(sender)
-				.message(message)
-				.placeholders(placeholders)
-				.build()));
+	private void send(
+			@NotNull Actor sender,
+			@NotNull MessageDefinition<VerificationMessages> definition,
+			@NotNull Map<String, String> placeholders
+	) {
+		sendMessage(sender, definition.create(messagesProvider.get(), placeholders));
 	}
 
 	private String formatDate(long millis) {

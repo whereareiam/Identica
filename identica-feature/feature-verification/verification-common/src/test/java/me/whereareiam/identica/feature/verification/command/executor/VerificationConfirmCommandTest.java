@@ -13,11 +13,13 @@ import me.whereareiam.identica.feature.verification.type.status.VerificationChal
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.request.AdvanceRequest;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.pipeline.state.PipelineInput;
@@ -43,8 +45,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
@@ -63,6 +63,7 @@ class VerificationConfirmCommandTest {
 	private final VerificationResultRenderer renderer = mock(VerificationResultRenderer.class);
 	private final VerificationService verification = mock(VerificationService.class);
 	private final ConnectionCoordinator coordinator = mock(ConnectionCoordinator.class);
+	private final MessageService messageService = mock(MessageService.class);
 
 	@BeforeAll
 	static void initializeSerializer() {
@@ -76,18 +77,18 @@ class VerificationConfirmCommandTest {
 	void connectedPlayer() {
 		when(identity.getAccountUniqueId()).thenReturn(accountUniqueId);
 		when(identity.getConnectionUniqueId()).thenReturn(UUID.randomUUID());
-		doCallRealMethod().when(identity).send(anyString());
-		doCallRealMethod().when(identity).send(anyString(), anyMap());
+		when(messageService.disconnectReason(any(), any()))
+				.thenAnswer(call -> Component.text(call.getArgument(1, PlayerMessage.class).getText()));
 		when(challenges.findPendingDisable(any())).thenReturn(Optional.empty());
 	}
 
 	static Stream<ConnectionDecision> denials() {
 		return Stream.of(
-				ConnectionDecision.deny(""),
+				ConnectionDecision.deny(message("")),
 				ConnectionDecision.deny(null),
-				ConnectionDecision.deny("Sign-in failed"),
-				ConnectionDecision.requireReconnect(""),
-				ConnectionDecision.requireReconnect("Join again")
+				ConnectionDecision.deny(message("Sign-in failed")),
+				ConnectionDecision.requireReconnect(message("")),
+				ConnectionDecision.requireReconnect(message("Join again"))
 		);
 	}
 
@@ -99,21 +100,21 @@ class VerificationConfirmCommandTest {
 
 		confirm("123456");
 
-		verify(identity).disconnect(Component.text(decision.getMessage() == null ? "" : decision.getMessage()));
+		verify(identity).disconnect(decision.getMessage() == null ? Component.empty() : Component.text(decision.getMessage().getText()));
 	}
 
 	@DisplayName("Hands a code typed before its prompt to the pipeline instead of looking for the journey itself")
 	@Test
 	void handsTheCodeToThePipeline() {
-		answers(ConnectionDecision.waiting("Invalid code."));
+		answers(ConnectionDecision.waiting(message("Invalid code.")));
 
 		confirm("123456");
 
 		PipelineState state = PipelineState.initial();
 		input().applyTo(state);
 		assertEquals("123456", state.get(VerificationCodeAttempt.KEY).orElseThrow().getCode());
-		verify(identity).sendMessage(Component.text("Invalid code."));
-		verify(identity, never()).sendMessage(Component.text(NO_PENDING));
+		verify(messageService).send(eq(identity), argThat(message -> "Invalid code.".equals(message.getText())));
+		verify(messageService, never()).send(eq(identity), argThat(message -> "verification:confirm-no-pending".equals(message.getId())));
 	}
 
 	@DisplayName("The code is taken only by a journey whose authentication challenge waits for it")
@@ -138,7 +139,8 @@ class VerificationConfirmCommandTest {
 
 		confirm("123456");
 
-		verify(identity).sendMessage(Component.text(NO_PENDING));
+		verify(messageService).send(eq(identity), argThat(message -> "verification:confirm-no-pending".equals(message.getId())
+				&& NO_PENDING.equals(message.getText())));
 	}
 
 	@DisplayName("Confirms the method the account asked to disable, kept apart from the pipeline state")
@@ -182,7 +184,8 @@ class VerificationConfirmCommandTest {
 				challenges,
 				coordinator,
 				renderer,
-				sessions
+				sessions,
+				messageService
 		).confirm(identity, code);
 	}
 
@@ -201,5 +204,9 @@ class VerificationConfirmCommandTest {
 				.build());
 		if (waiting) state.put(JourneyStateItem.KEY, new JourneyStateItem(null, null, 0), 60_000L);
 		return state;
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

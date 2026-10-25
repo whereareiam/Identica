@@ -5,9 +5,10 @@ import me.whereareiam.identica.common.config.defaults.messages.MessagesDefaults;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.routing.RoutingTargetMissingEvent;
 import me.whereareiam.identica.model.config.Messages;
-import me.whereareiam.identica.model.routing.attempt.RoutingAttemptPolicy;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.routing.RoutingEndpoint;
 import me.whereareiam.identica.model.routing.RoutingIntent;
+import me.whereareiam.identica.model.routing.attempt.RoutingAttemptPolicy;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptState;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.routing.reason.RoutingReason;
@@ -61,7 +62,7 @@ class RoutingTargetMissingListenerTest {
 		listener.onTargetMissing(event);
 
 		assertTrue(event.isDisconnect());
-		assertEquals(Component.text(scenario.name() + "\nmissing"), event.getMessage());
+		assertEquals(scenario.name() + "\nmissing", event.getMessage().getText());
 	}
 
 	@DisplayName("A scenario without a message of its own shows the shared one")
@@ -71,7 +72,7 @@ class RoutingTargetMissingListenerTest {
 		RoutingTargetMissingEvent event = missing(scenario);
 		listener.onTargetMissing(event);
 
-		assertEquals(Component.text(SHARED), event.getMessage());
+		assertEquals(SHARED, event.getMessage().getText());
 	}
 
 	@DisplayName("A scenario message of blank lines shows the shared one")
@@ -82,7 +83,7 @@ class RoutingTargetMissingListenerTest {
 		RoutingTargetMissingEvent event = missing(PipelineType.REGISTRATION);
 		listener.onTargetMissing(event);
 
-		assertEquals(Component.text(SHARED), event.getMessage());
+		assertEquals(SHARED, event.getMessage().getText());
 	}
 
 	@DisplayName("A route outside any scenario shows the shared message")
@@ -93,7 +94,7 @@ class RoutingTargetMissingListenerTest {
 		RoutingTargetMissingEvent event = missing(null);
 		listener.onTargetMissing(event);
 
-		assertEquals(Component.text(SHARED), event.getMessage());
+		assertEquals(SHARED, event.getMessage().getText());
 	}
 
 	@DisplayName("With both messages empty the player is disconnected without a reason")
@@ -105,7 +106,7 @@ class RoutingTargetMissingListenerTest {
 		listener.onTargetMissing(event);
 
 		assertTrue(event.isDisconnect());
-		assertEquals(Component.empty(), event.getMessage());
+		assertTrue(event.getMessage().isEmpty());
 	}
 
 	@DisplayName("A reason another listener already set is kept")
@@ -113,11 +114,11 @@ class RoutingTargetMissingListenerTest {
 	void earlierReasonIsKept() {
 		scenarioRouting(PipelineType.AUTHENTICATION).setMissingServer(List.of("authentication"));
 		RoutingTargetMissingEvent event = missing(PipelineType.AUTHENTICATION);
-		event.setMessage(Component.text("earlier"));
+		event.setMessage(PlayerMessage.builder().text("earlier").build());
 
 		listener.onTargetMissing(event);
 
-		assertEquals(Component.text("earlier"), event.getMessage());
+		assertEquals("earlier", event.getMessage().getText());
 	}
 
 	private Messages.Scenarios.Scenario.ScenarioRouting scenarioRouting(PipelineType scenario) {

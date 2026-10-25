@@ -3,28 +3,32 @@ package me.whereareiam.identica.model.auth;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
+import me.whereareiam.identica.model.message.PlayerMessage;
 
 @Getter
 @ToString
 @RequiredArgsConstructor
 public class ConnectionDecision {
 	private final Status status;
-	private final String message;
+	/**
+	 * What the player is told, or {@code null} for nothing.
+	 */
+	private final PlayerMessage message;
 	private final String reason;
 
 	public static ConnectionDecision allow() {
 		return new ConnectionDecision(Status.ALLOW, null, null);
 	}
 
-	public static ConnectionDecision waiting(String message) {
+	public static ConnectionDecision waiting(PlayerMessage message) {
 		return new ConnectionDecision(Status.WAIT, message, null);
 	}
 
-	public static ConnectionDecision deny(String message) {
+	public static ConnectionDecision deny(PlayerMessage message) {
 		return new ConnectionDecision(Status.DENY, message, null);
 	}
 
-	public static ConnectionDecision requireReconnect(String message) {
+	public static ConnectionDecision requireReconnect(PlayerMessage message) {
 		return new ConnectionDecision(Status.REQUIRE_RECONNECT, message, null);
 	}
 

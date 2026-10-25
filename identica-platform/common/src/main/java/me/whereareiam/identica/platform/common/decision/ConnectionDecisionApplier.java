@@ -6,8 +6,13 @@ import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
+import me.whereareiam.identica.identity.actor.Identity;
+import me.whereareiam.identica.message.MessageService;
+import me.whereareiam.identica.message.ScenarioMessages;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
+import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.keystone.Actor;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
@@ -18,6 +23,7 @@ import org.jetbrains.annotations.Nullable;
 public class ConnectionDecisionApplier {
 	private final @NotNull Provider<Messages> messagesProvider;
 	private final @NotNull ConnectionDecisionDeliveryCoordinator deliveryCoordinator;
+	private final @NotNull MessageService messageService;
 
 	public void apply(
 			@Nullable ConnectionDecision decision,
@@ -28,14 +34,17 @@ public class ConnectionDecisionApplier {
 
 		switch (decision.getStatus()) {
 			case WAIT -> {
-				String message = decision.getMessage();
-				if (message == null || message.isBlank())
+				PlayerMessage message = decision.getMessage();
+				if (message == null || message.isEmpty())
 					return;
 
-				actor.sendMessage(Serializer.serialize(actor, message));
+				if (actor instanceof Identity identity)
+					messageService.send(identity, message);
+				else
+					actor.sendMessage(Serializer.serialize(actor, message.getText(), message.getPlaceholders()));
 			}
-			case DENY -> target.deny(Serializer.serialize(actor, resolveAuthMessage(decision.getMessage())));
-			case REQUIRE_RECONNECT -> target.requireReconnect(Serializer.serialize(actor, resolveAuthMessage(decision.getMessage())));
+			case DENY -> target.deny(messageService.disconnectReason(actor, resolveAuthMessage(decision.getMessage())));
+			case REQUIRE_RECONNECT -> target.requireReconnect(messageService.disconnectReason(actor, resolveAuthMessage(decision.getMessage())));
 			default -> {
 			}
 		}
@@ -54,9 +63,9 @@ public class ConnectionDecisionApplier {
 		return deferred;
 	}
 
-	private @NotNull String resolveAuthMessage(@Nullable String message) {
-		if (message != null && !message.isBlank()) return message;
-		return String.join("\n", messagesProvider.get().getScenarios().getAuthentication().getAuthenticationFailed());
+	private @NotNull PlayerMessage resolveAuthMessage(@Nullable PlayerMessage message) {
+		if (message != null && !message.isEmpty()) return message;
+		return ScenarioMessages.of(PipelineType.AUTHENTICATION).getFailed().create(messagesProvider.get());
 	}
 
 	public interface Target {

@@ -3,8 +3,10 @@ package me.whereareiam.identica.provider.credential.command;
 import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.identity.actor.Identity;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.request.AdvanceRequest;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.config.defaults.CredentialMessagesDefaults;
@@ -23,8 +25,6 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
@@ -37,7 +37,8 @@ class LoginCommandTest {
 	private final CredentialMessages messages = new CredentialMessagesDefaults().supply(new CredentialMessages());
 	private final ConnectionCoordinator coordinator = mock(ConnectionCoordinator.class);
 	private final Identity identity = mock(Identity.class);
-	private final LoginCommand command = new LoginCommand(coordinator, () -> messages);
+	private final MessageService messageService = mock(MessageService.class);
+	private final LoginCommand command = new LoginCommand(coordinator, () -> messages, messageService);
 
 	@BeforeAll
 	static void initializeSerializer() {
@@ -50,22 +51,20 @@ class LoginCommandTest {
 	@BeforeEach
 	void connectedPlayer() {
 		when(identity.getConnectionUniqueId()).thenReturn(UUID.randomUUID());
-		doCallRealMethod().when(identity).send(anyString());
-		doCallRealMethod().when(identity).send(anyString(), anyMap());
 	}
 
 	@DisplayName("Hands a password typed before its prompt to the pipeline instead of looking for the journey itself")
 	@Test
 	void handsThePasswordToThePipeline() {
-		when(coordinator.advance(any())).thenReturn(CompletableFuture.completedFuture(ConnectionDecision.waiting("Wrong password")));
+		when(coordinator.advance(any())).thenReturn(CompletableFuture.completedFuture(ConnectionDecision.waiting(message("Wrong password"))));
 
 		command.login(identity, "secret");
 
 		PipelineState state = PipelineState.initial();
 		advanced().getInput().applyTo(state);
 		assertEquals("secret", state.get(CredentialAuthenticationAttempt.KEY).orElseThrow().getPassword());
-		verify(identity).sendMessage(Component.text("Wrong password"));
-		verify(identity, never()).sendMessage(Component.text(noPending()));
+		verify(messageService).send(eq(identity), argThat(message -> "Wrong password".equals(message.getText())));
+		verify(messageService, never()).send(eq(identity), argThat(message -> noPending().equals(message.getText())));
 	}
 
 	@DisplayName("Shows the no-pending message when the pipeline finds no journey")
@@ -75,7 +74,7 @@ class LoginCommandTest {
 
 		command.login(identity, "secret");
 
-		verify(identity).sendMessage(Component.text(noPending()));
+		verify(messageService).send(eq(identity), argThat(message -> noPending().equals(message.getText())));
 	}
 
 	private AdvanceRequest advanced() {
@@ -86,5 +85,9 @@ class LoginCommandTest {
 
 	private String noPending() {
 		return messages.getScenario().getAuthentication().getStatus().getNoPending();
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

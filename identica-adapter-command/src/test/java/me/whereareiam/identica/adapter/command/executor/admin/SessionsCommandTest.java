@@ -1,13 +1,13 @@
 package me.whereareiam.identica.adapter.command.executor.admin;
 
 import me.whereareiam.identica.Serializer;
-import me.whereareiam.identica.persistence.AccountPersistenceService;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.SessionCloseRequest;
 import me.whereareiam.identica.model.config.Commands;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.persistence.AccountPersistenceService;
 import me.whereareiam.keystone.Actor;
 import me.whereareiam.keystone.model.SerializerContent;
 import me.whereareiam.keystone.serializer.SerializerEngine;
@@ -60,7 +60,7 @@ class SessionsCommandTest {
 		ArgumentCaptor<SessionCloseRequest> request = ArgumentCaptor.forClass(SessionCloseRequest.class);
 		verify(sessions).close(request.capture());
 		assertTrue(request.getValue().isDisconnect());
-		assertEquals(message, request.getValue().getDisconnectMessage());
+		assertEquals(message, request.getValue().getDisconnectMessage().getText());
 	}
 
 	private static Messages messages(List<String> disconnect) {

@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -54,8 +55,8 @@ public class SessionCloseRequest {
 	 */
 	private boolean disconnect;
 	/**
-	 * Optional already-resolved reason shown when {@link #isDisconnect()} disconnects the player.
-	 * Without it the player is disconnected with an empty reason.
+	 * Reason shown when {@link #isDisconnect()} disconnects the player. Without it the player is disconnected with an
+	 * empty reason.
 	 */
-	private @Nullable String disconnectMessage;
+	private @Nullable PlayerMessage disconnectMessage;
 }

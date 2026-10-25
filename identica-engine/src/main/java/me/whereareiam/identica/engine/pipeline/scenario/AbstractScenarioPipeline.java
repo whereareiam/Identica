@@ -6,11 +6,14 @@ import me.whereareiam.identica.engine.pipeline.PipelineExecutor;
 import me.whereareiam.identica.event.pipeline.attempt.ScenarioContextBuiltEvent;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.message.ScenarioMessages;
+import me.whereareiam.identica.message.SessionMessages;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.request.ConnectionRequest;
 import me.whereareiam.identica.model.auth.request.ResumeRequest;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.GroupOutcome;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
@@ -31,7 +34,6 @@ import me.whereareiam.identica.util.EventUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -149,18 +151,18 @@ public abstract class AbstractScenarioPipeline {
 		return ConnectionDecision.deny(failureMessage());
 	}
 
-	protected @NotNull String messageOrFallback(@Nullable String message) {
-		if (message != null && !message.isBlank())
+	protected @NotNull PlayerMessage messageOrFallback(@Nullable PlayerMessage message) {
+		if (message != null && !message.isEmpty())
 			return message;
 		return failureMessage();
 	}
 
-	protected @NotNull String failureMessage() {
-		return joinMessage(resolveFailureMessage(pipelineType));
+	protected @NotNull PlayerMessage failureMessage() {
+		return ScenarioMessages.of(pipelineType).getFailed().create(messagesProvider.get());
 	}
 
-	protected @NotNull String noCompletionMessage() {
-		return joinMessage(resolveScenarioMessages(pipelineType).getNoCompletionPipeline());
+	protected @NotNull PlayerMessage noCompletionMessage() {
+		return ScenarioMessages.of(pipelineType).getNoCompletionPipeline().create(messagesProvider.get());
 	}
 
 	protected @Nullable ScenarioContext resolveScenarioContext(@NotNull PipelineResult result) {
@@ -310,7 +312,7 @@ public abstract class AbstractScenarioPipeline {
 		ScenarioContext context = resolveScenarioContext(pipelineState);
 		Logger.warn("%s run of connection %s was not saved: the pipeline state changed while it ran",
 				pipelineType, context != null ? context.getConnectionUniqueId() : null);
-		return PipelineResult.requireReconnect(joinMessage(messagesProvider.get().getEngine().getConcurrentChangeKick()))
+		return PipelineResult.requireReconnect(SessionMessages.CONCURRENT_CHANGE_KICK.create(messagesProvider.get()))
 				.withState(pipelineState);
 	}
 
@@ -496,13 +498,6 @@ public abstract class AbstractScenarioPipeline {
 		return scenarios.getAuthentication();
 	}
 
-	protected @NotNull List<String> resolveFailureMessage(@NotNull PipelineType type) {
-		Messages.Scenarios scenarios = messagesProvider.get().getScenarios();
-		if (type == PipelineType.REGISTRATION) return scenarios.getRegistration().getRegistrationFailed();
-		if (type == PipelineType.MIGRATION) return scenarios.getMigration().getMigrationFailed();
-
-		return scenarios.getAuthentication().getAuthenticationFailed();
-	}
 
 	protected @NotNull Engine.Scenario resolveScenario(@NotNull PipelineType type) {
 		Engine.Scenarios scenarios = engineProvider.get().getScenarios();
@@ -512,9 +507,6 @@ public abstract class AbstractScenarioPipeline {
 		return scenarios.getAuthentication();
 	}
 
-	protected @NotNull String joinMessage(@NotNull List<String> lines) {
-		return String.join("\n", lines);
-	}
 
 	protected @Nullable ConnectionIdentity mergeIdentity(
 			@Nullable ScenarioContext base,

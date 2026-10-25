@@ -1,6 +1,7 @@
 package me.whereareiam.identica.engine.pipeline.scenario;
 
 import com.google.inject.Inject;
+import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.engine.connection.ConnectionDecisionResolver;
@@ -11,10 +12,12 @@ import me.whereareiam.identica.event.connection.attempt.ConnectionAttemptEvent;
 import me.whereareiam.identica.event.connection.attempt.ConnectionProcessAttemptEvent;
 import me.whereareiam.identica.event.connection.attempt.ConnectionResumeAttemptEvent;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
+import me.whereareiam.identica.message.ScenarioMessages;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.request.AdvanceRequest;
 import me.whereareiam.identica.model.auth.request.ConnectionRequest;
 import me.whereareiam.identica.model.auth.request.ResumeRequest;
+import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.ScenarioTransitionItem;
 import me.whereareiam.identica.pipeline.ScenarioContext;
@@ -38,6 +41,7 @@ public class ScenarioPipeline {
 	private final ConnectionRuns connectionRuns;
 	private final PipelineStateStore pipelineStateStore;
 	private final EventManager eventManager;
+	private final Provider<Messages> messagesProvider;
 
 	public @NotNull CompletionStage<ConnectionDecision> process(@Nullable ConnectionRequest request) {
 		return connectionRuns.submit(request != null ? request.getConnectionUniqueId() : null, () -> runProcess(request));
@@ -181,7 +185,8 @@ public class ScenarioPipeline {
 			@NotNull PipelineType pipelineType
 	) {
 		AbstractScenarioPipeline runner = scenarioRegistry.resolve(pipelineType);
-		if (runner == null) return CompletableFuture.completedFuture(ConnectionDecision.deny("Connection failed"));
+		if (runner == null)
+			return CompletableFuture.completedFuture(ConnectionDecision.deny(ScenarioMessages.of(pipelineType).getFailed().create(messagesProvider.get())));
 
 		return execute(
 				request,

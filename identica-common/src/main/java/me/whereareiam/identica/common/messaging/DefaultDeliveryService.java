@@ -3,7 +3,6 @@ package me.whereareiam.identica.common.messaging;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.delivery.DeliveryDispatchContext;
@@ -17,11 +16,8 @@ import me.whereareiam.identica.service.DeliveryService;
 import me.whereareiam.identica.service.DeliveryStore;
 import me.whereareiam.identica.type.messaging.DeliverySemantics;
 import me.whereareiam.identica.type.messaging.DeliverySource;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.title.Title;
 import org.jetbrains.annotations.NotNull;
 
-import java.time.Duration;
 import java.util.*;
 
 @Singleton
@@ -29,6 +25,7 @@ import java.util.*;
 public class DefaultDeliveryService implements DeliveryService {
 	private final DeliveryStore deliveryStore;
 	private final PipelineStateStore pipelineStateStore;
+	private final DefaultMessageService messageService;
 
 	@Override
 	public void queue(@NotNull DeliveryRequest request) {
@@ -112,24 +109,10 @@ public class DefaultDeliveryService implements DeliveryService {
 
 	private void deliver(@NotNull Identity identity, @NotNull DeliveryRequest request) {
 		DeliveryPayload payload = request.getPayload();
-		if (payload.getCompletion() != null)
+		if (payload.getCompletion() != null || payload.getMessage() == null)
 			return;
 
-		if (payload.getTitle() != null && !payload.getTitle().isBlank()) {
-			identity.sendTitle(Title.title(
-					Serializer.serialize(identity, payload.getTitle()),
-					Serializer.serialize(identity, payload.getSubtitle() == null ? "" : payload.getSubtitle()),
-					Title.Times.times(Duration.ZERO, Duration.ofSeconds(2), Duration.ofMillis(500))
-			));
-		}
-
-		if (payload.getChatMessage() != null && !payload.getChatMessage().isBlank()) {
-			Component message = Serializer.serialize(identity, payload.getChatMessage());
-			identity.sendMessage(message);
-		}
-
-		if (payload.getActionBarMessage() != null && !payload.getActionBarMessage().isBlank())
-			identity.getAudience().sendActionBar(Serializer.serialize(identity, payload.getActionBarMessage()));
+		messageService.show(identity, payload.getMessage());
 	}
 
 	private boolean matchesRequiredServer(

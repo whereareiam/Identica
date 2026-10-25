@@ -5,16 +5,19 @@ import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.identity.actor.Identity;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.request.ConnectionRequest;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.model.provider.selection.ProviderSelection;
-import me.whereareiam.identica.platform.common.stage.TextSerializerEngine;
-import me.whereareiam.identica.platform.common.stage.PrepareDenialMessages;
-import me.whereareiam.identica.platform.common.stage.InMemoryPrepareStateStore;
-import me.whereareiam.identica.platform.common.decision.ConnectionDecisionDeliveryCoordinator;
 import me.whereareiam.identica.platform.common.decision.ConnectionDecisionApplier;
+import me.whereareiam.identica.platform.common.decision.ConnectionDecisionDeliveryCoordinator;
+import me.whereareiam.identica.platform.common.stage.InMemoryPrepareStateStore;
+import me.whereareiam.identica.platform.common.stage.PrepareDenialMessages;
+import me.whereareiam.identica.platform.common.stage.TextSerializerEngine;
+import me.whereareiam.keystone.model.SerializerContent;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -57,10 +60,11 @@ class LoginDecisionProcessorTest {
 			connectionCoordinator,
 			identityService,
 			store,
-			new PreparedRefusal(store, PrepareDenialMessages::messages),
+			new PreparedRefusal(store, PrepareDenialMessages::messages, messageService()),
 			new ConnectionDecisionApplier(
 					PrepareDenialMessages::messages,
-					mock(ConnectionDecisionDeliveryCoordinator.class)
+					mock(ConnectionDecisionDeliveryCoordinator.class),
+					messageService()
 			)
 	);
 
@@ -72,7 +76,7 @@ class LoginDecisionProcessorTest {
 	@DisplayName("Refuses a login a prepare stage refused, before Identica's flow starts")
 	@Test
 	void preparedRefusalRefusesTheLogin() {
-		store.put(connectionUniqueId, connectionKey, PrepareDecision.deny("restricted"));
+		store.put(connectionUniqueId, connectionKey, PrepareDecision.deny(message("restricted")));
 
 		process();
 
@@ -84,7 +88,7 @@ class LoginDecisionProcessorTest {
 	@DisplayName("Finds a refusal by connection key when the login's unique ID has none")
 	@Test
 	void preparedRefusalIsFoundByConnectionKey() {
-		store.put(UUID.randomUUID(), connectionKey, PrepareDecision.deny("restricted"));
+		store.put(UUID.randomUUID(), connectionKey, PrepareDecision.deny(message("restricted")));
 
 		process();
 
@@ -140,7 +144,7 @@ class LoginDecisionProcessorTest {
 	@DisplayName("Denies a login the connection flow denies, without attaching the player")
 	@Test
 	void deniedDecisionIsAppliedThroughTheTarget() {
-		when(connectionCoordinator.process(any())).thenReturn(CompletableFuture.completedFuture(ConnectionDecision.deny("no")));
+		when(connectionCoordinator.process(any())).thenReturn(CompletableFuture.completedFuture(ConnectionDecision.deny(message("no"))));
 
 		process();
 
@@ -184,4 +188,22 @@ class LoginDecisionProcessorTest {
 			return identity;
 		}
 	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
+	}
+
+	private static MessageService messageService() {
+		MessageService messageService = mock(MessageService.class);
+		when(messageService.disconnectReason(any(), any())).thenAnswer(call -> {
+			PlayerMessage message = call.getArgument(1);
+			return Serializer.serialize(SerializerContent.builder()
+					.message(message.getText())
+					.placeholders(message.getPlaceholders())
+					.build());
+		});
+
+		return messageService;
+	}
+
 }

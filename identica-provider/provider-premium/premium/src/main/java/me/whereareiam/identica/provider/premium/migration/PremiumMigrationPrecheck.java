@@ -5,16 +5,15 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.provider.ProviderAttemptStore;
 import me.whereareiam.identica.provider.migration.MigrationPrecheckContext;
 import me.whereareiam.identica.provider.migration.MigrationPrecheckResult;
 import me.whereareiam.identica.provider.migration.ProviderMigrationPrecheck;
-import me.whereareiam.identica.provider.ProviderAttemptStore;
 import me.whereareiam.identica.provider.premium.PremiumConstants;
+import me.whereareiam.identica.provider.premium.PremiumMessageDefinitions;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
 import me.whereareiam.identica.provider.premium.policy.PremiumHandshakeInstructions;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.List;
 
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
@@ -27,10 +26,7 @@ public class PremiumMigrationPrecheck implements ProviderMigrationPrecheck {
 	public @NotNull MigrationPrecheckResult precheck(@NotNull MigrationPrecheckContext context) {
 		queueForceOnlineHandshake(context);
 
-		PremiumMessages.Commands.Premium premium = messagesProvider.get().getCommands().getPremium();
-		List<String> kick = premium.getConfirmed();
-		String message = String.join("\n", kick);
-		return MigrationPrecheckResult.allow(message);
+		return MigrationPrecheckResult.allow(PremiumMessageDefinitions.MOVE_CONFIRMED.create(messagesProvider.get()));
 	}
 
 	private void queueForceOnlineHandshake(@NotNull MigrationPrecheckContext context) {

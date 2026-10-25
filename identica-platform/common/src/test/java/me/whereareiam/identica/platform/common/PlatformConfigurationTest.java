@@ -5,10 +5,6 @@ import com.google.inject.Injector;
 import com.google.inject.Key;
 import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
-import me.whereareiam.identica.platform.common.adapter.PlatformHandshakeDecisionAdapter;
-import me.whereareiam.identica.platform.common.adapter.PlatformLoginDecisionAdapter;
-import me.whereareiam.identica.platform.common.adapter.PlatformProfileAdapter;
-import me.whereareiam.identica.platform.common.adapter.PlatformResumeDecisionAdapter;
 import me.whereareiam.identica.handshake.HandshakeApplier;
 import me.whereareiam.identica.handshake.HandshakeApplierRegistry;
 import me.whereareiam.identica.handshake.HandshakeContext;
@@ -18,6 +14,11 @@ import me.whereareiam.identica.platform.adapter.PlatformCheckpointAdapter;
 import me.whereareiam.identica.platform.adapter.PlatformForcedHostAdapter;
 import me.whereareiam.identica.platform.adapter.PlatformHandshakeApplierContributor;
 import me.whereareiam.identica.platform.adapter.PlatformHandshakeApplierRegistry;
+import me.whereareiam.identica.platform.common.adapter.PlatformHandshakeDecisionAdapter;
+import me.whereareiam.identica.platform.common.adapter.PlatformLoginDecisionAdapter;
+import me.whereareiam.identica.platform.common.adapter.PlatformProfileAdapter;
+import me.whereareiam.identica.platform.common.adapter.PlatformResumeDecisionAdapter;
+import me.whereareiam.identica.service.DeliveryService;
 import me.whereareiam.identica.type.checkpoint.CheckpointPlacement;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.DisplayName;
@@ -32,6 +33,7 @@ import java.util.concurrent.CompletionStage;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 @DisplayName("Platform Configuration")
 class PlatformConfigurationTest {
@@ -113,6 +115,8 @@ class PlatformConfigurationTest {
 		@Override
 		protected void configurePlatform() {
 			bind(String.class).toInstance(MARKER);
+			// The loading screen holds messages back as deliveries, through the core's delivery service
+			bind(DeliveryService.class).toInstance(mock(DeliveryService.class));
 		}
 	}
 

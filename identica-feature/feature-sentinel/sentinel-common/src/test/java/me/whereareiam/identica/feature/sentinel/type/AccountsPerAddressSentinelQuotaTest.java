@@ -6,11 +6,13 @@ import me.whereareiam.identica.feature.sentinel.model.SentinelQuotaUsage;
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelMessages;
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelSettings;
 import me.whereareiam.identica.identity.address.AccountAddressService;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -83,9 +85,13 @@ class AccountsPerAddressSentinelQuotaTest {
 	void wordsTheRefusal() {
 		SentinelQuotaPolicy policy = quota.policy(CONTEXT);
 
-		assertEquals("At most 3, wait 0s.", policy.getMessageSupplier().apply(CONTEXT, SentinelQuotaUsage.of(3)));
-		String later = policy.getMessageSupplier().apply(CONTEXT, new SentinelQuotaUsage(3, System.currentTimeMillis() + 60_000L));
-		assertTrue(later.equals("At most 3, wait 60s.") || later.equals("At most 3, wait 59s."), later);
+		PlayerMessage now = policy.getMessageSupplier().apply(CONTEXT, SentinelQuotaUsage.of(3));
+		assertEquals("sentinel:accounts-per-address", now.getId());
+		assertEquals(Map.of("maxAccounts", "3", "seconds", "0"), now.getPlaceholders());
+		String later = policy.getMessageSupplier().apply(CONTEXT, new SentinelQuotaUsage(3, System.currentTimeMillis() + 60_000L))
+				.getPlaceholders()
+				.get("seconds");
+		assertTrue(later.equals("60") || later.equals("59"), later);
 	}
 
 	private static SentinelSettings settings() {

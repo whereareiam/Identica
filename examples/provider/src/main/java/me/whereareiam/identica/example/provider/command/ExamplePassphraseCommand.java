@@ -4,19 +4,23 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.ConnectionCoordinator;
-import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.annotation.Argument;
 import me.whereareiam.identica.annotation.AvailableWhilePending;
 import me.whereareiam.identica.annotation.Command;
 import me.whereareiam.identica.annotation.Definition;
+import me.whereareiam.identica.example.provider.ExampleMessageDefinitions;
 import me.whereareiam.identica.example.provider.ExampleProvider;
 import me.whereareiam.identica.example.provider.config.ExampleMessages;
 import me.whereareiam.identica.example.provider.pipeline.ExamplePassphraseAttempt;
 import me.whereareiam.identica.identity.actor.Identity;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.request.AdvanceRequest;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.keystone.Actor;
+import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * {@code /passphrase <passphrase>}: hands the typed passphrase to the player's pending journey. It is marked
@@ -26,6 +30,7 @@ import org.jetbrains.annotations.NotNull;
 public class ExamplePassphraseCommand {
 	private final ConnectionCoordinator connectionCoordinator;
 	private final Provider<ExampleMessages> messages;
+	private final MessageService messageService;
 
 	@AvailableWhilePending
 	@Definition(ExampleProvider.PASSPHRASE_COMMAND)
@@ -44,16 +49,18 @@ public class ExamplePassphraseCommand {
 
 		switch (decision.getStatus()) {
 			case WAIT -> send(identity, decision.getMessage());
-			case DENY, REQUIRE_RECONNECT -> identity.disconnect(Serializer.serialize(identity, decision.getMessage() == null ? "" : decision.getMessage()));
-			case NO_PENDING -> send(identity, messages.get().getNoPending());
+			case DENY, REQUIRE_RECONNECT -> identity.disconnect(decision.getMessage() != null
+					? messageService.disconnectReason(identity, decision.getMessage())
+					: Component.empty());
+			case NO_PENDING -> send(identity, ExampleMessageDefinitions.NO_PENDING.create(messages.get()));
 			default -> {
 			}
 		}
 	}
 
-	private static void send(@NotNull Identity identity, String message) {
-		if (message == null || message.isBlank()) return;
+	private void send(@NotNull Identity identity, @Nullable PlayerMessage message) {
+		if (message == null || message.isEmpty()) return;
 
-		identity.send(message);
+		messageService.send(identity, message);
 	}
 }

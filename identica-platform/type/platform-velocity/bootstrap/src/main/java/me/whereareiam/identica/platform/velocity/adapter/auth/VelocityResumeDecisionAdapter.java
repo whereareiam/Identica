@@ -6,8 +6,6 @@ import com.velocitypowered.api.event.player.ServerPostConnectEvent;
 import com.velocitypowered.api.proxy.Player;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.ConnectionCoordinator;
-import me.whereareiam.identica.platform.common.checkpoint.LoadingScreenReplies;
-import me.whereareiam.identica.platform.common.decision.ConnectionDecisionApplier;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.logging.Logger;
@@ -17,6 +15,7 @@ import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.pipeline.prepare.PrepareStateStore;
 import me.whereareiam.identica.platform.common.adapter.PlatformResumeDecisionAdapter;
+import me.whereareiam.identica.platform.common.decision.ConnectionDecisionApplier;
 import me.whereareiam.identica.platform.velocity.actor.VelocityCommandPlayer;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
@@ -34,7 +33,6 @@ public class VelocityResumeDecisionAdapter implements PlatformResumeDecisionAdap
 	private final @NotNull IdentityService identityService;
 	private final @NotNull PrepareStateStore prepareStateStore;
 	private final @NotNull ConnectionDecisionApplier decisionApplier;
-	private final @NotNull LoadingScreenReplies replies;
 	private final Set<UUID> resumedBeforeJoin = ConcurrentHashMap.newKeySet();
 
 	/**
@@ -125,9 +123,7 @@ public class VelocityResumeDecisionAdapter implements PlatformResumeDecisionAdap
 				accountUniqueId,
 				player,
 				identity.getUsername(),
-				identity.getOrigin(),
-				replies
-		);
+				identity.getOrigin());
 		liveIdentity.setConnectionUsername(identity.getConnectionUsername());
 		if (decision == null || decision.getStatus() == ConnectionDecision.Status.NO_PENDING)
 			return decision;

@@ -12,6 +12,7 @@ import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.identity.session.exception.ConcurrentSessionChangeException;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.message.SessionMessages;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.SessionCloseRequest;
 import me.whereareiam.identica.model.SessionConnection;
@@ -281,7 +282,7 @@ public class DefaultSessionService implements SessionService, EventListener {
 		return prepare(SessionCloseRequest.builder()
 				.uniqueId(incoming.getUniqueId())
 				.disconnect(disconnect)
-				.disconnectMessage(disconnect ? String.join("\n", messagesProvider.get().getEngine().getConcurrentLoginKick()) : null)
+				.disconnectMessage(disconnect ? SessionMessages.CONCURRENT_LOGIN_KICK.create(messagesProvider.get()) : null)
 				.build());
 	}
 

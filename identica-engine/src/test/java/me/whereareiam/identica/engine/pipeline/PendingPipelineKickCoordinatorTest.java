@@ -2,8 +2,10 @@ package me.whereareiam.identica.engine.pipeline;
 
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.common.event.EventController;
+import me.whereareiam.identica.common.messaging.DefaultMessageService;
 import me.whereareiam.identica.engine.pipeline.scenario.PendingPipelineKickCoordinator;
 import me.whereareiam.identica.event.EventListener;
+import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.event.scenario.authentication.AuthenticationRequiredEvent;
 import me.whereareiam.identica.event.scenario.authentication.AuthenticationResolvedEvent;
@@ -12,6 +14,7 @@ import me.whereareiam.identica.event.scenario.migration.MigrationResolvedEvent;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.identity.actor.Identity;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.migration.MigrationContext;
@@ -42,6 +45,9 @@ import static org.mockito.Mockito.*;
 
 @DisplayName("Pending Pipeline Kick Coordinator")
 class PendingPipelineKickCoordinatorTest {
+	private static final MessageService MESSAGE_SERVICE =
+			new DefaultMessageService(() -> (recipient, message) -> false, () -> null, mock(EventManager.class));
+
 	@BeforeAll
 	static void initializeSerializer() {
 		Serializer.initialize(() -> TEST_SERIALIZER);
@@ -80,6 +86,7 @@ class PendingPipelineKickCoordinatorTest {
 
 		new PendingPipelineKickCoordinator(
 				this::messages,
+				MESSAGE_SERVICE,
 				identityService,
 				deliveryService,
 				scheduler,
@@ -133,6 +140,7 @@ class PendingPipelineKickCoordinatorTest {
 
 		new PendingPipelineKickCoordinator(
 				this::messages,
+				MESSAGE_SERVICE,
 				identityService,
 				deliveryService,
 				scheduler,

@@ -11,6 +11,7 @@ import me.whereareiam.identica.BuildConfig;
 import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.feature.FeatureRegistry;
 import me.whereareiam.identica.feature.sentinel.SentinelDefinition;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.provider.dependency.ProviderLibraries;
 import me.whereareiam.identica.model.provider.dependency.ProviderLibrary;
 import me.whereareiam.identica.pipeline.completion.extension.CompletionExtensionRegistry;
@@ -28,6 +29,7 @@ import me.whereareiam.identica.provider.credential.sentinel.CredentialSentinelMo
 import me.whereareiam.identica.type.provider.ProviderGuarantee;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -40,8 +42,11 @@ public class CredentialProvider extends IdenticaProvider {
 	private CompletionExtensionRegistry completionExtensionRegistry;
 	private CredentialPipelineExtension credentialPipelineExtension;
 	private CredentialCompletionExtension credentialCompletionExtension;
+	private MessageService messageService;
 	private @NotNull FeatureRegistry features;
 	private @NotNull Injector injector;
+
+	private final List<MessageService.Registration> messageRegistrations = new ArrayList<>();
 
 	@Override
 	public @NotNull List<Module> modules() {
@@ -89,6 +94,7 @@ public class CredentialProvider extends IdenticaProvider {
 
 	@Override
 	public void onEnable() {
+		messageRegistrations.add(messageService.register(CredentialMessageDefinitions.all()));
 		commandRegistrar.registerCommands();
 		pipelineExtensionRegistry.register(credentialPipelineExtension);
 		completionExtensionRegistry.register(credentialCompletionExtension);
@@ -101,6 +107,8 @@ public class CredentialProvider extends IdenticaProvider {
 	public void onDisable() {
 		pipelineExtensionRegistry.unregister(CredentialPipelineExtension.extensionId());
 		completionExtensionRegistry.unregister(CredentialCompletionExtension.extensionId());
+		messageRegistrations.forEach(MessageService.Registration::remove);
+		messageRegistrations.clear();
 		if (features.isAvailable("sentinel"))
 			injector.getInstance(Key.get(new TypeLiteral<Registry<SentinelDefinition>>() {}))
 					.unregister(injector.getInstance(BruteForceSentinelDefinition.class));

@@ -3,12 +3,13 @@ package me.whereareiam.identica.adapter.command.executor.admin;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import me.whereareiam.identica.adapter.command.executor.admin.base.ConfirmableAdminCommand;
+import me.whereareiam.identica.adapter.command.suggestion.CrossPlayerSuggestions;
 import me.whereareiam.identica.annotation.Argument;
 import me.whereareiam.identica.annotation.Command;
 import me.whereareiam.identica.annotation.Definition;
 import me.whereareiam.identica.annotation.Suggestions;
-import me.whereareiam.identica.adapter.command.suggestion.CrossPlayerSuggestions;
 import me.whereareiam.identica.identity.account.AccountService;
+import me.whereareiam.identica.message.AccountMessages;
 import me.whereareiam.identica.model.config.Commands;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.identity.Account;
@@ -72,7 +73,7 @@ public class DeleteCommand extends ConfirmableAdminCommand<Account> {
 			accountService().delete(AccountOperationRequest.builder()
 					.account(account)
 					.disconnect(true)
-					.disconnectMessage(String.join("\n", messages.getDisconnect()))
+					.disconnectMessage(AccountMessages.DELETED.create(messagesProvider.get()))
 					.reason("admin-delete")
 					.build());
 

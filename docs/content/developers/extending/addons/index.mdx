@@ -53,6 +53,8 @@ Collection<MessageDocument> messages = identica.getConfigCatalog().documents(Mes
 
 `documents()` without a type returns every loaded document. The models are the current ones; read them again after a reload instead of keeping them.
 
+To show a message to players another way, such as a dialog instead of chat or an action bar next to it, present it by its ID through `MessageService`. See [Messages to players](../messages/index.mdx).
+
 ## Follow reloads
 
 `/identica admin reload` replaces the configuration documents. Rebuild what you derived from them in one of two ways:

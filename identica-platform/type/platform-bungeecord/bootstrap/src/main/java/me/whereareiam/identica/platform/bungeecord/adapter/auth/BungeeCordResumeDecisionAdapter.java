@@ -4,7 +4,6 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.ConnectionCoordinator;
-import me.whereareiam.identica.platform.common.decision.ConnectionDecisionApplier;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.logging.Logger;
@@ -13,10 +12,10 @@ import me.whereareiam.identica.model.auth.request.ResumeRequest;
 import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.pipeline.prepare.PrepareStateStore;
-import me.whereareiam.identica.platform.common.adapter.PlatformResumeDecisionAdapter;
-import me.whereareiam.identica.platform.common.checkpoint.LoadingScreenReplies;
 import me.whereareiam.identica.platform.bungeecord.actor.BungeeCordCommandPlayer;
 import me.whereareiam.identica.platform.bungeecord.util.BaseComponentMapper;
+import me.whereareiam.identica.platform.common.adapter.PlatformResumeDecisionAdapter;
+import me.whereareiam.identica.platform.common.decision.ConnectionDecisionApplier;
 import net.kyori.adventure.platform.bungeecord.BungeeAudiences;
 import net.kyori.adventure.text.Component;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
@@ -38,7 +37,6 @@ public class BungeeCordResumeDecisionAdapter implements PlatformResumeDecisionAd
 	private final @NotNull PrepareStateStore prepareStateStore;
 	private final @NotNull ConnectionDecisionApplier decisionApplier;
 	private final @NotNull BungeeAudiences audiences;
-	private final @NotNull LoadingScreenReplies replies;
 	private final Map<UUID, ConnectionDecision> resumedOnConnect = new ConcurrentHashMap<>();
 
 	/**
@@ -125,9 +123,7 @@ public class BungeeCordResumeDecisionAdapter implements PlatformResumeDecisionAd
 				player,
 				audiences.player(player),
 				identity.getUsername(),
-				identity.getOrigin(),
-				replies
-		);
+				identity.getOrigin());
 		liveIdentity.setConnectionUsername(identity.getConnectionUsername());
 		if (decision == null || decision.getStatus() == ConnectionDecision.Status.NO_PENDING)
 			return decision;

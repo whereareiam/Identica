@@ -3,7 +3,6 @@ package me.whereareiam.identica.engine.pipeline.scenario.hold;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
-import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.base.IdenticEvent;
@@ -16,18 +15,21 @@ import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.message.MessageService;
+import me.whereareiam.identica.message.SessionMessages;
+import me.whereareiam.identica.message.UsernameConflictMessages;
 import me.whereareiam.identica.model.SessionConnection;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.request.ConnectionRequest;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.config.Replication;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.provider.selection.ProviderClaim;
 import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import me.whereareiam.identica.pipeline.PendingScenarioService;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -45,6 +47,7 @@ public class UsernameHold implements EventListener {
 	private final PendingScenarioService pendingScenarioService;
 	private final EventManager eventManager;
 	private final Provider<Messages> messagesProvider;
+	private final MessageService messageService;
 	private final Provider<Replication> replicationProvider;
 	private final Set<UUID> provenOverHolder = ConcurrentHashMap.newKeySet();
 
@@ -55,6 +58,7 @@ public class UsernameHold implements EventListener {
 			@NotNull PendingScenarioService pendingScenarioService,
 			@NotNull EventManager eventManager,
 			@NotNull Provider<Messages> messagesProvider,
+			@NotNull MessageService messageService,
 			@NotNull Provider<Replication> replicationProvider
 	) {
 		this.holds = holds;
@@ -62,6 +66,7 @@ public class UsernameHold implements EventListener {
 		this.pendingScenarioService = pendingScenarioService;
 		this.eventManager = eventManager;
 		this.messagesProvider = messagesProvider;
+		this.messageService = messageService;
 		this.replicationProvider = replicationProvider;
 		eventManager.register(this);
 	}
@@ -85,7 +90,7 @@ public class UsernameHold implements EventListener {
 
 		Logger.debug("Username held refused username=%s connection=%s ip=%s", identity.getUsername(), request.getConnectionUniqueId(), identity.getIp());
 		eventManager.call(new UsernameHeldEvent(request.getConnectionUniqueId(), identity.getConnectionUsername(), identity.getIp()));
-		return ConnectionDecision.deny(lines(messagesProvider.get().getEngine().getUsernameHeld()));
+		return ConnectionDecision.deny(UsernameConflictMessages.HELD.create(messagesProvider.get()));
 	}
 
 	/**
@@ -101,7 +106,7 @@ public class UsernameHold implements EventListener {
 		ConnectionIdentity identity = event.getContext().getIdentity();
 		eventManager.call(new UsernameHeldEvent(connectionUniqueId, identity.getConnectionUsername(), identity.getIp()));
 		identityService.findByConnectionUniqueId(connectionUniqueId).ifPresent(connection -> connection.disconnect(
-				Serializer.serialize(connection, lines(messagesProvider.get().getEngine().getUsernameHeld()))
+				messageService.disconnectReason(connection, UsernameConflictMessages.HELD.create(messagesProvider.get()))
 		));
 	}
 
@@ -125,12 +130,12 @@ public class UsernameHold implements EventListener {
 	 */
 	@IdenticEvent
 	public void onLoginSuperseded(@NotNull LoginSupersededEvent event) {
-		String message = lines(messagesProvider.get().getEngine().getConcurrentLoginKick());
+		PlayerMessage message = SessionMessages.CONCURRENT_LOGIN_KICK.create(messagesProvider.get());
 		for (Identity identity : identityService.list()) {
 			if (!isSupersededBy(identity, event)) continue;
 
 			Logger.debug("Login superseded username=%s connection=%s", identity.getUsername(), identity.getConnectionUniqueId());
-			identity.disconnect(Serializer.serialize(identity, message));
+			identity.disconnect(messageService.disconnectReason(identity, message));
 		}
 	}
 
@@ -170,9 +175,5 @@ public class UsernameHold implements EventListener {
 
 	private @NotNull String serverId() {
 		return replicationProvider.get().getServerId();
-	}
-
-	private static @NotNull String lines(@NotNull List<String> lines) {
-		return String.join("\n", lines);
 	}
 }

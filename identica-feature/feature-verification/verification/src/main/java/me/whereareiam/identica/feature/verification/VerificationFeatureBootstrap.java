@@ -7,9 +7,10 @@ import com.google.inject.TypeLiteral;
 import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.Reloadable;
 import me.whereareiam.identica.config.ConfigProvider;
-import me.whereareiam.identica.event.EventManager;
-import me.whereareiam.identica.feature.IdenticaFeature;
 import me.whereareiam.identica.database.schema.SchemaInstaller;
+import me.whereareiam.identica.event.EventManager;
+import me.whereareiam.identica.feature.FeatureContext;
+import me.whereareiam.identica.feature.IdenticaFeature;
 import me.whereareiam.identica.feature.verification.challenge.VerificationChallengeStore;
 import me.whereareiam.identica.feature.verification.command.VerificationCommandRegistrar;
 import me.whereareiam.identica.feature.verification.config.provider.VerificationCommandsProvider;
@@ -18,7 +19,7 @@ import me.whereareiam.identica.feature.verification.config.provider.Verification
 import me.whereareiam.identica.feature.verification.config.provider.VerificationSettingsProvider;
 import me.whereareiam.identica.feature.verification.database.VerificationSchema;
 import me.whereareiam.identica.feature.verification.enrollment.VerificationEnrollmentStore;
-import me.whereareiam.identica.feature.FeatureContext;
+import me.whereareiam.identica.message.MessageService;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayDeque;
@@ -57,6 +58,8 @@ public final class VerificationFeatureBootstrap implements IdenticaFeature {
 		loadConfig(injector, VerificationMessagesProvider.class);
 		loadConfig(injector, VerificationCommandsProvider.class);
 		loadConfig(injector, VerificationProvidersProvider.class);
+		MessageService.Registration messages = injector.getInstance(MessageService.class).register(VerificationMessageDefinitions.all());
+		shutdownActions.push(messages::remove);
 		VerificationRegistry registry = injector.getInstance(VerificationRegistry.class);
 		shutdownActions.push(() -> List.copyOf(registry.values()).forEach(registry::unregister));
 		VerificationEnrollmentStore enrollments = injector.getInstance(VerificationEnrollmentStore.class);

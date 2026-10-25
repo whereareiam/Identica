@@ -45,7 +45,7 @@ class OpenSessionPhaseTest {
 		phase.execute(authenticationState(), state).toCompletableFuture().join();
 
 		assertEquals(PipelineStatus.REQUIRE_RECONNECT, state.getResult().getStatus());
-		assertEquals("reconnect", state.getResult().getMessage());
+		assertEquals("reconnect", state.getResult().getMessage().getText());
 		verify(events, never()).call(any(SessionOpenedEvent.class));
 	}
 

@@ -7,6 +7,7 @@ import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.pipeline.state.PipelineState;
+import me.whereareiam.identica.provider.credential.CredentialMessageDefinitions;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.config.defaults.CredentialMessagesDefaults;
@@ -26,7 +27,6 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -75,6 +75,27 @@ class CredentialAuthenticationCredentialStepTest {
 
 		assertEquals(StepResult.StepStatus.CONTINUE, result.getStatus());
 		assertTrue(state.get(CredentialAuthenticationAttempt.KEY).isEmpty(), "the step takes the attempt out of the run's state");
+	}
+
+	@DisplayName("Without a password typed, the step asks for the account's password")
+	@Test
+	void asksForThePasswordUntilOneIsTyped() {
+		AuthContext context = AuthContext.builder()
+				.identity(new ConnectionIdentity("whereareiam", "127.0.0.1"))
+				.provider(ProviderContext.of("credential", "subject", "whereareiam"))
+				.build();
+		when(accountService.find("subject")).thenReturn(Optional.of(CredentialAccount.builder()
+				.providerId("credential")
+				.providerSubject("subject")
+				.passwordHash("hash")
+				.hashingMethod("bcrypt")
+				.build()));
+
+		StepResult result = step.execute(context, PipelineState.initial()).join();
+
+		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
+		assertEquals(CredentialMessageDefinitions.PASSWORD_PROMPT.getId(), result.getMessage().getPrompt().getId());
+		assertEquals(CredentialMessageDefinitions.PASSWORD.getId(), result.getMessage().getId());
 	}
 
 	private CredentialMessages messages() {

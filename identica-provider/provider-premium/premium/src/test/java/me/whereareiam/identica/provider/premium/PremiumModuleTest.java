@@ -8,19 +8,19 @@ import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
 import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.command.CommandService;
-import me.whereareiam.identica.persistence.AccountPersistenceService;
-import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.feature.FeatureRegistry;
 import me.whereareiam.identica.handshake.HandshakeStore;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.persistence.AccountPersistenceService;
+import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.pipeline.completion.extension.CompletionExtensionRegistry;
 import me.whereareiam.identica.pipeline.extension.PipelineExtensionRegistry;
 import me.whereareiam.identica.pipeline.state.PipelineStateStore;
 import me.whereareiam.identica.provider.ProviderAttemptStore;
-import me.whereareiam.identica.provider.selection.ProviderSelector;
 import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.provider.premium.command.PremiumCommand;
 import me.whereareiam.identica.provider.premium.completion.PremiumCompletionStep;
@@ -30,11 +30,11 @@ import me.whereareiam.identica.provider.premium.config.provider.PremiumMessagesP
 import me.whereareiam.identica.provider.premium.config.provider.PremiumSettingsProvider;
 import me.whereareiam.identica.provider.premium.profile.PremiumProfileStore;
 import me.whereareiam.identica.provider.premium.resolver.PremiumProfileLookup;
+import me.whereareiam.identica.provider.selection.ProviderSelector;
 import me.whereareiam.identica.service.MigrationService;
 import me.whereareiam.identica.type.provider.ProviderGuarantee;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -66,6 +66,7 @@ class PremiumModuleTest {
 			binder.bind(ConnectionCoordinator.class).toInstance(mock(ConnectionCoordinator.class));
 			binder.bind(PipelineStateStore.class).toInstance(mock(PipelineStateStore.class));
 			binder.bind(SessionService.class).toInstance(mock(SessionService.class));
+			binder.bind(MessageService.class).toInstance(mock(MessageService.class));
 			binder.bind(MigrationService.class).toInstance(mock(MigrationService.class));
 			binder.bind(Engine.class).toInstance(new Engine());
 			binder.bind(Messages.class).toInstance(new Messages());

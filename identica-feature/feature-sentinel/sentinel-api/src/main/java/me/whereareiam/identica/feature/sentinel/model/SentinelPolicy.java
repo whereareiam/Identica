@@ -3,6 +3,7 @@ package me.whereareiam.identica.feature.sentinel.model;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -69,7 +70,7 @@ public class SentinelPolicy {
 	public static class Lockout {
 		private boolean enabled = true;
 		private @Nullable Duration duration;
-		private transient @Nullable BiFunction<SentinelContext, Long, String> messageSupplier;
+		private transient @Nullable BiFunction<SentinelContext, Long, PlayerMessage> messageSupplier;
 		private transient @Nullable BiConsumer<SentinelContext, SentinelDecision> customAction;
 	}
 
@@ -82,7 +83,7 @@ public class SentinelPolicy {
 	public static class Warning {
 		private boolean enabled = true;
 		private int thresholdPercentage;
-		private transient @Nullable BiFunction<SentinelContext, Integer, String> messageSupplier;
+		private transient @Nullable BiFunction<SentinelContext, Integer, PlayerMessage> messageSupplier;
 		private transient @Nullable BiConsumer<SentinelContext, SentinelDecision> customAction;
 	}
 }

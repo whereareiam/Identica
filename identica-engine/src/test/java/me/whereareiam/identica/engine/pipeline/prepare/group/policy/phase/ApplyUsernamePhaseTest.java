@@ -4,6 +4,7 @@ import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.identity.username.UsernameAssigner;
 import me.whereareiam.identica.model.identity.Account;
 import me.whereareiam.identica.model.identity.username.UsernameAssignment;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareAccountCandidateItem;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareContextItem;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareRequest;
@@ -60,20 +61,20 @@ class ApplyUsernamePhaseTest {
 	@ParameterizedTest(name = "{0}")
 	@EnumSource(value = ProviderClaimOrigin.class, names = {"MIGRATION", "ACCOUNT_LINK", "HOSTNAME", "VERIFIED_SUBJECT", "PLAYER_CHOICE"})
 	void refusesOnASettledProvider(ProviderClaimOrigin origin) {
-		when(assigner.preview(any())).thenReturn(UsernameAssignment.refuse(TAKEN));
+		when(assigner.preview(any())).thenReturn(UsernameAssignment.refuse(message(TAKEN)));
 
 		PipelineState state = run(origin);
 
 		PrepareDecision decision = state.get(PrepareDecision.KEY).orElseThrow();
 		assertTrue(decision.isDenied());
-		assertEquals(TAKEN, decision.getDenialMessage());
+		assertEquals(TAKEN, decision.getDenialMessage().getText());
 	}
 
 	@DisplayName("Leaves the refusal to the scenario when the provider is only guessed")
 	@ParameterizedTest(name = "{0}")
 	@EnumSource(value = ProviderClaimOrigin.class, names = {"NAME_MATCH", "DISCOVERY"})
 	void leavesTheRefusalOfAGuessedProviderToTheScenario(ProviderClaimOrigin origin) {
-		when(assigner.preview(any())).thenReturn(UsernameAssignment.refuse(TAKEN));
+		when(assigner.preview(any())).thenReturn(UsernameAssignment.refuse(message(TAKEN)));
 
 		PipelineState state = run(origin);
 
@@ -128,5 +129,9 @@ class ApplyUsernamePhaseTest {
 		if (origin == ProviderClaimOrigin.VERIFIED_SUBJECT) return ProviderClaim.verified(PROVIDER, "proof");
 
 		return ProviderClaim.of(PROVIDER, origin);
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

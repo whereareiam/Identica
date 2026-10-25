@@ -25,7 +25,7 @@ public class CredentialValidationStep extends AbstractCredentialStep {
 					context.getConnectionUniqueId(),
 					context.getUsername(),
 					context.getIp());
-			return CompletableFuture.completedFuture(StepResult.failed(""));
+			return CompletableFuture.completedFuture(StepResult.failed(null));
 		}
 		if (!CredentialConstants.PROVIDER_ID.equalsIgnoreCase(provider.getProviderId())) {
 			Logger.debug("Credential validation provider mismatch connection=%s expected=%s actual=%s subject=%s",
@@ -33,7 +33,7 @@ public class CredentialValidationStep extends AbstractCredentialStep {
 					CredentialConstants.PROVIDER_ID,
 					provider.getProviderId(),
 					provider.getProviderSubject());
-			return CompletableFuture.completedFuture(StepResult.failed(""));
+			return CompletableFuture.completedFuture(StepResult.failed(null));
 		}
 
 		String providerSubject = provider.getProviderSubject();
@@ -42,7 +42,7 @@ public class CredentialValidationStep extends AbstractCredentialStep {
 					context.getConnectionUniqueId(),
 					context.getUsername(),
 					provider.getProviderId());
-			return CompletableFuture.completedFuture(StepResult.failed(""));
+			return CompletableFuture.completedFuture(StepResult.failed(null));
 		}
 		Logger.debug("Credential validation accepted connection=%s username=%s subject=%s",
 				context.getConnectionUniqueId(),

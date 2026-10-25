@@ -4,23 +4,28 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.ConnectionCoordinator;
-import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.annotation.Argument;
 import me.whereareiam.identica.annotation.AvailableWhilePending;
 import me.whereareiam.identica.annotation.Command;
 import me.whereareiam.identica.annotation.Definition;
 import me.whereareiam.identica.identity.actor.Identity;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.request.AdvanceRequest;
+import me.whereareiam.identica.model.message.PlayerMessage;
+import me.whereareiam.identica.provider.credential.CredentialMessageDefinitions;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.pipeline.CredentialRegistrationAttempt;
 import me.whereareiam.keystone.Actor;
+import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class PassCommand {
 	private final ConnectionCoordinator connectionCoordinator;
 	private final Provider<CredentialMessages> messagesProvider;
+	private final MessageService messageService;
 
 	@AvailableWhilePending
 	@Definition("pass")
@@ -69,18 +74,18 @@ public class PassCommand {
 		return connectionCoordinator.advance(request).toCompletableFuture().join();
 	}
 
-	private String noPendingMessage() {
-		return messagesProvider.get().getScenario().getRegistration().getStatus().getNoPending();
+	private @NotNull PlayerMessage noPendingMessage() {
+		return CredentialMessageDefinitions.NO_NEW_PASSWORD.create(messagesProvider.get());
 	}
 
-	private void sendMessage(@NotNull Identity identity, String message) {
-		if (message == null || message.isBlank()) return;
+	private void sendMessage(@NotNull Identity identity, @Nullable PlayerMessage message) {
+		if (message == null || message.isEmpty()) return;
 
-		identity.send(message);
+		messageService.send(identity, message);
 	}
 
 	/** A denial disconnects whether or not it comes with a reason to show. */
-	private void disconnect(@NotNull Identity identity, String message) {
-		identity.disconnect(Serializer.serialize(identity, message == null ? "" : message));
+	private void disconnect(@NotNull Identity identity, @Nullable PlayerMessage message) {
+		identity.disconnect(message != null ? messageService.disconnectReason(identity, message) : Component.empty());
 	}
 }

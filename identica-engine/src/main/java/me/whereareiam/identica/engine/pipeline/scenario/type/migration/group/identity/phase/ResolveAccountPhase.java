@@ -4,12 +4,14 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.persistence.AccountPersistenceService;
+import me.whereareiam.identica.message.ScenarioMessages;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.identity.Account;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.migration.MigrationContext;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
+import me.whereareiam.identica.persistence.AccountPersistenceService;
 import me.whereareiam.identica.pipeline.PipelinePhase;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.scenario.type.migration.IdentityState;
@@ -17,7 +19,6 @@ import me.whereareiam.identica.type.pipeline.PipelineStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -78,17 +79,10 @@ public class ResolveAccountPhase implements PipelinePhase<IdentityState> {
 		return CompletableFuture.completedFuture(PhaseResult.pass(state));
 	}
 
-	private @NotNull String accountMissingMessage() {
-		return joinMessage(messagesProvider.get()
-				.getScenarios()
-				.getMigration()
-				.getErrors()
-				.getIdentity().getAccountMissing());
+	private @NotNull PlayerMessage accountMissingMessage() {
+		return ScenarioMessages.of(PipelineType.MIGRATION).getAccountMissing().create(messagesProvider.get());
 	}
 
-	private @NotNull String joinMessage(@NotNull List<String> lines) {
-		return String.join("\n", lines);
-	}
 
 	private MigrationContext resolveContext(@NotNull PipelineState pipelineState) {
 		PipelineType pipelineType = pipelineState.getPipelineType();

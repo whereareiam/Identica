@@ -4,7 +4,6 @@ import com.google.inject.Provider;
 import me.whereareiam.identica.handshake.HandshakeStore;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
-import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.journey.step.type.SeamlessStep;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
 import me.whereareiam.identica.provider.premium.profile.PremiumProfileSnapshot;
@@ -12,7 +11,6 @@ import me.whereareiam.identica.provider.premium.profile.PremiumProfileStore;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
 
 public abstract class AbstractProfileVerificationStep extends SeamlessStep {
 	protected final Provider<PremiumMessages> messagesProvider;
@@ -34,10 +32,6 @@ public abstract class AbstractProfileVerificationStep extends SeamlessStep {
 		this.engineProvider = engineProvider;
 	}
 
-	protected @NotNull PremiumMessages.Verification verification() {
-		return messagesProvider.get().getVerification();
-	}
-
 	protected @Nullable String readProfileId(@NotNull String username) {
 		PremiumProfileSnapshot snapshot = profileStore.find(username);
 		return snapshot != null ? snapshot.getProfileId() : null;
@@ -48,17 +42,12 @@ public abstract class AbstractProfileVerificationStep extends SeamlessStep {
 	}
 
 	protected StepResult failed() {
-		return StepResult.failed("");
+		return StepResult.failed(null);
 	}
 
 	protected long ttlMillis() {
 		return engineProvider.get()
 				.getBehavior()
 				.handshakeInstructionTtlMillis();
-	}
-
-	protected @NotNull String joinLines(@Nullable List<String> lines) {
-		if (lines == null || lines.isEmpty()) return "";
-		return String.join("\n", lines);
 	}
 }

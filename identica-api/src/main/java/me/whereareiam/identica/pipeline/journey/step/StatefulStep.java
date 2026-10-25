@@ -17,7 +17,7 @@ import java.util.concurrent.CompletableFuture;
  * <pre>{@code
  * public CompletableFuture<StepResult> execute(ScenarioContext context, PipelineState state) {
  *     Attempt attempt = state.get(Attempt.KEY).orElse(null);
- *     if (attempt == null) return CompletableFuture.completedFuture(StepResult.waiting(prompt));
+ *     if (attempt == null) return CompletableFuture.completedFuture(StepResult.waiting(PASSPHRASE.create(messages.get())));
  *
  *     state.remove(Attempt.KEY);
  *     return CompletableFuture.completedFuture(StepResult.complete(context));

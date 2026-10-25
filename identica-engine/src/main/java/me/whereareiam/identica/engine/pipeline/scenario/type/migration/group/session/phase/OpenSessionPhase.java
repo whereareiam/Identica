@@ -6,14 +6,14 @@ import com.google.inject.Singleton;
 import me.whereareiam.identica.engine.pipeline.scenario.shared.group.session.phase.base.AbstractOpenSessionPhase;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.message.ScenarioMessages;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.migration.MigrationContext;
 import me.whereareiam.identica.pipeline.state.scenario.type.migration.SessionState;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.List;
 
 @Singleton
 public class OpenSessionPhase extends AbstractOpenSessionPhase<MigrationContext, SessionState> {
@@ -37,8 +37,8 @@ public class OpenSessionPhase extends AbstractOpenSessionPhase<MigrationContext,
 	}
 
 	@Override
-	protected @NotNull String failedMessage(@NotNull Messages messages) {
-		return joinMessage(messages.getScenarios().getMigration().getMigrationFailed());
+	protected @NotNull PlayerMessage failedMessage(@NotNull Messages messages) {
+		return ScenarioMessages.of(PipelineType.MIGRATION).getFailed().create(messages);
 	}
 
 	@Override
@@ -51,7 +51,4 @@ public class OpenSessionPhase extends AbstractOpenSessionPhase<MigrationContext,
 		return state.getSession();
 	}
 
-	private @NotNull String joinMessage(@NotNull List<String> lines) {
-		return String.join("\n", lines);
-	}
 }

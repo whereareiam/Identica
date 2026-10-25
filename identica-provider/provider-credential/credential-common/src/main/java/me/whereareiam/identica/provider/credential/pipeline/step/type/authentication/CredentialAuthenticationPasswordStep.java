@@ -5,8 +5,10 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.model.config.Engine;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.ScenarioContext;
+import me.whereareiam.identica.provider.credential.CredentialMessageDefinitions;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.cryptography.CryptographyService;
@@ -43,17 +45,17 @@ public class CredentialAuthenticationPasswordStep extends AbstractCredentialPass
 			@NotNull ScenarioContext context,
 			@NotNull CredentialMessages messages
 	) {
-		return StepResult.denied(messages.getScenario().getAuthentication().getStatus().getNotRegistered());
+		return StepResult.denied(CredentialMessageDefinitions.NOT_REGISTERED.create(messages));
 	}
 
 	@Override
-	protected @NotNull String promptMessage(@NotNull CredentialMessages messages) {
-		return joinLines(messages.getScenario().getAuthentication().getPrompt());
+	protected @NotNull PlayerMessage promptMessage(@NotNull CredentialMessages messages) {
+		return CredentialMessageDefinitions.PASSWORD.create(messages);
 	}
 
 	@Override
-	protected @NotNull String invalidMessage(@NotNull CredentialMessages messages) {
-		return messages.getScenario().getAuthentication().getStatus().getInvalid();
+	protected @NotNull PlayerMessage invalidMessage(@NotNull CredentialMessages messages) {
+		return CredentialMessageDefinitions.PASSWORD_INVALID.create(messages);
 	}
 
 	@Override

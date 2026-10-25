@@ -4,12 +4,15 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.identica.message.ScenarioMessages;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.GroupOutcome;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.pipeline.PipelineGroup;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.scenario.type.registration.PolicyState;
+import me.whereareiam.identica.type.pipeline.PipelineType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -52,11 +55,7 @@ public class PolicyGroup implements PipelineGroup<PolicyState> {
 		return GroupOutcome.result(result);
 	}
 
-	private @NotNull String policyGroupMissingResultMessage() {
-		return String.join("\n", messagesProvider.get()
-				.getScenarios()
-				.getRegistration()
-				.getErrors()
-				.getPolicy().getGroupMissingResult());
+	private @NotNull PlayerMessage policyGroupMissingResultMessage() {
+		return ScenarioMessages.of(PipelineType.REGISTRATION).getPolicyMissingResult().create(messagesProvider.get());
 	}
 }

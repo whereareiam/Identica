@@ -3,14 +3,16 @@ package me.whereareiam.identica.platform.bungeecord.adapter.auth;
 import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.identity.IdentityService;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
 import me.whereareiam.identica.pipeline.prepare.PrepareStateStore;
 import me.whereareiam.identica.platform.bungeecord.adapter.MiniMessageSerializerEngine;
-import me.whereareiam.identica.platform.common.checkpoint.LoadingScreenReplies;
 import me.whereareiam.identica.platform.common.decision.ConnectionDecisionApplier;
 import me.whereareiam.identica.platform.common.stage.login.LoginDecisionProcessor;
 import me.whereareiam.identica.platform.common.stage.login.PreparedRefusal;
+import me.whereareiam.keystone.model.SerializerContent;
 import net.kyori.adventure.platform.bungeecord.BungeeAudiences;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
@@ -44,16 +46,16 @@ class BungeeCordLoginDecisionAdapterTest {
 	void stillRefusedPlayerIsDisconnected() {
 		UUID uniqueId = UUID.randomUUID();
 		PrepareStateStore store = mock(PrepareStateStore.class);
-		when(store.peek(uniqueId)).thenReturn(Optional.of(PrepareDecision.deny("<red>Joining is restricted")));
+		when(store.peek(uniqueId)).thenReturn(Optional.of(PrepareDecision.deny(message("<red>Joining is restricted"))));
 		ConnectionCoordinator connectionCoordinator = mock(ConnectionCoordinator.class);
 		BungeeAudiences audiences = mock(BungeeAudiences.class);
 		BungeeCordLoginDecisionAdapter adapter = new BungeeCordLoginDecisionAdapter(new LoginDecisionProcessor(
 				connectionCoordinator,
 				mock(IdentityService.class),
 				store,
-				new PreparedRefusal(store, Messages::new),
+				new PreparedRefusal(store, Messages::new, messageService()),
 				mock(ConnectionDecisionApplier.class)
-		), audiences, mock(LoadingScreenReplies.class));
+		), audiences);
 		ProxiedPlayer player = mock(ProxiedPlayer.class);
 		when(player.getUniqueId()).thenReturn(uniqueId);
 		when(player.getName()).thenReturn("Bob");
@@ -68,4 +70,22 @@ class BungeeCordLoginDecisionAdapterTest {
 		verify(store).clearIf(eq(uniqueId), eq("Bob|127.0.0.1||"), any());
 		verifyNoInteractions(connectionCoordinator, audiences);
 	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
+	}
+
+	private static MessageService messageService() {
+		MessageService messageService = mock(MessageService.class);
+		when(messageService.disconnectReason(any(), any())).thenAnswer(call -> {
+			PlayerMessage message = call.getArgument(1);
+			return Serializer.serialize(SerializerContent.builder()
+					.message(message.getText())
+					.placeholders(message.getPlaceholders())
+					.build());
+		});
+
+		return messageService;
+	}
+
 }

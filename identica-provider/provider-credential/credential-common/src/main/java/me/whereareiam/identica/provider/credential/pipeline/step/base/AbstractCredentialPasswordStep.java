@@ -3,6 +3,7 @@ package me.whereareiam.identica.provider.credential.pipeline.step.base;
 import com.google.inject.Provider;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.model.config.Engine;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.state.PipelineState;
@@ -12,6 +13,7 @@ import me.whereareiam.identica.provider.credential.cryptography.CryptographyServ
 import me.whereareiam.identica.provider.credential.event.authentication.AuthenticationAttemptDecision;
 import me.whereareiam.identica.provider.credential.model.CredentialAccount;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -60,19 +62,16 @@ public abstract class AbstractCredentialPasswordStep extends AbstractCredentialA
 			@NotNull CredentialMessages messages
 	);
 
-	protected abstract @NotNull String promptMessage(@NotNull CredentialMessages messages);
+	protected abstract @NotNull PlayerMessage promptMessage(@NotNull CredentialMessages messages);
 
-	protected abstract @NotNull String invalidMessage(@NotNull CredentialMessages messages);
+	protected abstract @NotNull PlayerMessage invalidMessage(@NotNull CredentialMessages messages);
 
 	protected abstract @NotNull StepResult successResult(@NotNull ScenarioContext context);
 
 	private @NotNull StepResult invalidWithWarning(
 			@NotNull CredentialMessages messages,
-			String warning
+			@Nullable PlayerMessage warning
 	) {
-		String invalid = invalidMessage(messages);
-		if (warning == null || warning.isBlank()) return StepResult.waiting(invalid);
-		if (invalid.isBlank()) return StepResult.waiting(warning);
-		return StepResult.waiting(invalid + "\n" + warning);
+		return StepResult.waiting(invalidMessage(messages).append(warning));
 	}
 }

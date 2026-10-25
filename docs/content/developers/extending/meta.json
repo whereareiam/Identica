@@ -3,6 +3,7 @@
   "pages": [
     "addons",
     "providers",
+    "messages",
     "guarantees-and-features",
     "checkpoints",
     "database-schemas"

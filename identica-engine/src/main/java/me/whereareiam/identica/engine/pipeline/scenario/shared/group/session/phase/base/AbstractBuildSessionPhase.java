@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.SessionConnection;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
 import me.whereareiam.identica.model.provider.ProviderContext;
@@ -83,7 +84,7 @@ public abstract class AbstractBuildSessionPhase<C extends ScenarioContext, S ext
 
 	protected abstract void storeSession(@NotNull S state, @NotNull Session session);
 
-	protected abstract @NotNull String sessionBuildMissingMessage(@NotNull Messages messages);
+	protected abstract @NotNull PlayerMessage sessionBuildMissingMessage(@NotNull Messages messages);
 
 	private @Nullable SessionConnection connection(@Nullable UUID connectionUniqueId) {
 		return connectionUniqueId != null ? SessionConnection.of(connectionUniqueId) : null;

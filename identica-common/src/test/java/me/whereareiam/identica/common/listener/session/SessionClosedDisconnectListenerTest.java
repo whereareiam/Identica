@@ -1,6 +1,7 @@
 package me.whereareiam.identica.common.listener.session;
 
 import me.whereareiam.identica.Serializer;
+import me.whereareiam.identica.common.messaging.DefaultMessageService;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.identity.session.SessionClosedEvent;
 import me.whereareiam.identica.identity.IdentityService;
@@ -9,6 +10,7 @@ import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.SessionCloseRequest;
 import me.whereareiam.identica.model.SessionConnection;
 import me.whereareiam.identica.model.config.Replication;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.replication.codec.SnapshotCodec;
 import me.whereareiam.keystone.model.SerializerContent;
 import me.whereareiam.keystone.serializer.SerializerEngine;
@@ -51,7 +53,7 @@ class SessionClosedDisconnectListenerTest {
 		when(identities.findByConnectionUniqueId(connectionUniqueId)).thenReturn(Optional.of(connection));
 		Replication replication = new Replication();
 		replication.setServerId("proxy-a");
-		listener = new SessionClosedDisconnectListener(identities, () -> replication, mock(EventManager.class));
+		listener = new SessionClosedDisconnectListener(identities, () -> replication, new DefaultMessageService(() -> (recipient, message) -> false, () -> null, mock(EventManager.class)), mock(EventManager.class));
 	}
 
 	@DisplayName("A close that asks for a disconnect disconnects with or without a message")
@@ -61,7 +63,7 @@ class SessionClosedDisconnectListenerTest {
 	void disconnectsWhenAskedWithOrWithoutMessage(String message) {
 		listener.onSessionClosed(closed(true, message));
 
-		verify(identity).disconnect(Component.text(message == null ? "" : message));
+		verify(identity).disconnect(message == null ? Component.empty() : Component.text(message));
 	}
 
 	@DisplayName("A close that does not ask for a disconnect leaves the player connected, even with a message")
@@ -129,7 +131,7 @@ class SessionClosedDisconnectListenerTest {
 				.uniqueId(uniqueId)
 				.connection(held)
 				.disconnect(true)
-				.disconnectMessage("Logged in from another location")
+				.disconnectMessage(message("Logged in from another location"))
 				.build());
 	}
 
@@ -138,7 +140,11 @@ class SessionClosedDisconnectListenerTest {
 				.requestId(UUID.randomUUID())
 				.uniqueId(uniqueId)
 				.disconnect(disconnect)
-				.disconnectMessage(message)
+				.disconnectMessage(message == null ? null : message(message))
 				.build());
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

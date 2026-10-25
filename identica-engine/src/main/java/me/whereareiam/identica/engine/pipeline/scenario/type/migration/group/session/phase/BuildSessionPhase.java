@@ -4,8 +4,10 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import me.whereareiam.identica.engine.pipeline.scenario.shared.group.session.phase.base.AbstractBuildSessionPhase;
+import me.whereareiam.identica.message.ScenarioMessages;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.migration.MigrationContext;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.scenario.type.migration.SessionState;
@@ -49,14 +51,8 @@ public class BuildSessionPhase extends AbstractBuildSessionPhase<MigrationContex
 	}
 
 	@Override
-	protected @NotNull String sessionBuildMissingMessage(@NotNull Messages messages) {
-		return joinMessage(messages.getScenarios()
-				.getMigration()
-				.getErrors()
-				.getSession().getBuildMissing());
+	protected @NotNull PlayerMessage sessionBuildMissingMessage(@NotNull Messages messages) {
+		return ScenarioMessages.of(PipelineType.MIGRATION).getSessionBuildMissing().create(messages);
 	}
 
-	private @NotNull String joinMessage(@NotNull java.util.List<String> lines) {
-		return String.join("\n", lines);
-	}
 }

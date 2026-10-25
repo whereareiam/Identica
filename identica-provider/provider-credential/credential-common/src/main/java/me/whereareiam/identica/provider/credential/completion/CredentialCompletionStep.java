@@ -6,19 +6,23 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import me.whereareiam.identica.feature.FeatureRegistry;
 import me.whereareiam.identica.feature.recognition.store.RecognizedConnectionStore;
+import me.whereareiam.identica.message.MessageService;
+import me.whereareiam.identica.model.message.MessageDefinition;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.completion.CompletionContext;
 import me.whereareiam.identica.pipeline.completion.step.AbstractMessageCompletionStep;
+import me.whereareiam.identica.provider.credential.CredentialMessageDefinitions;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
 import java.util.UUID;
 
 @Singleton
 public class CredentialCompletionStep extends AbstractMessageCompletionStep {
 	private final Provider<CredentialMessages> messagesProvider;
+	private final MessageService messageService;
 
 	private final @NotNull FeatureRegistry features;
 	private final @NotNull Injector injector;
@@ -26,6 +30,7 @@ public class CredentialCompletionStep extends AbstractMessageCompletionStep {
 	@Inject
 	public CredentialCompletionStep(
 			Provider<CredentialMessages> messagesProvider,
+			MessageService messageService,
 			@NotNull FeatureRegistry features,
 			@NotNull Injector injector
 	) {
@@ -33,6 +38,7 @@ public class CredentialCompletionStep extends AbstractMessageCompletionStep {
 		this.features = features;
 		this.injector = injector;
 		this.messagesProvider = messagesProvider;
+		this.messageService = messageService;
 	}
 
 	@Override
@@ -47,12 +53,21 @@ public class CredentialCompletionStep extends AbstractMessageCompletionStep {
 	}
 
 	@Override
-	protected @Nullable List<String> messageLines(@NotNull CompletionContext context) {
-		CredentialMessages.Completion.Pipeline completion = resolve(context);
-		if (completion != null && completion.getBody() != null && !completion.getBody().isEmpty())
-			return completion.getBody();
+	protected @Nullable PlayerMessage message(@NotNull CompletionContext context) {
+		return definition(context).create(messagesProvider.get());
+	}
 
-		return null;
+	@Override
+	protected @NotNull MessageService messageService() {
+		return messageService;
+	}
+
+	private @NotNull MessageDefinition<CredentialMessages> definition(@NotNull CompletionContext context) {
+		if (context.getPipelineType() == PipelineType.MIGRATION) return CredentialMessageDefinitions.COMPLETION_MIGRATION;
+		if (context.getPipelineType() == PipelineType.REGISTRATION) return CredentialMessageDefinitions.COMPLETION_REGISTRATION;
+		if (isRecognized(context)) return CredentialMessageDefinitions.COMPLETION_RECOGNITION;
+
+		return CredentialMessageDefinitions.COMPLETION_AUTHENTICATION;
 	}
 
 	private @Nullable CredentialMessages.Completion.Pipeline resolve(@NotNull CompletionContext context) {

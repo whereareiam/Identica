@@ -50,7 +50,6 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -256,7 +255,7 @@ class ResolvePendingMigrationAccountPhaseTest {
 		ArgumentCaptor<DeliveryRequest> queued = ArgumentCaptor.forClass(DeliveryRequest.class);
 		verify(deliveryService).queue(queued.capture());
 		assertEquals(accountUniqueId, queued.getValue().getTarget().getAccountUniqueId());
-		return queued.getValue().getPayload().getChatMessage();
+		return queued.getValue().getPayload().getMessage().getText();
 	}
 
 	private void execute(PipelineState state) {

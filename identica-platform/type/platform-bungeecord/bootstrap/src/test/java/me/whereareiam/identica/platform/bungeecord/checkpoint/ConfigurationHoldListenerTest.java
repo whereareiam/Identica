@@ -3,7 +3,9 @@ package me.whereareiam.identica.platform.bungeecord.checkpoint;
 import me.whereareiam.identica.checkpoint.Checkpoint;
 import me.whereareiam.identica.checkpoint.Checkpoints;
 import me.whereareiam.identica.checkpoint.HeldConnection;
+import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.model.checkpoint.CheckpointSelection;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.platform.bungeecord.BungeeCordIdentica;
 import me.whereareiam.identica.platform.bungeecord.adapter.auth.BungeeCordResumeDecisionAdapter;
 import me.whereareiam.identica.platform.common.checkpoint.LoadingScreenReplies;
@@ -74,13 +76,13 @@ class ConfigurationHoldListenerTest {
 		configure(PlayerConfigurationEvent.Reason.LOGIN);
 		HeldConnection arrived = arrived();
 		assertFalse(configured.get());
-		assertTrue(replies.defer(ALICE, "Wrong password"));
+		assertTrue(replies.hold(alice(), message("Wrong password")));
 
 		arrived.release("lobby");
 
 		assertTrue(configured.get());
 		assertTrue(arrived.released().toCompletableFuture().isDone());
-		assertFalse(replies.defer(ALICE, "Welcome"));
+		assertFalse(replies.hold(alice(), message("Welcome")));
 	}
 
 	@DisplayName("Lets the first configuration finish also when the journey completes on another server")
@@ -135,5 +137,16 @@ class ConfigurationHoldListenerTest {
 		Checkpoint checkpoint = mock(Checkpoint.class);
 		when(checkpoint.id()).thenReturn("loading-screen");
 		return new CheckpointSelection(checkpoint, placement);
+	}
+
+	private static Identity alice() {
+		Identity alice = mock(Identity.class);
+		when(alice.getConnectionUniqueId()).thenReturn(ALICE);
+
+		return alice;
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

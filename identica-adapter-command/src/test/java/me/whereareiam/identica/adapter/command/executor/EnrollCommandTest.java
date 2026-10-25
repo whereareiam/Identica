@@ -4,10 +4,12 @@ import me.whereareiam.identica.ConnectionCoordinator;
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.identity.actor.Identity;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.request.ResumeRequest;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
 import me.whereareiam.identica.model.provider.selection.ProviderClaim;
 import me.whereareiam.identica.model.provider.selection.ProviderSelection;
@@ -50,11 +52,11 @@ class EnrollCommandTest {
 
 	static Stream<ConnectionDecision> denials() {
 		return Stream.of(
-				ConnectionDecision.deny(""),
+				ConnectionDecision.deny(message("")),
 				ConnectionDecision.deny(null),
-				ConnectionDecision.deny("Registration failed"),
-				ConnectionDecision.requireReconnect(""),
-				ConnectionDecision.requireReconnect("Join again")
+				ConnectionDecision.deny(message("Registration failed")),
+				ConnectionDecision.requireReconnect(message("")),
+				ConnectionDecision.requireReconnect(message("Join again"))
 		);
 	}
 
@@ -67,9 +69,9 @@ class EnrollCommandTest {
 		Identity identity = mock(Identity.class);
 		when(identity.getUniqueId()).thenReturn(UUID.randomUUID());
 
-		new EnrollCommand(coordinator, Engine::new, EnrollCommandTest::messages, mock(ProviderSelector.class)).enroll(identity, "credential");
+		new EnrollCommand(coordinator, Engine::new, EnrollCommandTest::messages, mock(ProviderSelector.class), messageService()).enroll(identity, "credential");
 
-		verify(identity).disconnect(Component.text(decision.getMessage() == null ? "" : decision.getMessage()));
+		verify(identity).disconnect(decision.getMessage() == null ? Component.empty() : Component.text(decision.getMessage().getText()));
 	}
 
 	@DisplayName("Adds the player's choice to the selection of the pending registration and runs the chosen provider")
@@ -83,7 +85,7 @@ class EnrollCommandTest {
 		Identity identity = mock(Identity.class);
 		when(identity.getUniqueId()).thenReturn(UUID.randomUUID());
 
-		new EnrollCommand(coordinator, EnrollCommandTest::engine, EnrollCommandTest::messages, selector).enroll(identity, "alpha");
+		new EnrollCommand(coordinator, EnrollCommandTest::engine, EnrollCommandTest::messages, selector, messageService()).enroll(identity, "alpha");
 
 		ArgumentCaptor<ResumeRequest> request = ArgumentCaptor.forClass(ResumeRequest.class);
 		verify(coordinator).resume(request.capture());
@@ -102,6 +104,14 @@ class EnrollCommandTest {
 		assertEquals("provider", state.get(JourneyStateItem.KEY).orElseThrow().getStageId());
 	}
 
+	private static MessageService messageService() {
+		MessageService messageService = mock(MessageService.class);
+		when(messageService.disconnectReason(any(), any()))
+				.thenAnswer(call -> Component.text(call.getArgument(1, PlayerMessage.class).getText()));
+
+		return messageService;
+	}
+
 	private static Engine engine() {
 		Engine.Scenarios scenarios = new Engine.Scenarios();
 		scenarios.getRegistration().setPipelineTtl(Duration.ofMinutes(1));
@@ -116,5 +126,9 @@ class EnrollCommandTest {
 		commands.setEnroll(new Messages.Commands.Enroll());
 		messages.setCommands(commands);
 		return messages;
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

@@ -6,6 +6,7 @@ import me.whereareiam.identica.common.provider.selection.DefaultProviderSelector
 import me.whereareiam.identica.common.provider.selection.ProviderClaimRanking;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
+import me.whereareiam.identica.message.ProviderChoiceMessages;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
@@ -126,7 +127,9 @@ class EnrollmentStepTest {
 
 		assertEquals(StepResult.StepStatus.WAITING, result.getStatus());
 		assertNotNull(result.getMessage());
-		assertFalse(result.getMessage().isBlank());
+		assertEquals(ProviderChoiceMessages.CHOICE.getId(), result.getMessage().getId());
+		assertEquals(ProviderChoiceMessages.PROMPT.getId(), result.getMessage().getPrompt().getId());
+		assertEquals("alpha", result.getMessage().getPrompt().getFields().getFirst().getOptions().getFirst().getValue());
 		assertNull(context.getProvider());
 		verify(eventManager).call(any());
 	}

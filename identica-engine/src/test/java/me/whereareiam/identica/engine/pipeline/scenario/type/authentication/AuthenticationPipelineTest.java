@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import me.whereareiam.identica.common.config.defaults.EngineDefaults;
-import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.engine.pipeline.PipelineExecutor;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
@@ -14,10 +13,12 @@ import me.whereareiam.identica.model.auth.request.ConnectionRequest;
 import me.whereareiam.identica.model.auth.request.ResumeRequest;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.GroupOutcome;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.journey.JourneyOverrideItem;
 import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
+import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.pipeline.PipelineGroup;
 import me.whereareiam.identica.pipeline.PipelineRegistry;
 import me.whereareiam.identica.pipeline.ScenarioContext;
@@ -117,7 +118,7 @@ class AuthenticationPipelineTest {
 		when(executor.execute(any(), any(), any())).thenAnswer(invocation -> {
 			PipelineExecutor.ExecutionObserver observer = invocation.getArgument(2);
 			observer.onGroupCompleted(mock(PipelineGroup.class), new Object(),
-					GroupOutcome.result(PipelineResult.waiting("prompt")), null);
+					GroupOutcome.result(PipelineResult.waiting(message("prompt"))), null);
 			return CompletableFuture.completedFuture(null);
 		});
 		TestAuthenticationPipeline pipeline = new TestAuthenticationPipeline(store, executor);
@@ -222,10 +223,10 @@ class AuthenticationPipelineTest {
 		PipelineResult result = pipeline.execute(freshRequest(), null).toCompletableFuture().join();
 
 		assertEquals(PipelineStatus.REQUIRE_RECONNECT, result.getStatus());
-		assertEquals("reconnect", result.getMessage());
+		assertEquals("reconnect", result.getMessage().getText());
 		ConnectionDecision decision = pipeline.mapDecision(result);
 		assertEquals(ConnectionDecision.Status.REQUIRE_RECONNECT, decision.getStatus());
-		assertEquals("reconnect", decision.getMessage());
+		assertEquals("reconnect", decision.getMessage().getText());
 	}
 
 	private static ConnectionRequest freshRequest() {
@@ -242,7 +243,7 @@ class AuthenticationPipelineTest {
 		when(executor.execute(any(), any(), any())).thenAnswer(invocation -> {
 			PipelineExecutor.ExecutionObserver observer = invocation.getArgument(2);
 			observer.onGroupCompleted(mock(PipelineGroup.class), new Object(),
-					GroupOutcome.result(PipelineResult.waiting("prompt")), null);
+					GroupOutcome.result(PipelineResult.waiting(message("prompt"))), null);
 			return CompletableFuture.completedFuture(null);
 		});
 		return executor;
@@ -295,5 +296,9 @@ class AuthenticationPipelineTest {
 		private @Nullable ScenarioContext buildFor(@NotNull ConnectionRequest request) {
 			return buildContext(request);
 		}
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

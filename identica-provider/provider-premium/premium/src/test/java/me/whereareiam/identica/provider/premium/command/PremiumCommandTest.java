@@ -3,16 +3,17 @@ package me.whereareiam.identica.provider.premium.command;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import me.whereareiam.identica.Serializer;
-import me.whereareiam.identica.feature.FeatureRegistry;
 import me.whereareiam.identica.feature.verification.VerificationService;
 import me.whereareiam.identica.feature.verification.config.VerificationMessages;
 import me.whereareiam.identica.feature.verification.model.resolution.VerificationResolutionResult;
 import me.whereareiam.identica.feature.verification.type.status.VerificationResolutionStatus;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.SessionConnection;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.migration.PendingMigration;
 import me.whereareiam.identica.model.migration.operation.MigrationConfirm;
 import me.whereareiam.identica.model.migration.operation.MigrationResult;
@@ -100,7 +101,8 @@ class PremiumCommandTest {
 				() -> premiumMessages,
 				Messages::new,
 				injector(true),
-				sessionService
+				sessionService,
+				chatMessageService()
 		);
 
 		command.confirm(identity, null);
@@ -132,7 +134,8 @@ class PremiumCommandTest {
 				() -> new PremiumMessagesDefaults().supply(new PremiumMessages()),
 				Messages::new,
 				injector(true),
-				sessionService
+				sessionService,
+				chatMessageService()
 		);
 
 		command.confirm(identity, "420683");
@@ -153,6 +156,7 @@ class PremiumCommandTest {
 			binder.bind(VerificationService.class).toInstance(verificationService);
 			binder.bind(MigrationService.class).toInstance(migrationService);
 			binder.bind(SessionService.class).toInstance(sessionService);
+			binder.bind(MessageService.class).toInstance(chatMessageService());
 			binder.bind(Messages.class).toInstance(new Messages());
 			binder.bind(PremiumMessages.class).toInstance(new PremiumMessagesDefaults().supply(new PremiumMessages()));
 		});
@@ -253,4 +257,17 @@ class PremiumCommandTest {
 			return lastMessage.get();
 		}
 	}
+
+	private static MessageService chatMessageService() {
+		MessageService messageService = mock(MessageService.class);
+		lenient().doAnswer(call -> {
+			Identity recipient = call.getArgument(0);
+			PlayerMessage message = call.getArgument(1);
+			recipient.sendMessage(Serializer.serialize(recipient, message.getText(), message.getPlaceholders()));
+			return null;
+		}).when(messageService).send(any(), any());
+
+		return messageService;
+	}
+
 }

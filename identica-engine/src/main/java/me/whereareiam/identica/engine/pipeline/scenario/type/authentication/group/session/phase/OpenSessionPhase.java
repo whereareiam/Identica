@@ -8,9 +8,12 @@ import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.session.SessionOpenedEvent;
 import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.identity.session.exception.ConcurrentSessionChangeException;
+import me.whereareiam.identica.message.ScenarioMessages;
+import me.whereareiam.identica.message.SessionMessages;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
 import me.whereareiam.identica.pipeline.PipelinePhase;
@@ -21,7 +24,6 @@ import me.whereareiam.identica.type.pipeline.PipelineStatus;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -113,24 +115,21 @@ public class OpenSessionPhase implements PipelinePhase<SessionState> {
 		if (!(cause instanceof ConcurrentSessionChangeException))
 			throw error instanceof CompletionException completion ? completion : new CompletionException(error);
 
-		state.setResult(PipelineResult.requireReconnect(joinMessage(messagesProvider.get().getEngine().getConcurrentChangeKick())));
+		state.setResult(PipelineResult.requireReconnect(SessionMessages.CONCURRENT_CHANGE_KICK.create(messagesProvider.get())));
 		return PhaseResult.pass(state);
 	}
 
-	private @NotNull String authenticationFailedMessage() {
-		return joinMessage(messagesProvider.get().getScenarios().getAuthentication().getAuthenticationFailed());
+	private @NotNull PlayerMessage authenticationFailedMessage() {
+		return ScenarioMessages.of(PipelineType.AUTHENTICATION).getFailed().create(messagesProvider.get());
 	}
 
 	/**
 	 * The session service refuses a session only when the account is already online through another connection
 	 * under {@code REJECT_NEW}. The denied status refuses the login; the message only explains it.
 	 */
-	private @NotNull String concurrentLoginRefusedMessage() {
-		return joinMessage(messagesProvider.get().getEngine().getConcurrentLoginRefused());
+	private @NotNull PlayerMessage concurrentLoginRefusedMessage() {
+		return SessionMessages.CONCURRENT_LOGIN_REFUSED.create(messagesProvider.get());
 	}
 
-	private @NotNull String joinMessage(@NotNull List<String> lines) {
-		return String.join("\n", lines);
-	}
 
 }

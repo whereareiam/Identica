@@ -8,6 +8,7 @@ import me.whereareiam.identica.common.event.EventController;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.checkpoint.CheckpointRequest;
 import me.whereareiam.identica.model.config.Routing;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.ScenarioTransitionItem;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
@@ -16,9 +17,9 @@ import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import me.whereareiam.identica.model.routing.RoutingPlan;
 import me.whereareiam.identica.model.routing.RoutingSignal;
 import me.whereareiam.identica.pipeline.ScenarioContext;
-import me.whereareiam.identica.platform.adapter.PlatformForcedHostAdapter;
 import me.whereareiam.identica.pipeline.journey.step.Step;
 import me.whereareiam.identica.platform.adapter.PlatformCheckpointAdapter;
+import me.whereareiam.identica.platform.adapter.PlatformForcedHostAdapter;
 import me.whereareiam.identica.type.checkpoint.CheckpointPlacement;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import me.whereareiam.identica.type.pipeline.journey.JourneyMode;
@@ -59,7 +60,7 @@ class RoutingPlannerTest {
 				PipelineType.AUTHENTICATION,
 				StageType.PROVIDER,
 				step("credential"),
-				StepResult.waiting("")
+				StepResult.waiting(message(""))
 		));
 
 		assertEquals(RoutingPlanAction.REPLACE, plan.getAction());
@@ -80,7 +81,7 @@ class RoutingPlannerTest {
 				PipelineType.AUTHENTICATION,
 				StageType.PROVIDER,
 				step("credential"),
-				StepResult.waiting("")
+				StepResult.waiting(message(""))
 		));
 
 		assertEquals(RoutingPlanAction.IGNORE, plan.getAction());
@@ -100,7 +101,7 @@ class RoutingPlannerTest {
 				PipelineType.AUTHENTICATION,
 				StageType.PROVIDER,
 				step("credential"),
-				StepResult.waiting("")
+				StepResult.waiting(message(""))
 		));
 
 		assertEquals(RoutingPlanAction.REPLACE, plan.getAction());
@@ -121,7 +122,7 @@ class RoutingPlannerTest {
 				PipelineType.AUTHENTICATION,
 				StageType.PROVIDER,
 				step("credential"),
-				StepResult.waiting("")
+				StepResult.waiting(message(""))
 		));
 
 		assertEquals(RoutingPlanAction.REPLACE, plan.getAction());
@@ -156,7 +157,7 @@ class RoutingPlannerTest {
 				PipelineType.REGISTRATION,
 				StageType.PROVIDER,
 				step("credential"),
-				StepResult.waiting("")
+				StepResult.waiting(message(""))
 		));
 		RoutingPlan completionPlan = planner.plan(RoutingSignal.pipelineFinished(
 				context(UUID.randomUUID()),
@@ -193,7 +194,7 @@ class RoutingPlannerTest {
 		RoutingPlan plan = planner.plan(RoutingSignal.pipelineFinished(
 				context(connectionId),
 				PipelineType.AUTHENTICATION,
-				PipelineResult.failed("no")
+				PipelineResult.failed(message("no"))
 		));
 
 		assertEquals(RoutingPlanAction.CLEAR, plan.getAction());
@@ -219,7 +220,7 @@ class RoutingPlannerTest {
 				PipelineType.AUTHENTICATION,
 				StageType.PROVIDER,
 				step("credential"),
-				StepResult.waiting("")
+				StepResult.waiting(message(""))
 		));
 
 		assertEquals("step-server", plan.getIntent().getEndpoint().getServer());
@@ -238,7 +239,7 @@ class RoutingPlannerTest {
 				PipelineType.AUTHENTICATION,
 				StageType.PROVIDER,
 				step("credential"),
-				StepResult.waiting("")
+				StepResult.waiting(message(""))
 		));
 
 		assertEquals(RoutingPlanAction.CLEAR, plan.getAction());
@@ -495,8 +496,12 @@ class RoutingPlannerTest {
 
 			@Override
 			public @NotNull CompletableFuture<StepResult> execute(@NotNull ScenarioContext context) {
-				return CompletableFuture.completedFuture(StepResult.waiting(""));
+				return CompletableFuture.completedFuture(StepResult.waiting(message("")));
 			}
 		};
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

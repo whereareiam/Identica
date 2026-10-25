@@ -4,7 +4,9 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.identica.message.ScenarioMessages;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.GroupOutcome;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.pipeline.PipelineGroup;
@@ -53,17 +55,11 @@ public class FinalizeGroup implements PipelineGroup<FinalizeState> {
 		return GroupOutcome.result(result);
 	}
 
-	private @NotNull String finalizeMissingResultMessage(@NotNull PipelineState pipelineState) {
-		Messages.Scenarios.Scenario.Errors errors = resolveScenarioErrors(pipelineState);
-		return String.join("\n", errors.getFinalizeMissingResult());
+	private @NotNull PlayerMessage finalizeMissingResultMessage(@NotNull PipelineState pipelineState) {
+		return ScenarioMessages.of(scenarioOf(pipelineState)).getFinalizeMissingResult().create(messagesProvider.get());
 	}
 
-	private @NotNull Messages.Scenarios.Scenario.Errors resolveScenarioErrors(@NotNull PipelineState pipelineState) {
-		PipelineType pipelineType = pipelineState.getPipelineType();
-		Messages.Scenarios scenarios = messagesProvider.get().getScenarios();
-		if (pipelineType == PipelineType.REGISTRATION) return scenarios.getRegistration().getErrors();
-		if (pipelineType == PipelineType.MIGRATION) return scenarios.getMigration().getErrors();
-
-		return scenarios.getAuthentication().getErrors();
+	private static @NotNull PipelineType scenarioOf(@NotNull PipelineState pipelineState) {
+		return pipelineState.getPipelineType() != null ? pipelineState.getPipelineType() : PipelineType.AUTHENTICATION;
 	}
 }

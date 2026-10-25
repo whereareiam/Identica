@@ -1,6 +1,7 @@
 package me.whereareiam.identica.model.delivery;
 
 import lombok.*;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import org.jetbrains.annotations.Nullable;
 
@@ -12,22 +13,14 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder(toBuilder = true)
 public class DeliveryPayload {
-	private @Nullable String chatMessage;
-	private @Nullable String actionBarMessage;
-	private @Nullable String title;
-	private @Nullable String subtitle;
+	/**
+	 * Message shown once the player can see it, through {@code MessageService}.
+	 */
+	private @Nullable PlayerMessage message;
 	private @Nullable CompletionPayload completion;
 
 	public boolean isEmpty() {
-		return isBlank(chatMessage)
-				&& isBlank(actionBarMessage)
-				&& isBlank(title)
-				&& isBlank(subtitle)
-				&& completion == null;
-	}
-
-	private boolean isBlank(@Nullable String value) {
-		return value == null || value.isBlank();
+		return (message == null || message.isEmpty()) && completion == null;
 	}
 
 	@Getter

@@ -4,8 +4,10 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.Serializer;
+import me.whereareiam.identica.message.ConnectionMessages;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
 import me.whereareiam.identica.pipeline.prepare.PrepareStateStore;
 import net.kyori.adventure.text.Component;
@@ -24,6 +26,7 @@ import java.util.UUID;
 public class PreparedRefusal {
 	private final @NotNull PrepareStateStore prepareStateStore;
 	private final @NotNull Provider<Messages> messagesProvider;
+	private final @NotNull MessageService messageService;
 
 	/**
 	 * Returns the refusal stored for a connection and forgets it. The decision is read by the connection's unique ID
@@ -61,12 +64,12 @@ public class PreparedRefusal {
 	 * @param denialMessage message the refusal carries, if any
 	 * @return reason shown to the player
 	 */
-	public @NotNull Component message(@Nullable String denialMessage) {
-		String message = hasText(denialMessage)
+	public @NotNull Component message(@Nullable PlayerMessage denialMessage) {
+		PlayerMessage message = denialMessage != null && !denialMessage.isEmpty()
 				? denialMessage
-				: String.join("\n", messagesProvider.get().getEngine().getPrepare().getHandshakeDenied());
+				: ConnectionMessages.HANDSHAKE_DENIED.create(messagesProvider.get());
 
-		return Serializer.serialize(message);
+		return messageService.disconnectReason(null, message);
 	}
 
 	private static boolean hasText(@Nullable String value) {

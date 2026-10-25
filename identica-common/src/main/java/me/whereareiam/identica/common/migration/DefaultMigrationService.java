@@ -5,13 +5,12 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.ConnectionCoordinator;
-import me.whereareiam.identica.Serializer;
-import me.whereareiam.identica.persistence.AccountPersistenceService;
-import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.message.MessageService;
+import me.whereareiam.identica.message.MigrationMessages;
 import me.whereareiam.identica.model.config.Commands;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
@@ -21,12 +20,15 @@ import me.whereareiam.identica.model.delivery.DeliveryRequest;
 import me.whereareiam.identica.model.delivery.DeliveryTarget;
 import me.whereareiam.identica.model.identity.Account;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.migration.MigrationContext;
 import me.whereareiam.identica.model.migration.MigrationJourney;
 import me.whereareiam.identica.model.migration.PendingMigration;
 import me.whereareiam.identica.model.migration.operation.*;
 import me.whereareiam.identica.model.pipeline.journey.JourneyPlan;
 import me.whereareiam.identica.model.provider.InternalProvider;
+import me.whereareiam.identica.persistence.AccountPersistenceService;
+import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.pipeline.journey.registry.type.MigrationJourneyRegistry;
 import me.whereareiam.identica.provider.ProviderManager;
 import me.whereareiam.identica.provider.migration.MigrationPrecheckContext;
@@ -63,6 +65,7 @@ public class DefaultMigrationService implements MigrationService {
 	private final IdentityService identityService;
 
 	private final DeliveryService deliveryService;
+	private final MessageService messageService;
 
 	private final Provider<Engine> engineProvider;
 	private final Provider<Providers> providersProvider;
@@ -161,7 +164,7 @@ public class DefaultMigrationService implements MigrationService {
 			return result(MigrationResultStatus.ALREADY_PRIMARY, null);
 		}
 
-		String kickMessage = resolveKickMessage(confirm.getKickMessage(), precheck);
+		PlayerMessage kickMessage = resolveKickMessage(confirm.getKickMessage(), precheck);
 
 		MigrationResultStatus started = startJourney(pendingMigration, accountUniqueId);
 		if (started == MigrationResultStatus.PENDING_EXISTS) pending.remove(connectionUniqueId);
@@ -213,7 +216,7 @@ public class DefaultMigrationService implements MigrationService {
 		if (link != null && link.isPrimaryLink())
 			return result(MigrationResultStatus.ALREADY_PRIMARY, null);
 
-		String kickMessage = resolveKickMessage(start.getKickMessage(), precheck);
+		PlayerMessage kickMessage = resolveKickMessage(start.getKickMessage(), precheck);
 
 		MigrationResultStatus started = startJourney(pendingMigration, accountUniqueId);
 		if (started != MigrationResultStatus.STARTED) return result(started, null);
@@ -309,14 +312,14 @@ public class DefaultMigrationService implements MigrationService {
 				.initiatorUniqueId(pendingMigration.initiatorUniqueId())
 				.build();
 
-		String kickMessage = null;
+		PlayerMessage kickMessage = null;
 		for (ProviderMigrationPrecheck precheck : prechecks) {
 			if (precheck == null) continue;
 
 			MigrationPrecheckResult result = precheck.precheck(context);
 			if (!result.isAllowed()) return result;
 
-			if (kickMessage == null && result.getKickMessage() != null && !result.getKickMessage().isBlank())
+			if (kickMessage == null && result.getKickMessage() != null && !result.getKickMessage().isEmpty())
 				kickMessage = result.getKickMessage();
 		}
 
@@ -383,15 +386,14 @@ public class DefaultMigrationService implements MigrationService {
 		sessionService.close(accountUniqueId).join();
 	}
 
-	private void disconnect(@NotNull UUID connectionUniqueId, @Nullable String message) {
-		String resolved = message != null ? message : "";
+	private void disconnect(@NotNull UUID connectionUniqueId, @Nullable PlayerMessage message) {
 		Identity identity = identityService.findByConnectionUniqueId(connectionUniqueId).orElse(null);
 		if (identity == null) return;
 
-		identity.disconnect(Serializer.serialize(identity, resolved));
+		identity.disconnect(messageService.disconnectReason(identity, message != null ? message : PlayerMessage.builder().build()));
 	}
 
-	private @NotNull MigrationResult result(@NotNull MigrationResultStatus status, @Nullable String message) {
+	private @NotNull MigrationResult result(@NotNull MigrationResultStatus status, @Nullable PlayerMessage message) {
 		return MigrationResult.builder()
 				.status(status)
 				.message(message)
@@ -423,8 +425,8 @@ public class DefaultMigrationService implements MigrationService {
 		return true;
 	}
 
-	private @NotNull String migrationLockedMessage() {
-		return messagesProvider.get().getCommands().getMigration().getLocked();
+	private @NotNull PlayerMessage migrationLockedMessage() {
+		return MigrationMessages.LOCKED.create(messagesProvider.get());
 	}
 
 	private @Nullable String resolveUsername(@Nullable String username, @NotNull UUID accountUniqueId) {
@@ -437,11 +439,11 @@ public class DefaultMigrationService implements MigrationService {
 		return normalize(account.getUsername());
 	}
 
-	private @Nullable String resolveKickMessage(@Nullable String requested, @Nullable MigrationPrecheckResult precheck) {
-		if (precheck != null && precheck.getKickMessage() != null && !precheck.getKickMessage().isBlank())
+	private @Nullable PlayerMessage resolveKickMessage(@Nullable PlayerMessage requested, @Nullable MigrationPrecheckResult precheck) {
+		if (precheck != null && precheck.getKickMessage() != null && !precheck.getKickMessage().isEmpty())
 			return precheck.getKickMessage();
 
-		return normalize(requested);
+		return requested;
 	}
 
 	private @Nullable String normalize(@Nullable String value) {
@@ -492,16 +494,12 @@ public class DefaultMigrationService implements MigrationService {
 						.accountUniqueId(accountUniqueId)
 						.build())
 				.payload(DeliveryPayload.builder()
-						.chatMessage(resolveMigrationCancelledMessage())
+						.message(MigrationMessages.CANCELLED.create(messagesProvider.get()))
 						.build())
 				.semantics(DeliverySemantics.ONCE)
 				.createdAt(System.currentTimeMillis())
 				.updatedAt(System.currentTimeMillis())
 				.build());
-	}
-
-	private @NotNull String resolveMigrationCancelledMessage() {
-		return String.join("\n", messagesProvider.get().getScenarios().getMigration().getCancelled());
 	}
 
 	private record PendingConfirmationMigration(

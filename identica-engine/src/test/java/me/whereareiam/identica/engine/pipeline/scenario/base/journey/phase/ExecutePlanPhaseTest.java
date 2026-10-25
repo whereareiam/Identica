@@ -9,6 +9,7 @@ import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.PipelineResult;
 import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
 import me.whereareiam.identica.model.pipeline.journey.execution.JourneyExecutionBlock;
@@ -90,7 +91,7 @@ class ExecutePlanPhaseTest {
 		});
 		Step shouldSkip = step("should-skip", context -> {
 			skippedExecuted.set(true);
-			return StepResult.failed("should not execute");
+			return StepResult.failed(message("should not execute"));
 		});
 		Step laterStage = step("later-stage", context -> {
 			laterStageExecuted.set(true);
@@ -263,7 +264,7 @@ class ExecutePlanPhaseTest {
 				.allowFallback(true)
 				.build();
 		Step setup = step("setup", StepResult::proceed);
-		Step confirm = step("confirm", context -> StepResult.waitingAt(resumeStep, "Start over."));
+		Step confirm = step("confirm", context -> StepResult.waitingAt(resumeStep, message("Start over.")));
 		JourneyExecutionPlan plan = new JourneyExecutionPlan(List.of(new JourneyExecutionBlock(
 				"group-provider",
 				JourneyExecutionPolicy.SEQUENTIAL,
@@ -369,7 +370,7 @@ class ExecutePlanPhaseTest {
 	@Test
 	void strictSeamlessJourneyDeniesAStepWaitingForInput() {
 		assertEquals(PipelineStatus.DENIED, seamlessWaitingResult(JourneyPolicy.STRICT, StepWaitReason.INPUT).getStatus());
-		assertEquals("interaction-required", seamlessWaitingResult(JourneyPolicy.STRICT, StepWaitReason.INPUT).getMessage());
+		assertEquals("interaction-required", seamlessWaitingResult(JourneyPolicy.STRICT, StepWaitReason.INPUT).getMessage().getText());
 	}
 
 	@DisplayName("A seamless journey keeps waiting when the mode is only preferred or the step waits for presence")
@@ -385,7 +386,7 @@ class ExecutePlanPhaseTest {
 		PipelineResult result = seamlessWaitingResult(JourneyPolicy.STRICT, StepWaitReason.INPUT, JourneyExecutionPolicy.FALLBACK, "credential");
 
 		assertEquals(PipelineStatus.DENIED, result.getStatus());
-		assertEquals("interaction-required", result.getMessage());
+		assertEquals("interaction-required", result.getMessage().getText());
 	}
 
 	@DisplayName("A strict seamless journey refuses input in the same way when the refusal has no text")
@@ -397,28 +398,28 @@ class ExecutePlanPhaseTest {
 				JourneyPolicy.STRICT, StepWaitReason.INPUT, JourneyExecutionPolicy.FALLBACK, "credential", List.of());
 
 		assertEquals(PipelineStatus.DENIED, sequential.getStatus());
-		assertEquals("", sequential.getMessage());
+		assertEquals("", sequential.getMessage().getText());
 		assertEquals(PipelineStatus.DENIED, lastProvider.getStatus());
-		assertEquals("", lastProvider.getMessage());
+		assertEquals("", lastProvider.getMessage().getText());
 	}
 
 	@DisplayName("A provider's denial ends the journey with that provider's message")
 	@Test
 	void providerDenialEndsTheJourneyWithItsMessage() {
-		PipelineResult result = providerFallbackResult(new ArrayList<>(), StepResult.denied("locked-out"));
+		PipelineResult result = providerFallbackResult(new ArrayList<>(), StepResult.denied(message("locked-out")));
 
 		assertEquals(PipelineStatus.DENIED, result.getStatus());
-		assertEquals("locked-out", result.getMessage());
+		assertEquals("locked-out", result.getMessage().getText());
 	}
 
 	@DisplayName("A provider's denial ends the journey in the same way when the denial has no text")
 	@Test
 	void providerDenialWithoutTextEndsTheJourney() {
-		PipelineResult empty = providerFallbackResult(new ArrayList<>(), StepResult.denied(""));
+		PipelineResult empty = providerFallbackResult(new ArrayList<>(), StepResult.denied(message("")));
 		PipelineResult absent = providerFallbackResult(new ArrayList<>(), StepResult.denied(null));
 
 		assertEquals(PipelineStatus.DENIED, empty.getStatus());
-		assertEquals("", empty.getMessage());
+		assertEquals("", empty.getMessage().getText());
 		assertEquals(PipelineStatus.DENIED, absent.getStatus());
 		assertNull(absent.getMessage());
 	}
@@ -427,10 +428,10 @@ class ExecutePlanPhaseTest {
 	@Test
 	void providerDenialDoesNotFallBackToTheNextProvider() {
 		List<String> executed = new ArrayList<>();
-		PipelineResult result = providerFallbackResult(executed, StepResult.denied("locked-out"), StepResult.complete(null));
+		PipelineResult result = providerFallbackResult(executed, StepResult.denied(message("locked-out")), StepResult.complete(null));
 
 		assertEquals(PipelineStatus.DENIED, result.getStatus());
-		assertEquals("locked-out", result.getMessage());
+		assertEquals("locked-out", result.getMessage().getText());
 		assertEquals(List.of("credential"), executed);
 	}
 
@@ -438,7 +439,7 @@ class ExecutePlanPhaseTest {
 	@Test
 	void failedProviderFallsBackToTheNextProvider() {
 		List<String> executed = new ArrayList<>();
-		PipelineResult result = providerFallbackResult(executed, StepResult.failed(""), StepResult.complete(null));
+		PipelineResult result = providerFallbackResult(executed, StepResult.failed(message("")), StepResult.complete(null));
 
 		assertEquals(PipelineStatus.COMPLETE, result.getStatus());
 		assertEquals(List.of("credential", "premium", "excluded:credential", "end"), executed);
@@ -449,7 +450,7 @@ class ExecutePlanPhaseTest {
 	void strictSeamlessJourneyTriesTheNextProviderAfterRefusedInput() {
 		List<String> executed = new ArrayList<>();
 		PipelineResult result = providerFallbackResult(
-				executed, JourneyPolicy.STRICT, StepResult.waiting("prompt", StepWaitReason.INPUT), StepResult.complete(null));
+				executed, JourneyPolicy.STRICT, StepResult.waiting(message("prompt"), StepWaitReason.INPUT), StepResult.complete(null));
 
 		assertEquals(PipelineStatus.COMPLETE, result.getStatus());
 		assertEquals(List.of("credential", "premium", "excluded:credential", "end"), executed);
@@ -625,7 +626,7 @@ class ExecutePlanPhaseTest {
 				.journeyModes(EnumSet.of(JourneyMode.SEAMLESS))
 				.allowFallback(true)
 				.build();
-		Step waiting = step("waits", ignored -> StepResult.waiting("prompt", reason));
+		Step waiting = step("waits", ignored -> StepResult.waiting(message("prompt"), reason));
 		JourneyStage endStage = JourneyStage.builder()
 				.id(StageType.END.id())
 				.type(StageType.END)
@@ -789,4 +790,7 @@ class ExecutePlanPhaseTest {
 		@NotNull StepResult execute(@NotNull ScenarioContext context);
 	}
 
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
+	}
 }

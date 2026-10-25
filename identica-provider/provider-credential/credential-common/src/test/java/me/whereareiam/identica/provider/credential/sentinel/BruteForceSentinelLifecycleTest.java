@@ -1,14 +1,15 @@
 package me.whereareiam.identica.provider.credential.sentinel;
 
 import me.whereareiam.identica.event.EventManager;
+import me.whereareiam.identica.feature.sentinel.SentinelService;
 import me.whereareiam.identica.feature.sentinel.model.SentinelContext;
 import me.whereareiam.identica.feature.sentinel.model.SentinelDecision;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.provider.credential.CredentialConstants;
 import me.whereareiam.identica.provider.credential.event.authentication.AuthenticationAttemptFailedEvent;
 import me.whereareiam.identica.provider.credential.event.authentication.AuthenticationAttemptSucceededEvent;
 import me.whereareiam.identica.provider.credential.model.CredentialAccount;
 import me.whereareiam.identica.provider.credential.model.authentication.AuthenticationAttemptContext;
-import me.whereareiam.identica.feature.sentinel.SentinelService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +28,7 @@ class BruteForceSentinelLifecycleTest {
 		SentinelService sentinelService = mock(SentinelService.class);
 		EventManager eventManager = mock(EventManager.class);
 		when(sentinelService.record(eq(CredentialConstants.SENTINEL.BRUTE_FORCE), any()))
-				.thenReturn(SentinelDecision.allowed(null, 2, "warning"));
+				.thenReturn(SentinelDecision.allowed(null, 2, message("warning")));
 
 		BruteForceSentinelLifecycle lifecycle = new BruteForceSentinelLifecycle(sentinelService, eventManager);
 		AuthenticationAttemptFailedEvent event = new AuthenticationAttemptFailedEvent(context(), null);
@@ -36,7 +37,7 @@ class BruteForceSentinelLifecycleTest {
 
 		assertNotNull(event.getDecision());
 		assertFalse(event.getDecision().isDeny());
-		assertEquals("warning", event.getDecision().getWarningMessage());
+		assertEquals("warning", event.getDecision().getWarningMessage().getText());
 		verify(sentinelService).record(eq(CredentialConstants.SENTINEL.BRUTE_FORCE), any(SentinelContext.class));
 	}
 
@@ -65,5 +66,9 @@ class BruteForceSentinelLifecycleTest {
 				"player",
 				"127.0.0.1"
 		);
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

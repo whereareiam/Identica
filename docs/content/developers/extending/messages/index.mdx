@@ -1,0 +1,131 @@
+---
+title: Messages to players
+description: Define the messages your provider or feature tells players, and show any message as more than chat, such as a dialog or an action bar.
+---
+
+Everything Identica tells a player goes through one service, `MessageService`: what a step asks, why it asks again, why a login is refused, how a command went. Each message has a stable ID, so an addon can show it another way, such as a dialog or an action bar, without knowing who sends it. Identica itself shows every message in chat.
+
+## A message
+
+A message is defined once by its owner, in code:
+
+```java
+public static final Prompt PASSPHRASE_PROMPT = Prompt.builder()
+        .id("example:passphrase")
+        .field(Prompt.Field.of("passphrase", Prompt.FieldType.SECRET))
+        .command(ExampleProvider.PASSPHRASE_COMMAND)
+        .build();
+
+public static final MessageDefinition<ExampleMessages> PASSPHRASE_INVALID = MessageDefinition.<ExampleMessages>builder()
+        .id("example:passphrase-invalid")
+        .text(ExampleMessages::getInvalid)
+        .prompt(PASSPHRASE_PROMPT)
+        .build();
+```
+
+- `id` names the message, `<owner>:<name>` in lower case. Keep it stable once released: it is what addons rely on.
+- `text` reads the configured text from the owner's messages document. Administrators keep editing the text there, and a reload applies at once, since a message is created from the document's current state.
+- `placeholder(...)` names the placeholders the text may use, so tools can list them.
+- `prompt` describes what a message asks for: the fields the player fills and the key of the command that answers them. Give every message that asks for the same thing the same prompt, such as a password asked for the first time and again after a wrong one. A message that asks nothing has no prompt.
+
+The repository's `examples/provider` keeps its definitions in `ExampleMessageDefinitions`. Identica's own are grouped by topic, such as `SessionMessages` or `ProviderChoiceMessages`, and `IdenticaMessages.all()` lists them all. Each official provider and feature has its own, such as `CredentialMessageDefinitions` or `VerificationMessageDefinitions`.
+
+Register the definitions when your provider or feature starts and remove them when it stops, so `MessageService.definitions()` lists every message there is:
+
+```java
+private final List<MessageService.Registration> messageRegistrations = new ArrayList<>();
+
+@Override
+public void onEnable() {
+    messageRegistrations.add(messageService.register(ExampleMessageDefinitions.all()));
+}
+
+@Override
+public void onDisable() {
+    messageRegistrations.forEach(MessageService.Registration::remove);
+    messageRegistrations.clear();
+}
+```
+
+## Telling it
+
+Create the message from the document and hand it on. A step returns it with its result, and Identica shows it:
+
+```java
+return StepResult.waiting(ExampleMessageDefinitions.PASSPHRASE_INVALID.create(messages.get()));
+```
+
+A refused login, a disconnect reason or a migration's kick message is a `PlayerMessage` in the same way. Values of placeholders travel with the message, not baked into its text:
+
+```java
+CredentialMessageDefinitions.BRUTEFORCE_EXCEEDED.create(messages, Map.of("seconds", "30"));
+```
+
+A command answers through `messageService.send(identity, message)`. A command that extends `IdentityCommand` does so with `sendMessage(sender, message)`, which also answers the console with the chat text. While a platform holds the player on the loading screen, where the client shows no chat, Identica keeps the message back until the player has joined a server.
+
+Two messages can be told as one with `append`, such as a warning below a wrong password. The result keeps the first message's ID and prompt. A step that tells a message of its own while asking for something else, such as a broken password rule while it asks for a new password, gives it its prompt with `withPrompt(prompt)`.
+
+## Showing a message another way
+
+A message is shown in parts. Chat is the one part Identica knows; an addon adds others. To show the message `credential:password-invalid` as an action bar next to chat, an addon registers a part type once and presents the message with it:
+
+```java
+MessageService messages = identica.getMessageService();
+
+messages.registerPartType(PartType.<ActionBarPart>builder()
+        .id("actionbar")
+        .partClass(ActionBarPart.class)
+        .renderer(new ActionBarRenderer())
+        .build());
+
+messages.present("credential:password-invalid", Presentation.builder()
+        .part(new ActionBarPart("<red>Wrong password"))
+        .build());
+```
+
+A presentation can also remove parts by type, such as `.removed(ChatPart.TYPE)` to show a dialog instead of chat. Each call returns a `Registration`; remove it when the addon is disabled.
+
+When several presentations give a message the same part type, the one with the higher `priority` wins, and the later registration among equals. Leave the priority at `0` for what an addon does by default and give a higher one to what an administrator configured in the addon, so a server's own choice wins over a general one.
+
+## Writing a part type
+
+A part is a small value class naming its type:
+
+```java
+public record ActionBarPart(String text) implements MessagePart {
+    public static final String TYPE = "actionbar";
+
+    @Override
+    public String type() {
+        return TYPE;
+    }
+}
+```
+
+Its renderer shows the part to one player and says whether it could:
+
+```java
+public class ActionBarRenderer implements PartRenderer<ActionBarPart> {
+    @Override
+    public PartRendering render(ActionBarPart part, PlayerMessage message, Identity recipient) {
+        recipient.getAudience().sendActionBar(Serializer.serialize(recipient, part.text(), message.getPlaceholders()));
+        return PartRendering.shown();
+    }
+}
+```
+
+- `PartRendering.unsupported()` tells Identica the player's client cannot show the part, such as a dialog on a client that is too old. Identica then tries the type's `fallbacks` in order, each with its `defaultPart`, the part the type builds from the message alone. A dialog type that falls back to chat names `ChatPart.TYPE`.
+- `PartRendering.shown(close)` hands Identica what takes the part down, such as removing a boss bar. Identica calls it when the player is told the next message and when they leave, so a part never outlives the message it belongs to.
+
+A renderer that fails is logged; the message's other parts are shown anyway.
+
+## Answering a prompt
+
+A message's prompt says what the player fills and which command answers it. A part type that asks itself, such as a dialog, collects the values and has the player run the command through the platform. `messageService.answer(prompt, values)` builds the command line, without its slash, from the command's configured alias, so a renamed command keeps working:
+
+```java
+Optional<String> line = messageService.answer(message.getPrompt(), Map.of("password", typed));
+// such as "login hunter2"; empty when the command is not registered
+```
+
+Fields of type `CHOICE` list their options, such as the providers a player chooses among, each with the value the command takes and a label to show.

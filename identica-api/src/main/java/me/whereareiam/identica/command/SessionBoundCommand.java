@@ -4,6 +4,7 @@ import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.SessionConnection;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,7 +14,7 @@ public abstract class SessionBoundCommand extends IdentityCommand {
 	protected final @Nullable Session requireCurrentSession(@NotNull Identity identity) {
 		UUID accountUniqueId = requireAccountUniqueId(identity);
 		if (accountUniqueId == null) {
-			sendMessageText(identity, currentSessionRequiredMessage());
+			sendMessage(identity, currentSessionRequiredMessage());
 			return null;
 		}
 
@@ -23,7 +24,7 @@ public abstract class SessionBoundCommand extends IdentityCommand {
 				.orElse(null);
 		if (session != null) return session;
 
-		sendMessageText(identity, currentSessionRequiredMessage());
+		sendMessage(identity, currentSessionRequiredMessage());
 		return null;
 	}
 
@@ -31,11 +32,11 @@ public abstract class SessionBoundCommand extends IdentityCommand {
 		UUID accountUniqueId = identity.getAccountUniqueId();
 		if (accountUniqueId != null) return accountUniqueId;
 
-		sendMessageText(identity, currentSessionRequiredMessage());
+		sendMessage(identity, currentSessionRequiredMessage());
 		return null;
 	}
 
 	protected abstract @NotNull SessionService sessionService();
 
-	protected abstract @Nullable String currentSessionRequiredMessage();
+	protected abstract @Nullable PlayerMessage currentSessionRequiredMessage();
 }

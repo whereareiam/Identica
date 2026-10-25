@@ -4,6 +4,7 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.identica.feature.sentinel.SentinelMessageDefinitions;
 import me.whereareiam.identica.feature.sentinel.SentinelQuota;
 import me.whereareiam.identica.feature.sentinel.model.SentinelContext;
 import me.whereareiam.identica.feature.sentinel.model.SentinelQuotaPolicy;
@@ -13,6 +14,7 @@ import me.whereareiam.identica.feature.sentinel.model.config.SentinelSettings;
 import me.whereareiam.identica.identity.address.AccountAddressService;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.identity.address.AddressRange;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.util.NetworkUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -21,6 +23,7 @@ import java.net.InetAddress;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Refuses a registration once {@code maxAccounts} accounts were registered from the connection's address, within the
@@ -95,12 +98,13 @@ public class AccountsPerAddressSentinelQuota implements SentinelQuota {
 		Logger.warn("The sentinel's accountsPerAddress limit is on, but identity/addresses.yml records no addresses, so it limits nothing");
 	}
 
-	private @NotNull String message(int maxAccounts, @NotNull SentinelQuotaUsage usage) {
+	private @NotNull PlayerMessage message(int maxAccounts, @NotNull SentinelQuotaUsage usage) {
 		long seconds = usage.getFreesAt() > 0 ? Math.max(0L, (usage.getFreesAt() - System.currentTimeMillis() + 999) / 1000) : 0L;
 
-		return String.join("\n", messagesProvider.get().getAccountsPerAddress().getDenied())
-				.replace("{maxAccounts}", String.valueOf(maxAccounts))
-				.replace("{seconds}", String.valueOf(seconds));
+		return SentinelMessageDefinitions.ACCOUNTS_PER_ADDRESS.create(messagesProvider.get(), Map.of(
+				"maxAccounts", String.valueOf(maxAccounts),
+				"seconds", String.valueOf(seconds)
+		));
 	}
 
 	private boolean isAllowed(@NotNull List<String> entries, @Nullable String ip) {

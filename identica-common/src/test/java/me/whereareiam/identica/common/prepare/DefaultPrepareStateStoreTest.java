@@ -2,6 +2,7 @@ package me.whereareiam.identica.common.prepare;
 
 import me.whereareiam.identica.common.replication.DefaultReplicationSystem;
 import me.whereareiam.identica.model.config.Engine;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
 import me.whereareiam.identica.replication.ReplicationAdapter;
 import org.junit.jupiter.api.DisplayName;
@@ -31,7 +32,7 @@ class DefaultPrepareStateStoreTest {
 	@Test
 	void clearByUniqueIdClearsConnectionKey() {
 		UUID uniqueId = UUID.randomUUID();
-		store.put(uniqueId, CONNECTION_KEY, PrepareDecision.deny("restricted"));
+		store.put(uniqueId, CONNECTION_KEY, PrepareDecision.deny(message("restricted")));
 
 		assertTrue(store.clear(uniqueId));
 		assertEquals(Optional.empty(), store.peek(uniqueId));
@@ -42,7 +43,7 @@ class DefaultPrepareStateStoreTest {
 	@Test
 	void clearIfClearsBothKeys() {
 		UUID uniqueId = UUID.randomUUID();
-		store.put(uniqueId, CONNECTION_KEY, PrepareDecision.deny("restricted"));
+		store.put(uniqueId, CONNECTION_KEY, PrepareDecision.deny(message("restricted")));
 
 		assertTrue(store.clearIf(uniqueId, CONNECTION_KEY, PrepareDecision::isDenied));
 		assertEquals(Optional.empty(), store.peek(uniqueId));
@@ -54,7 +55,7 @@ class DefaultPrepareStateStoreTest {
 	@Test
 	void clearIfKeepsNewerDecisionUnderConnectionKey() {
 		UUID uniqueId = UUID.randomUUID();
-		store.put(uniqueId, CONNECTION_KEY, PrepareDecision.deny("restricted"));
+		store.put(uniqueId, CONNECTION_KEY, PrepareDecision.deny(message("restricted")));
 		PrepareDecision handshake = PrepareDecision.allow();
 		store.put(CONNECTION_KEY, handshake);
 
@@ -78,7 +79,7 @@ class DefaultPrepareStateStoreTest {
 	@DisplayName("Clears a matching decision under the connection key alone")
 	@Test
 	void clearIfWithoutUniqueId() {
-		store.put(CONNECTION_KEY, PrepareDecision.deny("restricted"));
+		store.put(CONNECTION_KEY, PrepareDecision.deny(message("restricted")));
 
 		assertTrue(store.clearIf(null, CONNECTION_KEY, PrepareDecision::isDenied));
 		assertEquals(Optional.empty(), store.peek(CONNECTION_KEY));
@@ -96,5 +97,9 @@ class DefaultPrepareStateStoreTest {
 		ReplicationAdapter adapter = mock(ReplicationAdapter.class);
 		when(adapter.isAvailable()).thenReturn(false);
 		return adapter;
+	}
+
+	private static PlayerMessage message(String text) {
+		return PlayerMessage.builder().text(text).build();
 	}
 }

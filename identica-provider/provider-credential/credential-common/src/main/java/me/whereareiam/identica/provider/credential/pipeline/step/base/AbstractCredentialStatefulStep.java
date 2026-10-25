@@ -10,7 +10,6 @@ import me.whereareiam.identica.provider.credential.pipeline.CredentialRegistrati
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
 
 /**
  * A Credential step that works on input a player gave between two runs. It reads and changes only the state of
@@ -74,10 +73,5 @@ public abstract class AbstractCredentialStatefulStep extends AbstractCredentialS
 
 	protected final void clearRegisterState(@NotNull PipelineState state) {
 		state.remove(CredentialRegisterStateItem.KEY);
-	}
-
-	protected static @NotNull String joinLines(@Nullable List<String> lines) {
-		if (lines == null || lines.isEmpty()) return "";
-		return String.join("\n", lines);
 	}
 }

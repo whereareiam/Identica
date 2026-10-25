@@ -3,24 +3,24 @@ package me.whereareiam.identica.common.identity.username;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.Config;
-import me.whereareiam.identica.common.identity.username.outcome.RefuseOutcome;
-import me.whereareiam.identica.common.identity.username.outcome.RenameArrivingOutcome;
-import me.whereareiam.identica.common.identity.username.outcome.RenameHolderOutcome;
-import me.whereareiam.identica.model.conflict.ConflictRuleOutcome;
 import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.common.config.defaults.UsernameConflictsDefaults;
 import me.whereareiam.identica.common.config.defaults.messages.UsernameMessagesDefaults;
 import me.whereareiam.identica.common.config.provider.UsernameConflictsProvider;
 import me.whereareiam.identica.common.conflict.DefaultConflictService;
+import me.whereareiam.identica.common.identity.username.outcome.RefuseOutcome;
+import me.whereareiam.identica.common.identity.username.outcome.RenameArrivingOutcome;
+import me.whereareiam.identica.common.identity.username.outcome.RenameHolderOutcome;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.identity.UsernameChangedEvent;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
+import me.whereareiam.identica.model.Session;
 import me.whereareiam.identica.model.SessionCloseRequest;
 import me.whereareiam.identica.model.config.UsernameConflicts;
 import me.whereareiam.identica.model.config.UsernameMessages;
-import me.whereareiam.identica.model.Session;
+import me.whereareiam.identica.model.conflict.ConflictRuleOutcome;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.identity.username.AccountUsername;
 import me.whereareiam.identica.model.identity.username.AccountUsernameHistoryEntry;
@@ -171,7 +171,8 @@ class DefaultUsernameAssignerTest {
 		verify(sessions).close(close.capture());
 		assertEquals(HOLDER, close.getValue().getUniqueId());
 		assertTrue(close.getValue().isDisconnect());
-		assertEquals("replaced Steve by Steve_beta", close.getValue().getDisconnectMessage());
+		assertEquals("identica:username-holder-replaced", close.getValue().getDisconnectMessage().getId());
+		assertEquals(Map.of("username", "Steve", "renamed", "Steve_beta"), close.getValue().getDisconnectMessage().getPlaceholders());
 	}
 
 	@DisplayName("Gives a temporary name while a renamed holder still plays under the account's name")
@@ -210,7 +211,8 @@ class DefaultUsernameAssignerTest {
 		UsernameAssignment assignment = assigner.assign(firstJoin(ARRIVING, CHOOSING, "steve"));
 
 		assertTrue(assignment.isRefused());
-		assertEquals("taken steve", assignment.getMessage());
+		assertEquals("identica:username-taken", assignment.getMessage().getId());
+		assertEquals("steve", assignment.getMessage().getPlaceholders().get("username"));
 		assertEquals("Steve", usernames.name(HOLDER));
 	}
 

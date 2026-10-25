@@ -12,6 +12,7 @@ import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
 import me.whereareiam.identica.model.provider.selection.ProviderSelection;
 import me.whereareiam.identica.provider.ProviderAttemptStore;
 import me.whereareiam.identica.provider.premium.PremiumConstants;
+import me.whereareiam.identica.provider.premium.PremiumMessageDefinitions;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
 import me.whereareiam.identica.provider.premium.handshake.PremiumHandshakeAttributes;
 import me.whereareiam.identica.provider.premium.resolver.PremiumDetector;
@@ -137,7 +138,7 @@ public class PremiumHandshakePolicy implements ProviderScopedHandshakePolicy {
 
 			return detection.premium()
 					? forceOnline()
-					: HandshakeDecision.deny(String.join("\n", messagesProvider.get().getVerification().getOwnedUsername()));
+					: HandshakeDecision.deny(PremiumMessageDefinitions.OWNED_USERNAME.create(messagesProvider.get()));
 		});
 	}
 

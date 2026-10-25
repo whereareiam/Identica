@@ -6,19 +6,23 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import me.whereareiam.identica.feature.FeatureRegistry;
 import me.whereareiam.identica.feature.recognition.store.RecognizedConnectionStore;
+import me.whereareiam.identica.message.MessageService;
+import me.whereareiam.identica.model.message.MessageDefinition;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.completion.CompletionContext;
 import me.whereareiam.identica.pipeline.completion.step.AbstractMessageCompletionStep;
+import me.whereareiam.identica.provider.premium.PremiumMessageDefinitions;
 import me.whereareiam.identica.provider.premium.config.PremiumMessages;
 import me.whereareiam.identica.type.pipeline.PipelineType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
 import java.util.UUID;
 
 @Singleton
 public class PremiumCompletionStep extends AbstractMessageCompletionStep {
 	private final Provider<PremiumMessages> messagesProvider;
+	private final MessageService messageService;
 
 	private final @NotNull FeatureRegistry features;
 	private final @NotNull Injector injector;
@@ -26,6 +30,7 @@ public class PremiumCompletionStep extends AbstractMessageCompletionStep {
 	@Inject
 	public PremiumCompletionStep(
 			Provider<PremiumMessages> messagesProvider,
+			MessageService messageService,
 			@NotNull FeatureRegistry features,
 			@NotNull Injector injector
 	) {
@@ -33,6 +38,7 @@ public class PremiumCompletionStep extends AbstractMessageCompletionStep {
 		this.features = features;
 		this.injector = injector;
 		this.messagesProvider = messagesProvider;
+		this.messageService = messageService;
 	}
 
 	@Override
@@ -47,9 +53,21 @@ public class PremiumCompletionStep extends AbstractMessageCompletionStep {
 	}
 
 	@Override
-	protected @Nullable List<String> messageLines(@NotNull CompletionContext context) {
-		PremiumMessages.Completion.Pipeline messages = resolve(context);
-		return messages.getBody();
+	protected @Nullable PlayerMessage message(@NotNull CompletionContext context) {
+		return definition(context).create(messagesProvider.get());
+	}
+
+	@Override
+	protected @NotNull MessageService messageService() {
+		return messageService;
+	}
+
+	private @NotNull MessageDefinition<PremiumMessages> definition(@NotNull CompletionContext context) {
+		if (context.getPipelineType() == PipelineType.MIGRATION) return PremiumMessageDefinitions.COMPLETION_MIGRATION;
+		if (context.getPipelineType() == PipelineType.REGISTRATION) return PremiumMessageDefinitions.COMPLETION_REGISTRATION;
+		if (isRecognized(context)) return PremiumMessageDefinitions.COMPLETION_RECOGNITION;
+
+		return PremiumMessageDefinitions.COMPLETION_AUTHENTICATION;
 	}
 
 	private PremiumMessages.Completion.@NotNull Pipeline resolve(@NotNull CompletionContext context) {

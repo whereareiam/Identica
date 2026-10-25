@@ -5,9 +5,6 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.common.util.UniqueIdResolutionSupport;
-import me.whereareiam.identica.persistence.AccountPersistenceService;
-import me.whereareiam.identica.persistence.AccountReservationPersistenceService;
-import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.account.AccountClearEvent;
 import me.whereareiam.identica.event.account.AccountDeleteEvent;
@@ -19,10 +16,14 @@ import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.model.SessionCloseRequest;
 import me.whereareiam.identica.model.config.Settings;
 import me.whereareiam.identica.model.identity.Account;
-import me.whereareiam.identica.model.identity.username.UsernameWriteResult;
-import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import me.whereareiam.identica.model.identity.AccountOperationRequest;
 import me.whereareiam.identica.model.identity.provider.AccountProviderLink;
+import me.whereareiam.identica.model.identity.username.UsernameWriteResult;
+import me.whereareiam.identica.model.message.PlayerMessage;
+import me.whereareiam.identica.persistence.AccountPersistenceService;
+import me.whereareiam.identica.persistence.AccountReservationPersistenceService;
+import me.whereareiam.identica.persistence.provider.ProviderLinkPersistenceService;
+import me.whereareiam.identica.type.identity.AccountUsernameSource;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -95,7 +96,7 @@ public class DefaultAccountService implements AccountService {
 		}
 	}
 
-	private void closeSession(@NotNull Account account, boolean disconnect, @NotNull String disconnectMessage) {
+	private void closeSession(@NotNull Account account, boolean disconnect, @Nullable PlayerMessage disconnectMessage) {
 		sessionService.close(SessionCloseRequest.builder()
 				.uniqueId(account.getUniqueId())
 				.disconnect(disconnect)

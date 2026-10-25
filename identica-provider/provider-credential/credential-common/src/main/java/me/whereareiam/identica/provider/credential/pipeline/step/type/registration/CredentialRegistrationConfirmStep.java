@@ -4,6 +4,8 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import me.whereareiam.identica.model.config.Engine;
+import me.whereareiam.identica.model.message.PlayerMessage;
+import me.whereareiam.identica.provider.credential.CredentialMessageDefinitions;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.cryptography.CryptographyService;
@@ -35,17 +37,17 @@ public class CredentialRegistrationConfirmStep extends AbstractCredentialConfirm
 	}
 
 	@Override
-	protected @NotNull String registerPrompt(@NotNull CredentialMessages messages) {
-		return joinLines(messages.getScenario().getRegistration().getPrompt());
+	protected @NotNull PlayerMessage registerPrompt(@NotNull CredentialMessages messages) {
+		return CredentialMessageDefinitions.NEW_PASSWORD.create(messages);
 	}
 
 	@Override
-	protected @NotNull String confirmPrompt(@NotNull CredentialMessages messages) {
-		return joinLines(messages.getScenario().getRegistration().getConfirmPrompt());
+	protected @NotNull PlayerMessage confirmPrompt(@NotNull CredentialMessages messages) {
+		return CredentialMessageDefinitions.REPEAT_PASSWORD.create(messages);
 	}
 
 	@Override
-	protected @NotNull String mismatchMessage(@NotNull CredentialMessages messages) {
-		return messages.getScenario().getRegistration().getStatus().getMismatch();
+	protected @NotNull PlayerMessage mismatchMessage(@NotNull CredentialMessages messages) {
+		return CredentialMessageDefinitions.PASSWORDS_DIFFER.create(messages);
 	}
 }

@@ -1,10 +1,10 @@
 package me.whereareiam.identica.feature.sentinel;
 
+import me.whereareiam.identica.feature.sentinel.model.SentinelContext;
+import me.whereareiam.identica.feature.sentinel.model.SentinelPolicy;
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelMessages;
 import me.whereareiam.identica.feature.sentinel.model.config.SentinelSettings;
 import me.whereareiam.identica.feature.sentinel.type.ResumeSpamSentinelDefinition;
-import me.whereareiam.identica.feature.sentinel.model.SentinelContext;
-import me.whereareiam.identica.feature.sentinel.model.SentinelPolicy;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -41,6 +41,6 @@ class ResumeSpamSentinelDefinitionTest {
 		assertNotNull(policy.getLockout());
 		assertNotNull(policy.getLockout().getMessageSupplier());
 		assertEquals("resume-spam", definition.id());
-		assertTrue(policy.getLockout().getMessageSupplier().apply(null, 12L).contains("12s"));
+		assertEquals("12", policy.getLockout().getMessageSupplier().apply(null, 12L).getPlaceholders().get("seconds"));
 	}
 }

@@ -5,9 +5,11 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.model.config.Engine;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.state.PipelineState;
+import me.whereareiam.identica.provider.credential.CredentialMessageDefinitions;
 import me.whereareiam.identica.provider.credential.account.CredentialAccountService;
 import me.whereareiam.identica.provider.credential.config.CredentialMessages;
 import me.whereareiam.identica.provider.credential.cryptography.CryptographyService;
@@ -15,6 +17,7 @@ import me.whereareiam.identica.provider.credential.event.authentication.Authenti
 import me.whereareiam.identica.provider.credential.model.CredentialAccount;
 import me.whereareiam.identica.provider.credential.pipeline.step.base.AbstractCredentialAttemptStep;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -75,21 +78,15 @@ public class CredentialAccountPresenceStep extends AbstractCredentialAttemptStep
 		return StepResult.complete(context);
 	}
 
-	private @NotNull String joinAlreadyRegistered(@NotNull CredentialMessages messages) {
-		String registered = messages.getScenario().getRegistration().getStatus().getAlreadyRegistered();
-		String prompt = joinLines(messages.getScenario().getAuthentication().getPrompt());
-		if (registered == null || registered.isBlank())
-			return prompt;
-		return registered + "\n" + prompt;
+	private @NotNull PlayerMessage joinAlreadyRegistered(@NotNull CredentialMessages messages) {
+		return CredentialMessageDefinitions.ALREADY_REGISTERED.create(messages)
+				.append(CredentialMessageDefinitions.PASSWORD.create(messages));
 	}
 
 	private @NotNull StepResult invalidWithWarning(
 			@NotNull CredentialMessages messages,
-			String warning
+			@Nullable PlayerMessage warning
 	) {
-		String invalid = messages.getScenario().getAuthentication().getStatus().getInvalid();
-		if (warning == null || warning.isBlank()) return StepResult.waiting(invalid);
-		if (invalid == null || invalid.isBlank()) return StepResult.waiting(warning);
-		return StepResult.waiting(invalid + "\n" + warning);
+		return StepResult.waiting(CredentialMessageDefinitions.PASSWORD_INVALID.create(messages).append(warning));
 	}
 }

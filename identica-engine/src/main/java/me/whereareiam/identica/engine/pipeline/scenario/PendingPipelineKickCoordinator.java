@@ -3,12 +3,9 @@ package me.whereareiam.identica.engine.pipeline.scenario;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
-import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.event.EventListener;
 import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.base.IdenticEvent;
-import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
-import me.whereareiam.identica.lifecycle.StartupPhase;
 import me.whereareiam.identica.event.scenario.ScenarioRequiredEvent;
 import me.whereareiam.identica.event.scenario.ScenarioResolvedEvent;
 import me.whereareiam.identica.event.scenario.authentication.AuthenticationResolvedEvent;
@@ -16,11 +13,17 @@ import me.whereareiam.identica.event.scenario.migration.MigrationResolvedEvent;
 import me.whereareiam.identica.event.scenario.registration.RegistrationResolvedEvent;
 import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.Identity;
+import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
+import me.whereareiam.identica.lifecycle.StartupPhase;
+import me.whereareiam.identica.message.MessageService;
+import me.whereareiam.identica.message.MigrationMessages;
+import me.whereareiam.identica.message.ScenarioMessages;
 import me.whereareiam.identica.model.auth.AuthContext;
 import me.whereareiam.identica.model.config.Messages;
 import me.whereareiam.identica.model.delivery.DeliveryPayload;
 import me.whereareiam.identica.model.delivery.DeliveryRequest;
 import me.whereareiam.identica.model.delivery.DeliveryTarget;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.migration.MigrationContext;
 import me.whereareiam.identica.model.registration.RegistrationContext;
 import me.whereareiam.identica.model.scheduler.DelayedRunnableTask;
@@ -37,7 +40,6 @@ import me.whereareiam.identica.type.pipeline.PipelineType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
 import java.util.UUID;
 
 @Singleton
@@ -46,6 +48,7 @@ public class PendingPipelineKickCoordinator implements EventListener, RuntimeLif
 	private static final Purpose PURPOSE = Purpose.of("pipeline-expiry");
 
 	private final Provider<Messages> messagesProvider;
+	private final MessageService messageService;
 	private final IdentityService identityService;
 	private final DeliveryService deliveryService;
 	private final EventManager eventManager;
@@ -54,12 +57,14 @@ public class PendingPipelineKickCoordinator implements EventListener, RuntimeLif
 	@Inject
 	public PendingPipelineKickCoordinator(
 			Provider<Messages> messagesProvider,
+			MessageService messageService,
 			IdentityService identityService,
 			DeliveryService deliveryService,
 			Scheduler scheduler,
 			EventManager eventManager
 	) {
 		this.messagesProvider = messagesProvider;
+		this.messageService = messageService;
 		this.identityService = identityService;
 		this.deliveryService = deliveryService;
 		this.eventManager = eventManager;
@@ -126,8 +131,7 @@ public class PendingPipelineKickCoordinator implements EventListener, RuntimeLif
 		queueCancelledNotice(type, context, identity);
 		if (identity == null) return;
 
-		String message = resolveExpiredMessage(type);
-		identity.disconnect(Serializer.serialize(identity, message));
+		identity.disconnect(messageService.disconnectReason(identity, resolveExpiredMessage(type)));
 	}
 
 	private void queueCancelledNotice(@NotNull PipelineType type, @NotNull ScenarioContext context, @Nullable Identity identity) {
@@ -144,7 +148,7 @@ public class PendingPipelineKickCoordinator implements EventListener, RuntimeLif
 						.accountUniqueId(accountUniqueId)
 						.build())
 				.payload(DeliveryPayload.builder()
-						.chatMessage(String.join("\n", messagesProvider.get().getScenarios().getMigration().getCancelled()))
+						.message(MigrationMessages.CANCELLED.create(messagesProvider.get()))
 						.build())
 				.semantics(DeliverySemantics.ONCE)
 				.createdAt(System.currentTimeMillis())
@@ -161,20 +165,8 @@ public class PendingPipelineKickCoordinator implements EventListener, RuntimeLif
 		return accountUniqueId != null ? identityService.findByAccountUniqueId(accountUniqueId).orElse(null) : null;
 	}
 
-	private @NotNull String resolveExpiredMessage(@NotNull PipelineType pipelineType) {
-		Messages.Scenarios.Scenario scenario = resolveScenarioMessages(pipelineType);
-		List<String> lines = scenario.getPipelineExpired();
-		if (lines.isEmpty()) return "";
-		return String.join("\n", lines);
-	}
-
-	private @NotNull Messages.Scenarios.Scenario resolveScenarioMessages(@NotNull PipelineType type) {
-		Messages.Scenarios scenarios = messagesProvider.get().getScenarios();
-
-		if (type == PipelineType.REGISTRATION) return scenarios.getRegistration();
-		if (type == PipelineType.MIGRATION) return scenarios.getMigration();
-
-		return scenarios.getAuthentication();
+	private @NotNull PlayerMessage resolveExpiredMessage(@NotNull PipelineType pipelineType) {
+		return ScenarioMessages.of(pipelineType).getPipelineExpired().create(messagesProvider.get());
 	}
 
 	private @Nullable PipelineType resolvePipelineType(@NotNull ScenarioContext context) {

@@ -133,6 +133,11 @@ Setting flags are badges; translate their text, keep `type`:
 | permission | право, разрешение | Keep permission nodes as code. |
 | message | сообщение | |
 | placeholder | плейсхолдер | |
+| message definition | определение сообщения | Keep `MessageDefinition` as code. |
+| message part, part type | часть сообщения, тип части | Chat is one part; an addon adds others. |
+| presentation | представление | How a message is shown; keep `Presentation` as code. |
+| renderer | отрисовщик | Shows one part to a player. |
+| action bar | строка действий | |
 | event | событие | |
 | addon | аддон | |
 | API | API | |

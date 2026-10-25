@@ -10,10 +10,13 @@ import me.whereareiam.identica.annotation.AvailableWhilePending;
 import me.whereareiam.identica.annotation.Command;
 import me.whereareiam.identica.annotation.Definition;
 import me.whereareiam.identica.identity.actor.Identity;
+import me.whereareiam.identica.message.MessageService;
+import me.whereareiam.identica.message.ProviderChoiceMessages;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.request.ResumeRequest;
 import me.whereareiam.identica.model.config.Engine;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
 import me.whereareiam.identica.model.provider.ProviderContext;
 import me.whereareiam.identica.model.provider.selection.ProviderClaim;
@@ -26,6 +29,7 @@ import me.whereareiam.identica.type.provider.ProviderClaimOrigin;
 import me.whereareiam.keystone.Actor;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -36,6 +40,7 @@ public class EnrollCommand {
 	private final Provider<Engine> engineProvider;
 	private final Provider<Messages> messagesProvider;
 	private final ProviderSelector providerSelector;
+	private final MessageService messageService;
 
 	@AvailableWhilePending
 	@Definition("enroll")
@@ -58,13 +63,12 @@ public class EnrollCommand {
 		if (decision == null || decision.getStatus() == null)
 			return;
 
-		Messages.Commands.Enroll enrollMessages = messagesProvider.get().getCommands().getEnroll();
-
+		Messages messages = messagesProvider.get();
 		switch (decision.getStatus()) {
 			case WAIT -> sendMessage(sender, decision.getMessage());
 			case DENY, REQUIRE_RECONNECT -> disconnect(sender, decision.getMessage());
-			case NO_PENDING -> sendMessage(sender, enrollMessages.getNoPending());
-			case ALLOW -> sendMessage(sender, enrollMessages.getCompleted());
+			case NO_PENDING -> sendMessage(sender, ProviderChoiceMessages.NO_PENDING.create(messages));
+			case ALLOW -> sendMessage(sender, ProviderChoiceMessages.COMPLETED.create(messages));
 			default -> {
 			}
 		}
@@ -110,20 +114,20 @@ public class EnrollCommand {
 		}
 	}
 
-	private void sendMessage(@NotNull Actor sender, String message) {
-		if (message == null || message.isBlank()) return;
+	private void sendMessage(@NotNull Actor sender, @Nullable PlayerMessage message) {
+		if (message == null || message.isEmpty()) return;
 		if (sender instanceof Identity identity) {
-			identity.send(message);
+			messageService.send(identity, message);
 			return;
 		}
 
-		sender.sendMessage(Serializer.serialize(sender, message));
+		sender.sendMessage(Serializer.serialize(sender, message.getText(), message.getPlaceholders()));
 	}
 
 	/** A denial disconnects whether or not it comes with a reason to show. */
-	private void disconnect(@NotNull Actor sender, String message) {
-		Component component = Serializer.serialize(sender, message == null ? "" : message);
-		if (sender instanceof Identity identity)
-			identity.disconnect(component);
+	private void disconnect(@NotNull Actor sender, @Nullable PlayerMessage message) {
+		if (!(sender instanceof Identity identity)) return;
+
+		identity.disconnect(message != null ? messageService.disconnectReason(identity, message) : Component.empty());
 	}
 }

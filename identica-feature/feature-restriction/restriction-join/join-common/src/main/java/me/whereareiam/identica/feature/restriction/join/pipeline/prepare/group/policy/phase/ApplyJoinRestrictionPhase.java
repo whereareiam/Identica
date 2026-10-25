@@ -4,7 +4,13 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.identica.Serializer;
+import me.whereareiam.identica.feature.restriction.RestrictionService;
+import me.whereareiam.identica.feature.restriction.join.JoinRestrictionMessageDefinitions;
+import me.whereareiam.identica.feature.restriction.join.JoinRestrictionType;
+import me.whereareiam.identica.feature.restriction.join.config.JoinRestrictionMessages;
+import me.whereareiam.identica.feature.restriction.model.RestrictionDecision;
+import me.whereareiam.identica.feature.restriction.model.RestrictionEvaluationRequest;
+import me.whereareiam.identica.feature.restriction.type.RestrictionSignal;
 import me.whereareiam.identica.model.pipeline.phase.PhaseResult;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareAccountCandidateItem;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareContextItem;
@@ -14,12 +20,6 @@ import me.whereareiam.identica.pipeline.PipelinePhase;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.prepare.PrepareGroupState;
 import me.whereareiam.identica.provider.ProviderOperations;
-import me.whereareiam.identica.feature.restriction.RestrictionService;
-import me.whereareiam.identica.feature.restriction.join.JoinRestrictionType;
-import me.whereareiam.identica.feature.restriction.join.config.JoinRestrictionMessages;
-import me.whereareiam.identica.feature.restriction.model.RestrictionDecision;
-import me.whereareiam.identica.feature.restriction.model.RestrictionEvaluationRequest;
-import me.whereareiam.identica.feature.restriction.type.RestrictionSignal;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
@@ -82,7 +82,7 @@ public class ApplyJoinRestrictionPhase implements PipelinePhase<PrepareGroupStat
 		PrepareAccountCandidateItem candidate = pipelineState.get(PrepareAccountCandidateItem.KEY).orElse(null);
 		String providerName = providerOperations.displayProviderName(provider.getProviderId());
 		pipelineState.put(PrepareDecision.KEY, PrepareDecision.deny(
-				Serializer.render(String.join("\n", messagesProvider.get().getDenied()), Map.of(
+				JoinRestrictionMessageDefinitions.DENIED.create(messagesProvider.get(), Map.of(
 						"providerId", provider.getProviderId(),
 						"providerName", providerName != null ? providerName : provider.getProviderId(),
 						"allow", describeAllow(decision.getAllow())

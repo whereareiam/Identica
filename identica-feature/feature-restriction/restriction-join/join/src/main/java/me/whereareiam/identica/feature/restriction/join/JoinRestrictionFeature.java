@@ -6,16 +6,15 @@ import com.google.inject.Module;
 import com.google.inject.TypeLiteral;
 import me.whereareiam.identica.Registry;
 import me.whereareiam.identica.Reloadable;
-import me.whereareiam.identica.feature.IdenticaFeature;
 import me.whereareiam.identica.feature.FeatureContext;
 import me.whereareiam.identica.feature.FeatureProviderContext;
-import me.whereareiam.identica.pipeline.extension.PipelineExtensionRegistry;
+import me.whereareiam.identica.feature.IdenticaFeature;
 import me.whereareiam.identica.feature.restriction.RestrictionFeatureId;
-import me.whereareiam.identica.feature.restriction.join.config.provider.JoinRestrictionProvidersProvider;
 import me.whereareiam.identica.feature.restriction.join.config.JoinRestrictionSettings;
-import me.whereareiam.identica.feature.restriction.join.config.provider.JoinRestrictionSettingsProvider;
 import me.whereareiam.identica.feature.restriction.join.config.provider.JoinRestrictionCommandsProvider;
 import me.whereareiam.identica.feature.restriction.join.config.provider.JoinRestrictionMessagesProvider;
+import me.whereareiam.identica.feature.restriction.join.config.provider.JoinRestrictionProvidersProvider;
+import me.whereareiam.identica.feature.restriction.join.config.provider.JoinRestrictionSettingsProvider;
 import me.whereareiam.identica.feature.restriction.join.pipeline.JoinPipelineExtension;
 import me.whereareiam.identica.feature.restriction.model.RestrictionSignalDescriptor;
 import me.whereareiam.identica.feature.restriction.model.RestrictionTypeDescriptor;
@@ -23,6 +22,8 @@ import me.whereareiam.identica.feature.restriction.registry.RestrictionSignalReg
 import me.whereareiam.identica.feature.restriction.registry.type.RestrictionTypeRegistry;
 import me.whereareiam.identica.feature.restriction.registry.type.RestrictionTypeResolverRegistry;
 import me.whereareiam.identica.feature.restriction.type.RestrictionSignal;
+import me.whereareiam.identica.message.MessageService;
+import me.whereareiam.identica.pipeline.extension.PipelineExtensionRegistry;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayDeque;
@@ -75,6 +76,8 @@ public final class JoinRestrictionFeature implements IdenticaFeature {
 		cleanup.addFirst(() -> reloadables.unregister(injector.getInstance(JoinRestrictionProvidersProvider.class)));
 		cleanup.addFirst(() -> reloadables.unregister(injector.getInstance(JoinRestrictionCommandsProvider.class)));
 		cleanup.addFirst(() -> reloadables.unregister(injector.getInstance(JoinRestrictionMessagesProvider.class)));
+		MessageService.Registration messages = injector.getInstance(MessageService.class).register(JoinRestrictionMessageDefinitions.all());
+		cleanup.addFirst(messages::remove);
 		injector.getInstance(JoinRestrictionSettings.class);
 		RestrictionTypeRegistry types = injector.getInstance(RestrictionTypeRegistry.class);
 		RestrictionTypeDescriptor type = RestrictionTypeDescriptor.builder()

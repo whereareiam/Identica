@@ -3,20 +3,19 @@ package me.whereareiam.identica.common.routing;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
-import me.whereareiam.identica.Serializer;
-import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.EventListener;
+import me.whereareiam.identica.event.EventManager;
 import me.whereareiam.identica.event.base.IdenticEvent;
 import me.whereareiam.identica.event.routing.RoutingTargetMissingEvent;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.message.ConnectionMessages;
+import me.whereareiam.identica.message.ScenarioMessages;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.routing.RoutingIntent;
 import me.whereareiam.identica.type.pipeline.PipelineType;
-import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.List;
 
 @Singleton
 public class RoutingTargetMissingListener implements EventListener {
@@ -43,40 +42,21 @@ public class RoutingTargetMissingListener implements EventListener {
 		Logger.warn("Routing target server %s not found for %s", server, actor);
 
 		event.setDisconnect(true);
-		if (event.getMessage() == null || event.getMessage().equals(Component.empty())) {
-			event.setMessage(buildMissingServerMessage(intent.getPipelineType()));
-		}
+		if (event.getMessage() == null || event.getMessage().isEmpty())
+			event.setMessage(missingServerMessage(intent.getPipelineType()));
 	}
 
 	/**
 	 * Builds the reason from the scenario's own message, or from the shared one when the scenario
 	 * has none or the intent belongs to no scenario.
 	 */
-	private Component buildMissingServerMessage(@Nullable PipelineType scenario) {
+	private @NotNull PlayerMessage missingServerMessage(@Nullable PipelineType scenario) {
 		Messages messages = messagesProvider.get();
-		String message = joinMessage(scenarioMissingServer(messages, scenario));
-		if (message.isBlank())
-			message = joinMessage(messages.getRouting().getMissingServer());
-		if (message.isBlank())
-			return Component.empty();
+		if (scenario != null) {
+			PlayerMessage message = ScenarioMessages.of(scenario).getMissingServer().create(messages);
+			if (!message.isEmpty()) return message;
+		}
 
-		return Serializer.serialize(message);
-	}
-
-	private static @NotNull List<String> scenarioMissingServer(@NotNull Messages messages, @Nullable PipelineType scenario) {
-		if (scenario == null) return List.of();
-
-		Messages.Scenarios scenarios = messages.getScenarios();
-		Messages.Scenarios.Scenario messagesOfScenario = switch (scenario) {
-			case AUTHENTICATION -> scenarios.getAuthentication();
-			case REGISTRATION -> scenarios.getRegistration();
-			case MIGRATION -> scenarios.getMigration();
-		};
-
-		return messagesOfScenario.getRouting().getMissingServer();
-	}
-
-	private static String joinMessage(@NotNull List<String> lines) {
-		return String.join("\n", lines);
+		return ConnectionMessages.MISSING_SERVER.create(messages);
 	}
 }

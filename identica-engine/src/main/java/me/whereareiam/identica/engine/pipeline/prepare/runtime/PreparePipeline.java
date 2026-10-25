@@ -67,7 +67,7 @@ public class PreparePipeline {
 			Logger.severe(e, "Prepare failed stage=%s username=%s",
 					request.getStage(),
 					request.getIdentity().getUsername());
-			return CompletableFuture.completedFuture(PrepareDecision.deny("Connection failed"));
+			return CompletableFuture.completedFuture(PrepareDecision.deny(null));
 		}
 	}
 }

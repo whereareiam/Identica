@@ -2,6 +2,7 @@ package me.whereareiam.identica.provider.credential.pipeline.step.base;
 
 import com.google.inject.Provider;
 import me.whereareiam.identica.model.config.Engine;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.journey.stage.step.StepResult;
 import me.whereareiam.identica.pipeline.ScenarioContext;
 import me.whereareiam.identica.pipeline.state.PipelineState;
@@ -58,16 +59,16 @@ public abstract class AbstractCredentialConfirmStep extends AbstractCredentialSt
 				PasswordChangeReason.REGISTER
 		).isPresent();
 		clearRegisterState(state);
-		if (!registered) return CompletableFuture.completedFuture(StepResult.failed(""));
+		if (!registered) return CompletableFuture.completedFuture(StepResult.failed(null));
 
 		return CompletableFuture.completedFuture(StepResult.complete(context));
 	}
 
-	protected abstract @NotNull String registerPrompt(@NotNull CredentialMessages messages);
+	protected abstract @NotNull PlayerMessage registerPrompt(@NotNull CredentialMessages messages);
 
-	protected abstract @NotNull String confirmPrompt(@NotNull CredentialMessages messages);
+	protected abstract @NotNull PlayerMessage confirmPrompt(@NotNull CredentialMessages messages);
 
-	protected abstract @NotNull String mismatchMessage(@NotNull CredentialMessages messages);
+	protected abstract @NotNull PlayerMessage mismatchMessage(@NotNull CredentialMessages messages);
 
 	private boolean matchesPending(
 			@NotNull String candidate,
@@ -80,11 +81,11 @@ public abstract class AbstractCredentialConfirmStep extends AbstractCredentialSt
 		);
 	}
 
-	private @NotNull String registerReset(@NotNull CredentialMessages messages) {
-		String mismatch = mismatchMessage(messages);
-		String prompt = registerPrompt(messages);
-		if (mismatch.isBlank()) return prompt;
+	private @NotNull PlayerMessage registerReset(@NotNull CredentialMessages messages) {
+		PlayerMessage mismatch = mismatchMessage(messages);
+		PlayerMessage prompt = registerPrompt(messages);
+		if (mismatch.getText().isBlank()) return prompt;
 
-		return mismatch + "\n" + prompt;
+		return mismatch.append(prompt);
 	}
 }

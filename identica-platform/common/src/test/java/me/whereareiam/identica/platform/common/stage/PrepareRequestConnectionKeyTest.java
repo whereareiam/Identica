@@ -1,25 +1,26 @@
 package me.whereareiam.identica.platform.common.stage;
 
 import me.whereareiam.identica.ConnectionCoordinator;
+import me.whereareiam.identica.Serializer;
 import me.whereareiam.identica.handshake.HandshakeStore;
 import me.whereareiam.identica.identity.actor.ConnectionIdentity;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.HandshakeAttributeKey;
-import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.auth.handshake.HandshakeDecision;
 import me.whereareiam.identica.model.auth.handshake.HandshakeInstruction;
-import me.whereareiam.identica.model.auth.request.AdvanceRequest;
-import me.whereareiam.identica.model.auth.request.ConnectionRequest;
-import me.whereareiam.identica.model.auth.request.ResumeRequest;
 import me.whereareiam.identica.model.config.Messages;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.prepare.PrepareRequest;
 import me.whereareiam.identica.model.pipeline.prepare.decision.PrepareDecision;
 import me.whereareiam.identica.pipeline.prepare.PrepareStateStore;
-import me.whereareiam.identica.platform.common.stage.profile.ProfileRewriteProcessor;
-import me.whereareiam.identica.platform.common.stage.login.PreparedRefusal;
 import me.whereareiam.identica.platform.common.stage.handshake.HandshakeDecisionProcessor;
+import me.whereareiam.identica.platform.common.stage.login.PreparedRefusal;
+import me.whereareiam.identica.platform.common.stage.profile.ProfileRewriteProcessor;
+import me.whereareiam.keystone.model.SerializerContent;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +31,6 @@ import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentCaptor.forClass;
-import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -45,7 +45,7 @@ class PrepareRequestConnectionKeyTest {
 		ProfileRewriteProcessor processor = new ProfileRewriteProcessor(
 				connectionCoordinator,
 				new NoopPrepareStateStore(),
-				new PreparedRefusal(new NoopPrepareStateStore(), Messages::new)
+				new PreparedRefusal(new NoopPrepareStateStore(), Messages::new, messageService())
 		);
 		ConnectionIdentity identity = identity("PlayerOne");
 
@@ -76,7 +76,7 @@ class PrepareRequestConnectionKeyTest {
 				connectionCoordinator,
 				new NoopPrepareStateStore(),
 				handshakeStore,
-				new PreparedRefusal(new NoopPrepareStateStore(), Messages::new)
+				new PreparedRefusal(new NoopPrepareStateStore(), Messages::new, messageService())
 		);
 		ConnectionIdentity identity = identity("PlayerTwo");
 
@@ -115,7 +115,7 @@ class PrepareRequestConnectionKeyTest {
 				connectionCoordinator,
 				new NoopPrepareStateStore(),
 				handshakeStore,
-				new PreparedRefusal(new NoopPrepareStateStore(), Messages::new)
+				new PreparedRefusal(new NoopPrepareStateStore(), Messages::new, messageService())
 		)
 				.process(new HandshakeDecisionProcessor.Request(identity, applied::add), message -> {
 				})
@@ -162,4 +162,18 @@ class PrepareRequestConnectionKeyTest {
 			return false;
 		}
 	}
+
+	private static MessageService messageService() {
+		MessageService messageService = mock(MessageService.class);
+		when(messageService.disconnectReason(any(), any())).thenAnswer(call -> {
+			PlayerMessage message = call.getArgument(1);
+			return Serializer.serialize(SerializerContent.builder()
+					.message(message.getText())
+					.placeholders(message.getPlaceholders())
+					.build());
+		});
+
+		return messageService;
+	}
+
 }

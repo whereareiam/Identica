@@ -9,6 +9,7 @@ import me.whereareiam.identica.model.delivery.DeliveryMarker;
 import me.whereareiam.identica.model.delivery.DeliveryPayload;
 import me.whereareiam.identica.model.delivery.DeliveryRequest;
 import me.whereareiam.identica.model.delivery.DeliveryTarget;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.journey.JourneyStateItem;
 import me.whereareiam.identica.pipeline.state.PipelineState;
 import me.whereareiam.identica.pipeline.state.PipelineStateReference;
@@ -38,8 +39,8 @@ public class ConnectionDecisionDeliveryCoordinator {
 	public boolean queueWaitDecision(@NotNull ConnectionIdentity connection, @Nullable ConnectionDecision decision) {
 		if (decision == null || decision.getStatus() != ConnectionDecision.Status.WAIT) return false;
 
-		String message = decision.getMessage();
-		if (message == null || message.isBlank()) return false;
+		PlayerMessage message = decision.getMessage();
+		if (message == null || message.isEmpty()) return false;
 
 		UUID connectionUniqueId = connection.getConnectionUniqueId();
 		if (connectionUniqueId == null) return false;
@@ -55,7 +56,7 @@ public class ConnectionDecisionDeliveryCoordinator {
 						.accountUniqueId(connection.getAccountUniqueId())
 						.build())
 				.payload(DeliveryPayload.builder()
-						.chatMessage(message)
+						.message(message)
 						.build())
 				.semantics(DeliverySemantics.ONCE)
 				.marker(DeliveryMarker.builder()

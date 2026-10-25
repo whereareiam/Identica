@@ -11,6 +11,7 @@ import me.whereareiam.identica.event.routing.intent.RoutingIntentRetryEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentStartedEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentUpdatedEvent;
 import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.routing.RoutingIntent;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptDecision;
 import me.whereareiam.identica.model.routing.attempt.RoutingAttemptReport;
@@ -40,6 +41,7 @@ public class BungeeCordRoutingIntentListener implements EventListener {
 	private final ProxyServer proxyServer;
 	private final RoutingAttemptService routingAttemptService;
 	private final EventManager eventManager;
+	private final MessageService messageService;
 	private final Set<UUID> inWorld = ConcurrentHashMap.newKeySet();
 	private final Set<UUID> waiting = ConcurrentHashMap.newKeySet();
 
@@ -47,11 +49,13 @@ public class BungeeCordRoutingIntentListener implements EventListener {
 	public BungeeCordRoutingIntentListener(
 			@NotNull ProxyServer proxyServer,
 			@NotNull RoutingAttemptService routingAttemptService,
-			@NotNull EventManager eventManager
+			@NotNull EventManager eventManager,
+			@NotNull MessageService messageService
 	) {
 		this.proxyServer = proxyServer;
 		this.routingAttemptService = routingAttemptService;
 		this.eventManager = eventManager;
+		this.messageService = messageService;
 		eventManager.register(this);
 	}
 
@@ -142,7 +146,7 @@ public class BungeeCordRoutingIntentListener implements EventListener {
 			);
 			eventManager.call(missingEvent);
 			if (missingEvent.isDisconnect() && missingEvent.getMessage() != null)
-				player.disconnect(BaseComponentMapper.map(missingEvent.getMessage()));
+				player.disconnect(BaseComponentMapper.map(messageService.disconnectReason(null, missingEvent.getMessage())));
 
 			routingAttemptService.record(RoutingAttemptReport.failed(
 					player.getUniqueId(),

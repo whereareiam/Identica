@@ -130,6 +130,25 @@ class DefaultMessageServiceTest {
 		assertEquals(List.of("dialog:addon"), shown);
 	}
 
+	@DisplayName("Presents every message that asks for the same thing, letting a presentation of the message's own ID win")
+	@Test
+	void presentsAPrompt() {
+		Prompt password = Prompt.builder().id("test:password").command("login").build();
+		MessageDefinition<String> asked = GREETING.toBuilder().id("test:asked").prompt(password).build();
+		MessageDefinition<String> askedAgain = GREETING.toBuilder().id("test:asked-again").prompt(password).build();
+		service.registerPartType(recordingType("dialog"));
+		service.presentPrompt("TEST:password", Presentation.builder().part(new TestPart("dialog", "prompt")).removed(ChatPart.TYPE).build());
+		service.present(askedAgain.getId(), Presentation.builder().part(new TestPart("dialog", "own")).build());
+
+		service.send(identity, asked.create("Password?"));
+		service.send(identity, askedAgain.create("Wrong password"));
+		service.send(identity, GREETING.create("Welcome"));
+
+		assertEquals(List.of("dialog:prompt", "dialog:own"), shown);
+		verify(identity).sendMessage(Component.text("Welcome"));
+		verify(identity, never()).sendMessage(Component.text("Password?"));
+	}
+
 	@DisplayName("Falls back to chat for a player whose client cannot show a part, unless chat shows the message anyway")
 	@Test
 	void fallsBackToChat() {

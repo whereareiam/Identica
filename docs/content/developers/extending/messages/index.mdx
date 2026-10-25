@@ -83,9 +83,9 @@ messages.present("credential:password-invalid", Presentation.builder()
         .build());
 ```
 
-A presentation can also remove parts by type, such as `.removed(ChatPart.TYPE)` to show a dialog instead of chat. Each call returns a `Registration`; remove it when the addon is disabled.
+A presentation can also remove parts by type, such as `.removed(ChatPart.TYPE)` to show a dialog instead of chat. To present every message that asks for the same thing, such as a password asked for the first time and again after a wrong one, present its prompt with `presentPrompt("credential:password", ...)`; it also covers messages defined later. Each call returns a `Registration`; remove it when the addon is disabled.
 
-When several presentations give a message the same part type, the one with the higher `priority` wins, and the later registration among equals. Leave the priority at `0` for what an addon does by default and give a higher one to what an administrator configured in the addon, so a server's own choice wins over a general one.
+When several presentations give a message the same part type, the one with the higher `priority` wins; among equals, a presentation of the message's own ID wins over one of its prompt, and then the later registration. Leave the priority at `0` for what an addon does by default and give a higher one to what an administrator configured in the addon, so a server's own choice wins over a general one.
 
 ## Writing a part type
 

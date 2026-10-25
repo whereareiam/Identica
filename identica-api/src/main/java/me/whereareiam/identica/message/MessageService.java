@@ -76,6 +76,25 @@ public interface MessageService {
 	@NotNull Registration present(@NotNull String messageId, @NotNull Presentation presentation);
 
 	/**
+	 * Gives every message that asks for the same thing parts on top of how it is shown otherwise, such as a dialog for
+	 * a password asked for the first time and again after a wrong one, including messages defined later. When a
+	 * presentation of the message's own ID has the same priority, it decides a part type the prompt's presentation
+	 * gives too.
+	 *
+	 * <pre>{@code
+	 * messages.presentPrompt("credential:password", Presentation.builder()
+	 *         .part(new DialogPart("login"))
+	 *         .removed(ChatPart.TYPE)
+	 *         .build());
+	 * }</pre>
+	 *
+	 * @param promptId ID of the prompt, see {@link me.whereareiam.identica.model.message.Prompt#getId()}
+	 * @param presentation the parts
+	 * @return removes the presentation again
+	 */
+	@NotNull Registration presentPrompt(@NotNull String promptId, @NotNull Presentation presentation);
+
+	/**
 	 * Shows a message to a player in all of its parts. While the player cannot see messages yet, such as on the
 	 * loading screen, it waits until they can.
 	 *

@@ -41,6 +41,7 @@ public class DefaultMessageService implements MessageService, EventListener {
 	private final Map<String, MessageDefinition<?>> definitions = Collections.synchronizedMap(new LinkedHashMap<>());
 	private final Map<String, PartType<?>> partTypes = new ConcurrentHashMap<>();
 	private final Map<String, List<PresentationEntry>> presentations = new ConcurrentHashMap<>();
+	private final Map<String, List<PresentationEntry>> promptPresentations = new ConcurrentHashMap<>();
 	private final Map<UUID, List<PartRendering.Close>> shown = new ConcurrentHashMap<>();
 	private final Set<String> unknownPartTypes = ConcurrentHashMap.newKeySet();
 	private final AtomicLong presentationOrder = new AtomicLong();
@@ -102,13 +103,27 @@ public class DefaultMessageService implements MessageService, EventListener {
 
 	@Override
 	public @NotNull Registration present(@NotNull String messageId, @NotNull Presentation presentation) {
-		String id = normalize(messageId);
-		PresentationEntry entry = new PresentationEntry(presentation, presentationOrder.incrementAndGet());
-		presentations.computeIfAbsent(id, ignored -> new CopyOnWriteArrayList<>()).add(entry);
-		warnAboutCollisions(id, entry);
+		return present(presentations, messageId, presentation, false);
+	}
+
+	@Override
+	public @NotNull Registration presentPrompt(@NotNull String promptId, @NotNull Presentation presentation) {
+		return present(promptPresentations, promptId, presentation, true);
+	}
+
+	private @NotNull Registration present(
+			@NotNull Map<String, List<PresentationEntry>> byId,
+			@NotNull String rawId,
+			@NotNull Presentation presentation,
+			boolean prompt
+	) {
+		String id = normalize(rawId);
+		PresentationEntry entry = new PresentationEntry(presentation, prompt, presentationOrder.incrementAndGet());
+		byId.computeIfAbsent(id, ignored -> new CopyOnWriteArrayList<>()).add(entry);
+		warnAboutCollisions(byId, id, entry);
 
 		return () -> {
-			List<PresentationEntry> entries = presentations.get(id);
+			List<PresentationEntry> entries = byId.get(id);
 			if (entries != null) entries.remove(entry);
 		};
 	}
@@ -187,16 +202,19 @@ public class DefaultMessageService implements MessageService, EventListener {
 	}
 
 	/**
-	 * Resolves a message's parts: chat, then every presentation of its ID from the lowest priority up, so a higher
-	 * priority wins per part type.
+	 * Resolves a message's parts: chat, then every presentation of its prompt and of its ID from the lowest priority
+	 * up, so a higher priority wins per part type, and among equals one of the message's own ID.
 	 */
 	private @NotNull Map<String, MessagePart> parts(@NotNull PlayerMessage message) {
 		Map<String, MessagePart> parts = new LinkedHashMap<>();
 		parts.put(ChatPart.TYPE, ChatPart.ofMessage());
 
-		List<PresentationEntry> entries = presentations.getOrDefault(normalize(message.getId()), List.of());
+		List<PresentationEntry> entries = new ArrayList<>(presentations.getOrDefault(normalize(message.getId()), List.of()));
+		Prompt prompt = message.getPrompt();
+		if (prompt != null) entries.addAll(promptPresentations.getOrDefault(normalize(prompt.getId()), List.of()));
 		entries.stream()
 				.sorted(Comparator.comparingInt((PresentationEntry entry) -> entry.presentation().getPriority())
+						.thenComparing(PresentationEntry::prompt, Comparator.reverseOrder())
 						.thenComparingLong(PresentationEntry::order))
 				.forEach(entry -> {
 					entry.presentation().getRemoved().forEach(type -> parts.remove(normalize(type)));
@@ -282,15 +300,19 @@ public class DefaultMessageService implements MessageService, EventListener {
 		}
 	}
 
-	private void warnAboutCollisions(@NotNull String messageId, @NotNull PresentationEntry added) {
-		for (PresentationEntry entry : presentations.getOrDefault(messageId, List.of())) {
+	private void warnAboutCollisions(
+			@NotNull Map<String, List<PresentationEntry>> byId,
+			@NotNull String messageId,
+			@NotNull PresentationEntry added
+	) {
+		for (PresentationEntry entry : byId.getOrDefault(messageId, List.of())) {
 			if (entry == added || entry.presentation().getPriority() != added.presentation().getPriority()) continue;
 
 			for (MessagePart part : added.presentation().getParts()) {
 				boolean collides = entry.presentation().getParts().stream()
 						.anyMatch(other -> normalize(other.type()).equals(normalize(part.type())));
 				if (collides)
-					Logger.warn("Two presentations of message %s give it a %s part at priority %d; the later one wins",
+					Logger.warn("Two presentations of %s give a %s part at priority %d; the later one wins",
 							messageId, part.type(), added.presentation().getPriority());
 			}
 		}
@@ -300,6 +322,6 @@ public class DefaultMessageService implements MessageService, EventListener {
 		return value.trim().toLowerCase(Locale.ROOT);
 	}
 
-	private record PresentationEntry(@NotNull Presentation presentation, long order) {
+	private record PresentationEntry(@NotNull Presentation presentation, boolean prompt, long order) {
 	}
 }

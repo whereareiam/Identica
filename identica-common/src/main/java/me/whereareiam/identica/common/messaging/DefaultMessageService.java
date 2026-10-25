@@ -15,7 +15,6 @@ import me.whereareiam.identica.message.IdenticaMessages;
 import me.whereareiam.identica.message.MessageGate;
 import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.message.PartRenderer;
-import me.whereareiam.identica.model.CommandDefinition;
 import me.whereareiam.identica.model.message.*;
 import me.whereareiam.keystone.Actor;
 import me.whereareiam.keystone.model.SerializerContent;
@@ -190,11 +189,11 @@ public class DefaultMessageService implements MessageService, EventListener {
 
 	@Override
 	public @NotNull Optional<String> answer(@NotNull Prompt prompt, @NotNull Map<String, String> values) {
-		CommandDefinition command = commands.get().getRegisteredDefinitions().get(prompt.getCommand());
-		if (command == null || command.getAliases() == null || command.getAliases().isEmpty()) return Optional.empty();
+		String command = commands.get().commandLine(prompt.getCommand()).orElse(null);
+		if (command == null) return Optional.empty();
 
 		StringJoiner line = new StringJoiner(" ");
-		line.add(command.getAliases().getFirst());
+		line.add(command);
 		for (Prompt.Field field : prompt.getFields())
 			line.add(values.getOrDefault(field.getName(), ""));
 

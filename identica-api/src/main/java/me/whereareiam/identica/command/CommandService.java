@@ -4,6 +4,7 @@ import me.whereareiam.identica.model.CommandDefinition;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -121,4 +122,18 @@ public interface CommandService {
 	 */
 	@NotNull
 	Set<String> getCommandsAvailableWhilePending();
+
+	/**
+	 * Returns how a player types a registered, enabled command, without the slash: its first configured alias, under
+	 * the first alias of Identica's root command for a subcommand such as {@code enroll}, as {@code identica enroll}.
+	 *
+	 * <pre>{@code
+	 * identica.getCommandService().commandLine("login"); // Optional[login]
+	 * }</pre>
+	 *
+	 * @param definitionId key of the command's definition
+	 * @return the command, or empty when no enabled command has the key
+	 */
+	@NotNull
+	Optional<String> commandLine(@NotNull String definitionId);
 }

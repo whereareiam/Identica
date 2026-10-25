@@ -256,6 +256,21 @@ public class DefaultCommandService implements CommandService, RuntimeLifecycle {
 		return commands;
 	}
 
+	@Override
+	public @NotNull Optional<String> commandLine(@NotNull String definitionId) {
+		CommandDefinition definition = lookupDefinition(definitionId);
+		if (definition == null || !definition.isEnabled()) return Optional.empty();
+
+		List<String> aliases = aliases(definition);
+		if (aliases.isEmpty()) return Optional.empty();
+		if (!isSubcommand(definition)) return Optional.of(aliases.getFirst());
+
+		List<String> rootAliases = aliases(lookupDefinition("main"));
+		if (rootAliases.isEmpty()) return Optional.empty();
+
+		return Optional.of(rootAliases.getFirst() + " " + aliases.getFirst());
+	}
+
 	private void registerInternal(Object... commandInstances) {
 		CommandManager<Actor> commandManager = commandManagerProvider.get();
 		if (annotationParser == null) {

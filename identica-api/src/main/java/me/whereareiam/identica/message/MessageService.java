@@ -122,8 +122,9 @@ public interface MessageService {
 	void close(@NotNull UUID connectionUniqueId);
 
 	/**
-	 * Builds the command line that answers a prompt: the configured alias of its command followed by the values of
-	 * its fields in order, without a leading slash.
+	 * Builds the command line that answers a prompt: its command as a player types it, see
+	 * {@link me.whereareiam.identica.command.CommandService#commandLine(String)}, followed by the values of its fields
+	 * in order, without a leading slash.
 	 *
 	 * @param prompt the prompt
 	 * @param values field values by field name

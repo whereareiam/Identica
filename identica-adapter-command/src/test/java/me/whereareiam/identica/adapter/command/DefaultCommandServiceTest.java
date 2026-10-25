@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -270,6 +271,19 @@ class DefaultCommandServiceTest {
 		service.registerCommandInstance("enroll", definition("{command}", "enroll"), new EnrollCommand());
 
 		assertEquals(Set.of("login", "l", "identica enroll", "id enroll"), service.getCommandsAvailableWhilePending());
+	}
+
+	@Test
+	void givesTheCommandLineOfACommandAndASubcommand() {
+		service.registerCommandInstance("provider", definition("", "Login", "l"), new ProviderCommand());
+		service.registerCommandInstance("enroll", definition("{command}", "enroll"), new EnrollCommand());
+		CommandDefinition disabled = definition("{command}", "verify").toBuilder().enabled(false).build();
+		service.registerCommandInstance("feature", disabled, new FeatureCommand());
+
+		assertEquals(Optional.of("Login"), service.commandLine("provider"));
+		assertEquals(Optional.of("identica enroll"), service.commandLine("enroll"));
+		assertEquals(Optional.empty(), service.commandLine("feature"));
+		assertEquals(Optional.empty(), service.commandLine("missing"));
 	}
 
 	@Test

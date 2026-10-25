@@ -121,7 +121,7 @@ A renderer that fails is logged; the message's other parts are shown anyway.
 
 ## Answering a prompt
 
-A message's prompt says what the player fills and which command answers it. A part type that asks itself, such as a dialog, collects the values and has the player run the command through the platform. `messageService.answer(prompt, values)` builds the command line, without its slash, from the command's configured alias, so a renamed command keeps working:
+A message's prompt says what the player fills and which command answers it. A part type that asks itself, such as a dialog, collects the values and has the player run the command through the platform. `messageService.answer(prompt, values)` builds the command line, without its slash, from the command's configured alias, under Identica's root command for a subcommand such as `identica enroll`, so a renamed command keeps working:
 
 ```java
 Optional<String> line = messageService.answer(message.getPrompt(), Map.of("password", typed));

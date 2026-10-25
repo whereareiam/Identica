@@ -7,7 +7,6 @@ import me.whereareiam.identica.event.identity.IdentityDetachedEvent;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.message.MessageGate;
 import me.whereareiam.identica.message.MessageService;
-import me.whereareiam.identica.model.CommandDefinition;
 import me.whereareiam.identica.model.message.*;
 import me.whereareiam.keystone.model.SerializerContent;
 import me.whereareiam.keystone.serializer.SerializerEngine;
@@ -251,11 +250,10 @@ class DefaultMessageServiceTest {
 		assertTrue(service.definition("identica:provider-choice").isPresent());
 	}
 
-	@DisplayName("Builds the command line that answers a prompt from the command's configured alias")
+	@DisplayName("Builds the command line that answers a prompt from the command as a player types it")
 	@Test
 	void answersAPrompt() {
-		CommandDefinition login = CommandDefinition.builder().aliases(List.of("l", "login")).build();
-		when(commands.getRegisteredDefinitions()).thenReturn(Map.of("login", login));
+		when(commands.commandLine("login")).thenReturn(Optional.of("l"));
 		Prompt prompt = Prompt.builder()
 				.id("test:password")
 				.field(Prompt.Field.of("password", Prompt.FieldType.SECRET))

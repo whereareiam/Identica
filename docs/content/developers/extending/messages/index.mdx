@@ -61,13 +61,26 @@ A refused login, a disconnect reason or a migration's kick message is a `PlayerM
 CredentialMessageDefinitions.BRUTEFORCE_EXCEEDED.create(messages, Map.of("seconds", "30"));
 ```
 
-A command answers through `messageService.send(identity, message)`. A command that extends `IdentityCommand` does so with `sendMessage(sender, message)`, which also answers the console with the chat text. While a platform holds the player on the loading screen, where the client shows no chat, Identica keeps the message back until the player has joined a server.
+A command answers through `messageService.send(identity, message)`. A command that extends `IdentityCommand` does so with `sendMessage(sender, message)`, which also answers the console with the chat text.
 
-Two messages can be told as one with `append`, such as a warning below a wrong password. The result keeps the first message's ID and prompt. A step that tells a message of its own while asking for something else, such as a broken password rule while it asks for a new password, gives it its prompt with `withPrompt(prompt)`.
+Two messages can be told together with `append`, such as a warning below a wrong password. The result keeps the first message's ID and prompt; the appended message keeps its own ID, text and placeholders, so an addon can show it its own way, and chat shows it on the next line. A step that tells a message of its own while asking for something else, such as a broken password rule while it asks for a new password, gives it its prompt with `withPrompt(prompt)`. `withTitle(title, subtitle)` gives a message a title, such as the one a completed registration shows.
+
+## How long a message stays
+
+A message with a prompt is the player's **open prompt**. Whatever it showed, such as a dialog, stays until:
+
+- another message with a prompt replaces it, which takes the old parts down once the new ones are shown, so a dialog that asks again replaces itself without closing first;
+- the player's journey resolves, which ends the prompts of a journey;
+- its owner ends it with `messageService.endPrompt(connectionUniqueId, prompt)`, which an owner that asks outside a journey calls once it has its answer or gives up, such as two-factor enrollment once the enrollment is done;
+- the player leaves.
+
+A message without a prompt is a **notice**. It never ends the open prompt: a warning or a command's answer told while a dialog asks for a password leaves the dialog open. What a notice showed stays until the next notice or until the player leaves.
+
+While a platform holds the player on the loading screen, or while the client joins a server, before its first one or during a switch, it shows no chat, titles or bars; those parts wait and are shown once the player has joined a server, unless the player already saw their message another way: what waited of a prompt the player saw in a dialog is dropped once another prompt replaces it or the journey resolves, while a message the player saw nowhere, such as an answer told while no dialog was shown, is shown in full. Parts the loading screen can show, such as a dialog, are shown right away.
 
 ## Showing a message another way
 
-A message is shown in parts. Chat is the one part Identica knows; an addon adds others. To show the message `credential:password-invalid` as an action bar next to chat, an addon registers a part type once and presents the message with it:
+A message is shown in parts. Identica knows chat, and a title for a message that has one; an addon adds others. To show the message `credential:password-invalid` as an action bar next to chat, an addon registers a part type once and presents the message with it:
 
 ```java
 MessageService messages = identica.getMessageService();
@@ -83,9 +96,9 @@ messages.present("credential:password-invalid", Presentation.builder()
         .build());
 ```
 
-A presentation can also remove parts by type, such as `.removed(ChatPart.TYPE)` to show a dialog instead of chat. Each call returns a `Registration`; remove it when the addon is disabled.
+A presentation can also remove parts by type, such as `.removed(ChatPart.TYPE)` to show a dialog instead of chat. To present every message that asks for the same thing, such as a password asked for the first time and again after a wrong one, present its prompt with `presentPrompt("credential:password", ...)`; it also covers messages defined later. Each call returns a `Registration`; remove it when the addon is disabled.
 
-When several presentations give a message the same part type, the one with the higher `priority` wins, and the later registration among equals. Leave the priority at `0` for what an addon does by default and give a higher one to what an administrator configured in the addon, so a server's own choice wins over a general one.
+When several presentations give a message the same part type, the one with the higher `priority` wins; among equals, a presentation of the message's own ID wins over one of its prompt, and then the later registration. Leave the priority at `0` for what an addon does by default and give a higher one to what an administrator configured in the addon, so a server's own choice wins over a general one.
 
 ## Writing a part type
 
@@ -115,13 +128,15 @@ public class ActionBarRenderer implements PartRenderer<ActionBarPart> {
 ```
 
 - `PartRendering.unsupported()` tells Identica the player's client cannot show the part, such as a dialog on a client that is too old. Identica then tries the type's `fallbacks` in order, each with its `defaultPart`, the part the type builds from the message alone. A dialog type that falls back to chat names `ChatPart.TYPE`.
-- `PartRendering.shown(close)` hands Identica what takes the part down, such as removing a boss bar. Identica calls it when the player is told the next message and when they leave, so a part never outlives the message it belongs to.
+- `PartRendering.shown(close)` hands Identica what takes the part down, such as removing a boss bar. Identica calls it when the message stops being current, see [How long a message stays](#how-long-a-message-stays), so a part never outlives the message it belongs to. Take down only what that rendering showed.
+- `PartRendering.notYet()` tells Identica the player cannot see the part now but will, such as a boss bar while the player is on the loading screen or between servers; `messageService.screen(connectionUniqueId)` tells what the client shows: `LOADING_SCREEN`, `JOINING` (before the first server or during a switch) or `WORLD`. Identica renders the part again once the player has joined a server, if its message is still current.
+- A type whose parts the client drops when it switches servers, such as a dialog, sets `droppedOnServerSwitch(true)`; Identica shows such a part of the open prompt again once the player has joined the next server.
 
 A renderer that fails is logged; the message's other parts are shown anyway.
 
 ## Answering a prompt
 
-A message's prompt says what the player fills and which command answers it. A part type that asks itself, such as a dialog, collects the values and has the player run the command through the platform. `messageService.answer(prompt, values)` builds the command line, without its slash, from the command's configured alias, so a renamed command keeps working:
+A message's prompt says what the player fills and which command answers it. A part type that asks itself, such as a dialog, collects the values and has the player run the command through the platform. `messageService.answer(prompt, values)` builds the command line, without its slash, from the command's configured alias, under Identica's root command for a subcommand such as `identica enroll`, so a renamed command keeps working:
 
 ```java
 Optional<String> line = messageService.answer(message.getPrompt(), Map.of("password", typed));

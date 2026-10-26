@@ -112,7 +112,7 @@ public class DefaultDeliveryService implements DeliveryService {
 		if (payload.getCompletion() != null || payload.getMessage() == null)
 			return;
 
-		messageService.show(identity, payload.getMessage());
+		messageService.send(identity, payload.getMessage());
 	}
 
 	private boolean matchesRequiredServer(

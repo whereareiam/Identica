@@ -39,6 +39,7 @@ class TotpEnrollmentProcessTest {
 		assertEquals("totp-confirm-code", result.getState().getStepId());
 		assertNotNull(result.getDisplay());
 		assertEquals("verification:totp-pending", result.getDisplay().getMessage().getId());
+		assertEquals("verification:enrollment-code", result.getDisplay().getMessage().getPrompt().getId());
 		assertTrue(result.getDisplay().getMessage().getText().contains("TOTP secret"));
 		assertNotNull(result.getDisplay().getPlaceholders().get("secret"));
 		assertNotNull(result.getDisplay().getPlaceholders().get("uri"));

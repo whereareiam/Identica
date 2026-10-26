@@ -12,7 +12,7 @@ import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.checkpoint.Checkpoints;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.checkpoint.CheckpointSelection;
-import me.whereareiam.identica.platform.common.checkpoint.LoadingScreenReplies;
+import me.whereareiam.identica.platform.common.checkpoint.PlatformLoadingScreen;
 import me.whereareiam.identica.platform.velocity.adapter.auth.VelocityResumeDecisionAdapter;
 import me.whereareiam.identica.type.checkpoint.CheckpointPlacement;
 
@@ -33,7 +33,7 @@ public class InitialServerHoldListener implements AwaitingEventExecutor<PlayerCh
 	private final VelocityResumeDecisionAdapter resumeAdapter;
 	private final VelocityCheckpointAdapter adapter;
 	private final ProxyHoldKeepAlive keepAlive;
-	private final LoadingScreenReplies replies;
+	private final PlatformLoadingScreen loadingScreen;
 	private final Map<UUID, VelocityHeldConnection> held = new ConcurrentHashMap<>();
 
 	@Override
@@ -44,7 +44,7 @@ public class InitialServerHoldListener implements AwaitingEventExecutor<PlayerCh
 
 		VelocityHeldConnection connection = new VelocityHeldConnection(player, resumeAdapter);
 		held.put(player.getUniqueId(), connection);
-		replies.held(player.getUniqueId());
+		loadingScreen.held(player.getUniqueId());
 		ScheduledTask alive = keepAlive.keepAlive(player);
 		long since = System.currentTimeMillis();
 		Logger.debug("Velocity checkpoint holds player=%s checkpoint=%s", player.getUniqueId(), selection.getCheckpoint().id());
@@ -53,7 +53,7 @@ public class InitialServerHoldListener implements AwaitingEventExecutor<PlayerCh
 		return EventTask.resumeWhenComplete(connection.released().toCompletableFuture().thenRun(() -> {
 			alive.cancel();
 			held.remove(player.getUniqueId(), connection);
-			replies.released(player.getUniqueId());
+			loadingScreen.released(player.getUniqueId());
 			Logger.debug("Velocity checkpoint hold ended player=%s heldMillis=%s", player.getUniqueId(), System.currentTimeMillis() - since);
 			// Velocity still connects a player who left during the hold unless no server is chosen.
 			if (!player.isActive()) event.setInitialServer(null);

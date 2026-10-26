@@ -21,6 +21,7 @@ import java.util.function.Function;
  *         .partClass(DialogPart.class)
  *         .renderer(new DialogPartRenderer())
  *         .fallback(ChatPart.TYPE)
+ *         .droppedOnServerSwitch(true)
  *         .build());
  * }</pre>
  *
@@ -53,4 +54,9 @@ public class PartType<P extends MessagePart> {
 	 * or {@code null} when the type cannot be a fallback on its own.
 	 */
 	private final @Nullable Function<PlayerMessage, P> defaultPart;
+	/**
+	 * Whether the client drops a shown part of this type when it switches servers, such as a dialog. Identica shows
+	 * such a part of the player's open prompt again once they joined the next server.
+	 */
+	private final boolean droppedOnServerSwitch;
 }

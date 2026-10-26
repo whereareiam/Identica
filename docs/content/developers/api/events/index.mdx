@@ -85,6 +85,8 @@ public final class WelcomeListener implements EventListener {
 
 On BungeeCord the event is called from Identica's scheduler shortly after the join, because BungeeCord has no event once the client is in the world.
 
+`ServerSwitchingEvent` is called when the client leaves its world to join another server, with the player's `Identity`: on Velocity once the next server accepted the player, on BungeeCord once the client started configuring for it. Until the next `ServerJoinedEvent`, the client shows nothing. A message told through `MessageService` meanwhile waits until then by itself.
+
 ## Common event categories
 
 The current API exposes event groups such as:

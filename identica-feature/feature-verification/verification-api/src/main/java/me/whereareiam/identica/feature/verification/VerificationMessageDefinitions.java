@@ -27,6 +27,16 @@ public final class VerificationMessageDefinitions {
 			.build();
 
 	/**
+	 * What an enrollment that waits for its first code asks for: a code from the authenticator app the player is
+	 * setting up, answered with the command that confirms enrollments.
+	 */
+	public static final Prompt ENROLLMENT_CODE_PROMPT = Prompt.builder()
+			.id("verification:enrollment-code")
+			.field(Prompt.Field.of("code", Prompt.FieldType.CODE))
+			.command("verification-enroll-confirm")
+			.build();
+
+	/**
 	 * A step asked for a code and the player gave a wrong one; asks for it again.
 	 */
 	public static final MessageDefinition<VerificationMessages> CODE_INVALID = MessageDefinition.<VerificationMessages>builder()
@@ -66,7 +76,7 @@ public final class VerificationMessageDefinitions {
 	public static final MessageDefinition<VerificationMessages> TOTP_PENDING = MessageDefinition.<VerificationMessages>builder()
 			.id("verification:totp-pending")
 			.text(messages -> MessageDefinition.lines(messages.getMethods().getTotp().getPending()))
-			.prompt(CODE_PROMPT)
+			.prompt(ENROLLMENT_CODE_PROMPT)
 			.build();
 
 	/**

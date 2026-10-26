@@ -32,8 +32,7 @@ public abstract class IdentityCommand {
 			return;
 		}
 
-		if (!message.getText().isBlank())
-			sender.sendMessage(Serializer.serialize(sender, message.getText(), message.getPlaceholders()));
+		if (message.hasText()) sender.sendMessage(Serializer.serialize(sender, message));
 	}
 
 	/**

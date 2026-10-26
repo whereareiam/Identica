@@ -7,7 +7,7 @@ import com.google.inject.multibindings.OptionalBinder;
 import com.google.inject.util.Types;
 import me.whereareiam.identica.handshake.HandshakeApplierRegistry;
 import me.whereareiam.identica.handshake.HandshakeContext;
-import me.whereareiam.identica.message.MessageGate;
+import me.whereareiam.identica.message.LoadingScreen;
 import me.whereareiam.identica.platform.adapter.PlatformCheckpointAdapter;
 import me.whereareiam.identica.platform.adapter.PlatformForcedHostAdapter;
 import me.whereareiam.identica.platform.adapter.PlatformHandshakeApplierContributor;
@@ -16,7 +16,7 @@ import me.whereareiam.identica.platform.common.adapter.PlatformHandshakeDecision
 import me.whereareiam.identica.platform.common.adapter.PlatformLoginDecisionAdapter;
 import me.whereareiam.identica.platform.common.adapter.PlatformProfileAdapter;
 import me.whereareiam.identica.platform.common.adapter.PlatformResumeDecisionAdapter;
-import me.whereareiam.identica.platform.common.checkpoint.LoadingScreenReplies;
+import me.whereareiam.identica.platform.common.checkpoint.PlatformLoadingScreen;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.ParameterizedType;
@@ -44,7 +44,7 @@ public abstract class PlatformConfiguration<C extends HandshakeContext> extends 
 		bindAdapter(PlatformResumeDecisionAdapter.class, resumeDecision());
 		bindAdapter(PlatformProfileAdapter.class, profile());
 		bindHandshakeApplierRegistry();
-		OptionalBinder.newOptionalBinder(binder(), MessageGate.class).setBinding().to(LoadingScreenReplies.class);
+		OptionalBinder.newOptionalBinder(binder(), LoadingScreen.class).setBinding().to(PlatformLoadingScreen.class);
 
 		configurePlatform();
 	}

@@ -10,8 +10,8 @@ import org.jetbrains.annotations.NotNull;
  * Shows the parts of one {@link me.whereareiam.identica.model.message.PartType} to a player.
  *
  * <p>A part that stays visible, such as a dialog, returns {@link PartRendering#shown(PartRendering.Close)}: Identica
- * takes it down once the message is no longer current, because the player answered, the next message to them replaced
- * it, or their journey ended.</p>
+ * takes it down once the message is no longer current, see {@link MessageService}. A part the player cannot see yet,
+ * such as a boss bar on the loading screen, returns {@link PartRendering#notYet()}.</p>
  *
  * @param <P> part class
  */

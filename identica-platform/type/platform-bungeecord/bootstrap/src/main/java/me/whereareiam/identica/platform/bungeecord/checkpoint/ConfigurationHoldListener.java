@@ -9,7 +9,7 @@ import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.checkpoint.CheckpointSelection;
 import me.whereareiam.identica.platform.bungeecord.BungeeCordIdentica;
 import me.whereareiam.identica.platform.bungeecord.adapter.auth.BungeeCordResumeDecisionAdapter;
-import me.whereareiam.identica.platform.common.checkpoint.LoadingScreenReplies;
+import me.whereareiam.identica.platform.common.checkpoint.PlatformLoadingScreen;
 import me.whereareiam.identica.type.checkpoint.CheckpointPlacement;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.connection.Server;
@@ -37,7 +37,7 @@ public class ConfigurationHoldListener implements DynamicListener<PlayerConfigur
 	private final BungeeCordIdentica plugin;
 	private final Checkpoints checkpoints;
 	private final BungeeCordResumeDecisionAdapter resumeAdapter;
-	private final LoadingScreenReplies replies;
+	private final PlatformLoadingScreen loadingScreen;
 	private final Map<UUID, BungeeCordHeldConnection> held = new ConcurrentHashMap<>();
 
 	@Override
@@ -51,13 +51,13 @@ public class ConfigurationHoldListener implements DynamicListener<PlayerConfigur
 		event.registerIntent(plugin);
 		BungeeCordHeldConnection connection = new BungeeCordHeldConnection(player, resumeAdapter);
 		held.put(player.getUniqueId(), connection);
-		replies.held(player.getUniqueId());
+		loadingScreen.held(player.getUniqueId());
 		long since = System.currentTimeMillis();
 		Logger.debug("Bungee checkpoint holds player=%s server=%s checkpoint=%s", player.getUniqueId(), serverName(player), selection.getCheckpoint().id());
 
 		connection.destination().thenAccept(destination -> {
 			held.remove(player.getUniqueId(), connection);
-			replies.released(player.getUniqueId());
+			loadingScreen.released(player.getUniqueId());
 			Logger.debug("Bungee checkpoint hold ended player=%s destination=%s heldMillis=%s",
 					player.getUniqueId(), destination, System.currentTimeMillis() - since);
 			event.completeIntent(plugin);

@@ -66,7 +66,7 @@ import static org.mockito.Mockito.when;
 @DisplayName("Username Hold")
 class UsernameHoldTest {
 	private static final MessageService MESSAGE_SERVICE =
-			new DefaultMessageService(() -> (recipient, message) -> false, () -> null, mock(EventManager.class));
+			new DefaultMessageService(() -> connection -> false, () -> null, mock(EventManager.class));
 
 	private static final String OWNER_ADDRESS = "127.0.0.1";
 	private static final String OTHER_ADDRESS = "127.0.0.2";

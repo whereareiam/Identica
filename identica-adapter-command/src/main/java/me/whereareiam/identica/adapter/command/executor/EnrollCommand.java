@@ -133,7 +133,7 @@ public class EnrollCommand {
 			return;
 		}
 
-		sender.sendMessage(Serializer.serialize(sender, message.getText(), message.getPlaceholders()));
+		sender.sendMessage(Serializer.serialize(sender, message));
 	}
 
 	/** A denial disconnects whether or not it comes with a reason to show. */

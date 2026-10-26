@@ -2,7 +2,7 @@ package me.whereareiam.identica.common.messaging;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.multibindings.OptionalBinder;
-import me.whereareiam.identica.message.MessageGate;
+import me.whereareiam.identica.message.LoadingScreen;
 import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.service.DeliveryService;
 import me.whereareiam.identica.service.DeliveryStore;
@@ -14,6 +14,6 @@ public class MessagingConfiguration extends AbstractModule {
 		bind(DeliveryService.class).to(DefaultDeliveryService.class).asEagerSingleton();
 		bind(DeliveryLifecycle.class).asEagerSingleton();
 		bind(MessageService.class).to(DefaultMessageService.class).asEagerSingleton();
-		OptionalBinder.newOptionalBinder(binder(), MessageGate.class).setDefault().to(OpenMessageGate.class);
+		OptionalBinder.newOptionalBinder(binder(), LoadingScreen.class).setDefault().to(NoLoadingScreen.class);
 	}
 }

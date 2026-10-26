@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -477,19 +476,11 @@ class TotpVerificationTest {
 				.login(PASSWORD)
 				.on(LOBBY);
 
-		Authenticator app = Authenticator.of(alice.command("2fa enroll totp")
-				.sees(m -> m.verification().getMethods().getTotp().getPending())
-				.reads("secret"));
-		List<String> recoveryCodes = Arrays.asList(alice.command("2fa enroll confirm " + app.code())
-				.sees(m -> m.verification().getCommands().getConfirm().getRecoveryCodes().getBody())
-				.reads("entries")
-				.split("\\s+"));
-		assertEquals(recoveryCodeCount, recoveryCodes.size(), "Alice must be shown every recovery code: " + recoveryCodes);
+		Authenticator.Enrollment enrollment = Authenticator.enroll(alice);
+		assertEquals(recoveryCodeCount, enrollment.recoveryCodes().size(),
+				"Alice must be shown every recovery code: " + enrollment.recoveryCodes());
 
-		alice.command("2fa enroll confirm saved")
-				.sees(m -> m.verification().getCommands().getConfirm().getEnabled())
-				.sees(m -> m.verification().getCommands().getConfirm().getAutoSelected());
-		return new Enrolled(alice, app, recoveryCodes);
+		return new Enrolled(alice, enrollment.app(), enrollment.recoveryCodes());
 	}
 
 	/**

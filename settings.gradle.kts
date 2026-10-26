@@ -24,6 +24,15 @@ dependencyResolutionManagement {
         maven("https://repo.faststats.dev/releases")
         maven("https://repo.opencollab.dev/main/")
         maven("https://repo.opencollab.dev/maven-snapshots/")
+        maven("https://repo.codemc.io/repository/maven-releases/") {
+            content { includeGroup("com.github.retrooper") }
+        }
+        // PacketEvents publishes its Velocity plugin jar only as a GitHub release asset; the journeys install it.
+        ivy("https://github.com/") {
+            patternLayout { artifact("[organisation]/[module]/releases/download/v[revision]/[artifact]-[revision].[ext]") }
+            metadataSources { artifact() }
+            content { includeModule("retrooper", "packetevents") }
+        }
     }
 }
 
@@ -201,3 +210,36 @@ project(":provider-premium-platform-velocity").projectDir =
 include(":provider-premium-platform-bungeecord")
 project(":provider-premium-platform-bungeecord").projectDir =
     file("identica-provider/provider-premium/premium-platform/platform-bungeecord")
+
+include(":addons")
+project(":addons").projectDir = file("addons")
+
+include(":addon-dialogs")
+project(":addon-dialogs").projectDir = file("addons/dialogs")
+
+include(":dialogs-api")
+project(":dialogs-api").projectDir = file("addons/dialogs/dialogs-api")
+
+include(":dialogs-common")
+project(":dialogs-common").projectDir = file("addons/dialogs/dialogs-common")
+
+include(":dialogs-display")
+project(":dialogs-display").projectDir = file("addons/dialogs/dialogs-display")
+
+include(":dialogs-display-packetevents")
+project(":dialogs-display-packetevents").projectDir = file("addons/dialogs/dialogs-display/display-packetevents")
+
+include(":dialogs-display-bungeecord")
+project(":dialogs-display-bungeecord").projectDir = file("addons/dialogs/dialogs-display/display-bungeecord")
+
+include(":dialogs-platform")
+project(":dialogs-platform").projectDir = file("addons/dialogs/dialogs-platform")
+
+include(":dialogs-platform-velocity")
+project(":dialogs-platform-velocity").projectDir = file("addons/dialogs/dialogs-platform/type/platform-velocity")
+
+include(":dialogs-platform-bungeecord")
+project(":dialogs-platform-bungeecord").projectDir = file("addons/dialogs/dialogs-platform/type/platform-bungeecord")
+
+include(":dialogs-platform-bundle")
+project(":dialogs-platform-bundle").projectDir = file("addons/dialogs/dialogs-platform/bundle")

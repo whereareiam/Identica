@@ -3,6 +3,7 @@
   "pages": [
     "index",
     "services",
-    "events"
+    "events",
+    "dialogs"
   ]
 }

@@ -58,7 +58,7 @@ A join the proxy may refuse starts with `attempt()`, or `attemptAgain()` for a p
 A player a checkpoint holds on the loading screen logs in but enters no server's world until the journey has finished. `joinsHeld()` joins such a player and expects the proxy to hold them, `isHeld()` checks again that their client entered no world, `staysHeld(duration)` keeps checking for longer, such as past the proxy's read timeout, and `neverJoins(backend)` checks that the player never reaches that backend. The example addon's checkpoints hold players who announce `IdenticaNetwork.HOLD_HOST` on the loading screen and players who announce `IdenticaNetwork.ASK_HOST` on the step's server, and `Administrator.answersFor(username, command)` answers for them from the console:
 
 ```java
-@Identica(providers = Provider.CREDENTIAL, addon = true)
+@Identica(providers = Provider.CREDENTIAL, addons = Addon.EXAMPLE)
 void holdsAPlayerUntilTheyHaveRegistered(ScenarioContext anvil) {
 	Journey alice = Journey.of(anvil, Client.offline("Alice").through(HOLD_HOST)).joinsHeld();
 	Administrator console = Administrator.at(anvil, PROXY);
@@ -147,13 +147,13 @@ alice.waits(LOCKOUT)
 
 ## The examples
 
-Every test proxy installs the example provider from `examples/provider` next to the official ones, disabled unless the test enables it with `providers = Provider.EXAMPLE`. `@Identica(addon = true)` also installs the example addon from `examples/addon`, a separate plugin that holds back chat and commands on Velocity until a player has authenticated, and holds players who join through `IdenticaNetwork.HOLD_HOST` or `IdenticaNetwork.ASK_HOST` at its checkpoints on Velocity and BungeeCord. The tests under `example` keep both working against the current API.
+Every test proxy installs the example provider from `examples/provider` next to the official ones, disabled unless the test enables it with `providers = Provider.EXAMPLE`. `@Identica(addons = Addon.EXAMPLE)` also installs the example addon from `examples/addon`, a separate plugin that holds back chat and commands on Velocity until a player has authenticated, and holds players who join through `IdenticaNetwork.HOLD_HOST` or `IdenticaNetwork.ASK_HOST` at its checkpoints on Velocity and BungeeCord. The tests under `example` keep both working against the current API.
 
 Text that belongs to no configuration file, such as an addon's own message or a chat line, is matched as plain text. `.chat(message)` sends a chat message, `.seesText(text)` waits for a message containing the text, and `.doesNotSeeText(text)` expects none to arrive. `Administrator.seesOnConsole(texts...)` expects a console line containing every text since the administrator's previous command, such as what an addon logs when it reacts to a reload:
 
 ```java
 @Test
-@Identica(providers = Provider.EXAMPLE, addon = true)
+@Identica(providers = Provider.EXAMPLE, addons = Addon.EXAMPLE)
 void holdsBackChat(ScenarioContext anvil) {
 	Journey.offline(anvil, "Alice").join()
 			.on(AUTH)
@@ -163,3 +163,24 @@ void holdsBackChat(ScenarioContext anvil) {
 			.seesText("Log in before you chat.");
 }
 ```
+
+## The dialogs addon
+
+`@Identica(addons = Addon.DIALOGS)` installs the official dialogs addon from `addons/dialogs`, together with PacketEvents on Velocity; on BungeeCord the addon shows dialogs through BungeeCord's own API. A journey answers its dialogs as a player does: `.seesDialog(id)` waits for the dialog whose file in the addon's `dialogs/` is named `id`, matching its title and body, and `.presses(button, inputs)` fills inputs and presses a button named through that file. `.dialogShowsAnswer(id)` expects the dialog to show its own text for the message it shows, such as `credential:password-invalid` for a wrong password, and `.hasNoDialog()` expects no dialog open:
+
+```java
+@Test
+@Identica(providers = Provider.CREDENTIAL, addons = Addon.DIALOGS)
+void logsInThroughTheDialog(ScenarioContext anvil) {
+	Journey.offline(anvil, "Alice").join()
+			.on(AUTH)
+			.seesDialog("register")
+			.presses(dialog -> dialog.getActions().getFirst(), Map.of("password", PASSWORD));
+}
+```
+
+`.seesNoDialog()` expects that no dialog was shown since the previous dialog expectation, such as for a step a rule keeps in chat.
+
+`ProxyConfiguration.editGenerated(anvil, Addon.DIALOGS, path, type, change)` changes a file the addon generated on the running proxy through its own models, such as `RulesDocument` for `rules.yml` or `DialogDocument` for a dialog; `generated` reads one and `putGenerated` adds one, such as a dialog of your own. `Administrator.reloads()` makes the addon read them again.
+
+Test backends run Minecraft 1.21.11 and every journey's client the same version, so every client has dialogs. `@Identica(minecraft = MinecraftVersion.V1_21_1)` runs the backends and clients on 1.21.1 instead, a client from before dialogs.

@@ -300,6 +300,46 @@ public final class ProxyConfiguration {
 	}
 
 	/**
+	 * Reads a file an addon generated on the running proxy, into one of the addon's models.
+	 *
+	 * @param anvil running network
+	 * @param addon addon whose file it is
+	 * @param path path inside the addon's data directory, such as {@code dialogs/login.yml}
+	 * @param type addon model to read the file as
+	 */
+	public static <T> T generated(ScenarioContext anvil, Addon addon, String path, Class<T> type) {
+		return CONFIGURA.read(addonFile(anvil, addon, path), type);
+	}
+
+	/**
+	 * Changes a file an addon generated on the running proxy, as an administrator edits it. The addon reads the file
+	 * again when Identica's configuration is reloaded.
+	 *
+	 * @param anvil running network
+	 * @param addon addon whose file it is
+	 * @param path path inside the addon's data directory, such as {@code rules.yml}
+	 * @param type addon model to read the file as
+	 * @param change change to the model before it is written back
+	 */
+	public static <T> void editGenerated(ScenarioContext anvil, Addon addon, String path, Class<T> type, Consumer<T> change) {
+		T document = generated(anvil, addon, path, type);
+		change.accept(document);
+		putGenerated(anvil, addon, path, document);
+	}
+
+	/**
+	 * Writes a file an addon reads on the running proxy, such as a dialog of its own, as an administrator adds it.
+	 *
+	 * @param anvil running network
+	 * @param addon addon whose file it is
+	 * @param path path inside the addon's data directory, such as {@code dialogs/event.yml}
+	 * @param document addon model to write
+	 */
+	public static void putGenerated(ScenarioContext anvil, Addon addon, String path, Object document) {
+		writeFile(addonFile(anvil, addon, path), write(document));
+	}
+
+	/**
 	 * Replaces a file of the running proxy with content Identica cannot read, as an administrator's typo does.
 	 *
 	 * @param anvil running network
@@ -311,7 +351,10 @@ public final class ProxyConfiguration {
 	}
 
 	private static void writeGenerated(ScenarioContext anvil, String path, String content) {
-		Path file = dataDirectory(anvil).resolve(path);
+		writeFile(dataDirectory(anvil).resolve(path), content);
+	}
+
+	private static void writeFile(Path file, String content) {
 		try {
 			Files.writeString(file, content, StandardCharsets.UTF_8);
 		} catch (IOException failure) {
@@ -321,6 +364,13 @@ public final class ProxyConfiguration {
 
 	private static Path dataDirectory(ScenarioContext anvil) {
 		return Platform.dataDirectory(anvil, anvil.definition().getEntrypoint());
+	}
+
+	private static Path addonFile(ScenarioContext anvil, Addon addon, String path) {
+		String proxy = anvil.definition().getEntrypoint();
+		Path workDirectory = anvil.processes().proxy(proxy).workDirectory();
+
+		return workDirectory.resolve(addon.on(Platform.of(anvil, proxy)).dataDirectory()).resolve(path);
 	}
 
 	/**

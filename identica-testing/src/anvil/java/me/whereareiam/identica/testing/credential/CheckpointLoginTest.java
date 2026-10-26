@@ -1,6 +1,7 @@
 package me.whereareiam.identica.testing.credential;
 
 import me.whereareiam.anvil.api.scenario.ScenarioContext;
+import me.whereareiam.identica.testing.environment.Addon;
 import me.whereareiam.identica.testing.environment.Identica;
 import me.whereareiam.identica.testing.environment.Provider;
 import me.whereareiam.identica.testing.fixture.Accounts;
@@ -24,7 +25,7 @@ class CheckpointLoginTest {
 	private static final String PASSWORD = "Secret-123";
 
 	@Test
-	@Identica(providers = Provider.CREDENTIAL, addon = true)
+	@Identica(providers = Provider.CREDENTIAL, addons = Addon.EXAMPLE)
 	void logsInWhileHeldAndReadsTheAnswersOnceJoined(ScenarioContext anvil) {
 		Accounts.credentialByAdmin(anvil, "Alice", PASSWORD);
 		Journey alice = Journey.of(anvil, Client.offline("Alice").through(HOLD_HOST)).joinsHeld();

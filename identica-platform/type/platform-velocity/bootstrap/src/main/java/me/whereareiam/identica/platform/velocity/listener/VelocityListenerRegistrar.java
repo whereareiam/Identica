@@ -13,6 +13,7 @@ import com.velocitypowered.api.event.connection.PreLoginEvent;
 import com.velocitypowered.api.event.player.CookieReceiveEvent;
 import com.velocitypowered.api.event.player.GameProfileRequestEvent;
 import com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent;
+import com.velocitypowered.api.event.player.ServerConnectedEvent;
 import com.velocitypowered.api.event.player.ServerPostConnectEvent;
 import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import me.whereareiam.identica.common.CommonListenerRegistrar;
@@ -29,6 +30,7 @@ import me.whereareiam.identica.platform.velocity.listener.connection.LoginListen
 import me.whereareiam.identica.platform.velocity.listener.connection.PreLoginListener;
 import me.whereareiam.identica.platform.velocity.listener.connection.server.PlayerChooseInitialServerListener;
 import me.whereareiam.identica.platform.velocity.listener.connection.server.ServerPreConnectListener;
+import me.whereareiam.identica.platform.velocity.listener.connection.server.ServerConnectedListener;
 import me.whereareiam.identica.platform.velocity.listener.connection.server.ServerPostConnectListener;
 import me.whereareiam.identica.platform.velocity.util.VelocityUtil;
 
@@ -61,6 +63,7 @@ public class VelocityListenerRegistrar extends CommonListenerRegistrar {
 		registerAwaitingListener(PreLoginEvent.class, injector.getInstance(PreLoginListener.class));
 		registerListener(GameProfileRequestEvent.class, injector.getInstance(GameProfileRequestListener.class));
 		registerListener(LoginEvent.class, injector.getInstance(LoginListener.class));
+		registerListener(ServerConnectedEvent.class, injector.getInstance(ServerConnectedListener.class));
 		registerListener(ServerPostConnectEvent.class, injector.getInstance(ServerPostConnectListener.class));
 		registerListener(PlayerChooseInitialServerEvent.class, injector.getInstance(PlayerChooseInitialServerListener.class));
 		registerListener(ServerPreConnectEvent.class, injector.getInstance(ServerPreConnectListener.class));

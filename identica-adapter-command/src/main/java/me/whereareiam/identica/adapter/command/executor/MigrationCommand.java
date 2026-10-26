@@ -131,8 +131,8 @@ public class MigrationCommand {
 
 		if (result.getStatus() == MigrationResultStatus.PRECHECK_DENIED) {
 			PlayerMessage message = result.getMessage();
-			if (message != null && !message.isEmpty()) {
-				sendMessage(sender, message.getText(), message.getPlaceholders());
+			if (message != null && message.hasText()) {
+				sender.sendMessage(Serializer.serialize(sender, message));
 				return;
 			}
 		}

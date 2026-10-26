@@ -211,7 +211,7 @@ public class VerificationResultRenderer {
 			return;
 		}
 
-		sender.sendMessage(Serializer.serialize(sender, message.getText(), message.getPlaceholders()));
+		sender.sendMessage(Serializer.serialize(sender, message));
 	}
 
 	private static @NotNull Map<String, String> merged(@NotNull Map<String, String> first, @NotNull Map<String, String> second) {

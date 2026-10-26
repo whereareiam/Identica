@@ -11,10 +11,8 @@ import me.whereareiam.identica.checkpoint.Checkpoints;
 import me.whereareiam.identica.checkpoint.HeldConnection;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.model.checkpoint.CheckpointSelection;
-import me.whereareiam.identica.model.message.PlayerMessage;
-import me.whereareiam.identica.platform.common.checkpoint.LoadingScreenReplies;
+import me.whereareiam.identica.platform.common.checkpoint.PlatformLoadingScreen;
 import me.whereareiam.identica.platform.velocity.adapter.auth.VelocityResumeDecisionAdapter;
-import me.whereareiam.identica.service.DeliveryService;
 import me.whereareiam.identica.type.checkpoint.CheckpointPlacement;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,10 +41,10 @@ class InitialServerHoldListenerTest {
 	private final VelocityCheckpointAdapter adapter = mock(VelocityCheckpointAdapter.class);
 	private final ProxyHoldKeepAlive keepAlive = mock(ProxyHoldKeepAlive.class);
 	private final ScheduledTask keepingAlive = mock(ScheduledTask.class);
-	private final LoadingScreenReplies replies = new LoadingScreenReplies(mock(DeliveryService.class));
+	private final PlatformLoadingScreen loadingScreen = new PlatformLoadingScreen();
 	private final Player player = mock(Player.class);
 	private final InitialServerHoldListener listener =
-			new InitialServerHoldListener(checkpoints, resumeAdapter, adapter, keepAlive, replies);
+			new InitialServerHoldListener(checkpoints, resumeAdapter, adapter, keepAlive, loadingScreen);
 
 	@DisplayName("Does not hold a player whose step waits on the step's server")
 	@Test
@@ -76,14 +74,14 @@ class InitialServerHoldListenerTest {
 		HeldConnection arrived = arrived();
 		assertEquals(ALICE, arrived.getConnectionUniqueId());
 		verify(keepAlive).keepAlive(player);
-		assertTrue(replies.hold(alice(), message("Wrong password")));
+		assertTrue(loadingScreen.holds(ALICE));
 
 		arrived.release("lobby");
 
 		assertTrue(arrived.released().toCompletableFuture().isDone());
 		assertEquals(Optional.of(lobby), event.getInitialServer());
 		verify(keepingAlive).cancel();
-		assertFalse(replies.hold(alice(), message("Welcome")));
+		assertFalse(loadingScreen.holds(ALICE));
 	}
 
 	@DisplayName("Chooses no server for a player who left while held")
@@ -133,7 +131,4 @@ class InitialServerHoldListenerTest {
 		return alice;
 	}
 
-	private static PlayerMessage message(String text) {
-		return PlayerMessage.builder().text(text).build();
-	}
 }

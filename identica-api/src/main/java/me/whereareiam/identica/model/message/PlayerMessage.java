@@ -4,7 +4,9 @@ import lombok.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -40,22 +42,35 @@ public class PlayerMessage {
 	 * What the message asks the player for, or {@code null} for a message that asks nothing.
 	 */
 	private @Nullable Prompt prompt;
+	/**
+	 * Messages told together with this one, below it, such as a warning after a wrong password. Each keeps its own ID,
+	 * text and placeholders, so an addon can show it its own way.
+	 */
+	@Builder.Default
+	private @NotNull List<PlayerMessage> appended = new ArrayList<>();
+	/**
+	 * Title shown with the message, in Identica's message format, or {@code null} for none.
+	 */
+	private @Nullable String title;
+	/**
+	 * Subtitle shown with the message's title, in Identica's message format, or {@code null} for none.
+	 */
+	private @Nullable String subtitle;
 
 	/**
-	 * Returns this message with another one's text added as further lines, such as a warning below a wrong password.
-	 * The result keeps this message's ID and prompt; the placeholders of both apply.
+	 * Returns this message with another one told below it, such as a warning below a wrong password. The result keeps
+	 * this message's ID and prompt; the added message, and whatever was appended to it, keeps its own ID, text and
+	 * placeholders.
 	 *
 	 * @param other the message to add, or {@code null} to add nothing
 	 * @return the combined message
 	 */
 	public @NotNull PlayerMessage append(@Nullable PlayerMessage other) {
-		if (other == null || other.getText().isBlank()) return this;
-		if (text.isBlank()) return toBuilder().text(other.getText()).placeholders(merged(other)).build();
+		if (other == null || other.isEmpty()) return this;
 
-		return toBuilder()
-				.text(text + "\n" + other.getText())
-				.placeholders(merged(other))
-				.build();
+		List<PlayerMessage> combined = new ArrayList<>(appended);
+		combined.addAll(other.sequence());
+		return toBuilder().appended(combined).build();
 	}
 
 	/**
@@ -69,19 +84,54 @@ public class PlayerMessage {
 		return toBuilder().prompt(prompt).build();
 	}
 
-	private @NotNull Map<String, String> merged(@NotNull PlayerMessage other) {
-		Map<String, String> merged = new LinkedHashMap<>(other.getPlaceholders());
-		merged.putAll(placeholders);
-
-		return merged;
+	/**
+	 * Returns this message with a title shown alongside it, such as the title of a completed registration.
+	 *
+	 * @param title the title, or {@code null} for none
+	 * @param subtitle the subtitle, or {@code null} for none
+	 * @return the message with the title
+	 */
+	public @NotNull PlayerMessage withTitle(@Nullable String title, @Nullable String subtitle) {
+		return toBuilder().title(title).subtitle(subtitle).build();
 	}
 
 	/**
-	 * Tells whether the message has nothing to show: a blank text, such as one an admin cleared, and no prompt.
+	 * Returns this message followed by the messages appended to it, each on its own, in the order they are told.
+	 *
+	 * @return this message without its appended ones, then the appended ones
+	 */
+	public @NotNull List<PlayerMessage> sequence() {
+		List<PlayerMessage> sequence = new ArrayList<>();
+		sequence.add(toBuilder().appended(new ArrayList<>()).build());
+		sequence.addAll(appended);
+		return List.copyOf(sequence);
+	}
+
+	/**
+	 * Tells whether the message, or a message appended to it, has text to show.
+	 *
+	 * @return {@code true} when there is text
+	 */
+	public boolean hasText() {
+		return !text.isBlank() || appended.stream().anyMatch(PlayerMessage::hasText);
+	}
+
+	/**
+	 * Tells whether the message has a title or subtitle to show.
+	 *
+	 * @return {@code true} when there is a title or subtitle
+	 */
+	public boolean hasTitle() {
+		return (title != null && !title.isBlank()) || (subtitle != null && !subtitle.isBlank());
+	}
+
+	/**
+	 * Tells whether the message has nothing to show: a blank text, such as one an admin cleared, no prompt, no title
+	 * and nothing appended.
 	 *
 	 * @return {@code true} when there is nothing to show
 	 */
 	public boolean isEmpty() {
-		return text.isBlank() && prompt == null;
+		return !hasText() && prompt == null && !hasTitle();
 	}
 }

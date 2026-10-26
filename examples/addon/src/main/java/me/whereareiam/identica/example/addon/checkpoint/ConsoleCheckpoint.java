@@ -21,6 +21,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * Holds players who join through a hostname with a given prefix at a checkpoint and tells the proxy's console what
@@ -117,7 +118,10 @@ public final class ConsoleCheckpoint implements Checkpoint, EventListener {
 	}
 
 	private void asks(String name, String step, @Nullable PlayerMessage message) {
-		String text = message == null ? "" : message.getText();
+		String text = message == null ? "" : message.sequence().stream()
+				.map(PlayerMessage::getText)
+				.filter(line -> !line.isBlank())
+				.collect(Collectors.joining(" "));
 		console.accept("Example checkpoint asks " + name + " for " + step + (text.isBlank() ? "" : ": " + text));
 	}
 }

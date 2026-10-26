@@ -422,7 +422,7 @@ class DefaultMigrationServiceTest {
 					sessionService,
 					identityService,
 					deliveryService,
-					new DefaultMessageService(() -> (recipient, message) -> false, () -> null, mock(EventManager.class)),
+					new DefaultMessageService(() -> connection -> false, () -> null, mock(EventManager.class)),
 					providersProvider,
 					commandsProvider,
 					messagesProvider

@@ -53,7 +53,7 @@ class SessionClosedDisconnectListenerTest {
 		when(identities.findByConnectionUniqueId(connectionUniqueId)).thenReturn(Optional.of(connection));
 		Replication replication = new Replication();
 		replication.setServerId("proxy-a");
-		listener = new SessionClosedDisconnectListener(identities, () -> replication, new DefaultMessageService(() -> (recipient, message) -> false, () -> null, mock(EventManager.class)), mock(EventManager.class));
+		listener = new SessionClosedDisconnectListener(identities, () -> replication, new DefaultMessageService(() -> connection -> false, () -> null, mock(EventManager.class)), mock(EventManager.class));
 	}
 
 	@DisplayName("A close that asks for a disconnect disconnects with or without a message")

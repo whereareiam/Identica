@@ -41,7 +41,7 @@ public class ConnectionDecisionApplier {
 				if (actor instanceof Identity identity)
 					messageService.send(identity, message);
 				else
-					actor.sendMessage(Serializer.serialize(actor, message.getText(), message.getPlaceholders()));
+					actor.sendMessage(Serializer.serialize(actor, message));
 			}
 			case DENY -> target.deny(messageService.disconnectReason(actor, resolveAuthMessage(decision.getMessage())));
 			case REQUIRE_RECONNECT -> target.requireReconnect(messageService.disconnectReason(actor, resolveAuthMessage(decision.getMessage())));

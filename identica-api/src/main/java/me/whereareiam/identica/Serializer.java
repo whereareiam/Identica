@@ -1,13 +1,18 @@
 package me.whereareiam.identica;
 
 import com.google.inject.Provider;
+import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.keystone.Actor;
 import me.whereareiam.keystone.model.SerializerContent;
 import me.whereareiam.keystone.serializer.SerializerEngine;
 import me.whereareiam.keystone.template.message.MessageTemplate;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.JoinConfiguration;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -74,6 +79,31 @@ public final class Serializer {
 				.message(message)
 				.placeholders(placeholders)
 				.build());
+	}
+
+	/**
+	 * Serializes a whole message as text for a receiver: its own text and the text of each message appended to it,
+	 * each with its own placeholders, on separate lines. A message without a receiver, such as the reason a connection
+	 * is refused before it became a player, is serialized without one.
+	 *
+	 * @param actor receiver that provides audience context, or {@code null} for none
+	 * @param message message to serialize
+	 * @return serialized component, empty when the message has no text
+	 */
+	@NotNull
+	public static Component serialize(@Nullable Actor actor, @NotNull PlayerMessage message) {
+		List<Component> lines = new ArrayList<>();
+		for (PlayerMessage entry : message.sequence()) {
+			if (entry.getText().isBlank()) continue;
+
+			lines.add(serialize(SerializerContent.builder()
+					.receiver(actor)
+					.message(entry.getText())
+					.placeholders(entry.getPlaceholders())
+					.build()));
+		}
+
+		return Component.join(JoinConfiguration.newlines(), lines);
 	}
 
 	/**

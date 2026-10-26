@@ -1,19 +1,17 @@
 package me.whereareiam.identica.pipeline.completion.step;
 
-import me.whereareiam.identica.Serializer;
-import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.message.MessageService;
 import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.pipeline.completion.CompletionContext;
-import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
- * Base completion step that shows the player a configured title and its completion message.
+ * Base completion step that tells the player its completion message, with a configured title.
  */
 public abstract class AbstractMessageCompletionStep extends AbstractCompletionStep {
 	protected AbstractMessageCompletionStep(@NotNull String name) {
@@ -63,61 +61,21 @@ public abstract class AbstractMessageCompletionStep extends AbstractCompletionSt
 	}
 
 	/**
-	 * Executes this completion step by showing its optional title and message to the active identity.
+	 * Executes this completion step by telling the active identity its completion message, with its title when the
+	 * step has one, through {@link MessageService}.
 	 *
 	 * @param context completion context containing the resolved identity and provider details
 	 */
 	@Override
 	public final void execute(@NotNull CompletionContext context) {
-		Identity identity = context.getIdentity();
-		Map<String, String> placeholders = placeholders(context);
+		PlayerMessage message = Objects.requireNonNullElseGet(message(context), () -> PlayerMessage.builder().build());
+		TitleContent title = title(context);
+		if (title != null) message = message.withTitle(title.title(), title.subtitle());
+		if (message.isEmpty()) return;
 
-		sendTitle(identity, title(context), placeholders);
-		sendMessage(identity, message(context), placeholders);
-	}
-
-	private void sendTitle(
-			@NotNull Identity identity,
-			@Nullable AbstractMessageCompletionStep.TitleContent titleContent,
-			@NotNull Map<String, String> placeholders
-	) {
-		if (titleContent == null) return;
-
-		String resolvedTitle = renderTitle(titleContent.title(), placeholders);
-		String resolvedSubtitle = renderTitle(titleContent.subtitle(), placeholders);
-		if (resolvedTitle == null && resolvedSubtitle == null) return;
-
-		Component titleComponent = resolvedTitle == null
-				? Component.empty()
-				: Serializer.serialize(identity, resolvedTitle);
-		Component subtitleComponent = resolvedSubtitle == null
-				? Component.empty()
-				: Serializer.serialize(identity, resolvedSubtitle);
-		identity.sendTitle(net.kyori.adventure.title.Title.title(titleComponent, subtitleComponent));
-	}
-
-	private void sendMessage(
-			@NotNull Identity identity,
-			@Nullable PlayerMessage message,
-			@NotNull Map<String, String> placeholders
-	) {
-		if (message == null || message.isEmpty()) return;
-
-		Map<String, String> merged = new HashMap<>(placeholders);
-		merged.putAll(message.getPlaceholders());
-		messageService().send(identity, message.toBuilder().placeholders(merged).build());
-	}
-
-	private static @Nullable String renderTitle(
-			@Nullable String value,
-			@NotNull Map<String, String> placeholders
-	) {
-		if (value == null) return null;
-
-		String resolved = Serializer.render(value, placeholders);
-
-		String trimmed = resolved.trim();
-		return trimmed.isEmpty() ? null : trimmed;
+		Map<String, String> placeholders = new HashMap<>(placeholders(context));
+		placeholders.putAll(message.getPlaceholders());
+		messageService().send(context.getIdentity(), message.toBuilder().placeholders(placeholders).build());
 	}
 
 	protected record TitleContent(

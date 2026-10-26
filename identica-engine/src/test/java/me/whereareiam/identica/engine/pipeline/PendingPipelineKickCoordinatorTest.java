@@ -45,7 +45,7 @@ import static org.mockito.Mockito.*;
 @DisplayName("Pending Pipeline Kick Coordinator")
 class PendingPipelineKickCoordinatorTest {
 	private static final MessageService MESSAGE_SERVICE =
-			new DefaultMessageService(() -> (recipient, message) -> false, () -> null, mock(EventManager.class));
+			new DefaultMessageService(() -> connection -> false, () -> null, mock(EventManager.class));
 
 	@BeforeAll
 	static void initializeSerializer() {

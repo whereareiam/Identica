@@ -34,7 +34,7 @@ class DefaultDeliveryServiceTest {
 		DefaultDeliveryService service = new DefaultDeliveryService(
 				deliveryStore,
 				mock(PipelineStateStore.class),
-				new DefaultMessageService(() -> (recipient, message) -> false, () -> null, mock(EventManager.class))
+				new DefaultMessageService(() -> connection -> false, () -> null, mock(EventManager.class))
 		);
 		TestIdentity identity = new TestIdentity(UUID.randomUUID(), UUID.randomUUID(), "PlayerOne");
 		DeliveryRequest request = DeliveryRequest.builder()

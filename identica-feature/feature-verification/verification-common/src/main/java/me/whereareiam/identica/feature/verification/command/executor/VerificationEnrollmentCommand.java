@@ -13,8 +13,10 @@ import me.whereareiam.identica.feature.verification.VerificationService;
 import me.whereareiam.identica.feature.verification.command.ProtectedActionCommand;
 import me.whereareiam.identica.feature.verification.command.suggestion.VerificationMethodSuggestions;
 import me.whereareiam.identica.feature.verification.config.VerificationMessages;
+import me.whereareiam.identica.feature.verification.model.enrollment.VerificationEnrollmentResult;
 import me.whereareiam.identica.feature.verification.model.interaction.CodeVerificationInteraction;
 import me.whereareiam.identica.feature.verification.model.interaction.SavedVerificationInteraction;
+import me.whereareiam.identica.feature.verification.type.status.VerificationEnrollmentStatus;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.identity.session.SessionService;
 import me.whereareiam.identica.message.MessageService;
@@ -100,10 +102,9 @@ public class VerificationEnrollmentCommand extends ProtectedActionCommand<Void> 
 		var accountUniqueId = requireAccountUniqueId(identity);
 		if (accountUniqueId == null) return;
 
-		resultRenderer.presentEnrollmentResult(
-				sender,
-				verificationService.submitEnrollment(accountUniqueId, interaction(accountUniqueId, input))
-		);
+		VerificationEnrollmentResult result = verificationService.submitEnrollment(accountUniqueId, interaction(accountUniqueId, input));
+		resultRenderer.presentEnrollmentResult(sender, result);
+		if (!stillAsks(result.getStatus())) endEnrollmentPrompt(identity);
 	}
 
 	@Definition("verification-enroll-cancel")
@@ -116,10 +117,27 @@ public class VerificationEnrollmentCommand extends ProtectedActionCommand<Void> 
 
 		if (verificationService.cancelPendingEnrollment(accountUniqueId)) {
 			send(sender, VerificationMessageDefinitions.CANCEL_CANCELLED, Map.of());
+			endEnrollmentPrompt(identity);
 			return;
 		}
 
 		send(sender, VerificationMessageDefinitions.CANCEL_NO_PENDING, Map.of());
+	}
+
+	/**
+	 * Tells whether an enrollment still waits for the player after a confirmation, so its prompt stays open: it just
+	 * started, waits for the next input, or the code was wrong.
+	 */
+	private static boolean stillAsks(@Nullable VerificationEnrollmentStatus status) {
+		return status == VerificationEnrollmentStatus.STARTED
+				|| status == VerificationEnrollmentStatus.WAITING
+				|| status == VerificationEnrollmentStatus.INVALID;
+	}
+
+	private void endEnrollmentPrompt(@NotNull Identity identity) {
+		if (identity.getConnectionUniqueId() == null) return;
+
+		messageService.endPrompt(identity.getConnectionUniqueId(), VerificationMessageDefinitions.ENROLLMENT_CODE_PROMPT);
 	}
 
 	private VerificationInteraction interaction(@NotNull java.util.UUID uniqueId, @NotNull String input) {

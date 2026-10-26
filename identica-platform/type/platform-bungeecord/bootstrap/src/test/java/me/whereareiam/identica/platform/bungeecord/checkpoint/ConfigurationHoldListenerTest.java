@@ -5,11 +5,9 @@ import me.whereareiam.identica.checkpoint.Checkpoints;
 import me.whereareiam.identica.checkpoint.HeldConnection;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.model.checkpoint.CheckpointSelection;
-import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.platform.bungeecord.BungeeCordIdentica;
 import me.whereareiam.identica.platform.bungeecord.adapter.auth.BungeeCordResumeDecisionAdapter;
-import me.whereareiam.identica.platform.common.checkpoint.LoadingScreenReplies;
-import me.whereareiam.identica.service.DeliveryService;
+import me.whereareiam.identica.platform.common.checkpoint.PlatformLoadingScreen;
 import me.whereareiam.identica.type.checkpoint.CheckpointPlacement;
 import net.md_5.bungee.api.config.ServerInfo;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
@@ -38,11 +36,11 @@ class ConfigurationHoldListenerTest {
 
 	private final Checkpoints checkpoints = mock(Checkpoints.class);
 	private final BungeeCordResumeDecisionAdapter resumeAdapter = mock(BungeeCordResumeDecisionAdapter.class);
-	private final LoadingScreenReplies replies = new LoadingScreenReplies(mock(DeliveryService.class));
+	private final PlatformLoadingScreen loadingScreen = new PlatformLoadingScreen();
 	private final ProxiedPlayer player = mock(ProxiedPlayer.class);
 	private final AtomicBoolean configured = new AtomicBoolean();
 	private final ConfigurationHoldListener listener =
-			new ConfigurationHoldListener(mock(BungeeCordIdentica.class), checkpoints, resumeAdapter, replies);
+			new ConfigurationHoldListener(mock(BungeeCordIdentica.class), checkpoints, resumeAdapter, loadingScreen);
 
 	@DisplayName("Lets the configuration of a player whose step waits on the step's server finish")
 	@Test
@@ -76,13 +74,13 @@ class ConfigurationHoldListenerTest {
 		configure(PlayerConfigurationEvent.Reason.LOGIN);
 		HeldConnection arrived = arrived();
 		assertFalse(configured.get());
-		assertTrue(replies.hold(alice(), message("Wrong password")));
+		assertTrue(loadingScreen.holds(ALICE));
 
 		arrived.release("lobby");
 
 		assertTrue(configured.get());
 		assertTrue(arrived.released().toCompletableFuture().isDone());
-		assertFalse(replies.hold(alice(), message("Welcome")));
+		assertFalse(loadingScreen.holds(ALICE));
 	}
 
 	@DisplayName("Lets the first configuration finish also when the journey completes on another server")
@@ -146,7 +144,4 @@ class ConfigurationHoldListenerTest {
 		return alice;
 	}
 
-	private static PlayerMessage message(String text) {
-		return PlayerMessage.builder().text(text).build();
-	}
 }

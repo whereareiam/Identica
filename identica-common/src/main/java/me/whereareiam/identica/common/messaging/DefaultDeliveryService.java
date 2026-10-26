@@ -121,6 +121,7 @@ public class DefaultDeliveryService implements DeliveryService {
 	) {
 		String targetServer = request.getRequiredServer();
 		if (targetServer == null || targetServer.isBlank()) return true;
+		if (context.getServer() == null) return false;
 
 		return targetServer.equalsIgnoreCase(context.getServer());
 	}

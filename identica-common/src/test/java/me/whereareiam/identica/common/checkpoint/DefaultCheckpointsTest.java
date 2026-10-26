@@ -10,6 +10,7 @@ import me.whereareiam.identica.event.routing.intent.RoutingIntentClearedEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentStartedEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentUpdatedEvent;
 import me.whereareiam.identica.event.scenario.ScenarioResolvedEvent;
+import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.checkpoint.CheckpointRequest;
@@ -26,6 +27,7 @@ import me.whereareiam.identica.pipeline.journey.step.Step;
 import me.whereareiam.identica.platform.adapter.PlatformCheckpointAdapter;
 import me.whereareiam.identica.routing.RoutingAttemptService;
 import me.whereareiam.identica.routing.RoutingCoordinator;
+import me.whereareiam.identica.service.DeliveryService;
 import me.whereareiam.identica.type.ScenarioResolution;
 import me.whereareiam.identica.type.checkpoint.CheckpointPlacement;
 import me.whereareiam.identica.type.pipeline.PipelineType;
@@ -51,6 +53,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -63,6 +66,8 @@ class DefaultCheckpointsTest {
 
 	private final RoutingCoordinator routing = mock(RoutingCoordinator.class);
 	private final RoutingAttemptService attempts = mock(RoutingAttemptService.class);
+	private final DeliveryService deliveries = mock(DeliveryService.class);
+	private final IdentityService identities = mock(IdentityService.class);
 
 	@Test
 	void picksTheLatestRegisteredCheckpointThatAcceptsAndThePlatformCanHold() {
@@ -99,6 +104,17 @@ class DefaultCheckpointsTest {
 		checkpoints.register(new RecordingCheckpoint("loading-screen", LOADING_SCREEN, true));
 
 		assertEquals(Optional.empty(), checkpoints.select(request()));
+	}
+
+	@Test
+	void givesAPlayerHeldOnTheLoadingScreenWhatWaitsForThemOnceTheJourneyContinued() {
+		DefaultCheckpoints checkpoints = held();
+		Identity alice = mock(Identity.class);
+		when(identities.findByConnectionUniqueId(ALICE)).thenReturn(Optional.of(alice));
+
+		arrive(checkpoints);
+
+		verify(deliveries).dispatch(argThat(context -> context.getIdentity() == alice && context.getServer() == null));
 	}
 
 	@Test
@@ -292,7 +308,7 @@ class DefaultCheckpointsTest {
 	}
 
 	private DefaultCheckpoints checkpoints(PlatformCheckpointAdapter platform) {
-		return new DefaultCheckpoints(platform, () -> routing, () -> attempts, new EventController());
+		return new DefaultCheckpoints(platform, () -> routing, () -> attempts, () -> deliveries, () -> identities, new EventController());
 	}
 
 	/**

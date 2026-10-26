@@ -20,9 +20,9 @@ public interface DialogPlatform {
 	void start(@NotNull Listener listener);
 
 	/**
-	 * Returns whether the player's client can show dialogs: the player is online on the proxy and their client is
-	 * Minecraft 1.21.6 or newer, which brought dialogs. Whether the client is in a server's world, where a dialog
-	 * reaches it, comes from Identica's {@code ServerJoinedEvent}, not from the platform.
+	 * Returns whether the player's client can show dialogs: the player is logging in or online on the proxy and their
+	 * client is Minecraft 1.21.6 or newer, which brought dialogs. Whether the client is in a server's world, where a
+	 * dialog reaches it, comes from Identica's {@code ServerJoinedEvent}, not from the platform.
 	 *
 	 * @param connectionUniqueId the unique id of the player's connection on the proxy
 	 * @return whether the player's client can show dialogs

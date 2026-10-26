@@ -23,6 +23,7 @@ class DialogsAddonTest {
 	@Test
 	@Identica(providers = Provider.CREDENTIAL, addons = Addon.DIALOGS)
 	void registersAndLogsInThroughDialogs(ScenarioContext anvil) {
+		InGameDialogs.use(anvil);
 		Journey alice = Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
 				.seesDialog("register")
@@ -51,6 +52,7 @@ class DialogsAddonTest {
 	@Test
 	@Identica(providers = Provider.CREDENTIAL, addons = Addon.DIALOGS)
 	void registersAfterRepeatingThePasswordWrongly(ScenarioContext anvil) {
+		InGameDialogs.use(anvil);
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
 				.seesDialog("register")
@@ -69,6 +71,7 @@ class DialogsAddonTest {
 	@Test
 	@Identica(providers = Provider.CREDENTIAL, addons = Addon.DIALOGS)
 	void answersInChatAfterSwitchingToChat(ScenarioContext anvil) {
+		InGameDialogs.use(anvil);
 		ChatButton.addTo(anvil, "register");
 
 		Journey.offline(anvil, "Alice").join()
@@ -90,6 +93,7 @@ class DialogsAddonTest {
 	@Test
 	@Identica(providers = Provider.CREDENTIAL, addons = Addon.DIALOGS)
 	void showsDialogsAgainAfterReconnectingFromChat(ScenarioContext anvil) {
+		InGameDialogs.use(anvil);
 		ChatButton.addTo(anvil, "register");
 
 		Journey.offline(anvil, "Alice").join()
@@ -115,6 +119,7 @@ class DialogsAddonTest {
 	@Test
 	@Identica(providers = Provider.CREDENTIAL, addons = Addon.DIALOGS)
 	void followsAnswersTypedInChatWhileADialogIsOpen(ScenarioContext anvil) {
+		InGameDialogs.use(anvil);
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
 				.seesDialog("register")
@@ -132,6 +137,7 @@ class DialogsAddonTest {
 	@Test
 	@Identica(providers = Provider.CREDENTIAL, addons = Addon.DIALOGS)
 	void leavesThroughTheLeaveButton(ScenarioContext anvil) {
+		InGameDialogs.use(anvil);
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
 				.seesDialog("register")

@@ -5,11 +5,15 @@ import me.whereareiam.identica.addon.dialogs.model.DialogAction;
 import me.whereareiam.identica.addon.dialogs.platform.DialogDisplay;
 import me.whereareiam.identica.addon.dialogs.platform.DialogPlatform;
 import me.whereareiam.identica.addon.dialogs.type.ActionType;
+import me.whereareiam.identica.checkpoint.CheckpointStop;
 import me.whereareiam.identica.identity.IdentityService;
+import me.whereareiam.identica.identity.actor.ConnectionIdentity;
 import me.whereareiam.identica.identity.actor.Identity;
 import me.whereareiam.identica.message.MessageService;
+import me.whereareiam.identica.model.checkpoint.CheckpointRequest;
 import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.message.Prompt;
+import me.whereareiam.identica.type.checkpoint.CheckpointPlacement;
 import me.whereareiam.identica.type.message.ClientScreen;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -24,9 +28,10 @@ import java.util.stream.Collectors;
 
 /**
  * Keeps the display showing the dialog each player should see. A player keeps a dialog until Identica takes the
- * message it shows down, another dialog replaces it, or they switch to chat or leave. Identica decides when a
- * message's dialog can reach the client and shows it again after a server switch; a dialog a plugin shows directly
- * waits until the player's client is in a server's world.
+ * message it shows down, another dialog replaces it, or they switch to chat or leave. A dialog reaches the client in
+ * a server's world, and on the loading screen while the addon's checkpoint holds the player there. Identica decides
+ * when a message's dialog can reach the client and shows it again after a server switch; a dialog a plugin shows
+ * directly waits until it can.
  */
 public final class DialogPresenter implements DialogPlatform.Listener {
 	/**
@@ -42,9 +47,11 @@ public final class DialogPresenter implements DialogPlatform.Listener {
 	private final DialogDisplay display;
 	private final IdentityService identities;
 	private final MessageService messages;
+	private final DialogChooser chooser;
 	private final Supplier<Map<String, Dialog>> dialogs;
 	private final Map<UUID, Wanted> wanted = new ConcurrentHashMap<>();
 	private final Set<UUID> chat = ConcurrentHashMap.newKeySet();
+	private final Map<UUID, CheckpointStop> held = new ConcurrentHashMap<>();
 
 	/**
 	 * Creates the presenter.
@@ -54,6 +61,7 @@ public final class DialogPresenter implements DialogPlatform.Listener {
 	 * @param identities finds the player a dialog's text is rendered for
 	 * @param messages builds the command line that answers a message's prompt, and tells a player who switches to
 	 *                 chat the message there
+	 * @param chooser picks the dialog of what a player held on the loading screen is asked
 	 * @param dialogs the current dialogs by ID
 	 */
 	public DialogPresenter(
@@ -61,8 +69,10 @@ public final class DialogPresenter implements DialogPlatform.Listener {
 			@NotNull DialogDisplay display,
 			@NotNull IdentityService identities,
 			@NotNull MessageService messages,
+			@NotNull DialogChooser chooser,
 			@NotNull Supplier<Map<String, Dialog>> dialogs
 	) {
+		this.chooser = chooser;
 		this.platform = platform;
 		this.display = display;
 		this.identities = identities;
@@ -139,6 +149,54 @@ public final class DialogPresenter implements DialogPlatform.Listener {
 	}
 
 	/**
+	 * Tells whether a dialog reaches the player's client now: in a server's world, or on the loading screen while the
+	 * addon's checkpoint holds the player there, since answers there run through the checkpoint.
+	 *
+	 * @param connectionUniqueId the unique id of the player's connection on the proxy
+	 * @return whether a dialog reaches the client now
+	 */
+	public boolean reaches(@NotNull UUID connectionUniqueId) {
+		ClientScreen screen = messages.screen(connectionUniqueId);
+		if (screen == ClientScreen.WORLD) return true;
+
+		CheckpointStop stop = held.get(connectionUniqueId);
+		return screen == ClientScreen.LOADING_SCREEN && stop != null && stop.getPlacement() == CheckpointPlacement.LOADING_SCREEN;
+	}
+
+	/**
+	 * Takes a player Identica holds at the addon's checkpoint. Their answers run through the checkpoint until the hold
+	 * ends, and a player held on the loading screen whose waiting step no dialog shows goes on to the step's server.
+	 *
+	 * @param stop the held player
+	 */
+	public void held(@NotNull CheckpointStop stop) {
+		UUID connectionUniqueId = stop.getConnectionUniqueId();
+		held.put(connectionUniqueId, stop);
+		stop.released().whenComplete((ignored, failure) -> held.remove(connectionUniqueId, stop));
+
+		CheckpointRequest waiting = stop.getWaiting().orElse(null);
+		if (waiting != null) waits(connectionUniqueId, waiting.getResult().getMessage(), waiting.getContext().getIdentity());
+		present(connectionUniqueId);
+	}
+
+	/**
+	 * Hands a player held on the loading screen over to the step's server when what a waiting step asks has no dialog,
+	 * since nothing else can be answered there; the player answers in chat on that server.
+	 *
+	 * @param connectionUniqueId the unique id of the player's connection on the proxy
+	 * @param message what the waiting step tells the player, or {@code null} for nothing
+	 * @param identity the player's connection, for the rules' {@code host} condition
+	 */
+	public void waits(@NotNull UUID connectionUniqueId, @Nullable PlayerMessage message, @NotNull ConnectionIdentity identity) {
+		CheckpointStop stop = held.get(connectionUniqueId);
+		if (stop == null || stop.getPlacement() != CheckpointPlacement.LOADING_SCREEN) return;
+		if (message != null && !message.isEmpty() && shows(connectionUniqueId) && chooser.choose(message, identity, connectionUniqueId) != null)
+			return;
+
+		handOver(connectionUniqueId);
+	}
+
+	/**
 	 * Shows a player whose client entered a server's world the dialog a plugin showed them directly meanwhile, or
 	 * again after a server switch. A message's dialog is Identica's to show again.
 	 *
@@ -176,7 +234,15 @@ public final class DialogPresenter implements DialogPlatform.Listener {
 		if (!DialogClicks.COMMAND.equals(click)) return;
 
 		String command = command(current, action, values);
-		if (command != null) platform.run(connectionUniqueId, command);
+		if (command == null) return;
+
+		CheckpointStop stop = held.get(connectionUniqueId);
+		if (stop == null) {
+			platform.run(connectionUniqueId, command);
+			return;
+		}
+
+		stop.answer(command);
 	}
 
 	/**
@@ -193,12 +259,14 @@ public final class DialogPresenter implements DialogPlatform.Listener {
 
 	/**
 	 * Switches the player to chat, where Identica tells them the message their dialog showed, so they know what to
-	 * answer.
+	 * answer. A player held on the loading screen goes on to the step's server for it, since the loading screen shows
+	 * no chat.
 	 */
 	private void switchToChat(UUID connectionUniqueId) {
 		chat.add(connectionUniqueId);
 		Wanted current = wanted.remove(connectionUniqueId);
 		display.clear(connectionUniqueId);
+		handOver(connectionUniqueId);
 		if (current == null || current.message() == null) return;
 
 		identities.findByConnectionUniqueId(connectionUniqueId)
@@ -209,14 +277,22 @@ public final class DialogPresenter implements DialogPlatform.Listener {
 	public void left(@NotNull UUID connectionUniqueId) {
 		chat.remove(connectionUniqueId);
 		wanted.remove(connectionUniqueId);
+		held.remove(connectionUniqueId);
+	}
+
+	private void handOver(UUID connectionUniqueId) {
+		CheckpointStop stop = held.get(connectionUniqueId);
+		if (stop == null || stop.getPlacement() != CheckpointPlacement.LOADING_SCREEN || !held.remove(connectionUniqueId, stop)) return;
+
+		stop.handOver();
 	}
 
 	/**
-	 * Shows the dialog a player should see now, if their client is in a server's world.
+	 * Shows the dialog a player should see now, if it reaches their client.
 	 */
 	private void present(UUID connectionUniqueId) {
 		Wanted current = wanted.get(connectionUniqueId);
-		if (current == null || messages.screen(connectionUniqueId) != ClientScreen.WORLD) return;
+		if (current == null || !reaches(connectionUniqueId)) return;
 
 		display(connectionUniqueId, current);
 	}

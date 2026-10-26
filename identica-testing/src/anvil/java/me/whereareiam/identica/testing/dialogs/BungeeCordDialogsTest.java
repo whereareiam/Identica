@@ -29,6 +29,7 @@ class BungeeCordDialogsTest {
 			addons = Addon.DIALOGS
 	)
 	void registersAndLogsInThroughDialogs(ScenarioContext anvil) {
+		InGameDialogs.use(anvil);
 		Journey alice = Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
 				.seesDialog("register")
@@ -60,6 +61,7 @@ class BungeeCordDialogsTest {
 			addons = Addon.DIALOGS
 	)
 	void answersInChatAfterSwitchingToChat(ScenarioContext anvil) {
+		InGameDialogs.use(anvil);
 		ChatButton.addTo(anvil, "register");
 
 		Journey.offline(anvil, "Alice").join()
@@ -82,6 +84,7 @@ class BungeeCordDialogsTest {
 			addons = Addon.DIALOGS
 	)
 	void leavesThroughTheLeaveButton(ScenarioContext anvil) {
+		InGameDialogs.use(anvil);
 		Journey.offline(anvil, "Alice").join()
 				.on(AUTH)
 				.seesDialog("register")

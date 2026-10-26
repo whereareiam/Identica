@@ -36,6 +36,7 @@ class DialogRulesTest {
 	@Test
 	@Identica(providers = Provider.CREDENTIAL, addons = Addon.DIALOGS)
 	void keepsAStepInChatWhenItsRuleShowsNoDialog(ScenarioContext anvil) {
+		InGameDialogs.use(anvil);
 		ProxyConfiguration.editGenerated(anvil, Addon.DIALOGS, RULES, RulesDocument.class, rules ->
 				first(rules, rule(Map.of("prompt", "credential:new-password"), "none")));
 		Administrator.at(anvil, PROXY).reloads();
@@ -58,6 +59,7 @@ class DialogRulesTest {
 	@Test
 	@Identica(providers = Provider.CREDENTIAL, addons = Addon.DIALOGS)
 	void showsTheDialogOfTheRuleForTheHostnameThePlayerJoinedThrough(ScenarioContext anvil) {
+		InGameDialogs.use(anvil);
 		DialogDocument event = ProxyConfiguration.generated(anvil, Addon.DIALOGS, REGISTER, DialogDocument.class);
 		event.setTitle("<gold><bold>Spring Event");
 		ProxyConfiguration.putGenerated(anvil, Addon.DIALOGS, "dialogs/event-register.yml", event);
@@ -78,6 +80,7 @@ class DialogRulesTest {
 	@Test
 	@Identica(providers = Provider.CREDENTIAL, addons = Addon.DIALOGS)
 	void showsAChangedDialogAfterAReload(ScenarioContext anvil) {
+		InGameDialogs.use(anvil);
 		ProxyConfiguration.editGenerated(anvil, Addon.DIALOGS, REGISTER, DialogDocument.class, dialog ->
 				dialog.setBody(List.of("<white>Pick a password for this network.", "{message}")));
 		Administrator.at(anvil, PROXY).reloads();

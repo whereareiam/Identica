@@ -364,6 +364,10 @@ class RoutingPlannerTest {
 			throw new AssertionError("Planning does not route again");
 		}, () -> {
 			throw new AssertionError("Planning does not attempt routing");
+		}, () -> {
+			throw new AssertionError("Planning does not deliver");
+		}, () -> {
+			throw new AssertionError("Planning does not find identities");
 		}, new EventController());
 	}
 

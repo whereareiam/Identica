@@ -17,16 +17,19 @@ import me.whereareiam.identica.event.routing.intent.RoutingIntentClearedEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentStartedEvent;
 import me.whereareiam.identica.event.routing.intent.RoutingIntentUpdatedEvent;
 import me.whereareiam.identica.event.scenario.ScenarioResolvedEvent;
+import me.whereareiam.identica.identity.IdentityService;
 import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.model.auth.ConnectionDecision;
 import me.whereareiam.identica.model.checkpoint.CheckpointRequest;
 import me.whereareiam.identica.model.checkpoint.CheckpointSelection;
+import me.whereareiam.identica.model.delivery.DeliveryDispatchContext;
 import me.whereareiam.identica.model.message.PlayerMessage;
 import me.whereareiam.identica.model.routing.RoutingIntent;
 import me.whereareiam.identica.model.routing.RoutingSignal;
 import me.whereareiam.identica.platform.adapter.PlatformCheckpointAdapter;
 import me.whereareiam.identica.routing.RoutingAttemptService;
 import me.whereareiam.identica.routing.RoutingCoordinator;
+import me.whereareiam.identica.service.DeliveryService;
 import me.whereareiam.identica.type.ScenarioResolution;
 import me.whereareiam.identica.type.checkpoint.CheckpointPlacement;
 import me.whereareiam.identica.type.routing.RoutingIntentStatus;
@@ -54,6 +57,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * continues the journey. On the step's server, the hold starts once the player is in the world of a server and
  * routing moves them nowhere else.</p>
  *
+ * <p>Once the journey of a connection held on the loading screen continued, the player gets what waits for them,
+ * such as the prompt of the waiting step; the message service shows each of its parts once the player can see it.</p>
+ *
  * <p>A connection keeps the checkpoint that holds it for every later step of its journey. A finished journey routes
  * its connection to where it completes right after it resolves; the hold ends with that destination, so the platform
  * sends the player straight there. A cancelled journey, or routing that drops its intent, ends the hold where the
@@ -66,6 +72,8 @@ public class DefaultCheckpoints implements Checkpoints, EventListener {
 	private final PlatformCheckpointAdapter platform;
 	private final Provider<RoutingCoordinator> routing;
 	private final Provider<RoutingAttemptService> attempts;
+	private final Provider<DeliveryService> deliveries;
+	private final Provider<IdentityService> identities;
 	private final List<Checkpoint> registered = new CopyOnWriteArrayList<>();
 	private final Map<UUID, CheckpointSelection> selections = new ConcurrentHashMap<>();
 	private final Map<UUID, CheckpointRequest> waiting = new ConcurrentHashMap<>();
@@ -78,11 +86,15 @@ public class DefaultCheckpoints implements Checkpoints, EventListener {
 			@NotNull PlatformCheckpointAdapter platform,
 			@NotNull Provider<RoutingCoordinator> routing,
 			@NotNull Provider<RoutingAttemptService> attempts,
+			@NotNull Provider<DeliveryService> deliveries,
+			@NotNull Provider<IdentityService> identities,
 			@NotNull EventManager eventManager
 	) {
 		this.platform = platform;
 		this.routing = routing;
 		this.attempts = attempts;
+		this.deliveries = deliveries;
+		this.identities = identities;
 		eventManager.register(this);
 	}
 
@@ -146,8 +158,23 @@ public class DefaultCheckpoints implements Checkpoints, EventListener {
 		if (!hold(connection, selection)) return;
 
 		connection.resume().whenComplete((decision, error) -> {
-			if (error != null) Logger.warn(error, "Checkpoint could not continue the journey connection=%s", connectionUniqueId);
+			if (error != null) {
+				Logger.warn(error, "Checkpoint could not continue the journey connection=%s", connectionUniqueId);
+				return;
+			}
+
+			deliverWaiting(connectionUniqueId);
 		});
+	}
+
+	/**
+	 * Gives a player held on the loading screen what waits for them, such as the prompt of the waiting step.
+	 */
+	private void deliverWaiting(@NotNull UUID connectionUniqueId) {
+		if (!held.containsKey(connectionUniqueId)) return;
+
+		identities.get().findByConnectionUniqueId(connectionUniqueId).ifPresent(identity ->
+				deliveries.get().dispatch(DeliveryDispatchContext.builder().identity(identity).build()));
 	}
 
 	/**

@@ -8,8 +8,9 @@ instead of a chat message asking the player to type `/login <password>`. When th
 the proxy runs the same command the player would type, as that player, so Identica handles the answer exactly as it
 handles chat.
 
-A dialog replaces Identica's chat message while it is open. A player whose client has no dialogs, such as Minecraft
-1.21.5 or older, answers in chat as before.
+Players are asked on the loading screen, before they enter any server: Identica keeps them there until they are in
+and then sends them straight to where they play. A player whose client has no dialogs, such as Minecraft 1.21.5 or
+older, answers on the authentication server in chat as before.
 
 ## Install it
 
@@ -27,9 +28,9 @@ On the first start the addon writes its files to `plugins/identica-dialogs/` on 
 registration and migration prompts, and two-factor codes. With them, players of a network that uses Credential see
 dialogs right away.
 
-To check it works, join with a 1.21.6 or newer client: a window greets you with **Welcome!** and asks for a
-password. If it does not appear, check the proxy log for `identica-dialogs` on Velocity, and
-that PacketEvents loaded before it, or for `Identica-Dialogs` on BungeeCord.
+To check it works, join with a 1.21.6 or newer client: on the loading screen, a window greets you with
+**Welcome!** and asks for a password. If it does not appear, check the proxy log for `identica-dialogs` on
+Velocity, and that PacketEvents loaded before it, or for `Identica-Dialogs` on BungeeCord.
 
 ## How it decides which dialog to show
 
@@ -97,6 +98,34 @@ A rule for a provider you do not use never matches. Delete it or leave it.
 
 The first ask of each prompt has an ID of its own too, such as `credential:password` for the password of an existing
 account.
+
+### Ask on the loading screen
+
+`loadingScreen` in `rules.yml` decides which players are asked before they enter any server, on both Velocity and
+BungeeCord.
+
+```yaml
+loadingScreen:
+  enabled: true
+  when:
+    host: play.example.net
+```
+
+The addon decides once per connection, when the player's first step waits, so `when` takes the conditions known
+then: `scenario`, `provider`, `host` and `server`. Without `when`, every player with a 1.21.6 or newer client is
+asked on the loading screen. Set `enabled: false` to ask everyone in the world of the authentication server instead.
+
+While a player is on the loading screen:
+
+- a message no rule shows as a dialog, such as one with `dialog: none`, sends the player to the authentication
+  server, where they answer in chat and see the remaining dialogs there;
+- Identica's messages that the dialogs show, such as a wrong password, appear in the dialog; its other chat messages
+  to the player wait until the player has entered a server;
+- a player who does not answer is disconnected once their journey expires, after the scenario's `pipelineTtl` in
+  Identica's engine settings.
+
+On BungeeCord, the player waits in the configuration of the first server BungeeCord connects them to. That server
+sees a connecting player, who enters its world only once they are in.
 
 ## Change a dialog
 
@@ -172,12 +201,13 @@ actions:
 ```
 
 The button closes the dialog, tells the player the message in chat, and shows them no more dialogs until they
-reconnect.
+reconnect. On the loading screen, which has no chat, it sends the player to the authentication server to answer
+there.
 
 ## Limits
 
-- A client sees a dialog only once it is on a server, so a dialog appears just after the player arrives on the
-  authentication server.
+- A player who is not asked on the loading screen sees a dialog only once they are on a server, so it appears just
+  after they arrive on the authentication server.
 
 ## Use it from another plugin
 

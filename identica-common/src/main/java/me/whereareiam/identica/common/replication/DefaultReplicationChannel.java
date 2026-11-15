@@ -1,6 +1,7 @@
 package me.whereareiam.identica.common.replication;
 
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.identica.logging.Logger;
 import me.whereareiam.identica.replication.ReplicationAdapter;
 import me.whereareiam.identica.replication.ReplicationChannel;
 import me.whereareiam.identica.model.replication.ReplicationEnvelope;
@@ -10,6 +11,7 @@ import me.whereareiam.identica.replication.codec.SnapshotCodecFactory;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.function.Consumer;
 
 @RequiredArgsConstructor
@@ -28,7 +30,11 @@ public final class DefaultReplicationChannel<T, S> implements ReplicationChannel
 		byte[] payload = codec.encode(snapshot);
 		byte[] envelope = ReplicationEnvelope.encode(type.version(), 0L, payload);
 
-		return adapter.publish(channel, envelope);
+		return adapter.publish(channel, envelope).exceptionally(failure -> {
+			Throwable cause = failure instanceof CompletionException && failure.getCause() != null ? failure.getCause() : failure;
+			Logger.warn("Could not publish to the replication channel %s: %s", channel, cause.getMessage());
+			return null;
+		});
 	}
 
 	@Override

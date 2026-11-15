@@ -15,6 +15,9 @@ public class ReplicationConfiguration extends AbstractModule {
 		OptionalBinder.newOptionalBinder(binder(), Key.get(ReplicationAdapter.class, Names.named("replicationAdapter")))
 				.setBinding()
 				.to(RedisReplicationAdapter.class);
-		Multibinder.newSetBinder(binder(), RuntimeLifecycle.class).addBinding().to(JedisPoolProvider.class);
+		// Lifecycles stop in reverse, so the subscriptions end before the pool they listen on closes.
+		Multibinder<RuntimeLifecycle> lifecycles = Multibinder.newSetBinder(binder(), RuntimeLifecycle.class);
+		lifecycles.addBinding().to(JedisPoolProvider.class);
+		lifecycles.addBinding().to(RedisReplicationAdapter.class);
 	}
 }

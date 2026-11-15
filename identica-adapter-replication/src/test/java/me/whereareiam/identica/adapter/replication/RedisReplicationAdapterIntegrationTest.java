@@ -12,6 +12,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.args.ClientType;
+import redis.clients.jedis.params.ClientKillParams;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -20,15 +22,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import java.util.function.IntFunction;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Testcontainers(disabledWithoutDocker = true)
@@ -56,6 +63,7 @@ class RedisReplicationAdapterIntegrationTest {
 
 	@AfterEach
 	void tearDown() {
+		adapter.shutdown();
 		poolProvider.close();
 	}
 
@@ -125,7 +133,7 @@ class RedisReplicationAdapterIntegrationTest {
 			latch.countDown();
 		});
 
-		sleep(80);
+		awaitSubscribers(channel, 1);
 		adapter.publish(channel, "hello".getBytes(StandardCharsets.UTF_8)).join();
 
 		assertTrue(latch.await(1, TimeUnit.SECONDS));
@@ -242,6 +250,99 @@ class RedisReplicationAdapterIntegrationTest {
 
 		assertEquals(Integer.toString(clients * increments),
 				new String(adapter.get("ns", "counter").join().orElseThrow(), StandardCharsets.UTF_8));
+	}
+
+	@DisplayName("Lists an entry without a lifetime, also after it replaced one that expires")
+	@Test
+	void entriesWithoutLifetimeAreListed() {
+		adapter.put("ns", "lasting", bytes("v1"), 0).join();
+		adapter.put("ns", "replaced", bytes("v1"), 120).join();
+		adapter.put("ns", "replaced", bytes("v2"), 0).join();
+		sleep(180);
+
+		ReplicationPage page = adapter.listKeys("ns", 1, 10).join();
+		assertEquals(2, page.getTotal());
+		assertTrue(page.getEntries().containsAll(List.of("lasting", "replaced")));
+	}
+
+	@DisplayName("Pages through the keys in the order they expire")
+	@Test
+	void listKeysPages() {
+		for (int key = 0; key < 5; key++)
+			adapter.put("ns", "key-" + key, bytes("v"), 10_000 + key * 1_000L).join();
+
+		ReplicationPage second = adapter.listKeys("ns", 2, 2).join();
+		assertEquals(List.of("key-2", "key-3"), second.getEntries());
+		assertEquals(5, second.getTotal());
+		assertEquals(List.of(), adapter.listKeys("ns", 4, 2).join().getEntries());
+	}
+
+	@DisplayName("Rejects a namespace that would share a Redis key with another entry or an index")
+	@Test
+	void rejectsCollidingNamespaces() {
+		for (String namespace : List.of("index", "a:b", " ")) {
+			CompletionException failure = assertThrows(CompletionException.class, () -> adapter.get(namespace, "key").join());
+			assertInstanceOf(IllegalArgumentException.class, failure.getCause());
+		}
+	}
+
+	@DisplayName("A handler that throws does not end its subscription")
+	@Test
+	void handlerFailureKeepsSubscription() throws Exception {
+		List<String> received = new CopyOnWriteArrayList<>();
+		adapter.subscribe("failing", payload -> {
+			String message = new String(payload, StandardCharsets.UTF_8);
+			received.add(message);
+			if (message.equals("first")) throw new IllegalStateException("handler failure");
+		});
+		awaitSubscribers("failing", 1);
+
+		adapter.publish("failing", bytes("first")).join();
+		adapter.publish("failing", bytes("second")).join();
+
+		awaitCondition(() -> received.size() == 2);
+		assertEquals(List.of("first", "second"), received);
+	}
+
+	@DisplayName("A subscription subscribes again after Redis drops its connection")
+	@Test
+	void subscriptionSurvivesDroppedConnection() throws Exception {
+		List<String> received = new CopyOnWriteArrayList<>();
+		adapter.subscribe("dropped", payload -> received.add(new String(payload, StandardCharsets.UTF_8)));
+		awaitSubscribers("dropped", 1);
+
+		try (Jedis jedis = new Jedis(REDIS.getHost(), REDIS.getFirstMappedPort())) {
+			jedis.clientKill(ClientKillParams.clientKillParams().type(ClientType.PUBSUB));
+		}
+		awaitSubscribers("dropped", 1);
+		adapter.publish("dropped", bytes("after")).join();
+
+		awaitCondition(() -> received.contains("after"));
+	}
+
+	@DisplayName("Stopping the adapter ends its subscriptions")
+	@Test
+	void shutdownEndsSubscriptions() throws Exception {
+		adapter.subscribe("stopped", payload -> {});
+		awaitSubscribers("stopped", 1);
+
+		adapter.shutdown();
+
+		awaitSubscribers("stopped", 0);
+	}
+
+	private static void awaitSubscribers(String channel, long expected) throws Exception {
+		try (Jedis jedis = new Jedis(REDIS.getHost(), REDIS.getFirstMappedPort())) {
+			awaitCondition(() -> jedis.pubsubNumSub(channel).getOrDefault(channel, 0L) == expected);
+		}
+	}
+
+	private static void awaitCondition(BooleanSupplier condition) throws Exception {
+		long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+		while (!condition.getAsBoolean()) {
+			assertTrue(System.nanoTime() < deadline, "condition not met in time");
+			Thread.sleep(20);
+		}
 	}
 
 	/**

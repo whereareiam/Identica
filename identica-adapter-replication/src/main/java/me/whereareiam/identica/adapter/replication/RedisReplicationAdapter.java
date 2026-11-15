@@ -5,61 +5,50 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.identica.adapter.replication.provider.JedisPoolProvider;
+import me.whereareiam.identica.lifecycle.RuntimeLifecycle;
+import me.whereareiam.identica.lifecycle.StartupPhase;
 import me.whereareiam.identica.model.config.Replication;
-import me.whereareiam.identica.replication.ReplicationAdapter;
 import me.whereareiam.identica.model.replication.ReplicationPage;
-import me.whereareiam.identica.logging.Logger;
+import me.whereareiam.identica.replication.ReplicationAdapter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import redis.clients.jedis.BinaryJedisPubSub;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.exceptions.JedisNoScriptException;
+import redis.clients.jedis.Response;
+import redis.clients.jedis.Transaction;
 
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
+/**
+ * Replication over Redis. An entry of a namespace is stored under {@code identica:<namespace>:<key>} and listed in
+ * the sorted set {@code identica:index:<namespace>}, scored by the moment it expires. Every write changes the entry
+ * and its index member in one atomic step.
+ * <p>
+ * Calls run on a few daemon threads, one for each connection of the pool, so a call waits in a queue instead of
+ * holding a thread while it waits for a connection. A failure of Redis completes the returned future exceptionally;
+ * deciding what a failure means is left to the caller.
+ */
 @Singleton
-@SuppressWarnings("resource")
 @RequiredArgsConstructor(onConstructor_ = @Inject)
-public class RedisReplicationAdapter implements ReplicationAdapter {
-	private static final String KV_PREFIX = "identica";
-	/**
-	 * Writes the value only while the key holds the expected bytes ({@code ARGV[1]} is {@code 1}) or nothing
-	 * ({@code ARGV[1]} is {@code 0}), and lists the key in the namespace index as {@link #put} does. A script runs
-	 * as one step in Redis, so no other client changes the key between the comparison and the write.
-	 */
-	private static final RedisScript COMPARE_AND_PUT = RedisScript.of("""
-			local current = redis.call('GET', KEYS[1])
-			if ARGV[1] == '1' then
-				if current ~= ARGV[2] then return 0 end
-			elseif current then
-				return 0
-			end
-			local ttl = tonumber(ARGV[4])
-			if ttl > 0 then
-				redis.call('PSETEX', KEYS[1], ttl, ARGV[3])
-				redis.call('ZADD', KEYS[2], ARGV[5], ARGV[6])
-			else
-				redis.call('SET', KEYS[1], ARGV[3])
-			end
-			return 1
-			""");
-	/** Removes the key and its index entry only while the key holds the expected bytes. */
-	private static final RedisScript COMPARE_AND_DELETE = RedisScript.of("""
-			if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
-			redis.call('DEL', KEYS[1])
-			redis.call('ZREM', KEYS[2], ARGV[2])
-			return 1
-			""");
+public class RedisReplicationAdapter implements ReplicationAdapter, RuntimeLifecycle {
+	private static final String PREFIX = "identica";
+	/** The namespace part of the index keys, which no namespace may use, so an entry never names an index. */
+	private static final String INDEX = "index";
 
 	private final JedisPoolProvider poolProvider;
 	private final Provider<Replication> replicationProvider;
+	private final Executor executor = commandExecutor();
+	private final Set<RedisSubscription> subscriptions = ConcurrentHashMap.newKeySet();
 
 	@Override
 	public boolean isAvailable() {
@@ -67,67 +56,47 @@ public class RedisReplicationAdapter implements ReplicationAdapter {
 	}
 
 	@Override
+	public @NotNull StartupPhase phase() {
+		return StartupPhase.PERSISTENCE;
+	}
+
+	@Override
+	public void initialize() {
+		// Subscriptions start when they are asked for.
+	}
+
+	@Override
+	public void shutdown() {
+		subscriptions.forEach(RedisSubscription::close);
+		subscriptions.clear();
+	}
+
+	@Override
 	public @NotNull CompletableFuture<Optional<byte[]>> get(@NotNull String namespace, @NotNull String key) {
-		if (!isAvailable()) {
-			return CompletableFuture.completedFuture(Optional.empty());
-		}
-		return CompletableFuture.supplyAsync(() -> {
-			JedisPool pool = poolProvider.getOptional().orElse(null);
-			if (pool == null) {
-				return Optional.empty();
-			}
-			byte[] rawKey = buildKey(namespace, key);
-			try (Jedis jedis = pool.getResource()) {
-				return Optional.ofNullable(jedis.get(rawKey));
-			} catch (Exception ignored) {
-				return Optional.empty();
-			}
-		});
+		return call(jedis -> Optional.ofNullable(jedis.get(entryKey(namespace, key))));
 	}
 
 	@Override
 	public @NotNull CompletableFuture<Optional<byte[]>> consume(@NotNull String namespace, @NotNull String key) {
-		if (!isAvailable()) {
-			return CompletableFuture.completedFuture(Optional.empty());
-		}
-		return CompletableFuture.supplyAsync(() -> {
-			JedisPool pool = poolProvider.getOptional().orElse(null);
-			if (pool == null) return Optional.empty();
+		return call(jedis -> {
+			byte[] entry = entryKey(namespace, key);
+			try (Transaction transaction = jedis.multi()) {
+				Response<byte[]> payload = transaction.getDel(entry);
+				transaction.zrem(indexKey(namespace), key);
+				transaction.exec();
 
-			byte[] rawKey = buildKey(namespace, key);
-			try (Jedis jedis = pool.getResource()) {
-				byte[] payload = jedis.getDel(rawKey);
-				if (payload != null) jedis.zrem(buildIndexKey(namespace), key);
-
-				return Optional.ofNullable(payload);
-			} catch (Exception ignored) {
-				return Optional.empty();
+				return Optional.ofNullable(payload.get());
 			}
 		});
 	}
 
 	@Override
 	public @NotNull CompletableFuture<Void> put(@NotNull String namespace, @NotNull String key, byte[] value, long ttlMs) {
-		if (!isAvailable()) return CompletableFuture.completedFuture(null);
-
-		return CompletableFuture.runAsync(() -> {
-			JedisPool pool = poolProvider.getOptional().orElse(null);
-			if (pool == null) {
-				return;
-			}
-			byte[] rawKey = buildKey(namespace, key);
-			try (Jedis jedis = pool.getResource()) {
-				if (ttlMs > 0) {
-					jedis.psetex(rawKey, ttlMs, value);
-					long expiresAt = System.currentTimeMillis() + ttlMs;
-					jedis.zadd(buildIndexKey(namespace), expiresAt, key);
-				} else {
-					jedis.set(rawKey, value);
-				}
-			} catch (Exception ignored) {
-				// ignore failures for cache
-			}
-		});
+		return run(jedis -> RedisScript.PUT.run(jedis, keys(namespace, key), List.of(
+				bytes(key),
+				value,
+				bytes(Long.toString(ttlMs))
+		)));
 	}
 
 	@Override
@@ -138,184 +107,139 @@ public class RedisReplicationAdapter implements ReplicationAdapter {
 			byte @NotNull [] value,
 			long ttlMs
 	) {
-		long expiresAt = System.currentTimeMillis() + ttlMs;
-		return evaluate(COMPARE_AND_PUT, namespace, key, List.of(
-				bytes(expected != null ? "1" : "0"),
-				expected != null ? expected : new byte[0],
+		return call(jedis -> RedisScript.COMPARE_AND_PUT.run(jedis, keys(namespace, key), List.of(
+				bytes(key),
 				value,
 				bytes(Long.toString(ttlMs)),
-				bytes(Long.toString(expiresAt)),
-				bytes(key)
-		));
+				bytes(expected != null ? "1" : "0"),
+				expected != null ? expected : new byte[0]
+		)));
 	}
 
 	@Override
 	public @NotNull CompletableFuture<Boolean> compareAndInvalidate(@NotNull String namespace, @NotNull String key, byte @NotNull [] expected) {
-		return evaluate(COMPARE_AND_DELETE, namespace, key, List.of(expected, bytes(key)));
-	}
-
-	private @NotNull CompletableFuture<Boolean> evaluate(RedisScript script, String namespace, String key, List<byte[]> arguments) {
-		if (!isAvailable()) return CompletableFuture.completedFuture(false);
-
-		return CompletableFuture.supplyAsync(() -> {
-			JedisPool pool = poolProvider.getOptional().orElse(null);
-			if (pool == null) return false;
-
-			List<byte[]> keys = List.of(buildKey(namespace, key), bytes(buildIndexKey(namespace)));
-			try (Jedis jedis = pool.getResource()) {
-				return Long.valueOf(1L).equals(script.run(jedis, keys, arguments));
-			} catch (Exception failure) {
-				Logger.debug("Conditional write of %s:%s failed: %s", namespace, key, failure.getMessage());
-				return false;
-			}
-		});
+		return call(jedis -> RedisScript.COMPARE_AND_DELETE.run(jedis, keys(namespace, key), List.of(bytes(key), expected)));
 	}
 
 	@Override
 	public @NotNull CompletableFuture<Void> invalidate(@NotNull String namespace, @NotNull String key) {
-		if (!isAvailable()) return CompletableFuture.completedFuture(null);
-
-		return CompletableFuture.runAsync(() -> {
-			JedisPool pool = poolProvider.getOptional().orElse(null);
-			if (pool == null) {
-				return;
-			}
-			byte[] rawKey = buildKey(namespace, key);
-			try (Jedis jedis = pool.getResource()) {
-				jedis.del(rawKey);
-				jedis.zrem(buildIndexKey(namespace), key);
-			} catch (Exception ignored) {
-				// ignore failures for sync
+		return run(jedis -> {
+			byte[] entry = entryKey(namespace, key);
+			try (Transaction transaction = jedis.multi()) {
+				transaction.del(entry);
+				transaction.zrem(indexKey(namespace), key);
+				transaction.exec();
 			}
 		});
 	}
 
+	/**
+	 * Lists the keys of a namespace that have not expired by the clock of Redis, in the order they expire. The
+	 * expired members are removed from the index, and the page is counted and read in the same atomic step.
+	 */
 	@Override
-	public @NotNull CompletableFuture<ReplicationPage> listKeys(
-			@NotNull String namespace,
-			int page,
-			int pageSize
-	) {
+	public @NotNull CompletableFuture<ReplicationPage> listKeys(@NotNull String namespace, int page, int pageSize) {
 		int safePage = Math.max(1, page);
 		int safeSize = Math.max(1, pageSize);
+		long from = (long) (safePage - 1) * safeSize;
 
-		if (!isAvailable()) {
-			return CompletableFuture.completedFuture(new ReplicationPage(List.of(), safePage, safeSize, 0));
-		}
+		return call(jedis -> {
+			String index = indexKey(namespace);
+			long now = now(jedis);
+			try (Transaction transaction = jedis.multi()) {
+				transaction.zremrangeByScore(index, 0, now);
+				Response<Long> total = transaction.zcard(index);
+				Response<List<String>> members = transaction.zrange(index, from, from + safeSize - 1);
+				transaction.exec();
 
-		return CompletableFuture.supplyAsync(() -> {
-			JedisPool pool = poolProvider.getOptional().orElse(null);
-			if (pool == null) {
-				return new ReplicationPage(List.of(), safePage, safeSize, 0);
-			}
-			long now = System.currentTimeMillis();
-			String indexKey = buildIndexKey(namespace);
-
-			try (Jedis jedis = pool.getResource()) {
-				jedis.zremrangeByScore(indexKey, 0, now);
-				long total = jedis.zcard(indexKey);
-
-				int fromIndex = Math.min((safePage - 1) * safeSize, (int) total);
-				int toIndex = Math.min(fromIndex + safeSize - 1, (int) total - 1);
-
-				if (total == 0 || fromIndex > toIndex) {
-					return new ReplicationPage(List.of(), safePage, safeSize, (int) total);
-				}
-
-				List<String> members = jedis.zrange(indexKey, fromIndex, toIndex);
-				return new ReplicationPage(members, safePage, safeSize, (int) total);
-			} catch (Exception ignored) {
-				return new ReplicationPage(List.of(), safePage, safeSize, 0);
+				return new ReplicationPage(members.get(), safePage, safeSize, Math.toIntExact(total.get()));
 			}
 		});
 	}
 
 	@Override
 	public @NotNull CompletableFuture<Void> publish(@NotNull String channel, byte[] payload) {
-		if (!isAvailable() || channel.isBlank() || payload == null) return CompletableFuture.completedFuture(null);
-		return CompletableFuture.runAsync(() -> {
-			JedisPool pool = poolProvider.getOptional().orElse(null);
-			if (pool == null) return;
-
-			byte[] rawChannel = channel.getBytes(StandardCharsets.UTF_8);
-			try (Jedis jedis = pool.getResource()) {
-				jedis.publish(rawChannel, payload);
-			} catch (Exception ignored) {
-				// ignore failures for sync
-			}
-		});
-	}
-
-	@Override
-	public void subscribe(@NotNull String channel, java.util.function.@NotNull Consumer<byte[]> handler) {
-		if (!isAvailable() || channel.isBlank()) return;
-
-		JedisPool pool = poolProvider.getOptional().orElse(null);
-		if (pool == null) return;
-
-		byte[] rawChannel = channel.getBytes(StandardCharsets.UTF_8);
-		Thread thread = new Thread(() -> {
-			try (Jedis jedis = pool.getResource()) {
-				jedis.subscribe(new BinaryJedisPubSub() {
-					@Override
-					public void onMessage(byte[] channel, byte[] message) {
-						handler.accept(message);
-					}
-				}, rawChannel);
-			} catch (Exception ignored) {
-				// ignore failures for sync
-			}
-		}, "identica-redis-sub-" + channel);
-		thread.setDaemon(true);
-		thread.start();
-	}
-
-	private static byte[] bytes(String value) {
-		return value.getBytes(StandardCharsets.UTF_8);
-	}
-
-	private byte[] buildKey(String namespace, String key) {
-		StringBuilder builder = new StringBuilder(KV_PREFIX);
-		if (namespace != null && !namespace.isBlank())
-			builder.append(':').append(namespace);
-
-		if (key != null && !key.isBlank())
-			builder.append(':').append(key);
-
-		return builder.toString().getBytes(StandardCharsets.UTF_8);
-	}
-
-	private String buildIndexKey(String namespace) {
-		StringBuilder builder = new StringBuilder(KV_PREFIX).append(":index");
-		if (namespace != null && !namespace.isBlank())
-			builder.append(':').append(namespace);
-
-		return builder.toString();
+		return run(jedis -> jedis.publish(bytes(channel), payload));
 	}
 
 	/**
-	 * A Lua script run by its SHA1 digest, so a call sends the digest instead of the script. Redis keeps a script
-	 * it ran until it restarts or its script cache is flushed; a call it answers with {@code NOSCRIPT} loads the
-	 * script and runs it again.
+	 * Subscribes on a thread of its own that subscribes again whenever the connection drops, until Identica stops.
 	 */
-	private record RedisScript(byte[] source, byte[] digest) {
-		private static @NotNull RedisScript of(@NotNull String source) {
-			byte[] bytes = bytes(source);
-			try {
-				byte[] sha = MessageDigest.getInstance("SHA-1").digest(bytes);
-				return new RedisScript(bytes, bytes(HexFormat.of().formatHex(sha)));
-			} catch (NoSuchAlgorithmException e) {
-				throw new IllegalStateException("SHA-1 is not available", e);
-			}
-		}
+	@Override
+	public void subscribe(@NotNull String channel, @NotNull Consumer<byte[]> handler) {
+		RedisSubscription subscription = new RedisSubscription(poolProvider, channel, handler);
+		subscriptions.add(subscription);
+		subscription.start();
+	}
 
-		private Object run(@NotNull Jedis jedis, @NotNull List<byte[]> keys, @NotNull List<byte[]> arguments) {
-			try {
-				return jedis.evalsha(digest, keys, arguments);
-			} catch (JedisNoScriptException missing) {
-				jedis.scriptLoad(source);
-				return jedis.evalsha(digest, keys, arguments);
+	private <T> @NotNull CompletableFuture<T> call(@NotNull Function<Jedis, T> command) {
+		return CompletableFuture.supplyAsync(() -> {
+			try (Jedis jedis = poolProvider.get().getResource()) {
+				return command.apply(jedis);
 			}
-		}
+		}, executor);
+	}
+
+	private @NotNull CompletableFuture<Void> run(@NotNull Consumer<Jedis> command) {
+		return call(jedis -> {
+			command.accept(jedis);
+			return null;
+		});
+	}
+
+	/**
+	 * Builds the threads calls run on. They are platform threads: the pool creates connections while it holds a
+	 * monitor, which on Java 21 pins a virtual thread to its carrier, and enough of them waiting for that monitor
+	 * would leave none for the thread that holds it. Idle threads end, so a stopped Identica leaves none behind.
+	 */
+	private static @NotNull Executor commandExecutor() {
+		ThreadPoolExecutor executor = new ThreadPoolExecutor(
+				JedisPoolProvider.MAX_CONNECTIONS,
+				JedisPoolProvider.MAX_CONNECTIONS,
+				30,
+				TimeUnit.SECONDS,
+				new LinkedBlockingQueue<>(),
+				Thread.ofPlatform().name("identica-redis-", 0).daemon().factory()
+		);
+		executor.allowCoreThreadTimeOut(true);
+
+		return executor;
+	}
+
+	/**
+	 * Reads the clock of Redis, which also decides when an entry expires, in milliseconds.
+	 */
+	private static long now(@NotNull Jedis jedis) {
+		List<String> time = jedis.time();
+		return Long.parseLong(time.get(0)) * 1000 + Long.parseLong(time.get(1)) / 1000;
+	}
+
+	private static @NotNull List<byte[]> keys(@NotNull String namespace, @NotNull String key) {
+		return List.of(entryKey(namespace, key), bytes(indexKey(namespace)));
+	}
+
+	private static byte @NotNull [] entryKey(@NotNull String namespace, @NotNull String key) {
+		if (key.isBlank()) throw new IllegalArgumentException("A replication key must not be blank");
+
+		return bytes(PREFIX + ':' + checkedNamespace(namespace) + ':' + key);
+	}
+
+	private static @NotNull String indexKey(@NotNull String namespace) {
+		return PREFIX + ':' + INDEX + ':' + checkedNamespace(namespace);
+	}
+
+	/**
+	 * Rejects a namespace that would make two different entries, or an entry and an index, share one Redis key: a
+	 * blank one, one with {@code :}, which separates the parts of a key, and {@link #INDEX}.
+	 */
+	private static @NotNull String checkedNamespace(@NotNull String namespace) {
+		if (namespace.isBlank() || namespace.indexOf(':') >= 0 || namespace.equals(INDEX))
+			throw new IllegalArgumentException("A replication namespace must be a name without ':' other than '" + INDEX + "': '" + namespace + "'");
+
+		return namespace;
+	}
+
+	private static byte @NotNull [] bytes(@NotNull String value) {
+		return value.getBytes(StandardCharsets.UTF_8);
 	}
 }

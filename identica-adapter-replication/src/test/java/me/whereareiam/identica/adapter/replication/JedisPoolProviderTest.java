@@ -8,28 +8,26 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Jedis Pool Provider")
 class JedisPoolProviderTest {
 	@DisplayName("Disabled replication never exposes a Redis pool")
 	@Test
-	void disabledReplicationThrowsAndReturnsEmptyOptional() {
+	void disabledReplicationThrows() {
 		Replication replication = new Replication();
 		replication.setEnabled(false);
 
 		Registry<Reloadable> registry = RedisTestFixtures.reloadableRegistry();
 		JedisPoolProvider provider = new JedisPoolProvider(() -> replication, registry);
 
-		assertThrows(RuntimeException.class, provider::get);
-		assertTrue(provider.getOptional().isEmpty());
+		assertThrows(IllegalStateException.class, provider::get);
 		provider.reload();
-		assertTrue(provider.getOptional().isEmpty());
+		assertThrows(IllegalStateException.class, provider::get);
 	}
 
-	@DisplayName("Returns an empty pool optional when Redis is unreachable")
+	@DisplayName("Fails to hand out a pool while Redis is unreachable")
 	@Test
-	void unreachableRedisReturnsEmptyOptional() {
+	void unreachableRedisThrows() {
 		Replication replication = RedisTestFixtures.enabledReplication("127.0.0.1", 6399);
 		replication.setEnabled(false);
 		replication.getRedis().setTimeout(100);
@@ -38,6 +36,6 @@ class JedisPoolProviderTest {
 		JedisPoolProvider provider = new JedisPoolProvider(() -> replication, registry);
 
 		replication.setEnabled(true);
-		assertTrue(provider.getOptional().isEmpty());
+		assertThrows(IllegalStateException.class, provider::get);
 	}
 }

@@ -11,6 +11,9 @@ import java.util.function.Consumer;
 /**
  * Low-level adapter for replication backends (e.g., Redis) that provides
  * key/value storage and pub/sub primitives.
+ * <p>
+ * A call the backend cannot answer, because it is unreachable or rejects the call, completes its future
+ * exceptionally; it never reads as a missing value or a refused write. What a failure means is up to the caller.
  */
 public interface ReplicationAdapter {
 	/**
@@ -58,7 +61,7 @@ public interface ReplicationAdapter {
 	 * @param expected payload that must be stored, or {@code null} when nothing may be stored under the key
 	 * @param value payload to store
 	 * @param ttlMs time-to-live in milliseconds
-	 * @return {@code true} when stored, {@code false} when the stored value differed or the backend failed
+	 * @return {@code true} when stored, {@code false} when the stored value differed
 	 */
 	@NotNull CompletableFuture<Boolean> compareAndPut(
 			@NotNull String namespace,
@@ -74,7 +77,7 @@ public interface ReplicationAdapter {
 	 * @param namespace logical namespace
 	 * @param key lookup key
 	 * @param expected payload that must be stored
-	 * @return {@code true} when removed, {@code false} when the stored value differed or the backend failed
+	 * @return {@code true} when removed, {@code false} when the stored value differed
 	 */
 	@NotNull CompletableFuture<Boolean> compareAndInvalidate(
 			@NotNull String namespace,

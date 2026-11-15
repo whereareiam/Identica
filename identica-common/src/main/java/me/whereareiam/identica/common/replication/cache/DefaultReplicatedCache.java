@@ -15,6 +15,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 @RequiredArgsConstructor
 public final class DefaultReplicatedCache<T, S> implements ReplicatedCache<T> {
@@ -43,7 +44,7 @@ public final class DefaultReplicatedCache<T, S> implements ReplicatedCache<T> {
 		if (adapter == null || !adapter.isAvailable())
 			return localCache.get(key);
 
-		return adapter.get(name, key)
+		return orElse(adapter.get(name, key), "read", key, Optional.empty())
 				.thenCompose(payload -> payload
 						.map(data -> handleRemoteHit(key, data))
 						.orElseGet(() -> localCache.invalidate(key)
@@ -100,7 +101,7 @@ public final class DefaultReplicatedCache<T, S> implements ReplicatedCache<T> {
 		if (adapter == null || !adapter.isAvailable())
 			return local;
 
-		if (ttlMs <= 0) return local.thenCompose(ignored -> adapter.invalidate(name, key));
+		if (ttlMs <= 0) return local.thenCompose(ignored -> orElse(adapter.invalidate(name, key), "remove", key, null));
 
 		long expiresAt = System.currentTimeMillis() + ttlMs;
 		SnapshotCodec<S> codec = resolveCodec();
@@ -108,7 +109,7 @@ public final class DefaultReplicatedCache<T, S> implements ReplicatedCache<T> {
 		byte[] payload = codec.encode(snapshot);
 		byte[] envelope = ReplicationEnvelope.encode(type.version(), expiresAt, payload);
 
-		return local.thenCompose(ignored -> adapter.put(name, key, envelope, ttlMs));
+		return local.thenCompose(ignored -> orElse(adapter.put(name, key, envelope, ttlMs), "store", key, null));
 	}
 
 	@Override
@@ -117,7 +118,7 @@ public final class DefaultReplicatedCache<T, S> implements ReplicatedCache<T> {
 		if (adapter == null || !adapter.isAvailable())
 			return CompletableFuture.completedFuture(localCache.read(key));
 
-		return adapter.get(name, key).thenCompose(payload -> {
+		return orElse(adapter.get(name, key), "read", key, Optional.<byte[]>empty()).thenCompose(payload -> {
 			if (payload.isEmpty()) return CompletableFuture.completedFuture(Optional.<Versioned<T>>empty());
 
 			byte[] stored = payload.get();
@@ -133,7 +134,7 @@ public final class DefaultReplicatedCache<T, S> implements ReplicatedCache<T> {
 	 * then create one.
 	 */
 	private @NotNull CompletableFuture<Optional<Versioned<T>>> discardUnreadable(@NotNull String key, byte @NotNull [] stored) {
-		return adapter.compareAndInvalidate(name, key, stored)
+		return orElse(adapter.compareAndInvalidate(name, key, stored), "remove", key, false)
 				.thenCompose(ignored -> localCache.invalidate(key))
 				.thenApply(ignored -> Optional.empty());
 	}
@@ -145,7 +146,7 @@ public final class DefaultReplicatedCache<T, S> implements ReplicatedCache<T> {
 			return CompletableFuture.completedFuture(localCache.write(key, read, value, ttlMs));
 
 		byte[] expected = read != null ? (byte[]) read.getRevision() : null;
-		return adapter.compareAndPut(name, key, expected, envelope(value, ttlMs), ttlMs)
+		return orElse(adapter.compareAndPut(name, key, expected, envelope(value, ttlMs), ttlMs), "store", key, false)
 				.thenCompose(written -> (written ? localCache.put(key, value, ttlMs) : localCache.invalidate(key))
 						.thenApply(ignored -> written));
 	}
@@ -156,7 +157,7 @@ public final class DefaultReplicatedCache<T, S> implements ReplicatedCache<T> {
 		if (adapter == null || !adapter.isAvailable())
 			return CompletableFuture.completedFuture(localCache.remove(key, read));
 
-		return adapter.compareAndInvalidate(name, key, (byte[]) read.getRevision())
+		return orElse(adapter.compareAndInvalidate(name, key, (byte[]) read.getRevision()), "remove", key, false)
 				.thenCompose(removed -> localCache.invalidate(key).thenApply(ignored -> removed));
 	}
 
@@ -198,7 +199,7 @@ public final class DefaultReplicatedCache<T, S> implements ReplicatedCache<T> {
 		if (adapter == null || !adapter.isAvailable())
 			return local;
 
-		return local.thenCompose(ignored -> adapter.invalidate(name, key));
+		return local.thenCompose(ignored -> orElse(adapter.invalidate(name, key), "remove", key, null));
 	}
 
 	@Override
@@ -207,7 +208,7 @@ public final class DefaultReplicatedCache<T, S> implements ReplicatedCache<T> {
 
 		if (adapter == null || !adapter.isAvailable()) return localCache.consume(key);
 
-		return adapter.consume(name, key)
+		return orElse(adapter.consume(name, key), "consume", key, Optional.<byte[]>empty())
 				.thenCompose(payload -> localCache.invalidate(key)
 						.thenCompose(ignored -> payload
 								.map(this::decodeConsumedValue)
@@ -244,7 +245,26 @@ public final class DefaultReplicatedCache<T, S> implements ReplicatedCache<T> {
 		if (adapter == null || !adapter.isAvailable())
 			return localCache.listKeys(page, pageSize);
 
-		return adapter.listKeys(name, page, pageSize);
+		ReplicationPage empty = ReplicationPage.empty(Math.max(1, page), Math.max(1, pageSize));
+		return orElse(adapter.listKeys(name, page, pageSize), "list", "keys", empty);
+	}
+
+	/**
+	 * Treats a call the replication backend failed as {@code fallback}, the answer of a backend that holds nothing
+	 * and refuses every conditional write, and logs it. The cache then keeps serving this server while the backend
+	 * is unreachable.
+	 */
+	private <R> @NotNull CompletableFuture<R> orElse(
+			@NotNull CompletableFuture<R> remote,
+			@NotNull String operation,
+			@Nullable String key,
+			@Nullable R fallback
+	) {
+		return remote.exceptionally(failure -> {
+			Throwable cause = failure instanceof CompletionException && failure.getCause() != null ? failure.getCause() : failure;
+			Logger.warn("Replicated cache %s could not %s %s, going on without the backend: %s", name, operation, key, cause.getMessage());
+			return fallback;
+		});
 	}
 
 	private SnapshotCodec<S> resolveCodec() {

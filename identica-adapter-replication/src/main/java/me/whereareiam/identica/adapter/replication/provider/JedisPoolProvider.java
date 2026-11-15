@@ -13,16 +13,17 @@ import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 
-import java.util.Optional;
-
 /**
  * The Redis pool replication talks through. It connects in {@link StartupPhase#PERSISTENCE} when replication is
  * enabled, so an unreachable Redis stops the startup, and closes when Identica stops.
  */
 @Singleton
 public class JedisPoolProvider implements Provider<JedisPool>, Reloadable, RuntimeLifecycle {
+	/** The most connections the pool opens at once. */
+	public static final int MAX_CONNECTIONS = 8;
+
 	private final Provider<Replication> configProvider;
-	private JedisPool jedisPool;
+	private volatile JedisPool jedisPool;
 
 	@Inject
 	public JedisPoolProvider(
@@ -51,63 +52,67 @@ public class JedisPoolProvider implements Provider<JedisPool>, Reloadable, Runti
 		close();
 	}
 
+	/**
+	 * Returns the pool, connecting it first when it is not connected yet.
+	 *
+	 * @throws IllegalStateException when replication is disabled or Redis cannot be reached
+	 */
 	@Override
-	public JedisPool get() {
-		if (jedisPool != null)
-			return jedisPool;
+	public @NotNull JedisPool get() {
+		JedisPool pool = jedisPool;
+		if (pool != null) return pool;
 
-		Replication replication = configProvider.get();
-		if (replication == null || !replication.isEnabled())
-			throw new RuntimeException("Replication settings are missing or disabled");
-
-		Replication.Redis redis = replication.getRedis();
-
-		try {
-			JedisPoolConfig poolConfig = new JedisPoolConfig();
-			String password = redis.getPassword();
-			if (password.isBlank())
-				password = null;
-
-			jedisPool = new JedisPool(
-					poolConfig,
-					redis.getHost(),
-					redis.getPort(),
-					redis.getTimeout(),
-					password,
-					redis.isSsl()
-			);
-
-			// Test connection
-			jedisPool.getResource().close();
-
-			return jedisPool;
-		} catch (JedisConnectionException e) {
-			throw new RuntimeException("Failed to connect to Redis", e);
-		}
+		return connect();
 	}
 
 	public synchronized void close() {
-		if (jedisPool != null) {
-			jedisPool.close();
-			jedisPool = null;
-		}
-	}
+		if (jedisPool == null) return;
 
-	public Optional<JedisPool> getOptional() {
-		try {
-			return Optional.of(get());
-		} catch (RuntimeException ignored) {
-			return Optional.empty();
-		}
+		jedisPool.close();
+		jedisPool = null;
 	}
 
 	@Override
-	public void reload() {
+	public synchronized void reload() {
 		close();
 
 		Replication replication = configProvider.get();
 		if (replication == null || !replication.isEnabled()) return;
 
-		jedisPool = get();
+		connect();
+	}
+
+	private synchronized @NotNull JedisPool connect() {
+		if (jedisPool != null) return jedisPool;
+
+		Replication replication = configProvider.get();
+		if (replication == null || !replication.isEnabled())
+			throw new IllegalStateException("Replication settings are missing or disabled");
+
+		JedisPool pool = createPool(replication.getRedis());
+		try {
+			pool.getResource().close();
+		} catch (JedisConnectionException e) {
+			pool.close();
+			throw new IllegalStateException("Failed to connect to Redis", e);
+		}
+
+		jedisPool = pool;
+		return pool;
+	}
+
+	private static @NotNull JedisPool createPool(@NotNull Replication.Redis redis) {
+		String password = redis.getPassword();
+		JedisPoolConfig config = new JedisPoolConfig();
+		config.setMaxTotal(MAX_CONNECTIONS);
+
+		return new JedisPool(
+				config,
+				redis.getHost(),
+				redis.getPort(),
+				redis.getTimeout(),
+				password.isBlank() ? null : password,
+				redis.isSsl()
+		);
 	}
 }

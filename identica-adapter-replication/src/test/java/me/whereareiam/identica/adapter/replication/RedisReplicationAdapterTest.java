@@ -1,58 +1,40 @@
 package me.whereareiam.identica.adapter.replication;
 
 import me.whereareiam.identica.adapter.replication.provider.JedisPoolProvider;
-import me.whereareiam.identica.model.replication.ReplicationPage;
+import me.whereareiam.identica.model.config.Replication;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyNoInteractions;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @DisplayName("Redis Replication Adapter")
 class RedisReplicationAdapterTest {
-	@DisplayName("Acts as a no-op when replication is disabled")
+	@DisplayName("Fails every call while replication is disabled instead of answering as if Redis held nothing")
 	@Test
-	void unavailableAdapterNoopsAllCalls() {
-		JedisPoolProvider poolProvider = mock(JedisPoolProvider.class);
-		RedisReplicationAdapter adapter = new RedisReplicationAdapter(poolProvider, RedisReplicationAdapterTest::disabledReplication);
-
-		assertEquals(Optional.empty(), adapter.get("ns", "key").join());
-		assertEquals(Optional.empty(), adapter.consume("ns", "key").join());
-		assertNull(adapter.put("ns", "key", new byte[]{1}, 5).join());
-		assertNull(adapter.invalidate("ns", "key").join());
-		ReplicationPage page = adapter.listKeys("ns", 0, 0).join();
-		assertEquals(1, page.getPage());
-		assertEquals(1, page.getPageSize());
-		assertEquals(0, page.getTotal());
-
-		verifyNoInteractions(poolProvider);
-	}
-
-	@DisplayName("Ignores publish requests with a blank channel or null payload")
-	@Test
-	void publishWithBlankChannelOrNullPayloadNoops() {
-		JedisPoolProvider poolProvider = mock(JedisPoolProvider.class);
-		RedisReplicationAdapter adapter = new RedisReplicationAdapter(poolProvider, RedisReplicationAdapterTest::enabledReplication);
-
-		adapter.publish("", new byte[] {1}).join();
-		adapter.publish("channel", null).join();
-
-		verifyNoInteractions(poolProvider);
-	}
-
-	private static me.whereareiam.identica.model.config.Replication disabledReplication() {
-		me.whereareiam.identica.model.config.Replication replication = new me.whereareiam.identica.model.config.Replication();
+	void disabledReplicationFailsCalls() {
+		Replication replication = new Replication();
 		replication.setEnabled(false);
-		return replication;
+		JedisPoolProvider poolProvider = new JedisPoolProvider(() -> replication, RedisTestFixtures.reloadableRegistry());
+		RedisReplicationAdapter adapter = new RedisReplicationAdapter(poolProvider, () -> replication);
+
+		assertFalse(adapter.isAvailable());
+		assertFailsWith(IllegalStateException.class, adapter.get("ns", "key"));
+		assertFailsWith(IllegalStateException.class, adapter.consume("ns", "key"));
+		assertFailsWith(IllegalStateException.class, adapter.put("ns", "key", new byte[] {1}, 5));
+		assertFailsWith(IllegalStateException.class, adapter.compareAndPut("ns", "key", null, new byte[] {1}, 5));
+		assertFailsWith(IllegalStateException.class, adapter.compareAndInvalidate("ns", "key", new byte[] {1}));
+		assertFailsWith(IllegalStateException.class, adapter.invalidate("ns", "key"));
+		assertFailsWith(IllegalStateException.class, adapter.listKeys("ns", 1, 10));
+		assertFailsWith(IllegalStateException.class, adapter.publish("channel", new byte[] {1}));
 	}
 
-	private static me.whereareiam.identica.model.config.Replication enabledReplication() {
-		me.whereareiam.identica.model.config.Replication replication = new me.whereareiam.identica.model.config.Replication();
-		replication.setEnabled(true);
-		return replication;
+	private static void assertFailsWith(Class<? extends Throwable> expected, CompletableFuture<?> call) {
+		CompletionException failure = assertThrows(CompletionException.class, call::join);
+		assertInstanceOf(expected, failure.getCause());
 	}
 }

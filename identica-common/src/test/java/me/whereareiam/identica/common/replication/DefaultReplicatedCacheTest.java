@@ -5,6 +5,7 @@ import me.whereareiam.identica.common.replication.cache.InMemoryLocalCache;
 import me.whereareiam.identica.model.replication.ReplicationEnvelope;
 import me.whereareiam.identica.model.replication.ReplicationPage;
 import me.whereareiam.identica.model.replication.ReplicationType;
+import me.whereareiam.identica.replication.ReplicationAdapter;
 import me.whereareiam.identica.replication.codec.SnapshotCodec;
 import me.whereareiam.identica.replication.cache.Versioned;
 import org.jetbrains.annotations.NotNull;
@@ -14,12 +15,19 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @DisplayName("Default Replicated Cache")
 class DefaultReplicatedCacheTest {
@@ -408,6 +416,36 @@ class DefaultReplicatedCacheTest {
 			thread.join();
 
 		assertEquals(1, won.get());
+	}
+
+	@DisplayName("Treats a backend that fails as one that holds nothing and refuses conditional writes")
+	@Test
+	void failingBackendReadsAsEmpty() {
+		ReplicationAdapter adapter = mock(ReplicationAdapter.class);
+		RuntimeException down = new IllegalStateException("Redis is down");
+		when(adapter.isAvailable()).thenReturn(true);
+		when(adapter.get(anyString(), anyString())).thenReturn(CompletableFuture.failedFuture(down));
+		when(adapter.consume(anyString(), anyString())).thenReturn(CompletableFuture.failedFuture(down));
+		when(adapter.put(anyString(), anyString(), any(), anyLong())).thenReturn(CompletableFuture.failedFuture(down));
+		when(adapter.invalidate(anyString(), anyString())).thenReturn(CompletableFuture.failedFuture(down));
+		when(adapter.compareAndPut(anyString(), anyString(), any(), any(), anyLong())).thenReturn(CompletableFuture.failedFuture(down));
+		when(adapter.listKeys(anyString(), anyInt(), anyInt())).thenReturn(CompletableFuture.failedFuture(down));
+		DefaultReplicatedCache<String, String> cache = new DefaultReplicatedCache<>(
+				"namespace",
+				new InMemoryLocalCache<>(),
+				adapter,
+				ReplicationTestFixtures.stringType(),
+				ReplicationTestFixtures.stringCodecFactory(),
+				0L
+		);
+
+		assertEquals(Optional.empty(), cache.getFresh("key").join());
+		assertEquals(Optional.empty(), cache.read("key").join());
+		assertEquals(Optional.empty(), cache.consume("key").join());
+		assertFalse(cache.write("key", null, "value", 5_000).join());
+		cache.put("key", "value", 5_000).join();
+		cache.invalidate("key").join();
+		assertEquals(0, cache.listKeys(1, 10).join().getTotal());
 	}
 
 	private static DefaultReplicatedCache<String, String> storingCache(ReplicationTestFixtures.TestReplicationAdapter adapter) {

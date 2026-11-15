@@ -78,6 +78,38 @@ class DefaultIdentityServiceTest {
 		assertTrue(service.list().isEmpty());
 	}
 
+	@Test
+	@DisplayName("An account attached to a second connection is found there, also after its first connection leaves")
+	void accountFollowsItsNewestConnection() {
+		UUID accountUniqueId = UUID.randomUUID();
+		UUID first = UUID.randomUUID();
+		UUID second = UUID.randomUUID();
+
+		service.attach(first, accountUniqueId, new TestIdentity(first, accountUniqueId, "PlayerOne"));
+		service.attach(second, accountUniqueId, new TestIdentity(second, accountUniqueId, "PlayerOne"));
+		service.detach(first);
+
+		assertEquals(second, service.findByAccountUniqueId(accountUniqueId).orElseThrow().getConnectionUniqueId());
+
+		service.detach(second);
+		assertTrue(service.findByAccountUniqueId(accountUniqueId).isEmpty());
+	}
+
+	@Test
+	@DisplayName("A connection attached again under another account is no longer found under the old one")
+	void reattachedConnectionLeavesOldAccount() {
+		UUID connectionUniqueId = UUID.randomUUID();
+		UUID oldAccount = UUID.randomUUID();
+		UUID newAccount = UUID.randomUUID();
+		TestIdentity identity = new TestIdentity(connectionUniqueId, oldAccount, "PlayerOne");
+
+		service.attach(connectionUniqueId, oldAccount, identity);
+		service.attach(connectionUniqueId, newAccount, identity);
+
+		assertTrue(service.findByAccountUniqueId(oldAccount).isEmpty());
+		assertTrue(service.findByAccountUniqueId(newAccount).isPresent());
+	}
+
 	private static final class TestIdentity extends Identity {
 		private TestIdentity(
 				@NotNull UUID connectionUniqueId,

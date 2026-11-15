@@ -63,9 +63,6 @@ public class DefaultCredentialAccountPersistenceService implements CredentialAcc
 
 	@Override
 	public void recordPasswordChange(@NotNull CredentialAccountHistory history) {
-		var entity = CredentialAccountHistoryMapper.toEntity(history);
-		if (entity == null)
-			return;
-		passwordChanges.get().insert(entity);
+		passwordChanges.get().insert(CredentialAccountHistoryMapper.toEntity(history));
 	}
 }
